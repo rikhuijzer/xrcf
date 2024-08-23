@@ -1,3 +1,3 @@
 # rrcf
 
-Re-usable Rust Compiler Framework
+RRCF Compiler Framework

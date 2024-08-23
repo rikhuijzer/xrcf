@@ -32,7 +32,6 @@ pub trait Attributes {
 
 // Takes attributes
 pub trait Operation {
-    // boxed attrs
     fn new(name: &'static str, attrs: impl Attributes) -> Self;
 
     fn name(&self) -> &'static str;

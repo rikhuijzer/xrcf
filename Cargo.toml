@@ -1,4 +1,6 @@
 [package]
 name = "rrcf"
+description = "RRCF Compiler Framework"
 version = "1.0.0"
 edition = "2021"
+license = "Apache-2.0 with LLVM-exceptions"
