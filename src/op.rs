@@ -13,7 +13,7 @@ pub trait Attribute {
 }
 
 pub trait Attributes {
-    fn new<A>(attrs: Vec<impl Attribute>) -> Self;
+    fn new(attrs: Vec<impl Attribute>) -> Self;
     fn attrs(&self) -> Vec<impl Attribute>;
     fn print(&self) -> String {
         self.attrs().iter().map(|attr| attr.print()).collect::<Vec<_>>().join(", ")

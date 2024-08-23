@@ -12,10 +12,9 @@ pub use op::Op;
 ///
 /// Dialects can co-exist and can be produced and consumed by different passes.
 pub trait Dialect {
-    fn new(name: &'static str, description: &'static str) -> Self;
-
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
+    fn ops(&self) -> Vec<impl Op>;
 }
 
 fn main() {
