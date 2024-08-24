@@ -1,36 +1,34 @@
 use crate::Dialect;
-use crate::op::Attribute;
-use crate::op::Attributes;
-use crate::op::Op;
+use crate::op::{Attribute, Attributes, Op};
 
-struct Arith {
-}
+struct Arith {}
 
-struct Addi {
-}
+struct Add {}
 
-// Takes IntegerAttrs
+impl Op for Add {
+    fn name(&self) -> &'static str {
+        "arith.add"
+    }
 
-impl Addi for Op {
-    fn new(attrs: impl Attributes) -> Self {
-        Op {
-            name: "addi",
-            attrs: attrs,
-        }
+    fn new(name: &'static str, attrs: impl Attributes) -> Self {
+        Add {}
+    }
+
+    fn verify(&self) -> bool {
+        true
     }
 }
 
 impl Dialect for Arith {
-
     fn name(&self) -> &'static str {
-        "Arith"
+        "arith"
     }
 
     fn description(&self) -> &'static str {
-        "Arithmetic operations."
+        "Arithmetic operations for integers and floating-point values."
     }
 
     fn ops(&self) -> Vec<impl Op> {
-        vec![]
+        vec![Add {}]
     }
 }

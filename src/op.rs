@@ -22,9 +22,14 @@ pub trait Attributes {
 
 // Takes attributes
 pub trait Op {
-    fn new(name: &'static str, attrs: impl Attributes) -> Self;
+    fn new(name: &'static str, attrs: impl Attributes) -> Self
+    where
+        Self: Sized;
 
     fn name(&self) -> &'static str;
+    fn verify(&self) -> bool {
+        true
+    }
     fn print(&self) -> String {
         self.name().to_string()
     }
