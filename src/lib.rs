@@ -2,9 +2,11 @@
 
 mod arith;
 mod op;
+mod attribute;
+mod typ;
 
-pub use op::Attribute;
-pub use op::Attributes;
+pub use attribute::Attribute;
+pub use attribute::Attributes;
 pub use op::Op;
 
 /// Dialects can define new operations, attributes, and types.
@@ -14,7 +16,6 @@ pub use op::Op;
 pub trait Dialect {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
-    fn ops(&self) -> Vec<impl Op>;
 }
 
 fn main() {
