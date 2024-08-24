@@ -3,19 +3,23 @@ use crate::op::{Attribute, Attributes, Op};
 
 struct Arith {}
 
-struct Add {}
+struct Addi {}
 
-impl Op for Add {
+impl Op for Addi {
     fn name(&self) -> &'static str {
-        "arith.add"
+        "arith.addi"
     }
 
     fn new(name: &'static str, attrs: impl Attributes) -> Self {
-        Add {}
+        Addi {}
     }
 
     fn verify(&self) -> bool {
-        true
+        // TODO: Verify that operands are integerattrs
+        false
+    }
+    fn parse(input: &str) -> Self {
+        Addi {}
     }
 }
 
@@ -25,10 +29,10 @@ impl Dialect for Arith {
     }
 
     fn description(&self) -> &'static str {
-        "Arithmetic operations for integers and floating-point values."
+        "Arithmetic operations."
     }
 
     fn ops(&self) -> Vec<impl Op> {
-        vec![Add {}]
+        vec![Addi {}]
     }
 }
