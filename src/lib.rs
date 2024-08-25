@@ -4,9 +4,11 @@ mod arith;
 mod op;
 mod attribute;
 mod typ;
+mod translate;
 
 pub use attribute::Attribute;
 pub use attribute::Attributes;
+pub use translate::translate;
 pub use op::Op;
 
 /// Dialects can define new operations, attributes, and types.

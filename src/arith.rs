@@ -1,9 +1,24 @@
 use crate::op::Op;
 use crate::attribute::IntegerAttr;
 use crate::attribute::Attributes;
+use crate::typ::IntegerType;
 use crate::Dialect;
 
 struct Arith {}
+
+struct Constant {
+    typ: IntegerType,
+    value: IntegerAttr,
+}
+
+impl Op for Constant {
+    fn name(&self) -> &'static str {
+        "arith.contant"
+    }
+    fn parse(input: &str) -> Option<Self> {
+        todo!()
+    }
+}
 
 struct Addi {
     lhs: IntegerAttr,
@@ -13,10 +28,6 @@ struct Addi {
 impl Op for Addi {
     fn name(&self) -> &'static str {
         "arith.addi"
-    }
-
-    fn new(name: &'static str, attrs: Attributes) -> Self {
-        todo!()
     }
 
     fn parse(input: &str) -> Option<Self> {

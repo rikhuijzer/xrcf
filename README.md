@@ -13,4 +13,3 @@ Yet.
   Including the C files would require lots of compilation.
   Calling out to an installed LLVM version is better but is hard with package versions and such.
   Let's for now just generate LLVM IR and let the client compile it themselves.
-  
