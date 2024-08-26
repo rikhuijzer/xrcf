@@ -7,6 +7,6 @@ pub trait Operation {
 
     fn name(&self) -> &'static str;
     fn print(&self) -> String {
-        self.name().to_string()
+        todo!() 
     }
 }
