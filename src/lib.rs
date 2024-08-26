@@ -1,15 +1,15 @@
 #![allow(dead_code)]
 
 mod arith;
-mod op;
 mod attribute;
 mod typ;
 mod translate;
+mod ir;
 
 pub use attribute::Attribute;
 pub use attribute::Attributes;
 pub use translate::translate;
-pub use op::Op;
+pub use ir::operation::Operation;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

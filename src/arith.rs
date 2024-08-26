@@ -1,4 +1,4 @@
-use crate::op::Op;
+use crate::ir::operation::Operation;
 use crate::attribute::IntegerAttr;
 use crate::attribute::Attributes;
 use crate::typ::IntegerType;
@@ -11,7 +11,7 @@ struct Constant {
     value: IntegerAttr,
 }
 
-impl Op for Constant {
+impl Operation for Constant {
     fn name(&self) -> &'static str {
         "arith.contant"
     }
@@ -25,7 +25,7 @@ struct Addi {
     rhs: IntegerAttr,
 }
 
-impl Op for Addi {
+impl Operation for Addi {
     fn name(&self) -> &'static str {
         "arith.addi"
     }

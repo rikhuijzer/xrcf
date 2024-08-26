@@ -1,6 +1,6 @@
 
 // Takes attributes
-pub trait Op {
+pub trait Operation {
     fn parse(input: &str) -> Option<Self>
     where
         Self: Sized;
