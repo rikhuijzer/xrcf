@@ -1,6 +1,6 @@
 extern crate rrcf;
 
-use rrcf::translate;
+use rrcf::compile;
 
 #[test]
 fn test_translate() {

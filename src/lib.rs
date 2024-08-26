@@ -3,12 +3,13 @@
 mod arith;
 mod attribute;
 mod typ;
-mod translate;
+mod compile;
 mod ir;
+mod parser;
 
 pub use attribute::Attribute;
 pub use attribute::Attributes;
-pub use translate::translate;
+pub use compile::compile;
 pub use ir::operation::Operation;
 
 /// Dialects can define new operations, attributes, and types.
