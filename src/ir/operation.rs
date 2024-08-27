@@ -1,4 +1,5 @@
 use crate::Attributes;
+use anyhow::Result;
 
 pub struct OperationName {
     name: String, // TODO: Should be StringAttr,
@@ -43,5 +44,8 @@ impl Operation {
 /// and MLIR would cast the `Operation` into a specific `Op` variant
 /// such as `FuncOp`.
 pub trait Op {
+    fn from_operation(operation: Operation) -> Result<Self>
+    where
+        Self: Sized;
     fn name(&self) -> &'static str;
 }

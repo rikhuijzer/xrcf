@@ -3,6 +3,7 @@ use crate::attribute::IntegerAttr;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use crate::ir::operation::Op;
+use anyhow::Result;
 
 struct Arith {}
 
@@ -12,6 +13,9 @@ struct ConstantOp {
 }
 
 impl Op for ConstantOp {
+    fn from_operation(operation: Operation) -> Result<Self> {
+        todo!()
+    }
     fn name(&self) -> &'static str {
         "arith.contant"
     }
@@ -23,6 +27,9 @@ struct Addi {
 }
 
 impl Op for Addi {
+    fn from_operation(operation: Operation) -> Result<Self> {
+        todo!()
+    }
     fn name(&self) -> &'static str {
         "arith.addi"
     }
