@@ -106,8 +106,10 @@ mod tests {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let operation = Parser::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
-        let moduleOp = ModuleOp::from_operation(operation).unwrap();
+        let moduleOp = ModuleOp::from_operation(operation.clone()).unwrap();
         let body = moduleOp.getBodyRegion();
         assert_eq!(body.blocks().len(), 1);
+        println!("{}", operation);
+        assert!(false);
     }
 }

@@ -1,4 +1,5 @@
 use crate::ir::block::Block;
+use std::fmt::Display;
 
 /// A list of blocks.
 #[derive(Clone)]
@@ -15,5 +16,16 @@ impl Region {
     }
     fn print(&self) -> String {
         todo!()
+    }
+}
+
+impl Display for Region {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{\n")?;
+        for block in self.blocks() {
+            write!(f, "  {}", block)?;
+        }
+        write!(f, "\n}}")?;
+        Ok(())
     }
 }

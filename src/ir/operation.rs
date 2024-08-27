@@ -1,6 +1,7 @@
 use crate::Attributes;
 use anyhow::Result;
 use crate::ir::Region;
+use std::fmt::Display;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -42,6 +43,16 @@ impl Operation {
     }
     fn print(&self) {
         println!("{}", self.name());
+    }
+}
+
+impl Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())?;
+        for region in self.regions() {
+            write!(f, " {}", region)?;
+        }
+        Ok(())
     }
 }
 
