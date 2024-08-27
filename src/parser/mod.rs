@@ -82,6 +82,29 @@ impl Scanner {
         }
         Ok(())
     }
+    // Whether the character is a valid identifier start character.
+    fn is_identifier_start(c: char) -> bool {
+        c.is_alphabetic() || c == '_' || c == '@'
+    }
+    // Whether the character is a valid identifier character.
+    fn is_identifier(c: char) -> bool {
+        c.is_alphabetic() || c == '_'
+    }
+    // Scan identifiers and keywords.
+    fn identifier(&mut self) -> Result<(), Error> {
+        while Scanner::is_identifier(self.peek()) {
+            self.advance();
+        }
+        let lexeme = self.source[self.start..self.current].to_string();
+        let kind = match lexeme.as_str() {
+            "f16" => TokenKind::KwF16,
+            "true" => TokenKind::KwTrue,
+            s if s.starts_with('@') => TokenKind::AtIdentifier,
+            _ => TokenKind::BareIdentifier,
+        };
+        self.add_token(kind);
+        Ok(())
+    }
     fn scan_token(&mut self) -> Result<(), Error> {
         let c = self.advance();
         match c {
@@ -90,9 +113,13 @@ impl Scanner {
             ':' => self.add_token(TokenKind::Colon),
             ',' => self.add_token(TokenKind::Comma),
             '=' => self.add_token(TokenKind::Equal),
+            ' ' | '\r' | '\t' => (),
+            '\n' => self.line += 1,
             _ => {
                 if c.is_digit(10) {
                     self.number()?;
+                } else if Scanner::is_identifier_start(c) {
+                    self.identifier()?;
                 } else {
                     panic!("Unexpected character: {}", c);
                 }
@@ -134,11 +161,12 @@ mod tests {
         assert_eq!(token.kind, TokenKind::Integer);
         assert_eq!(token.lexeme, "42");
 
-        // let tokens = scan_tokens("42.5 42");
-        // assert_eq!(tokens.len(), 3);
-        // assert_eq!(tokens[0].kind, TokenKind::FloatLiteral);
-        // assert_eq!(tokens[0].lexeme, "42.5");
-        // assert_eq!(tokens[1].kind, TokenKind::Integer);
-        // assert_eq!(tokens[1].lexeme, "42");
+        let tokens = scan_tokens("42.5 42");
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens[0].kind, TokenKind::FloatLiteral);
+        assert_eq!(tokens[0].lexeme, "42.5");
+        assert_eq!(tokens[1].kind, TokenKind::Integer);
+        assert_eq!(tokens[1].lexeme, "42");
+        assert_eq!(tokens[2].kind, TokenKind::Eof);
     }
 }
