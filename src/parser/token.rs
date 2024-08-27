@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum TokenKind {
     // Markers
     Eof,
@@ -31,6 +31,7 @@ pub enum TokenKind {
     KwType,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Token {
     pub kind: TokenKind,
     pub lexeme: String,

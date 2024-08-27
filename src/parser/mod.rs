@@ -14,6 +14,15 @@ struct Scanner {
 }
 
 impl Scanner {
+    fn new(source: String) -> Self {
+        Scanner {
+            source,
+            tokens: Vec::new(),
+            start: 0,
+            current: 0,
+            line: 1,
+        }
+    }
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -85,6 +94,32 @@ impl Scanner {
     }
 
     fn scan_tokens(&mut self) -> Result<(), Error> {
-        todo!()
+        while !self.is_at_end() {
+            self.start = self.current;
+            self.scan_token()?;
+        }
+        self.add_token(TokenKind::Eof);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scan_tokens(source: String) -> Vec<Token> {
+        let mut scanner = Scanner::new(source);
+        let result = scanner.scan_tokens();
+        assert!(result.is_ok());
+        scanner.tokens
+    }
+    fn scan_token(source: &str) -> Token {
+        let tokens = scan_tokens(source.to_string());
+        tokens.first().unwrap().clone()
+    }
+    #[test]
+    fn test_scanner() {
+        let token = scan_token("42.5");
+        assert_eq!(token.kind, TokenKind::FloatLiteral);
     }
 }
