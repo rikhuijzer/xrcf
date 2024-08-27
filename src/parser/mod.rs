@@ -65,13 +65,21 @@ impl Scanner {
         while self.peek().is_digit(10) {
             self.advance();
         }
+        let mut is_float = false;
         if self.peek() == '.' && self.peek_next().is_digit(10) {
+            if self.peek() == '.' {
+                is_float = true;
+            }
             self.advance();
             while self.peek().is_digit(10) {
                 self.advance();
             }
         }
-        self.add_token(TokenKind::FloatLiteral);
+        if is_float {
+            self.add_token(TokenKind::FloatLiteral);
+        } else {
+            self.add_token(TokenKind::Integer)
+        }
         Ok(())
     }
     fn scan_token(&mut self) -> Result<(), Error> {
@@ -107,19 +115,30 @@ impl Scanner {
 mod tests {
     use super::*;
 
-    fn scan_tokens(source: String) -> Vec<Token> {
-        let mut scanner = Scanner::new(source);
+    fn scan_tokens(source: &str) -> Vec<Token> {
+        let mut scanner = Scanner::new(source.to_string());
         let result = scanner.scan_tokens();
         assert!(result.is_ok());
         scanner.tokens
     }
     fn scan_token(source: &str) -> Token {
-        let tokens = scan_tokens(source.to_string());
+        let tokens = scan_tokens(source);
         tokens.first().unwrap().clone()
     }
     #[test]
     fn test_scanner() {
         let token = scan_token("42.5");
         assert_eq!(token.kind, TokenKind::FloatLiteral);
+        assert_eq!(token.lexeme, "42.5");
+        let token = scan_token("42");
+        assert_eq!(token.kind, TokenKind::Integer);
+        assert_eq!(token.lexeme, "42");
+
+        // let tokens = scan_tokens("42.5 42");
+        // assert_eq!(tokens.len(), 3);
+        // assert_eq!(tokens[0].kind, TokenKind::FloatLiteral);
+        // assert_eq!(tokens[0].lexeme, "42.5");
+        // assert_eq!(tokens[1].kind, TokenKind::Integer);
+        // assert_eq!(tokens[1].lexeme, "42");
     }
 }
