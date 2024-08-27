@@ -44,7 +44,11 @@ impl Scanner {
         self.source.chars().nth(self.current + 1).unwrap()
     }
     fn add_token(&mut self, kind: TokenKind) {
-        let lexeme = self.source[self.start..self.current].to_string();
+        let lexeme = if kind == TokenKind::Eof {
+            "".to_string()
+        } else {
+            self.source[self.start..self.current].to_string()
+        };
         self.tokens.push(Token {
             kind,
             lexeme,
@@ -88,7 +92,7 @@ impl Scanner {
     }
     // Whether the character is a valid identifier character.
     fn is_identifier(c: char) -> bool {
-        c.is_alphabetic() || c == '_'
+        c.is_alphabetic() || c == '_' || c == '.' || c.is_digit(10)
     }
     // Scan identifiers and keywords.
     fn identifier(&mut self) -> Result<(), Error> {
@@ -162,5 +166,27 @@ mod tests {
         assert_eq!(tokens[1].kind, TokenKind::Integer);
         assert_eq!(tokens[1].lexeme, "42");
         assert_eq!(tokens[2].kind, TokenKind::Eof);
+
+        let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
+        let tokens = scan_tokens(src);
+        println!("{:?}", tokens);
+        assert_eq!(tokens.len(), 11);
+        assert_eq!(tokens[0].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[0].lexeme, "llvm.mlir.global");
+        assert_eq!(tokens[1].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[1].lexeme, "internal");
+        assert_eq!(tokens[2].kind, TokenKind::AtIdentifier);
+        assert_eq!(tokens[2].lexeme, "@i32_global");
+        assert_eq!(tokens[3].kind, TokenKind::LParen);
+        assert_eq!(tokens[4].kind, TokenKind::Integer);
+        assert_eq!(tokens[4].lexeme, "42");
+        assert_eq!(tokens[5].kind, TokenKind::Colon);
+        assert_eq!(tokens[6].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[6].lexeme, "i32");
+        assert_eq!(tokens[7].kind, TokenKind::RParen);
+        assert_eq!(tokens[8].kind, TokenKind::Colon);
+        assert_eq!(tokens[9].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[9].lexeme, "i32");
+        assert_eq!(tokens[10].kind, TokenKind::Eof);
     }
 }
