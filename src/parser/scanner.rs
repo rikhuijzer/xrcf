@@ -1,8 +1,8 @@
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
-use std::fmt::Error;
+use anyhow::Result;
 
-struct Scanner {
+pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
     start: usize,
@@ -62,7 +62,7 @@ impl Scanner {
         self.current += 1;
         true
     }
-    fn number(&mut self) -> Result<(), Error> {
+    fn number(&mut self) -> Result<()> {
         while self.peek().is_digit(10) {
             self.advance();
         }
@@ -92,7 +92,7 @@ impl Scanner {
         c.is_alphabetic() || c == '_' || c == '.' || c.is_digit(10)
     }
     // Scan identifiers and keywords.
-    fn identifier(&mut self) -> Result<(), Error> {
+    fn identifier(&mut self) -> Result<()> {
         while Scanner::is_identifier(self.peek()) {
             self.advance();
         }
@@ -106,7 +106,7 @@ impl Scanner {
         self.add_token(kind);
         Ok(())
     }
-    fn scan_token(&mut self) -> Result<(), Error> {
+    fn scan_token(&mut self) -> Result<()> {
         let c = self.advance();
         match c {
             '(' => self.add_token(TokenKind::LParen),
@@ -123,7 +123,7 @@ impl Scanner {
         Ok(())
     }
 
-    fn scan_tokens(&mut self) -> Result<(), Error> {
+    fn scan_tokens(&mut self) -> Result<()> {
         while !self.is_at_end() {
             self.start = self.current;
             self.scan_token()?;
@@ -131,32 +131,31 @@ impl Scanner {
         self.add_token(TokenKind::Eof);
         Ok(())
     }
+    pub fn scan(src: &str) -> Result<Vec<Token>> {
+        let mut scanner = Scanner::new(src.to_string());
+        scanner.scan_tokens()?;
+        Ok(scanner.tokens)
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn scan_tokens(source: &str) -> Vec<Token> {
-        let mut scanner = Scanner::new(source.to_string());
-        let result = scanner.scan_tokens();
-        assert!(result.is_ok());
-        scanner.tokens
-    }
-    fn scan_token(source: &str) -> Token {
-        let tokens = scan_tokens(source);
-        tokens.first().unwrap().clone()
+    fn scan_token(source: &str) -> Result<Token> {
+        let tokens = Scanner::scan(source)?;
+        Ok(tokens.first().unwrap().clone())
     }
     #[test]
     fn test_scanner() {
-        let token = scan_token("42.5");
+        let token = scan_token("42.5").unwrap();
         assert_eq!(token.kind, TokenKind::FloatLiteral);
         assert_eq!(token.lexeme, "42.5");
-        let token = scan_token("42");
+        let token = scan_token("42").unwrap();
         assert_eq!(token.kind, TokenKind::Integer);
         assert_eq!(token.lexeme, "42");
 
-        let tokens = scan_tokens("42.5 42");
+        let tokens = Scanner::scan("42.5 42").unwrap();
         assert_eq!(tokens.len(), 3);
         assert_eq!(tokens[0].kind, TokenKind::FloatLiteral);
         assert_eq!(tokens[0].lexeme, "42.5");
@@ -165,7 +164,7 @@ mod tests {
         assert_eq!(tokens[2].kind, TokenKind::Eof);
 
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let tokens = scan_tokens(src);
+        let tokens = Scanner::scan(src).unwrap();
         assert_eq!(tokens.len(), 11);
         assert_eq!(tokens[0].kind, TokenKind::BareIdentifier);
         assert_eq!(tokens[0].lexeme, "llvm.mlir.global");
@@ -185,7 +184,7 @@ mod tests {
         assert_eq!(tokens[9].lexeme, "i32");
         assert_eq!(tokens[10].kind, TokenKind::Eof);
 
-        let tokens = scan_tokens("42: i32");
+        let tokens = Scanner::scan("42: i32").unwrap();
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].kind, TokenKind::Integer);
         assert_eq!(tokens[0].lexeme, "42");

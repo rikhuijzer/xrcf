@@ -6,3 +6,4 @@ edition = "2021"
 license = "Apache-2.0 with LLVM-exceptions"
 
 [dependencies]
+anyhow = "1.0.86"

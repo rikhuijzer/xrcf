@@ -16,18 +16,18 @@ struct OperationName {
 // The operation also represents functions and modules.
 pub struct Operation {
     name: OperationName,
-    operands: i64,
-    attributes: Attributes,
+    // operands: i64,
+    // attributes: Attributes,
 }
 impl Operation {
     pub fn parse(input: &str) -> Option<Self> {
         todo!()
     }
-    fn name(&self) -> &'static str {
-        todo!()
+    fn name(&self) -> String {
+        self.name.name.clone()
     }
-    fn print(&self) -> String {
-        todo!() 
+    fn print(&self) {
+        println!("{}", self.name());
     }
 }
 

@@ -1,22 +1,19 @@
 use crate::ir::operation::Operation;
 use crate::attribute::IntegerAttr;
-use crate::attribute::Attributes;
 use crate::typ::IntegerType;
 use crate::Dialect;
+use crate::ir::operation::Op;
 
 struct Arith {}
 
-struct Constant {
+struct ConstantOp {
     typ: IntegerType,
     value: IntegerAttr,
 }
 
-impl Operation for Constant {
+impl Op for ConstantOp {
     fn name(&self) -> &'static str {
         "arith.contant"
-    }
-    fn parse(input: &str) -> Option<Self> {
-        todo!()
     }
 }
 
@@ -25,18 +22,18 @@ struct Addi {
     rhs: IntegerAttr,
 }
 
-impl Operation for Addi {
+impl Op for Addi {
     fn name(&self) -> &'static str {
         "arith.addi"
     }
 
-    fn parse(input: &str) -> Option<Self> {
+    // fn parse(input: &str) -> Option<Self> {
         // In MLIR this works by taking an OpAsmParser and parsing
         // the elements of the op.
         // Parsing tries to cast the elements to the expected types.
         // If all succeeds, the elements are parsed into the struct.
-        todo!()
-    }
+        // todo!()
+    // }
 }
 
 enum ArithOp {
