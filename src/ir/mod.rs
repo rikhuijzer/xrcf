@@ -34,7 +34,7 @@ impl Op for ModuleOp {
 impl ModuleOp {
     // somehow get the body (first region?)
     // fn body()
-    fn getBodyRegion(&self) -> Region {
+    pub fn getBodyRegion(&self) -> Region {
         self.operation.regions().first().unwrap().clone()
     }
 }

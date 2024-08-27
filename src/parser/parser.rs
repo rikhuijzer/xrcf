@@ -6,6 +6,7 @@ use anyhow::Result;
 use crate::parser::token::TokenKind;
 use crate::ir::Region;
 use crate::ir::Block;
+use crate::ir::Op;
 
 struct Parser {
     tokens: Vec<Token>,
@@ -83,25 +84,30 @@ impl Parser {
             current: 0,
         };
         let operation = parser.operation()?;
-        if operation.name() != "module" {
+        let operation = if operation.name() != "module" {
             let name = OperationName::new("module".to_string());
             let block = Block::new("entry".to_string(), vec![], vec![operation]);
             let region = Region::new(vec![block]);
-            let operation = Operation::new(name, vec![region]);
-            Ok(operation)
+            Operation::new(name, vec![region])
         } else {
-            Ok(operation)
-        }
+            operation
+        };
+        Ok(operation)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ir::ModuleOp;
+
     #[test]
     fn test_parse() {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let operation = Parser::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
+        let moduleOp = ModuleOp::from_operation(operation).unwrap();
+        let body = moduleOp.getBodyRegion();
+        assert_eq!(body.blocks().len(), 1);
     }
 }
