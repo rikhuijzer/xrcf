@@ -1,6 +1,8 @@
 use crate::Attributes;
 use anyhow::Result;
+use crate::ir::Region;
 
+#[derive(Clone)]
 pub struct OperationName {
     name: String, // TODO: Should be StringAttr,
 }
@@ -21,14 +23,19 @@ impl OperationName {
 // via a pointer to the `Operation`.
 // In MLIR, a specific Op can be casted from an Operation.
 // The operation also represents functions and modules.
+#[derive(Clone)]
 pub struct Operation {
     name: OperationName,
+    regions: Vec<Region>,
     // operands: i64,
     // attributes: Attributes,
 }
 impl Operation {
-    pub fn new(name: OperationName) -> Self {
-        Self { name }
+    pub fn new(name: OperationName, regions: Vec<Region>) -> Self {
+        Self { name, regions }
+    }
+    pub fn regions(&self) -> Vec<Region> {
+        self.regions.to_vec()
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
@@ -47,5 +54,8 @@ pub trait Op {
     fn from_operation(operation: Operation) -> Result<Self>
     where
         Self: Sized;
+    fn operation(&self) -> Operation {
+        self.operation()
+    }
     fn name(&self) -> &'static str;
 }

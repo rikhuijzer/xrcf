@@ -1,10 +1,19 @@
 use crate::ir::operation::Operation;
 
-struct BlockArgument {
+#[derive(Clone)]
+pub struct BlockArgument {
     name: String,
 }
 
+#[derive(Clone)]
 pub struct Block {
+    label: String,
     arguments: Vec<BlockArgument>,
-    // operations: Vec<Box<dyn Operation>>,
+    operations: Vec<Operation>,
+}
+
+impl Block {
+    pub fn new(label: String, arguments: Vec<BlockArgument>, operations: Vec<Operation>) -> Self {
+        Self { label, arguments, operations }
+    }
 }

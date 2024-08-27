@@ -21,6 +21,8 @@ pub enum TokenKind {
     Equal, // =
     LParen, // (
     RParen, // )
+    LBrace, // {
+    RBrace, // }
 
     // Keywords
     KwF16,
