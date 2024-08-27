@@ -34,6 +34,21 @@ impl Parser {
         let operations = vec![self.operation()?];
         Ok(Block::new(label, arguments, operations))
     }
+    fn check(&self, kind: TokenKind) -> bool {
+        if self.is_at_end() {
+            return false;
+        }
+        self.peek().kind == kind
+    }
+    fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
+        for kind in kinds {
+            if self.check(*kind) {
+                self.advance();
+                return true;
+            }
+        }
+        false
+    }
     fn region(&mut self) -> Result<Region> {
         if !self.check(TokenKind::LBrace) {
             todo!("Expected region to start with a '{{'");
@@ -62,21 +77,6 @@ impl Parser {
         let operation = Operation::new(name, regions);
         Ok(operation)
     }
-    fn check(&self, kind: TokenKind) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        self.peek().kind == kind
-    }
-    fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
-        for kind in kinds {
-            if self.check(*kind) {
-                self.advance();
-                return true;
-            }
-        }
-        false
-    }
     pub fn parse(src: &str) -> Result<Operation> {
         let mut parser = Parser {
             tokens: Scanner::scan(src)?,
@@ -84,9 +84,14 @@ impl Parser {
         };
         let operation = parser.operation()?;
         if operation.name() != "module" {
-            todo!("Create a module above the operation and return it")
+            let name = OperationName::new("module".to_string());
+            let block = Block::new("entry".to_string(), vec![], vec![operation]);
+            let region = Region::new(vec![block]);
+            let operation = Operation::new(name, vec![region]);
+            Ok(operation)
+        } else {
+            Ok(operation)
         }
-        Ok(operation)
     }
 }
 
