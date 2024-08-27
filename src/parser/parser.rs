@@ -1,5 +1,6 @@
 use crate::parser::scanner::Scanner;
 use crate::ir::operation::Operation;
+use crate::ir::operation::OperationName;
 use crate::parser::token::Token;
 use anyhow::Result;
 struct Parser {
@@ -8,8 +9,18 @@ struct Parser {
 }
 
 impl Parser {
+    fn previous(&self) -> Token {
+        self.tokens[self.current - 1].clone()
+    }
+    fn advance(&mut self) -> Token {
+        self.current += 1;
+        self.previous()
+    }
     fn operation(&mut self) -> Result<Operation> {
-        todo!()
+        let name = self.advance();
+        let name = OperationName::new(name.lexeme);
+        let operation = Operation::new(name);
+        Ok(operation)
     }
     pub fn parse(src: &str) -> Result<Operation> {
         let mut parser = Parser {
@@ -18,5 +29,16 @@ impl Parser {
         };
         let operation = parser.operation()?;
         Ok(operation)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_parse() {
+        let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
+        let operation = Parser::parse(src).unwrap();
+        assert_eq!(operation.name(), "llvm.mlir.global");
     }
 }

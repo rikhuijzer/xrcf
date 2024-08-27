@@ -1,7 +1,13 @@
 use crate::Attributes;
 
-struct OperationName {
+pub struct OperationName {
     name: String, // TODO: Should be StringAttr,
+}
+
+impl OperationName {
+    pub fn new(name: String) -> Self {
+        Self { name }
+    }
 }
 
 // Takes attributes
@@ -20,10 +26,10 @@ pub struct Operation {
     // attributes: Attributes,
 }
 impl Operation {
-    pub fn parse(input: &str) -> Option<Self> {
-        todo!()
+    pub fn new(name: OperationName) -> Self {
+        Self { name }
     }
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         self.name.name.clone()
     }
     fn print(&self) {
