@@ -115,15 +115,9 @@ impl Scanner {
             '=' => self.add_token(TokenKind::Equal),
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
-            _ => {
-                if c.is_digit(10) {
-                    self.number()?;
-                } else if Scanner::is_identifier_start(c) {
-                    self.identifier()?;
-                } else {
-                    panic!("Unexpected character: {}", c);
-                }
-            }
+            s if s.is_digit(10) => self.number()?,
+            s if Scanner::is_identifier_start(s) => self.identifier()?,
+            _ => panic!("Unexpected character: {}", c),
         }
         Ok(())
     }
