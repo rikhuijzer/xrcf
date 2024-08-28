@@ -2,6 +2,7 @@ use crate::parser::scanner::Scanner;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::parser::token::Token;
+use std::collections::HashMap;
 use anyhow::Result;
 use crate::parser::token::TokenKind;
 use crate::ir::Region;
@@ -10,12 +11,36 @@ use crate::ir::Op;
 use std::pin::pin;
 use std::pin::Pin;
 
-struct Parser {
+struct Parser<T: ParseOp> {
     tokens: Vec<Token>,
     current: usize,
+    parse_op: std::marker::PhantomData<T>,
 }
 
-impl Parser {
+/// Downstream crates can implement this trait to support custom parsing.
+/// The default implementation can only know about operations defined in 
+/// this crate.
+/// This avoids having some global hashmap registry of all possible operations.
+pub trait ParseOp {
+    fn operation(parser: &mut Parser<Self>) -> Result<Operation>
+    where
+        Self: Sized;
+}
+
+struct DefaultParseOp;
+
+impl ParseOp for DefaultParseOp {
+    /// Default operation parser.
+    fn operation(parser: &mut Parser<Self>) -> Result<Operation> {
+        let name = parser.advance();
+        let name = OperationName::new(name.lexeme.clone());
+        let regions = parser.regions()?;
+        let operation = Operation::new(name, regions, None);
+        Ok(operation)
+    }
+}
+
+impl<T: ParseOp> Parser<T> {
     fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
@@ -34,7 +59,7 @@ impl Parser {
     fn block(&mut self) -> Result<Block> {
         let label = self.advance().lexeme.clone();
         let arguments = vec![];
-        let operations = vec![self.operation()?];
+        let operations = vec![T::operation(self)?];
         Ok(Block::new(label, arguments, operations))
     }
     fn check(&self, kind: TokenKind) -> bool {
@@ -73,19 +98,13 @@ impl Parser {
         }
         Ok(regions)
     }
-    fn operation(&mut self) -> Result<Operation> {
-        let name = self.advance();
-        let name = OperationName::new(name.lexeme.clone());
-        let regions = self.regions()?;
-        let operation = Operation::new(name, regions, None);
-        Ok(operation)
-    }
     pub fn parse(src: &str) -> Result<Operation> {
-        let mut parser = Parser {
+        let mut parser = Parser::<T> {
             tokens: Scanner::scan(src)?,
             current: 0,
+            parse_op: std::marker::PhantomData,
         };
-        let operation = parser.operation()?;
+        let operation = T::operation(&mut parser)?;
         let operation = if operation.name() != "module" {
             let name = OperationName::new("module".to_string());
             let block = Block::new("".to_string(), vec![], vec![operation]);
@@ -106,7 +125,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let operation = Parser::parse(src).unwrap();
+        let operation = Parser::<DefaultParseOp>::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
         let pinned = Pin::new(Box::new(operation.clone()));
         let module_op = ModuleOp::from_operation(pinned).unwrap();
