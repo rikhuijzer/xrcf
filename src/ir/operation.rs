@@ -1,7 +1,6 @@
 use crate::ir::Block;
 use crate::ir::Region;
 use crate::Attribute;
-use anyhow::Result;
 use std::fmt::Display;
 use std::pin::Pin;
 use std::sync::Arc;

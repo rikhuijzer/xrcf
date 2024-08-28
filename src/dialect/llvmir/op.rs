@@ -5,7 +5,6 @@ use crate::ir::Operation;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
 use crate::Attribute;
-use crate::Block;
 use crate::Parse;
 use anyhow::Result;
 use std::pin::Pin;

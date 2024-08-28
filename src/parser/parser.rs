@@ -2,13 +2,11 @@ use crate::dialect::llvmir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
-use crate::ir::Op;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
-use std::pin::Pin;
 
 pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
@@ -127,6 +125,8 @@ impl<T: Parse> Parser<T> {
 mod tests {
     use super::*;
     use crate::ir::ModuleOp;
+    use crate::ir::Op;
+    use std::pin::Pin;
 
     #[test]
     fn test_parse() {
