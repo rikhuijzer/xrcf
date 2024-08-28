@@ -37,7 +37,6 @@ impl Parse for GlobalOp {
         let name = OperationName::new(GlobalOp::name().to_string());
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
         if parser.check(TokenKind::BareIdentifier) {
-            // Linker attribute
             if let Some(attribute) = LinkageAttr::parse(parser) {
                 attributes.push(Arc::new(attribute));
             }

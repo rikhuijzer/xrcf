@@ -28,4 +28,7 @@ impl Attribute for LinkageAttr {
     fn value(&self) -> &'static str {
         "todo"
     }
+    fn print(&self) -> String {
+        self.value.clone()
+    }
 }

@@ -137,7 +137,11 @@ mod tests {
         let module_op = ModuleOp::from_operation(pinned).unwrap();
         let body = module_op.get_body_region();
         assert_eq!(body.blocks().len(), 1);
-        println!("{}", operation);
-        // assert!(false);
+
+        let repr = format!("{}", operation);
+        let lines: Vec<&str> = repr.split('\n').collect();
+        assert_eq!(lines.len(), 3);
+        assert_eq!(lines[0], "module {");
+        assert_eq!(lines[1], "  llvm.mlir.global internal ");
     }
 }
