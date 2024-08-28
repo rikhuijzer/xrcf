@@ -36,9 +36,13 @@ impl Parse for GlobalOp {
         let name = OperationName::new(GlobalOp::name().to_string());
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
         if parser.check(TokenKind::BareIdentifier) {
-            if let Some(attribute) = LinkageAttr::parse(parser) {
+            if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
                 attributes.push(Arc::new(attribute));
             }
+        }
+        let symbol_name = parser.advance();
+        if symbol_name.kind != TokenKind::AtIdentifier {
+            return Err(anyhow::anyhow!("Expected @identifier, got {:?}", symbol_name));
         }
         let regions = vec![];
         let parent_block = None;

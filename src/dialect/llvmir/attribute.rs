@@ -17,13 +17,14 @@ impl Attribute for LinkageAttr {
     fn name(&self) -> String {
         self.name.clone()
     }
-    fn parse<T: Parse>(parser: &mut Parser<T>) -> Option<Self> {
+    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
         let next = parser.peek();
+        let name = name.to_owned();
         if next.lexeme == "internal" {
             parser.advance();
-            Some(Self::new("Linkage", "internal"))
+            Some(Self::new(&name, "internal"))
         } else {
-            Some(Self::new("Linkage", "external"))
+            Some(Self::new(&name, "external"))
         }
     }
     fn value(&self) -> &'static str {
