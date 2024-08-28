@@ -1,9 +1,15 @@
-use crate::ir::Operation;
-use std::pin::Pin;
+use crate::dialect::llvmir::attribute::LinkageAttr;
+use crate::ir::operation::OperationName;
 use crate::ir::Op;
-use anyhow::Result;
-use crate::parser::Parse;
+use crate::ir::Operation;
 use crate::parser::Parser;
+use crate::parser::TokenKind;
+use crate::Attribute;
+use crate::Block;
+use crate::Parse;
+use anyhow::Result;
+use std::pin::Pin;
+use std::sync::Arc;
 
 pub struct GlobalOp {
     operation: Pin<Box<Operation>>,
@@ -17,7 +23,9 @@ impl Op for GlobalOp {
         if operation.name() != Self::name() {
             return Err(anyhow::anyhow!("Expected global, got {}", operation.name()));
         }
-        Ok(Self { operation: operation })
+        Ok(Self {
+            operation: operation,
+        })
     }
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
@@ -26,6 +34,17 @@ impl Op for GlobalOp {
 
 impl Parse for GlobalOp {
     fn operation<T: Parse>(parser: &mut Parser<T>) -> Result<Operation> {
-        todo!("implement me")
+        let name = OperationName::new(GlobalOp::name().to_string());
+        let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
+        if parser.check(TokenKind::BareIdentifier) {
+            // Linker attribute
+            if let Some(attribute) = LinkageAttr::parse(parser) {
+                attributes.push(Arc::new(attribute));
+            }
+        }
+        let regions = vec![];
+        let parent_block = None;
+        let operation = Operation::new(name, attributes, regions, parent_block);
+        Ok(operation)
     }
 }

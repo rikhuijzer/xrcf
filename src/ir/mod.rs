@@ -1,17 +1,18 @@
+pub mod attribute;
 pub mod block;
+pub mod op;
 pub mod operation;
 pub mod region;
-pub mod op;
 
+pub use block::Block;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
-pub use block::Block;
 
-use std::pin::Pin;
 use anyhow::Result;
+use std::pin::Pin;
 
-// See `include/mlir/IR/BuiltinOps.h` and goto definition of 
+// See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
 pub struct ModuleOp {
     operation: Pin<Box<Operation>>,
@@ -26,10 +27,14 @@ impl Op for ModuleOp {
             return Err(anyhow::anyhow!("Expected module, got {}", operation.name()));
         }
         if operation.regions().len() != 1 {
-            return Err(anyhow::anyhow!("Expected 1 region, got {}",
-            operation.regions().len()));
+            return Err(anyhow::anyhow!(
+                "Expected 1 region, got {}",
+                operation.regions().len()
+            ));
         }
-        Ok(Self { operation: operation })
+        Ok(Self {
+            operation: operation,
+        })
     }
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
@@ -50,7 +55,9 @@ struct Tmp {
 
 impl Tmp {
     fn new(operation: Pin<Box<Operation>>) -> Self {
-        Self { operation: operation }
+        Self {
+            operation: operation,
+        }
     }
 
     fn modify_operation(&mut self) {
@@ -68,7 +75,8 @@ mod tests {
     #[test]
     fn test_module_op() {
         let name = crate::ir::operation::OperationName::new("module".to_string());
-        let operation = Operation::new(name, vec![], None);
+        let attributes = vec![];
+        let operation = Operation::new(name, attributes, vec![], None);
         let mut tmp = Tmp::new(Box::pin(operation));
         tmp.modify_operation();
         assert_eq!(tmp.operation.name(), "new_name");

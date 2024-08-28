@@ -1,14 +1,14 @@
-use crate::parser::scanner::Scanner;
+use crate::dialect::llvmir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
-use crate::parser::token::Token;
-use anyhow::Result;
-use crate::parser::token::TokenKind;
-use crate::ir::Region;
 use crate::ir::Block;
 use crate::ir::Op;
+use crate::ir::Region;
+use crate::parser::scanner::Scanner;
+use crate::parser::token::Token;
+use crate::parser::token::TokenKind;
+use anyhow::Result;
 use std::pin::Pin;
-use crate::dialect::llvmir;
 
 pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
@@ -17,7 +17,7 @@ pub struct Parser<T: Parse> {
 }
 
 /// Downstream crates can implement this trait to support custom parsing.
-/// The default implementation can only know about operations defined in 
+/// The default implementation can only know about operations defined in
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
 pub trait Parse {
@@ -46,16 +46,16 @@ impl Parse for DefaultParse {
 }
 
 impl<T: Parse> Parser<T> {
-    fn previous(&self) -> &Token {
+    pub fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
-    fn advance(&mut self) -> &Token {
+    pub fn advance(&mut self) -> &Token {
         if !self.is_at_end() {
             self.current += 1;
         }
         self.previous()
     }
-    fn peek(&self) -> &Token {
+    pub fn peek(&self) -> &Token {
         self.tokens.get(self.current).unwrap()
     }
     fn is_at_end(&self) -> bool {
@@ -67,13 +67,13 @@ impl<T: Parse> Parser<T> {
         let operations = vec![T::operation(self)?];
         Ok(Block::new(label, arguments, operations))
     }
-    fn check(&self, kind: TokenKind) -> bool {
+    pub fn check(&self, kind: TokenKind) -> bool {
         if self.is_at_end() {
             return false;
         }
         self.peek().kind == kind
     }
-    fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
+    pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
             if self.check(*kind) {
                 self.advance();
@@ -112,9 +112,10 @@ impl<T: Parse> Parser<T> {
         let operation = T::operation(&mut parser)?;
         let operation = if operation.name() != "module" {
             let name = OperationName::new("module".to_string());
+            let attributes = vec![];
             let block = Block::new("".to_string(), vec![], vec![operation]);
             let region = Region::new(vec![block]);
-            Operation::new(name, vec![region], None)
+            Operation::new(name, attributes, vec![region], None)
         } else {
             operation
         };

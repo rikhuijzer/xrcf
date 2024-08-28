@@ -15,7 +15,11 @@ pub struct Block {
 
 impl Block {
     pub fn new(label: String, arguments: Vec<BlockArgument>, operations: Vec<Operation>) -> Self {
-        Self { label, arguments, operations }
+        Self {
+            label,
+            arguments,
+            operations,
+        }
     }
     pub fn operations(&self) -> Vec<Operation> {
         self.operations.to_vec()

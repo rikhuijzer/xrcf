@@ -1,8 +1,10 @@
-use anyhow::Result;
-use crate::ir::Region;
 use crate::ir::Block;
+use crate::ir::Region;
+use crate::Attribute;
+use anyhow::Result;
 use std::fmt::Display;
 use std::pin::Pin;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -31,15 +33,24 @@ impl OperationName {
 #[derive(Clone)]
 pub struct Operation {
     name: OperationName,
+    attributes: Vec<Arc<dyn Attribute>>,
     regions: Vec<Region>,
     parent_block: Option<Pin<Box<Block>>>,
     // operands: i64,
-    // attributes: Attributes,
 }
 impl Operation {
-    pub fn new(name: OperationName, regions: Vec<Region>,
-        parent_block: Option<Pin<Box<Block>>>) -> Self {
-        Self { name, regions, parent_block }
+    pub fn new(
+        name: OperationName,
+        attributes: Vec<Arc<dyn Attribute>>,
+        regions: Vec<Region>,
+        parent_block: Option<Pin<Box<Block>>>,
+    ) -> Self {
+        Self {
+            name,
+            attributes,
+            regions,
+            parent_block,
+        }
     }
     pub fn regions(&self) -> Vec<Region> {
         self.regions.to_vec()

@@ -1,5 +1,5 @@
-use core::fmt::Write;
 use core::fmt::Error;
+use core::fmt::Write;
 
 pub trait Transform {
     /// Transform the source code to the target code.

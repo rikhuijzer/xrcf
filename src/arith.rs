@@ -1,10 +1,10 @@
+use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
-use crate::attribute::IntegerAttr;
-use std::pin::Pin;
+use crate::ir::Op;
 use crate::typ::IntegerType;
 use crate::Dialect;
-use crate::ir::Op;
 use anyhow::Result;
+use std::pin::Pin;
 
 struct Arith {}
 
@@ -44,11 +44,11 @@ impl Op for Addi {
     }
 
     // fn parse(input: &str) -> Option<Self> {
-        // In MLIR this works by taking an OpAsmParser and parsing
-        // the elements of the op.
-        // Parsing tries to cast the elements to the expected types.
-        // If all succeeds, the elements are parsed into the struct.
-        // todo!()
+    // In MLIR this works by taking an OpAsmParser and parsing
+    // the elements of the op.
+    // Parsing tries to cast the elements to the expected types.
+    // If all succeeds, the elements are parsed into the struct.
+    // todo!()
     // }
 }
 
@@ -67,6 +67,6 @@ impl Dialect for Arith {
 
     // Probably we don't want to have a global obs state but instead
     // have some differrent implementations for common functions.
-    // fn ops(&self) -> 
+    // fn ops(&self) ->
     // }
 }

@@ -2,17 +2,18 @@
 #![allow(unused_variables)]
 
 mod arith;
-mod attribute;
-mod typ;
 mod compile;
+mod dialect;
 mod ir;
 mod parser;
-mod dialect;
+mod typ;
 
-pub use attribute::Attribute;
-pub use attribute::Attributes;
 pub use compile::compile;
+pub use ir::attribute::Attribute;
+pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
+pub use ir::Block;
+pub use parser::Parse;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

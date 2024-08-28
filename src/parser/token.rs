@@ -7,18 +7,18 @@ pub enum TokenKind {
 
     // Identifiers
     BareIdentifier, // foo
-    AtIdentifier, // @foo
+    AtIdentifier,   // @foo
 
     // Literals
     FloatLiteral, // 1.0
-    Integer, // 42
-    String, // "foo"
-    IntType, // i4, si8, ui16
+    Integer,      // 42
+    String,       // "foo"
+    IntType,      // i4, si8, ui16
 
     // Punctuation
-    Colon, // :
-    Comma, // ,
-    Equal, // =
+    Colon,  // :
+    Comma,  // ,
+    Equal,  // =
     LParen, // (
     RParen, // )
     LBrace, // {
