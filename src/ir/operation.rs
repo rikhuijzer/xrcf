@@ -1,7 +1,8 @@
-use crate::Attributes;
 use anyhow::Result;
 use crate::ir::Region;
+use crate::ir::Block;
 use std::fmt::Display;
+use std::pin::Pin;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -28,12 +29,14 @@ impl OperationName {
 pub struct Operation {
     name: OperationName,
     regions: Vec<Region>,
+    parent_block: Option<Pin<Box<Block>>>,
     // operands: i64,
     // attributes: Attributes,
 }
 impl Operation {
-    pub fn new(name: OperationName, regions: Vec<Region>) -> Self {
-        Self { name, regions }
+    pub fn new(name: OperationName, regions: Vec<Region>,
+        parent_block: Option<Pin<Box<Block>>>) -> Self {
+        Self { name, regions, parent_block }
     }
     pub fn regions(&self) -> Vec<Region> {
         self.regions.to_vec()
@@ -43,6 +46,14 @@ impl Operation {
     }
     fn print(&self) {
         println!("{}", self.name());
+    }
+    /// Get the parent block (this is called `getBlock` in MLIR).
+    fn parent_block(&self) -> Option<Pin<Box<Block>>> {
+        self.parent_block.clone()
+    }
+    // TODO: This is a temporary test.
+    pub fn rename(&mut self, name: String) {
+        self.name = OperationName::new(name);
     }
 }
 
@@ -54,19 +65,4 @@ impl Display for Operation {
         }
         Ok(())
     }
-}
-
-/// This is the trait that is implemented by all operations.
-/// FuncOp, for example, will be implemented by various dialects.
-/// Note that the parser will parse the tokens into an `Operation`
-/// and MLIR would cast the `Operation` into a specific `Op` variant
-/// such as `FuncOp`.
-pub trait Op {
-    fn from_operation(operation: Operation) -> Result<Self>
-    where
-        Self: Sized;
-    fn operation(&self) -> Operation {
-        self.operation()
-    }
-    fn name(&self) -> &'static str;
 }

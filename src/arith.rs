@@ -2,12 +2,13 @@ use crate::ir::operation::Operation;
 use crate::attribute::IntegerAttr;
 use crate::typ::IntegerType;
 use crate::Dialect;
-use crate::ir::operation::Op;
+use crate::ir::Op;
 use anyhow::Result;
 
 struct Arith {}
 
 struct ConstantOp {
+    operation: Operation,
     typ: IntegerType,
     value: IntegerAttr,
 }
@@ -16,12 +17,16 @@ impl Op for ConstantOp {
     fn from_operation(operation: Operation) -> Result<Self> {
         todo!()
     }
+    fn operation(&self) -> Operation {
+        self.operation.clone()
+    }
     fn name(&self) -> &'static str {
         "arith.contant"
     }
 }
 
 struct Addi {
+    operation: Operation,
     lhs: IntegerAttr,
     rhs: IntegerAttr,
 }
@@ -29,6 +34,9 @@ struct Addi {
 impl Op for Addi {
     fn from_operation(operation: Operation) -> Result<Self> {
         todo!()
+    }
+    fn operation(&self) -> Operation {
+        self.operation.clone()
     }
     fn name(&self) -> &'static str {
         "arith.addi"
@@ -43,9 +51,9 @@ impl Op for Addi {
     // }
 }
 
-enum ArithOp {
-    Addi(Addi),
-}
+// enum ArithOp {
+//    Addi(Addi),
+//}
 
 impl Dialect for Arith {
     fn name(&self) -> &'static str {

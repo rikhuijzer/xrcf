@@ -7,6 +7,8 @@ use crate::parser::token::TokenKind;
 use crate::ir::Region;
 use crate::ir::Block;
 use crate::ir::Op;
+use std::pin::pin;
+use std::pin::Pin;
 
 struct Parser {
     tokens: Vec<Token>,
@@ -75,7 +77,7 @@ impl Parser {
         let name = self.advance();
         let name = OperationName::new(name.lexeme.clone());
         let regions = self.regions()?;
-        let operation = Operation::new(name, regions);
+        let operation = Operation::new(name, regions, None);
         Ok(operation)
     }
     pub fn parse(src: &str) -> Result<Operation> {
@@ -88,7 +90,7 @@ impl Parser {
             let name = OperationName::new("module".to_string());
             let block = Block::new("entry".to_string(), vec![], vec![operation]);
             let region = Region::new(vec![block]);
-            Operation::new(name, vec![region])
+            Operation::new(name, vec![region], None)
         } else {
             operation
         };
@@ -106,10 +108,10 @@ mod tests {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let operation = Parser::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
-        let moduleOp = ModuleOp::from_operation(operation.clone()).unwrap();
-        let body = moduleOp.getBodyRegion();
+        let module_op = ModuleOp::from_operation(operation.clone()).unwrap();
+        let body = module_op.getBodyRegion();
         assert_eq!(body.blocks().len(), 1);
         println!("{}", operation);
-        assert!(false);
+        // assert!(false);
     }
 }
