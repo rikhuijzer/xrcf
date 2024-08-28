@@ -20,9 +20,10 @@ impl Attribute for LinkageAttr {
     fn parse<T: Parse>(parser: &mut Parser<T>) -> Option<Self> {
         let next = parser.peek();
         if next.lexeme == "internal" {
+            parser.advance();
             Some(Self::new("Linkage", "internal"))
         } else {
-            None
+            Some(Self::new("Linkage", "external"))
         }
     }
     fn value(&self) -> &'static str {
