@@ -88,7 +88,7 @@ impl Parser {
         let operation = parser.operation()?;
         let operation = if operation.name() != "module" {
             let name = OperationName::new("module".to_string());
-            let block = Block::new("entry".to_string(), vec![], vec![operation]);
+            let block = Block::new("".to_string(), vec![], vec![operation]);
             let region = Region::new(vec![block]);
             Operation::new(name, vec![region], None)
         } else {

@@ -6,12 +6,6 @@ pub struct BlockArgument {
     name: String,
 }
 
-impl Display for BlockArgument {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
 #[derive(Clone)]
 pub struct Block {
     label: String,
@@ -30,9 +24,11 @@ impl Block {
 
 impl Display for Block {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.label)?;
+        if !self.label.is_empty() {
+            write!(f, "{} ", self.label)?;
+        }
         for operation in self.operations() {
-            write!(f, " {}", operation)?;
+            write!(f, "{} ", operation)?;
         }
         Ok(())
     }
