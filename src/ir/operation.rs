@@ -13,6 +13,9 @@ impl OperationName {
     pub fn new(name: String) -> Self {
         Self { name }
     }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
 }
 
 // Takes attributes

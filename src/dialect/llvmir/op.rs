@@ -2,8 +2,10 @@ use crate::ir::Operation;
 use std::pin::Pin;
 use crate::ir::Op;
 use anyhow::Result;
+use crate::parser::Parse;
+use crate::parser::Parser;
 
-struct GlobalOp {
+pub struct GlobalOp {
     operation: Pin<Box<Operation>>,
 }
 
@@ -19,5 +21,11 @@ impl Op for GlobalOp {
     }
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
+    }
+}
+
+impl Parse for GlobalOp {
+    fn operation<T: Parse>(parser: &mut Parser<T>) -> Result<Operation> {
+        todo!("implement me")
     }
 }

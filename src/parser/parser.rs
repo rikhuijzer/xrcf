@@ -2,16 +2,15 @@ use crate::parser::scanner::Scanner;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::parser::token::Token;
-use std::collections::HashMap;
 use anyhow::Result;
 use crate::parser::token::TokenKind;
 use crate::ir::Region;
 use crate::ir::Block;
 use crate::ir::Op;
-use std::pin::pin;
 use std::pin::Pin;
+use crate::dialect::llvmir;
 
-struct Parser<T: ParseOp> {
+pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
     current: usize,
     parse_op: std::marker::PhantomData<T>,
@@ -21,26 +20,32 @@ struct Parser<T: ParseOp> {
 /// The default implementation can only know about operations defined in 
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
-pub trait ParseOp {
-    fn operation(parser: &mut Parser<Self>) -> Result<Operation>
+pub trait Parse {
+    fn operation<T: Parse>(parser: &mut Parser<T>) -> Result<Operation>
     where
         Self: Sized;
 }
 
-struct DefaultParseOp;
+struct DefaultParse;
 
-impl ParseOp for DefaultParseOp {
+enum Dialects {
+    Builtin,
+    LLVM,
+}
+
+impl Parse for DefaultParse {
     /// Default operation parser.
-    fn operation(parser: &mut Parser<Self>) -> Result<Operation> {
+    fn operation<T: Parse>(parser: &mut Parser<T>) -> Result<Operation> {
         let name = parser.advance();
         let name = OperationName::new(name.lexeme.clone());
-        let regions = parser.regions()?;
-        let operation = Operation::new(name, regions, None);
-        Ok(operation)
+        match name.name().as_str() {
+            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::operation(parser),
+            _ => Err(anyhow::anyhow!("Unknown operation: {}", name.name())),
+        }
     }
 }
 
-impl<T: ParseOp> Parser<T> {
+impl<T: Parse> Parser<T> {
     fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
@@ -125,11 +130,11 @@ mod tests {
     #[test]
     fn test_parse() {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let operation = Parser::<DefaultParseOp>::parse(src).unwrap();
+        let operation = Parser::<DefaultParse>::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
         let pinned = Pin::new(Box::new(operation.clone()));
         let module_op = ModuleOp::from_operation(pinned).unwrap();
-        let body = module_op.getBodyRegion();
+        let body = module_op.get_body_region();
         assert_eq!(body.blocks().len(), 1);
         println!("{}", operation);
         // assert!(false);
