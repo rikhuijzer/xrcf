@@ -5,6 +5,8 @@ use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
 use std::pin::Pin;
+use std::fmt::Formatter;
+use std::fmt::Display;
 
 struct Arith {}
 
@@ -24,6 +26,15 @@ impl Op for ConstantOp {
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
     }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
+
+impl Display for ConstantOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
+    }
 }
 
 struct Addi {
@@ -42,16 +53,23 @@ impl Op for Addi {
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
     }
-
-    // fn parse(input: &str) -> Option<Self> {
-    // In MLIR this works by taking an OpAsmParser and parsing
-    // the elements of the op.
-    // Parsing tries to cast the elements to the expected types.
-    // If all succeeds, the elements are parsed into the struct.
-    // todo!()
-    // }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
+impl Display for Addi {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
+    }
+}
+
+// In MLIR this works by taking an OpAsmParser and parsing
+// the elements of the op.
+// Parsing tries to cast the elements to the expected types.
+// If all succeeds, the elements are parsed into the struct.
+// todo!()
+// }
 // enum ArithOp {
 //    Addi(Addi),
 //}

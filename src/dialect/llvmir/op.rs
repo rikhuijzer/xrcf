@@ -3,6 +3,7 @@ use crate::ir::operation::OperationName;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::parser::Parser;
+use crate::ir::AnyAttr;
 use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
@@ -10,6 +11,8 @@ use anyhow::Result;
 use std::pin::Pin;
 use std::sync::Arc;
 use crate::ir::StrAttr;
+use std::fmt::Formatter;
+use std::fmt::Display;
 
 pub struct GlobalOp {
     operation: Pin<Box<Operation>>,
@@ -30,6 +33,16 @@ impl Op for GlobalOp {
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
     }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "foobar");
+        Ok(())
+    }
+}
+
+impl Display for GlobalOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
+    }
 }
 
 impl Parse for GlobalOp {
@@ -47,6 +60,12 @@ impl Parse for GlobalOp {
         }
         if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
             attributes.push(Arc::new(attribute));
+        }
+        if parser.check(TokenKind::LParen) {
+            parser.advance();
+            if let Some(attribute) = AnyAttr::parse(parser, "value") {
+                attributes.push(Arc::new(attribute));
+            }
         }
         let regions = vec![];
         let parent_block = None;

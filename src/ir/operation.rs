@@ -4,6 +4,7 @@ use crate::Attribute;
 use std::fmt::Display;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::fmt::Formatter;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -51,14 +52,24 @@ impl Operation {
             parent_block,
         }
     }
+    pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
+        self.attributes.to_vec()
+    }
     pub fn regions(&self) -> Vec<Region> {
         self.regions.to_vec()
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    fn print(&self) {
-        println!("{}", self.name());
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name())?;
+        for attribute in self.attributes.iter() {
+            write!(f, " {}", attribute.display())?;
+        }
+        for region in self.regions() {
+            write!(f, " {}", region)?;
+        }
+        Ok(())
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
     fn parent_block(&self) -> Option<Pin<Box<Block>>> {
@@ -71,14 +82,7 @@ impl Operation {
 }
 
 impl Display for Operation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())?;
-        for attribute in self.attributes.iter() {
-            write!(f, " {}", attribute.print())?;
-        }
-        for region in self.regions() {
-            write!(f, " {}", region)?;
-        }
-        Ok(())
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
     }
 }

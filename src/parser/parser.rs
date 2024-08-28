@@ -138,10 +138,12 @@ mod tests {
         let body = module_op.get_body_region();
         assert_eq!(body.blocks().len(), 1);
 
-        let repr = format!("{}", operation);
+        let module = ModuleOp::from_operation(Box::pin(operation)).unwrap();
+        let repr = format!("{:#}", module);
         let lines: Vec<&str> = repr.split('\n').collect();
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
         assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global ");
+        assert_eq!(lines[2], "}");
     }
 }

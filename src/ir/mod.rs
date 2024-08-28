@@ -10,9 +10,12 @@ pub use operation::Operation;
 pub use region::Region;
 pub use attribute::Attribute;
 pub use attribute::StrAttr;
+pub use attribute::AnyAttr;
 
 use anyhow::Result;
 use std::pin::Pin;
+use std::fmt::Formatter;
+use std::fmt::Display;
 
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
@@ -40,6 +43,15 @@ impl Op for ModuleOp {
     }
     fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.operation())
+    }
+}
+
+impl Display for ModuleOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
     }
 }
 

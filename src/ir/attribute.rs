@@ -16,7 +16,7 @@ pub trait Attribute {
 
     fn name(&self) -> String;
     fn value(&self) -> &'static str;
-    fn print(&self) -> String;
+    fn display(&self) -> String;
 }
 
 pub struct Attributes {
@@ -32,7 +32,7 @@ impl Attributes {
 impl Display for Attributes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for attribute in &self.attrs {
-            write!(f, "{}", attribute.print())?;
+            write!(f, "{}", attribute.display())?;
         }
         Ok(())
     }
@@ -45,24 +45,6 @@ pub struct IntegerAttr {
     typ: IntegerType,
     // An arbitrary precision integer value.
     value: APInt,
-}
-
-impl Attribute for IntegerAttr {
-    fn new(name: &str, value: &str) -> Self {
-        todo!()
-    }
-    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
-        todo!()
-    }
-    fn name(&self) -> String {
-        self.name.clone()
-    }
-    fn value(&self) -> &'static str {
-        todo!()
-    }
-    fn print(&self) -> String {
-        todo!()
-    }
 }
 
 pub struct StrAttr {
@@ -90,13 +72,43 @@ impl Attribute for StrAttr {
     fn value(&self) -> &'static str {
         todo!()
     }
-    fn print(&self) -> String {
+    fn display(&self) -> String {
         self.value.clone()
     }
 }
 
 impl StrAttr {
     fn symbol_name(&self) -> String {
+        self.value.clone()
+    }
+}
+
+pub struct AnyAttr {
+    name: String,
+    value: String,
+}
+
+impl Attribute for AnyAttr {
+    fn new(name: &str, value: &str) -> Self {
+        Self {
+            name: name.to_string(),
+            value: value.to_string(),
+        }
+    }
+    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
+        let value = parser.advance();
+        Some(Self {
+            name: name.to_string(),
+            value: value.lexeme.to_string(),
+        })
+    }
+    fn name(&self) -> String {
+        self.name.clone()
+    }
+    fn value(&self) -> &'static str {
+        todo!()
+    }
+    fn display(&self) -> String {
         self.value.clone()
     }
 }
