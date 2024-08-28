@@ -1,18 +1,18 @@
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation::OperationName;
+use crate::ir::AnyAttr;
 use crate::ir::Op;
 use crate::ir::Operation;
+use crate::ir::StrAttr;
 use crate::parser::Parser;
-use crate::ir::AnyAttr;
 use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
 use anyhow::Result;
+use std::fmt::Display;
+use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::ir::StrAttr;
-use std::fmt::Formatter;
-use std::fmt::Display;
 
 pub struct GlobalOp {
     operation: Pin<Box<Operation>>,
@@ -56,7 +56,10 @@ impl Parse for GlobalOp {
         }
         let symbol_name = parser.peek();
         if symbol_name.kind != TokenKind::AtIdentifier {
-            return Err(anyhow::anyhow!("Expected @identifier, got {:?}", symbol_name));
+            return Err(anyhow::anyhow!(
+                "Expected @identifier, got {:?}",
+                symbol_name
+            ));
         }
         if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
             attributes.push(Arc::new(attribute));

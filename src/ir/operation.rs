@@ -2,9 +2,9 @@ use crate::ir::Block;
 use crate::ir::Region;
 use crate::Attribute;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::fmt::Formatter;
 
 #[derive(Clone)]
 pub struct OperationName {

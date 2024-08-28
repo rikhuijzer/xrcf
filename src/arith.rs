@@ -4,9 +4,9 @@ use crate::ir::Op;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
-use std::pin::Pin;
-use std::fmt::Formatter;
 use std::fmt::Display;
+use std::fmt::Formatter;
+use std::pin::Pin;
 
 struct Arith {}
 

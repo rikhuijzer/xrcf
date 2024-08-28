@@ -1,8 +1,8 @@
 use crate::ir::Operation;
 use anyhow::Result;
-use std::pin::Pin;
-use std::fmt::Formatter;
 use std::fmt::Display;
+use std::fmt::Formatter;
+use std::pin::Pin;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.

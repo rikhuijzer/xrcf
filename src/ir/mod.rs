@@ -4,18 +4,18 @@ pub mod op;
 pub mod operation;
 pub mod region;
 
+pub use attribute::AnyAttr;
+pub use attribute::Attribute;
+pub use attribute::StrAttr;
 pub use block::Block;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
-pub use attribute::Attribute;
-pub use attribute::StrAttr;
-pub use attribute::AnyAttr;
 
 use anyhow::Result;
-use std::pin::Pin;
-use std::fmt::Formatter;
 use std::fmt::Display;
+use std::fmt::Formatter;
+use std::pin::Pin;
 
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
