@@ -30,8 +30,8 @@ impl Op for GlobalOp {
             operation: operation,
         })
     }
-    fn operation(&self) -> Pin<Box<Operation>> {
-        self.operation.clone()
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "foobar");
@@ -46,7 +46,7 @@ impl Display for GlobalOp {
 }
 
 impl Parse for GlobalOp {
-    fn operation<T: Parse>(parser: &mut Parser<T>) -> Result<Operation> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Box<dyn Op>> {
         let name = OperationName::new(GlobalOp::name().to_string());
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
         if parser.check(TokenKind::BareIdentifier) {
@@ -73,6 +73,7 @@ impl Parse for GlobalOp {
         let regions = vec![];
         let parent_block = None;
         let operation = Operation::new(name, attributes, regions, parent_block);
-        Ok(operation)
+        let op = GlobalOp::from_operation(Box::pin(operation));
+        Ok(Box::new(op.unwrap()))
     }
 }

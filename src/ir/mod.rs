@@ -41,8 +41,8 @@ impl Op for ModuleOp {
             operation: operation,
         })
     }
-    fn operation(&self) -> Pin<Box<Operation>> {
-        self.operation.clone()
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.operation())
@@ -58,8 +58,8 @@ impl Display for ModuleOp {
 impl ModuleOp {
     // somehow get the body (first region?)
     // fn body()
-    pub fn get_body_region(&self) -> Region {
-        self.operation.regions().first().unwrap().clone()
+    pub fn get_body_region(&self) -> &Pin<Box<Region>> {
+        self.operation.regions().first().unwrap()
     }
 }
 

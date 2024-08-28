@@ -30,11 +30,10 @@ impl OperationName {
 // via a pointer to the `Operation`.
 // In MLIR, a specific Op can be casted from an Operation.
 // The operation also represents functions and modules.
-#[derive(Clone)]
 pub struct Operation {
     name: OperationName,
     attributes: Vec<Arc<dyn Attribute>>,
-    regions: Vec<Region>,
+    regions: Vec<Pin<Box<Region>>>,
     parent_block: Option<Pin<Box<Block>>>,
     // operands: i64,
 }
@@ -42,7 +41,7 @@ impl Operation {
     pub fn new(
         name: OperationName,
         attributes: Vec<Arc<dyn Attribute>>,
-        regions: Vec<Region>,
+        regions: Vec<Pin<Box<Region>>>,
         parent_block: Option<Pin<Box<Block>>>,
     ) -> Self {
         Self {
@@ -55,8 +54,8 @@ impl Operation {
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
         self.attributes.to_vec()
     }
-    pub fn regions(&self) -> Vec<Region> {
-        self.regions.to_vec()
+    pub fn regions(&self) -> Vec<&Pin<Box<Region>>> {
+        self.regions.iter().collect()
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
@@ -72,9 +71,10 @@ impl Operation {
         Ok(())
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent_block(&self) -> Option<Pin<Box<Block>>> {
-        self.parent_block.clone()
+    fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
+        self.parent_block.as_ref()
     }
+    // TODO: This is a temporary test.
     // TODO: This is a temporary test.
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);

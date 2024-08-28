@@ -1,18 +1,18 @@
 use crate::ir::block::Block;
 use std::fmt::Display;
+use std::pin::Pin;
 
 /// A list of blocks.
-#[derive(Clone)]
 pub struct Region {
-    blocks: Vec<Block>,
+    blocks: Vec<Pin<Box<Block>>>,
 }
 
 impl Region {
-    pub fn new(blocks: Vec<Block>) -> Self {
+    pub fn new(blocks: Vec<Pin<Box<Block>>>) -> Self {
         Self { blocks }
     }
-    pub fn blocks(&self) -> Vec<Block> {
-        self.blocks.to_vec()
+    pub fn blocks(&self) -> Vec<&Pin<Box<Block>>> {
+        self.blocks.iter().collect()
     }
     fn print(&self) -> String {
         todo!()

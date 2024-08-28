@@ -1,28 +1,27 @@
-use crate::ir::operation::Operation;
 use std::fmt::Display;
+use crate::ir::Op;
 
 #[derive(Clone)]
 pub struct BlockArgument {
     name: String,
 }
 
-#[derive(Clone)]
 pub struct Block {
     label: String,
     arguments: Vec<BlockArgument>,
-    operations: Vec<Operation>,
+    ops: Vec<Box<dyn Op>>,
 }
 
 impl Block {
-    pub fn new(label: String, arguments: Vec<BlockArgument>, operations: Vec<Operation>) -> Self {
+    pub fn new(label: String, arguments: Vec<BlockArgument>, ops: Vec<Box<dyn Op>>) -> Self {
         Self {
             label,
             arguments,
-            operations,
+            ops,
         }
     }
-    pub fn operations(&self) -> Vec<Operation> {
-        self.operations.to_vec()
+    pub fn ops(&self) -> Vec<Box<dyn Op>> {
+        todo!()
     }
 }
 
@@ -31,8 +30,8 @@ impl Display for Block {
         if !self.label.is_empty() {
             write!(f, "{} ", self.label)?;
         }
-        for operation in self.operations() {
-            write!(f, "{} ", operation)?;
+        for op in self.ops() {
+            write!(f, "{} ", op)?;
         }
         Ok(())
     }

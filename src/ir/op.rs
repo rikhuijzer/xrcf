@@ -10,11 +10,13 @@ use std::pin::Pin;
 /// and MLIR would cast the `Operation` into a specific `Op` variant
 /// such as `FuncOp`.
 pub trait Op: Display {
-    fn name() -> &'static str;
+    fn name() -> &'static str
+    where
+        Self: Sized;
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self>
     where
         Self: Sized;
-    fn operation(&self) -> Pin<Box<Operation>>;
+    fn operation(&self) -> &Pin<Box<Operation>>;
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.operation())
     }

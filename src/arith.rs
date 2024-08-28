@@ -23,8 +23,8 @@ impl Op for ConstantOp {
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> Pin<Box<Operation>> {
-        self.operation.clone()
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
@@ -50,8 +50,8 @@ impl Op for Addi {
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> Pin<Box<Operation>> {
-        self.operation.clone()
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
