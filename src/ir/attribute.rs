@@ -16,9 +16,7 @@ pub trait Attribute {
 
     fn name(&self) -> String;
     fn value(&self) -> &'static str;
-    fn print(&self) -> String {
-        format!("{} = {}", self.name(), self.value())
-    }
+    fn print(&self) -> String;
 }
 
 pub struct Attributes {
@@ -62,6 +60,9 @@ impl Attribute for IntegerAttr {
     fn value(&self) -> &'static str {
         todo!()
     }
+    fn print(&self) -> String {
+        todo!()
+    }
 }
 
 pub struct StrAttr {
@@ -88,6 +89,9 @@ impl Attribute for StrAttr {
     }
     fn value(&self) -> &'static str {
         todo!()
+    }
+    fn print(&self) -> String {
+        self.value.clone()
     }
 }
 

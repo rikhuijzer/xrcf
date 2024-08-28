@@ -9,6 +9,7 @@ use crate::Parse;
 use anyhow::Result;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::ir::StrAttr;
 
 pub struct GlobalOp {
     operation: Pin<Box<Operation>>,
@@ -40,9 +41,12 @@ impl Parse for GlobalOp {
                 attributes.push(Arc::new(attribute));
             }
         }
-        let symbol_name = parser.advance();
+        let symbol_name = parser.peek();
         if symbol_name.kind != TokenKind::AtIdentifier {
             return Err(anyhow::anyhow!("Expected @identifier, got {:?}", symbol_name));
+        }
+        if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
+            attributes.push(Arc::new(attribute));
         }
         let regions = vec![];
         let parent_block = None;

@@ -8,6 +8,8 @@ pub use block::Block;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
+pub use attribute::Attribute;
+pub use attribute::StrAttr;
 
 use anyhow::Result;
 use std::pin::Pin;

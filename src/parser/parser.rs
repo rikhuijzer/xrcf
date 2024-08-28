@@ -142,6 +142,6 @@ mod tests {
         let lines: Vec<&str> = repr.split('\n').collect();
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
-        assert_eq!(lines[1], "  llvm.mlir.global internal ");
+        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global ");
     }
 }
