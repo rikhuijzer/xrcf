@@ -1,5 +1,4 @@
 #![allow(dead_code)]
-#![allow(unused_variables)]
 
 mod arith;
 mod attribute;
@@ -7,6 +6,7 @@ mod typ;
 mod compile;
 mod ir;
 mod parser;
+mod dialect;
 
 pub use attribute::Attribute;
 pub use attribute::Attributes;

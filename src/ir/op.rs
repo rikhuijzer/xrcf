@@ -1,5 +1,6 @@
 use crate::ir::Operation;
 use anyhow::Result;
+use std::pin::Pin;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
@@ -7,9 +8,9 @@ use anyhow::Result;
 /// and MLIR would cast the `Operation` into a specific `Op` variant
 /// such as `FuncOp`.
 pub trait Op {
-    fn from_operation(operation: Operation) -> Result<Self>
+    fn name() -> &'static str;
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self>
     where
         Self: Sized;
-    fn operation(&self) -> Operation;
-    fn name(&self) -> &'static str;
+    fn operation(&self) -> Pin<Box<Operation>>;
 }

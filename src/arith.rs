@@ -1,5 +1,6 @@
 use crate::ir::operation::Operation;
 use crate::attribute::IntegerAttr;
+use std::pin::Pin;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use crate::ir::Op;
@@ -8,38 +9,38 @@ use anyhow::Result;
 struct Arith {}
 
 struct ConstantOp {
-    operation: Operation,
+    operation: Pin<Box<Operation>>,
     typ: IntegerType,
     value: IntegerAttr,
 }
 
 impl Op for ConstantOp {
-    fn from_operation(operation: Operation) -> Result<Self> {
+    fn name() -> &'static str {
+        "arith.contant"
+    }
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> Operation {
+    fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
-    }
-    fn name(&self) -> &'static str {
-        "arith.contant"
     }
 }
 
 struct Addi {
-    operation: Operation,
+    operation: Pin<Box<Operation>>,
     lhs: IntegerAttr,
     rhs: IntegerAttr,
 }
 
 impl Op for Addi {
-    fn from_operation(operation: Operation) -> Result<Self> {
+    fn name() -> &'static str {
+        "arith.addi"
+    }
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> Operation {
+    fn operation(&self) -> Pin<Box<Operation>> {
         self.operation.clone()
-    }
-    fn name(&self) -> &'static str {
-        "arith.addi"
     }
 
     // fn parse(input: &str) -> Option<Self> {

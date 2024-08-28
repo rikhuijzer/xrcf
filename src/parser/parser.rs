@@ -108,7 +108,8 @@ mod tests {
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let operation = Parser::parse(src).unwrap();
         assert_eq!(operation.name(), "module");
-        let module_op = ModuleOp::from_operation(operation.clone()).unwrap();
+        let pinned = Pin::new(Box::new(operation.clone()));
+        let module_op = ModuleOp::from_operation(pinned).unwrap();
         let body = module_op.getBodyRegion();
         assert_eq!(body.blocks().len(), 1);
         println!("{}", operation);

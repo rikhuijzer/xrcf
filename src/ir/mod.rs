@@ -14,12 +14,15 @@ use anyhow::Result;
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of 
 // `mlir/IR/BuiltinOps.h.inc`.
 pub struct ModuleOp {
-    operation: Operation,
+    operation: Pin<Box<Operation>>,
 }
 
 impl Op for ModuleOp {
-    fn from_operation(operation: Operation) -> Result<Self> {
-        if operation.name() != "module" {
+    fn name() -> &'static str {
+        "module"
+    }
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+        if operation.name() != Self::name() {
             return Err(anyhow::anyhow!("Expected module, got {}", operation.name()));
         }
         if operation.regions().len() != 1 {
@@ -28,11 +31,8 @@ impl Op for ModuleOp {
         }
         Ok(Self { operation: operation })
     }
-    fn operation(&self) -> Operation {
-        todo!()
-    }
-    fn name(&self) -> &'static str {
-        "module"
+    fn operation(&self) -> Pin<Box<Operation>> {
+        self.operation.clone()
     }
 }
 
@@ -49,8 +49,8 @@ struct Tmp {
 }
 
 impl Tmp {
-    fn new(operation: Operation) -> Self {
-        Self { operation: Box::pin(operation) }
+    fn new(operation: Pin<Box<Operation>>) -> Self {
+        Self { operation: operation }
     }
 
     fn modify_operation(&mut self) {
@@ -69,7 +69,7 @@ mod tests {
     fn test_module_op() {
         let name = crate::ir::operation::OperationName::new("module".to_string());
         let operation = Operation::new(name, vec![], None);
-        let mut tmp = Tmp::new(operation);
+        let mut tmp = Tmp::new(Box::pin(operation));
         tmp.modify_operation();
         assert_eq!(tmp.operation.name(), "new_name");
     }
