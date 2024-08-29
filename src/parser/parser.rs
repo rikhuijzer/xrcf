@@ -2,6 +2,7 @@ use crate::dialect::llvmir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
+use std::pin::Pin;
 use crate::ir::Region;
 use crate::ir::ModuleOp;
 use crate::parser::scanner::Scanner;
@@ -9,6 +10,7 @@ use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
 use crate::ir::Op;
+use std::any::Any;
 
 pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
@@ -109,19 +111,20 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op = T::op(&mut parser)?;
-        let op = if op.operation().name() != "module" {
+        let op: Box<dyn Op> = T::op(&mut parser)?;
+        let op = if op.operation().name() == "module" {
+            let op: Box<dyn Any> = Box::new(op);
+            let module_op = op.downcast::<ModuleOp>().unwrap();
+            *module_op
+        } else {
             let name = OperationName::new("module".to_string());
             let attributes = vec![];
-            let block = Block::new("".to_string(), vec![], vec![op]);
+            let ops = vec![op];
+            let block = Block::new("".to_string(), vec![], ops);
             let region = Region::new(vec![Box::pin(block)]);
             let regions = vec![Box::pin(region)];
             let operation = Operation::new(name, attributes, regions, None);
             let module_op = ModuleOp::from_operation(Box::pin(operation));
-            module_op.unwrap()
-        } else {
-            let operation = op.operation();
-            let module_op = ModuleOp::from_operation(operation.to_owned());
             module_op.unwrap()
         };
         Ok(op)
