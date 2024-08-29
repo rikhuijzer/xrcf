@@ -32,6 +32,7 @@ pub trait Op: Display {
 pub struct FuncOp {
     identifier: String,
     operands: Vec<Value>,
+    result_types: Vec<Type>,
 }
 
 impl Op for FuncOp {
@@ -54,7 +55,23 @@ impl Op for FuncOp {
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)?;
-        write!(f, ")")
+        write!(f, ")")?;
+        if !self.result_types.is_empty() {
+            if self.result_types.len() == 1 {
+                write!(f, " -> {}", self.result_types.get(0).unwrap())?;
+            } else {
+                write!(
+                    f,
+                    " -> ({})",
+                    self.result_types
+                        .iter()
+                        .map(|t| t.to_string())
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                )?;
+            }
+        }
+        Ok(())
     }
 }
 
@@ -104,7 +121,26 @@ impl<T: Parse> Parser<T> {
         while self.check(TokenKind::PercentIdentifier) {
             operands.push(self.operand()?);
         }
+        if self.check(TokenKind::RParen) {
+            self.advance();
+        } else {
+            return Err(anyhow::anyhow!("Expected ')', got {:?}", self.peek().kind));
+        }
         Ok(operands)
+    }
+    pub fn result_types(&mut self) -> Result<Vec<Type>> {
+        let mut result_types = vec![];
+        if !self.check(TokenKind::Arrow) {
+            return Ok(vec![]);
+        } else {
+            let _arrow = self.advance();
+            while self.check(TokenKind::IntType) {
+                let typ = self.advance();
+                let typ = Type::new(typ.lexeme.clone());
+                result_types.push(typ);
+            }
+        }
+        Ok(result_types)
     }
 }
 
@@ -120,11 +156,13 @@ impl Parse for FuncOp {
         }
         parser.advance();
         let operands = parser.operands()?;
+        let result_types = parser.result_types()?;
 
         // println!("{:?}", name.print());
         let op = FuncOp {
             identifier,
             operands,
+            result_types,
         };
         Ok(Arc::new(op))
     }

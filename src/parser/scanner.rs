@@ -40,6 +40,23 @@ impl Scanner {
         }
         self.source.chars().nth(self.current + 1).unwrap()
     }
+    fn peek_n(&self, n: usize) -> char {
+        if self.current + n >= self.source.len() {
+            return '\0';
+        }
+        self.source.chars().nth(self.current + n).unwrap()
+    }
+    fn peek_word(&self) -> String {
+        let mut word = String::new();
+        for i in 0..10 {
+            let c = self.peek_n(i);
+            if c == ' ' || c == '\0' {
+                break;
+            }
+            word.push(c);
+        }
+        word
+    }
     fn add_token(&mut self, kind: TokenKind) {
         let lexeme = if kind == TokenKind::Eof {
             "".to_string()
@@ -116,6 +133,24 @@ impl Scanner {
         }
         Ok(())
     }
+    fn is_int_type(word: &str) -> bool {
+        let types = vec!["i1", "i4", "i8", "i16", "i32", "i64", "i128"];
+        types.contains(&word)
+    }
+    fn int_type(&mut self, c: char) -> Result<()> {
+        let word = format!("{}{}", c, self.peek_word());
+        if Scanner::is_int_type(&word) {
+            for _ in 0..(word.len() - 1) {
+                self.advance();
+            }
+            self.add_token(TokenKind::IntType);
+        }
+        Ok(())
+    }
+    fn is_int_type_start(&mut self, c: char) -> bool {
+        let word = format!("{}{}", c, self.peek_word());
+        Scanner::is_int_type(&word)
+    }
     fn scan_token(&mut self) -> Result<()> {
         let c = self.advance();
         match c {
@@ -129,6 +164,7 @@ impl Scanner {
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
             '-' => self.arrow_or_minus()?,
+            s if self.is_int_type_start(s) => self.int_type(s)?,
             s if s.is_digit(10) => self.number()?,
             s if Scanner::is_identifier_start(s) => self.identifier()?,
             _ => panic!("Unexpected character: {}", c),
@@ -193,7 +229,7 @@ mod tests {
         assert_eq!(tokens[6].lexeme, "i32");
         assert_eq!(tokens[7].kind, TokenKind::RParen);
         assert_eq!(tokens[8].kind, TokenKind::Colon);
-        assert_eq!(tokens[9].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[9].kind, TokenKind::IntType);
         assert_eq!(tokens[9].lexeme, "i32");
         assert_eq!(tokens[10].kind, TokenKind::Eof);
 
@@ -202,7 +238,7 @@ mod tests {
         assert_eq!(tokens[0].kind, TokenKind::Integer);
         assert_eq!(tokens[0].lexeme, "42");
         assert_eq!(tokens[1].kind, TokenKind::Colon);
-        assert_eq!(tokens[2].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[2].kind, TokenKind::IntType);
         assert_eq!(tokens[2].lexeme, "i32");
         assert_eq!(tokens[3].kind, TokenKind::Eof);
     }
