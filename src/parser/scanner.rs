@@ -85,7 +85,7 @@ impl Scanner {
     }
     // Whether the character is a valid identifier start character.
     fn is_identifier_start(c: char) -> bool {
-        c.is_alphabetic() || c == '_' || c == '@'
+        c.is_alphabetic() || c == '_' || c == '@' || c == '%'
     }
     // Whether the character is a valid identifier character.
     fn is_identifier(c: char) -> bool {
@@ -101,9 +101,19 @@ impl Scanner {
             "f16" => TokenKind::KwF16,
             "true" => TokenKind::KwTrue,
             s if s.starts_with('@') => TokenKind::AtIdentifier,
+            s if s.starts_with('%') => TokenKind::PercentIdentifier,
             _ => TokenKind::BareIdentifier,
         };
         self.add_token(kind);
+        Ok(())
+    }
+    fn arrow_or_minus(&mut self) -> Result<()> {
+        if self.peek() == '>' {
+            self.advance();
+            self.add_token(TokenKind::Arrow);
+        } else {
+            self.add_token(TokenKind::Minus);
+        }
         Ok(())
     }
     fn scan_token(&mut self) -> Result<()> {
@@ -111,11 +121,14 @@ impl Scanner {
         match c {
             '(' => self.add_token(TokenKind::LParen),
             ')' => self.add_token(TokenKind::RParen),
+            '{' => self.add_token(TokenKind::LBrace),
+            '}' => self.add_token(TokenKind::RBrace),
             ':' => self.add_token(TokenKind::Colon),
             ',' => self.add_token(TokenKind::Comma),
             '=' => self.add_token(TokenKind::Equal),
             ' ' | '\r' | '\t' => (),
             '\n' => self.line += 1,
+            '-' => self.arrow_or_minus()?,
             s if s.is_digit(10) => self.number()?,
             s if Scanner::is_identifier_start(s) => self.identifier()?,
             _ => panic!("Unexpected character: {}", c),

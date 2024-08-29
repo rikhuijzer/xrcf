@@ -3,6 +3,10 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
+use crate::Parse;
+use crate::Parser;
+use std::sync::Arc;
+use crate::parser::TokenKind;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
@@ -19,5 +23,46 @@ pub trait Op: Display {
     fn operation(&self) -> &Pin<Box<Operation>>;
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.operation())
+    }
+}
+
+pub struct FuncOp {
+    identifier: String,
+}
+
+impl Op for FuncOp {
+    fn name() -> &'static str {
+        "func.func"
+    }
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+        todo!()
+        // Ok(FuncOp { operation })
+    }
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        todo!()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "funcop")
+    }
+}
+
+impl Display for FuncOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
+    }
+}
+
+impl Parse for FuncOp {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        let identifier = parser.advance();
+        if identifier.kind != TokenKind::AtIdentifier {
+            return Err(anyhow::anyhow!("Expected identifier, got {:?}", identifier.kind));
+        }
+
+        // println!("{:?}", name.print());
+        let op = FuncOp {
+            identifier: identifier.lexeme.clone(),
+        };
+        Ok(Arc::new(op))
     }
 }

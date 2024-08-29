@@ -5,6 +5,7 @@ use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::Region;
+use crate::ir;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
@@ -42,6 +43,7 @@ impl Parse for DefaultParse {
         let name = OperationName::new(name.lexeme.clone());
         match name.name().as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
+            "func.func" => <ir::FuncOp as Parse>::op(parser),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name.name())),
         }
     }
@@ -112,14 +114,13 @@ impl<T: Parse> Parser<T> {
             parse_op: std::marker::PhantomData,
         };
         let op: Arc<dyn Op> = T::op(&mut parser)?;
-        let op = if op.operation().name() == "module" {
-            let op: Box<dyn Any> = Box::new(op);
-            let module_op = op.downcast::<ModuleOp>().unwrap();
+        let any_op: Box<dyn Any> = Box::new(op.clone());
+        let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
             let attributes = vec![];
-            let ops = vec![op];
+            let ops: Vec<Arc<dyn Op>> = vec![op];
             let block = Block::new("".to_string(), vec![], ops);
             let region = Region::new(vec![Box::pin(block)]);
             let regions = vec![Box::pin(region)];
@@ -137,7 +138,20 @@ mod tests {
     use crate::ir::Op;
 
     #[test]
-    fn test_parse() {
+    fn parse_func() {
+        let src = "
+          func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64 {
+            %0 = arith.addi %arg0, %arg1 : i64
+            return %0 : i64
+          }
+        ";
+        let module_op = Parser::<DefaultParse>::parse(src).unwrap();
+        assert_eq!(module_op.operation().name(), "module");
+    }
+
+    #[test]
+    fn parse_global() {
+        // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let module_op = Parser::<DefaultParse>::parse(src).unwrap();
         assert_eq!(module_op.operation().name(), "module");

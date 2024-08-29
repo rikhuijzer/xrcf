@@ -11,6 +11,7 @@ pub use block::Block;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
+pub use op::FuncOp;
 
 use anyhow::Result;
 use std::fmt::Display;

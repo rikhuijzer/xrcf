@@ -14,6 +14,7 @@ pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
 pub use ir::Block;
 pub use parser::Parse;
+pub use parser::Parser;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.
