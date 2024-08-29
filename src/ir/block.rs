@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use crate::ir::Op;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BlockArgument {
@@ -9,19 +10,19 @@ pub struct BlockArgument {
 pub struct Block {
     label: String,
     arguments: Vec<BlockArgument>,
-    ops: Vec<Box<dyn Op>>,
+    ops: Vec<Arc<dyn Op>>,
 }
 
 impl Block {
-    pub fn new(label: String, arguments: Vec<BlockArgument>, ops: Vec<Box<dyn Op>>) -> Self {
+    pub fn new(label: String, arguments: Vec<BlockArgument>, ops: Vec<Arc<dyn Op>>) -> Self {
         Self {
             label,
             arguments,
             ops,
         }
     }
-    pub fn ops(&self) -> Vec<Box<dyn Op>> {
-        todo!()
+    pub fn ops(&self) -> Vec<Arc<dyn Op>> {
+        self.ops.clone()
     }
 }
 

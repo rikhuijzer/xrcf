@@ -3,6 +3,7 @@ use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use std::pin::Pin;
+use std::sync::Arc;
 use crate::ir::Region;
 use crate::ir::ModuleOp;
 use crate::parser::scanner::Scanner;
@@ -23,7 +24,7 @@ pub struct Parser<T: Parse> {
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
 pub trait Parse {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Box<dyn Op>>
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>>
     where
         Self: Sized;
 }
@@ -37,7 +38,7 @@ enum Dialects {
 
 impl Parse for DefaultParse {
     /// Default operation parser.
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Box<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let name = parser.advance();
         let name = OperationName::new(name.lexeme.clone());
         match name.name().as_str() {
@@ -111,7 +112,7 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op: Box<dyn Op> = T::op(&mut parser)?;
+        let op: Arc<dyn Op> = T::op(&mut parser)?;
         let op = if op.operation().name() == "module" {
             let op: Box<dyn Any> = Box::new(op);
             let module_op = op.downcast::<ModuleOp>().unwrap();
