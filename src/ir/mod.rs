@@ -3,21 +3,23 @@ pub mod block;
 pub mod op;
 pub mod operation;
 pub mod region;
+pub mod value;
 
 pub use attribute::AnyAttr;
 pub use attribute::Attribute;
 pub use attribute::StrAttr;
 pub use block::Block;
+pub use op::FuncOp;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
-pub use op::FuncOp;
+pub use value::Value;
 
 use anyhow::Result;
 use std::fmt::Display;
-use std::sync::Arc;
 use std::fmt::Formatter;
 use std::pin::Pin;
+use std::sync::Arc;
 
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.

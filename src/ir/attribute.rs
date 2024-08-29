@@ -4,6 +4,7 @@ use crate::typ::IntegerType;
 use crate::Parse;
 use std::fmt::Display;
 
+/// Attributes are known-constant values of operations (a variable is not allowed).
 /// Attributes belong to operations and can be used to, for example, specify
 /// a SSA value.
 pub trait Attribute {

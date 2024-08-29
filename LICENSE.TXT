@@ -221,5 +221,6 @@ Software.
 Software from third parties included in the project:
 ==============================================================================
 
+- Much of the code is inspired by LLVM and MLIR.
 - The lexer and parser are inspired by the "Crafting Interpreters" book
   (The code falls under the MIT license).

@@ -1,11 +1,12 @@
 use crate::dialect::llvmir;
+use crate::ir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::Region;
-use crate::ir;
+use crate::ir::Value;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
@@ -108,6 +109,30 @@ impl<T: Parse> Parser<T> {
             regions.push(region);
         }
         Ok(regions)
+    }
+    pub fn identifier(&mut self, kind: TokenKind) -> Result<String> {
+        let identifier = self.advance();
+        if identifier.kind != kind {
+            return Err(anyhow::anyhow!(
+                "Expected {:?}, got {:?}",
+                kind,
+                identifier.kind
+            ));
+        }
+        Ok(identifier.lexeme.clone())
+    }
+    pub fn operands(&mut self) -> Result<Vec<Value>> {
+        let mut operands = vec![];
+        if !self.check(TokenKind::LParen) {
+            return Err(anyhow::anyhow!("Expected '(', got {:?}", self.peek().kind));
+        }
+        self.advance();
+        while self.match_kinds(&[TokenKind::Comma, TokenKind::RParen]) {
+            let operand = self.advance();
+            let operand: Value = todo!();
+            operands.push(operand);
+        }
+        Ok(operands)
     }
     pub fn parse(src: &str) -> Result<ModuleOp> {
         let mut parser = Parser::<T> {

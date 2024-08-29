@@ -1,12 +1,13 @@
 use crate::ir::Operation;
+use crate::ir::Value;
+use crate::parser::TokenKind;
+use crate::Parse;
+use crate::Parser;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
-use crate::Parse;
-use crate::Parser;
 use std::sync::Arc;
-use crate::parser::TokenKind;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
@@ -28,6 +29,7 @@ pub trait Op: Display {
 
 pub struct FuncOp {
     identifier: String,
+    operands: Vec<Value>,
 }
 
 impl Op for FuncOp {
@@ -42,7 +44,11 @@ impl Op for FuncOp {
         todo!()
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "func.func {}", self.identifier)
+        write!(f, "func.func {}(", self.identifier)?;
+        for operand in &self.operands {
+            write!(f, " {}", operand)?;
+        }
+        write!(f, ")")
     }
 }
 
@@ -54,14 +60,14 @@ impl Display for FuncOp {
 
 impl Parse for FuncOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
-        let identifier = parser.advance();
-        if identifier.kind != TokenKind::AtIdentifier {
-            return Err(anyhow::anyhow!("Expected identifier, got {:?}", identifier.kind));
-        }
+        // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
+        let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
+        let operands = parser.operands()?;
 
         // println!("{:?}", name.print());
         let op = FuncOp {
-            identifier: identifier.lexeme.clone(),
+            identifier,
+            operands,
         };
         Ok(Arc::new(op))
     }
@@ -69,8 +75,8 @@ impl Parse for FuncOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::Parser;
     use crate::parser::parser::BuiltinParse;
+    use crate::parser::Parser;
 
     #[test]
     fn parse_func() {
@@ -80,9 +86,9 @@ mod tests {
             return %0 : i64
           }
         ";
-        let op = Parser::<BuiltinParse>::parse(src).unwrap();
-        let op = op.first_op().unwrap();
+        let module = Parser::<BuiltinParse>::parse(src).unwrap();
+        let op = module.first_op().unwrap();
         let repr = format!("{}", op);
-        assert_eq!(repr, "func.func @test_addi");
+        assert_eq!(repr, "func.func @test_addi()");
     }
 }
