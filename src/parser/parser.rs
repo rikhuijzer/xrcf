@@ -2,16 +2,15 @@ use crate::dialect::llvmir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
-use std::pin::Pin;
-use std::sync::Arc;
-use crate::ir::Region;
 use crate::ir::ModuleOp;
+use crate::ir::Op;
+use crate::ir::Region;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
-use crate::ir::Op;
 use std::any::Any;
+use std::sync::Arc;
 
 pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
@@ -149,7 +148,7 @@ mod tests {
         let lines: Vec<&str> = repr.split('\n').collect();
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
-        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global ");
+        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42) ");
         assert_eq!(lines[2], "}");
     }
 }

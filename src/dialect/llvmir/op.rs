@@ -34,7 +34,7 @@ impl Op for GlobalOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Self::name())?;
+        write!(f, "{} ", Self::name())?;
         for attribute in self.operation().attributes() {
             write!(f, "{}", attribute.display())?;
             if attribute.name() == "symbol_name" {
@@ -80,6 +80,7 @@ impl Parse for GlobalOp {
                 attributes.push(Arc::new(attribute));
             }
         }
+        println!("{:?}", parser.advance());
         let regions = vec![];
         let parent_block = None;
         let operation = Operation::new(name, attributes, regions, parent_block);

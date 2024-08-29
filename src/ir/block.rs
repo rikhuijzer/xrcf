@@ -1,5 +1,5 @@
-use std::fmt::Display;
 use crate::ir::Op;
+use std::fmt::Display;
 use std::sync::Arc;
 
 #[derive(Clone)]
