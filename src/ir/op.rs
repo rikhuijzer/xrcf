@@ -45,9 +45,13 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
-        for operand in &self.operands {
-            write!(f, " {}", operand)?;
-        }
+        let joined = self
+            .operands
+            .iter()
+            .map(|o| o.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        write!(f, "{}", joined)?;
         write!(f, ")")
     }
 }
@@ -62,6 +66,13 @@ impl Parse for FuncOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
+        if !parser.check(TokenKind::LParen) {
+            return Err(anyhow::anyhow!(
+                "Expected '(', got {:?}",
+                parser.peek().kind
+            ));
+        }
+        parser.advance();
         let operands = parser.operands()?;
 
         // println!("{:?}", name.print());
@@ -89,6 +100,6 @@ mod tests {
         let module = Parser::<BuiltinParse>::parse(src).unwrap();
         let op = module.first_op().unwrap();
         let repr = format!("{}", op);
-        assert_eq!(repr, "func.func @test_addi()");
+        assert_eq!(repr, "func.func @test_addi(%arg0 : i64, %arg1 : i64)");
     }
 }

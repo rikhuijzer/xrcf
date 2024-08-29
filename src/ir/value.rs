@@ -1,7 +1,4 @@
-use crate::ir::block::Block;
-use crate::ir::op::Op;
 use std::fmt::Display;
-use std::sync::Arc;
 
 /// Represents an instance of an SSA value in the IR,
 /// representing a computable value that has a type and a set of users. An SSA
@@ -20,22 +17,34 @@ pub enum Value {
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Value::BlockArgument(arg) => write!(f, "{}", arg.name),
+            Value::BlockArgument(arg) => write!(f, "{} : {}", arg.name, arg.typ.name),
             Value::OpResult(result) => write!(f, "{}", result.name),
         }
     }
 }
 
-struct Type {}
+pub struct Type {
+    name: String,
+}
+
+impl Type {
+    pub fn new(name: String) -> Self {
+        Type { name }
+    }
+}
 
 pub struct BlockArgument {
     name: String,
     typ: Type,
-    parent: Block,
+}
+
+impl BlockArgument {
+    pub fn new(name: String, typ: Type) -> Self {
+        BlockArgument { name, typ }
+    }
 }
 
 pub struct OpResult {
     name: String,
     typ: Type,
-    parent: Arc<dyn Op>,
 }

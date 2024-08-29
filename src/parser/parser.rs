@@ -3,9 +3,11 @@ use crate::ir;
 use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
+use crate::ir::BlockArgument;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::Region;
+use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -121,16 +123,33 @@ impl<T: Parse> Parser<T> {
         }
         Ok(identifier.lexeme.clone())
     }
+    pub fn operand(&mut self) -> Result<Value> {
+        let identifier = self.advance();
+        if identifier.kind != TokenKind::PercentIdentifier {
+            return Err(anyhow::anyhow!(
+                "Expected '%identifier', got {:?}",
+                identifier.kind
+            ));
+        }
+        let name = identifier.lexeme.clone();
+        let typ = if self.check(TokenKind::Colon) {
+            self.advance();
+            let typ = self.advance();
+            Type::new(typ.lexeme.clone())
+        } else {
+            Type::new("any".to_string())
+        };
+        let arg = BlockArgument::new(name, typ);
+        let operand: Value = Value::BlockArgument(arg);
+        if self.check(TokenKind::Comma) {
+            self.advance();
+        }
+        Ok(operand)
+    }
     pub fn operands(&mut self) -> Result<Vec<Value>> {
         let mut operands = vec![];
-        if !self.check(TokenKind::LParen) {
-            return Err(anyhow::anyhow!("Expected '(', got {:?}", self.peek().kind));
-        }
-        self.advance();
-        while self.match_kinds(&[TokenKind::Comma, TokenKind::RParen]) {
-            let operand = self.advance();
-            let operand: Value = todo!();
-            operands.push(operand);
+        while self.check(TokenKind::PercentIdentifier) {
+            operands.push(self.operand()?);
         }
         Ok(operands)
     }

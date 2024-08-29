@@ -13,6 +13,8 @@ pub use op::FuncOp;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;
+pub use value::BlockArgument;
+pub use value::Type;
 pub use value::Value;
 
 use anyhow::Result;
