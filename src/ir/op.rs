@@ -10,6 +10,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
+use crate::ir::Region;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
@@ -31,8 +32,12 @@ pub trait Op: Display {
 
 pub struct FuncOp {
     identifier: String,
+    /// The operands of the function.
+    /// Although these these are internally represented by `BlockArgument`s,
+    /// the textual form is inline.
     operands: Vec<Value>,
     result_types: Vec<Type>,
+    regions: Vec<Region>,
 }
 
 impl Op for FuncOp {
@@ -158,7 +163,6 @@ impl Parse for FuncOp {
         let operands = parser.operands()?;
         let result_types = parser.result_types()?;
 
-        // println!("{:?}", name.print());
         let op = FuncOp {
             identifier,
             operands,
