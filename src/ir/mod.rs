@@ -15,6 +15,7 @@ pub use op::FuncOp;
 
 use anyhow::Result;
 use std::fmt::Display;
+use std::sync::Arc;
 use std::fmt::Formatter;
 use std::pin::Pin;
 
@@ -57,10 +58,24 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    // somehow get the body (first region?)
-    // fn body()
-    pub fn get_body_region(&self) -> &Pin<Box<Region>> {
-        self.operation.regions().first().unwrap()
+    pub fn get_body_region(&self) -> Result<&Pin<Box<Region>>> {
+        if self.operation.regions().len() != 1 {
+            return Err(anyhow::anyhow!(
+                "Expected 1 region, got {}",
+                self.operation.regions().len()
+            ));
+        }
+        Ok(self.operation.regions().first().unwrap())
+    }
+    pub fn first_op(&self) -> Result<Arc<dyn Op>> {
+        let body_region = self.get_body_region()?;
+        let block = *body_region.blocks().first().unwrap();
+        let ops = block.ops();
+        let op = ops.first();
+        if op.is_none() {
+            return Err(anyhow::anyhow!("Expected 1 op, got 0"));
+        }
+        Ok(op.unwrap().clone())
     }
 }
 

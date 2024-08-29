@@ -1,4 +1,4 @@
-mod parser;
+pub mod parser;
 mod scanner;
 mod token;
 

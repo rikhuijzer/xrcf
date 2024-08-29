@@ -42,7 +42,7 @@ impl Op for FuncOp {
         todo!()
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "funcop")
+        write!(f, "func.func {}", self.identifier)
     }
 }
 
@@ -64,5 +64,24 @@ impl Parse for FuncOp {
             identifier: identifier.lexeme.clone(),
         };
         Ok(Arc::new(op))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parser::Parser;
+    use crate::parser::parser::BuiltinParse;
+
+    #[test]
+    fn parse_func() {
+        let src = "
+          func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64 {
+            %0 = arith.addi %arg0, %arg1 : i64
+            return %0 : i64
+          }
+        ";
+        let op = Parser::<BuiltinParse>::parse(src).unwrap();
+
+        assert!(false);
     }
 }

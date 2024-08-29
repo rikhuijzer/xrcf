@@ -29,15 +29,17 @@ pub trait Parse {
         Self: Sized;
 }
 
-struct DefaultParse;
+/// Default operation parser.
+/// This parser knows about all operations defined in this crate.
+/// For operations in external dialects, define another parser and use it.
+pub struct BuiltinParse;
 
 enum Dialects {
     Builtin,
     LLVM,
 }
 
-impl Parse for DefaultParse {
-    /// Default operation parser.
+impl Parse for BuiltinParse {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let name = parser.advance();
         let name = OperationName::new(name.lexeme.clone());
@@ -138,22 +140,10 @@ mod tests {
     use crate::ir::Op;
 
     #[test]
-    fn parse_func() {
-        let src = "
-          func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64 {
-            %0 = arith.addi %arg0, %arg1 : i64
-            return %0 : i64
-          }
-        ";
-        let module_op = Parser::<DefaultParse>::parse(src).unwrap();
-        assert_eq!(module_op.operation().name(), "module");
-    }
-
-    #[test]
     fn parse_global() {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let module_op = Parser::<DefaultParse>::parse(src).unwrap();
+        let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
         assert_eq!(module_op.operation().name(), "module");
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
