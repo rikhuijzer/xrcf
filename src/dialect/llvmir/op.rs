@@ -34,10 +34,17 @@ impl Op for GlobalOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", Self::name());
+        write!(f, "{}", Self::name())?;
         for attribute in self.operation().attributes() {
-            write!(f, " {}", attribute.display());
+            write!(f, "{}", attribute.display())?;
+            if attribute.name() == "symbol_name" {
+                write!(f, "(")?;
+            } else if attribute.name() == "value" {
+            } else {
+                write!(f, " ")?;
+            }
         }
+        write!(f, ")")?;
         Ok(())
     }
 }
