@@ -81,7 +81,8 @@ mod tests {
           }
         ";
         let op = Parser::<BuiltinParse>::parse(src).unwrap();
-
-        assert!(false);
+        let op = op.first_op().unwrap();
+        let repr = format!("{}", op);
+        assert_eq!(repr, "func.func @test_addi");
     }
 }
