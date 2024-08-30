@@ -35,5 +35,6 @@ But wait, it's not that much copying.
 Many fields are just pointers to other data.
 Instead focus on the fact that any `Op` transformation takes ownership of the data.
 Then, it's will be harder to mess up the underlying data.
+There will be less state to keep track of.
 
 In summary: Do not prematurely optimize!
