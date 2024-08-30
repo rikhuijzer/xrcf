@@ -30,3 +30,8 @@ The benefit is that transformations do not require the fields to be copied.
 They can just call it a different type while pointing to the same `Operation` struct.
 This is probably why MLIR uses it.
 Otherwise, transforming all ops from one dialect to another would require copying all op fields.
+
+But wait, it's not that much copying.
+Many fields are just pointers to other data.
+Instead focus on the fact that any `Op` transformation takes ownership of the data.
+Then, it's will be harder to mess up the underlying data.
