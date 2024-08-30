@@ -10,8 +10,6 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::ir::Region;
-
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
 /// Note that the parser will parse the tokens into an `Operation`
@@ -30,14 +28,11 @@ pub trait Op: Display {
     }
 }
 
+/// Note that the operands of the function are internally
+/// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
+    operation: Pin<Box<Operation>>,
     identifier: String,
-    /// The operands of the function.
-    /// Although these these are internally represented by `BlockArgument`s,
-    /// the textual form is inline.
-    operands: Vec<Value>,
-    result_types: Vec<Type>,
-    regions: Vec<Region>,
 }
 
 impl Op for FuncOp {
@@ -49,26 +44,28 @@ impl Op for FuncOp {
         // Ok(FuncOp { operation })
     }
     fn operation(&self) -> &Pin<Box<Operation>> {
-        todo!()
+        &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
         let joined = self
-            .operands
+            .operation()
+            .operands()
             .iter()
             .map(|o| o.to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)?;
         write!(f, ")")?;
-        if !self.result_types.is_empty() {
-            if self.result_types.len() == 1 {
-                write!(f, " -> {}", self.result_types.get(0).unwrap())?;
+        if !self.operation().result_types().is_empty() {
+            let result_types = self.operation().result_types();
+            if result_types.len() == 1 {
+                write!(f, " -> {}", result_types.get(0).unwrap())?;
             } else {
                 write!(
                     f,
                     " -> ({})",
-                    self.result_types
+                    result_types
                         .iter()
                         .map(|t| t.to_string())
                         .collect::<Vec<String>>()
@@ -162,11 +159,11 @@ impl Parse for FuncOp {
         parser.advance();
         let operands = parser.operands()?;
         let result_types = parser.result_types()?;
+        let operation = Box::pin(Operation::default());
 
         let op = FuncOp {
+            operation,
             identifier,
-            operands,
-            result_types,
         };
         Ok(Arc::new(op))
     }

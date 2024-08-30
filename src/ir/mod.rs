@@ -110,7 +110,8 @@ mod tests {
     fn test_module_op() {
         let name = crate::ir::operation::OperationName::new("module".to_string());
         let attributes = vec![];
-        let operation = Operation::new(name, attributes, vec![], None);
+        let mut operation = Operation::default();
+        operation.set_name(name).set_attributes(attributes);
         let mut tmp = Tmp::new(Box::pin(operation));
         tmp.modify_operation();
         assert_eq!(tmp.operation.name(), "new_name");

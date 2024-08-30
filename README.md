@@ -26,6 +26,7 @@ A downside of the `Operation` field is that it may contain fields that are not n
 For example, `arith.constant` does not take any operands,
 but the `Operation` field will still contain an empty `operands` field.
 
-The biggest downside is that it's another layer of indirection.
-Developers have to go through the `Operation` field to get to the data.
-Let's try to go without this for now and see how it goes.
+The benefit is that transformations do not require the fields to be copied.
+They can just call it a different type while pointing to the same `Operation` struct.
+This is probably why MLIR uses it.
+Otherwise, transforming all ops from one dialect to another would require copying all op fields.

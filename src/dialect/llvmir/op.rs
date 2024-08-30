@@ -81,9 +81,8 @@ impl Parse for GlobalOp {
             }
         }
         println!("{:?}", parser.advance());
-        let regions = vec![];
-        let parent_block = None;
-        let operation = Operation::new(name, attributes, regions, parent_block);
+        let mut operation = Operation::default();
+        operation.set_name(name).set_attributes(attributes);
         let op = GlobalOp::from_operation(Box::pin(operation));
         Ok(Arc::new(op.unwrap()))
     }

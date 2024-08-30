@@ -1,10 +1,10 @@
 use crate::dialect::llvmir;
 use crate::ir;
-use crate::ir::operation::Operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
+use crate::ir::Operation;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -121,12 +121,12 @@ impl<T: Parse> Parser<T> {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
-            let attributes = vec![];
             let ops: Vec<Arc<dyn Op>> = vec![op];
             let block = Block::new("".to_string(), vec![], ops);
             let region = Region::new(vec![Box::pin(block)]);
             let regions = vec![Box::pin(region)];
-            let operation = Operation::new(name, attributes, regions, None);
+            let mut operation = Operation::default();
+            operation.set_name(name).set_regions(regions);
             let module_op = ModuleOp::from_operation(Box::pin(operation));
             module_op.unwrap()
         };
