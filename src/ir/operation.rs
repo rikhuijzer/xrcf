@@ -95,6 +95,10 @@ impl Operation {
         self.attributes = attributes;
         self
     }
+    pub fn set_results(&mut self, results: Vec<Value>) -> &mut Self {
+        self.results = results;
+        self
+    }
     pub fn set_result_types(&mut self, result_types: Vec<Type>) -> &mut Self {
         self.result_types = result_types;
         self

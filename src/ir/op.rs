@@ -1,9 +1,9 @@
 use crate::ir::BlockArgument;
-use crate::ir::Operation;
-use crate::ir::Type;
-use crate::ir::Region;
-use crate::ir::Value;
 use crate::ir::OpResult;
+use crate::ir::Operation;
+use crate::ir::Region;
+use crate::ir::Type;
+use crate::ir::Value;
 use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
@@ -98,14 +98,9 @@ impl<T: Parse> Parser<T> {
         }
         Ok(identifier.lexeme.clone())
     }
-    pub fn operand(&mut self) -> Result<Value> {
-        let identifier = self.advance();
-        if identifier.kind != TokenKind::PercentIdentifier {
-            return Err(anyhow::anyhow!(
-                "Expected '%identifier', got {:?}",
-                identifier.kind
-            ));
-        }
+    /// %arg0 : i64
+    pub fn block_argument(&mut self) -> Result<Value> {
+        let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
             self.advance();
@@ -121,13 +116,16 @@ impl<T: Parse> Parser<T> {
         }
         Ok(operand)
     }
-    pub fn operands(&mut self) -> Result<Vec<Value>> {
+    /// Parse operands:
+    /// %arg0 : i64, %arg1 : i64
+    pub fn block_arguments(&mut self) -> Result<Vec<Value>> {
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            operands.push(self.operand()?);
+            operands.push(self.block_argument()?);
         }
         if self.check(TokenKind::RParen) {
-            self.advance();
+            let _rparen = self.advance();
+        } else if self.check(TokenKind::Colon) {
         } else {
             return Err(anyhow::anyhow!("Expected ')', got {:?}", self.peek().kind));
         }
@@ -155,8 +153,8 @@ impl Parse for FuncOp {
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
             println!("foo: {:?}", result);
-            let result: Value = Value::OpResult(OpResult::new(
-                result, Type::new("any".to_string())));
+            let result: Value =
+                Value::OpResult(OpResult::new(result, Type::new("any".to_string())));
             Some(result)
         } else {
             println!("bar: {:?}", parser.peek().lexeme);
@@ -174,7 +172,7 @@ impl Parse for FuncOp {
         }
         let _lparen = parser.advance();
         let mut operation = Box::pin(Operation::default());
-        operation.set_operands(Arc::new(parser.operands()?));
+        operation.set_operands(Arc::new(parser.block_arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
 

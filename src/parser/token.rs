@@ -41,9 +41,18 @@ pub struct Token {
     pub kind: TokenKind,
     pub lexeme: String,
     pub literal: Option<String>,
+    pub position: usize,
 }
 
 impl Token {
+    pub fn new(kind: TokenKind, lexeme: String, literal: Option<String>, position: usize) -> Self {
+        Self {
+            kind,
+            lexeme,
+            literal,
+            position,
+        }
+    }
     pub fn print(&self) -> String {
         format!("{:?} {}", self.kind, self.lexeme)
     }

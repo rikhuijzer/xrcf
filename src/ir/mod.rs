@@ -15,9 +15,9 @@ pub use operation::Operation;
 pub use operation::OperationName;
 pub use region::Region;
 pub use value::BlockArgument;
+pub use value::OpResult;
 pub use value::Type;
 pub use value::Value;
-pub use value::OpResult;
 
 use anyhow::Result;
 use std::fmt::Display;

@@ -1,9 +1,9 @@
 use crate::ir::Op;
-use std::fmt::Display;
 use crate::parser::Parse;
 use crate::parser::Parser;
-use std::sync::Arc;
 use anyhow::Result;
+use std::fmt::Display;
+use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct BlockArgument {

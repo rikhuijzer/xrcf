@@ -1,7 +1,7 @@
-use std::fmt::Display;
 use std::fmt::Debug;
+use std::fmt::Display;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Type {
     name: String,
 }

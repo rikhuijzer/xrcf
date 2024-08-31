@@ -63,11 +63,12 @@ impl Scanner {
         } else {
             self.source[self.start..self.current].to_string()
         };
-        self.tokens.push(Token {
+        self.tokens.push(Token::new(
             kind,
             lexeme,
-            literal: None,
-        });
+            None,
+            self.start,
+        ));
     }
     fn match_next(&mut self, expected: char) -> bool {
         if self.is_at_end() {

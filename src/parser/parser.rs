@@ -4,6 +4,7 @@ use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
+use crate::arith;
 use crate::ir::Operation;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
@@ -54,6 +55,7 @@ impl Parse for BuiltinParse {
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
+            "arith.addi" => <arith::Addi as Parse>::op(parser),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }
@@ -87,12 +89,21 @@ impl<T: Parse> Parser<T> {
         }
         self.peek().kind == kind
     }
-    fn expect(&mut self, kind: TokenKind) -> Result<Token> {
+    pub fn report_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
+        let code = self.tokens[0..self.current + 1].iter().map(|t| t.lexeme.to_string()).collect::<Vec<String>>().join(" ");
+        Err(anyhow::anyhow!(
+            "Expected {:?}, but got {:?}\n{}",
+            expected,
+            token.kind,
+            code
+        ))
+    }
+    pub fn expect(&mut self, kind: TokenKind) -> Result<Token> {
         if self.check(kind) {
             self.advance();
             Ok(self.previous().clone())
         } else {
-            Err(anyhow::anyhow!("Expected {:?}, but got {:?}", kind, self.peek().lexeme))
+            self.report_error(self.peek(), kind)
         }
     }
     pub fn block(&mut self) -> Result<Block> {

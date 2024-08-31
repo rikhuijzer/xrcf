@@ -1,5 +1,9 @@
 use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
+use crate::parser::Parse;
+use crate::parser::Parser;
+use crate::parser::TokenKind;
+use std::sync::Arc;
 use crate::ir::Op;
 use crate::typ::IntegerType;
 use crate::Dialect;
@@ -37,10 +41,8 @@ impl Display for ConstantOp {
     }
 }
 
-struct Addi {
+pub struct Addi {
     operation: Pin<Box<Operation>>,
-    lhs: IntegerAttr,
-    rhs: IntegerAttr,
 }
 
 impl Op for Addi {
@@ -55,6 +57,43 @@ impl Op for Addi {
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
+    }
+}
+
+use crate::ir::Value;
+use crate::ir::OpResult;
+use crate::ir::Type;
+use std::boxed::Box;
+
+impl<T: Parse> Parser<T> {
+    fn argument(&mut self) -> Result<Value> {
+        let identifier = self.expect(TokenKind::PercentIdentifier)?;
+        let name = identifier.lexeme.clone();
+        let typ = Type::new("any".to_string());
+        let value = Value::OpResult(OpResult::new(name, typ));
+        Ok(value)
+    }
+    fn arguments(&mut self) -> Result<Vec<Value>> {
+        let mut arguments = vec![];
+        while self.check(TokenKind::PercentIdentifier) {
+            arguments.push(self.argument()?);
+            if self.check(TokenKind::Comma) {
+                let _comma = self.advance();
+            }
+        }
+        Ok(arguments)
+    }
+}
+
+impl Parse for Addi {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        let mut operation = Operation::default();
+        operation.set_operands(Arc::new(parser.arguments()?));
+
+        Ok(Arc::new(Addi {
+            operation: Box::pin(operation),
+        }))
     }
 }
 
