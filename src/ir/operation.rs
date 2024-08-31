@@ -81,8 +81,16 @@ impl Operation {
         self.name = name;
         self
     }
+    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) -> &mut Self {
+        self.operands = operands;
+        self
+    }
     pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) -> &mut Self {
         self.attributes = attributes;
+        self
+    }
+    pub fn set_result_types(&mut self, result_types: Vec<Type>) -> &mut Self {
+        self.result_types = result_types;
         self
     }
     pub fn set_regions(&mut self, regions: Vec<Pin<Box<Region>>>) -> &mut Self {

@@ -57,8 +57,9 @@ impl Op for FuncOp {
             .join(", ");
         write!(f, "{}", joined)?;
         write!(f, ")")?;
-        if !self.operation().result_types().is_empty() {
-            let result_types = self.operation().result_types();
+        let operation = self.operation();
+        if !operation.result_types().is_empty() {
+            let result_types = operation.result_types();
             if result_types.len() == 1 {
                 write!(f, " -> {}", result_types.get(0).unwrap())?;
             } else {
@@ -159,7 +160,9 @@ impl Parse for FuncOp {
         parser.advance();
         let operands = parser.operands()?;
         let result_types = parser.result_types()?;
-        let operation = Box::pin(Operation::default());
+        let mut operation = Box::pin(Operation::default());
+        operation.set_operands(Arc::new(operands));
+        operation.set_result_types(result_types);
 
         let op = FuncOp {
             operation,
