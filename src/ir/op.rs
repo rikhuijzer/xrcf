@@ -154,14 +154,18 @@ impl Parse for FuncOp {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
+            println!("foo: {:?}", result);
             let result: Value = Value::OpResult(OpResult::new(
                 result, Type::new("any".to_string())));
             Some(result)
         } else {
+            println!("bar: {:?}", parser.peek().lexeme);
             None
         };
         let _operation_name = parser.advance();
+        println!("operation_name: {:?}", parser.previous().lexeme);
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
+        println!("identifier: {:?}", identifier);
         if !parser.check(TokenKind::LParen) {
             return Err(anyhow::anyhow!(
                 "Expected '(', got {:?}",

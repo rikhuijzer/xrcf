@@ -43,11 +43,14 @@ impl Parse for BuiltinParse {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let name = if parser.peek().kind == TokenKind::Equal {
             // Ignore result name and '='.
+            println!("peek_n(2): {:?}", parser.peek_n(2).kind);
             parser.peek_n(2)
         } else {
+            println!("peek: {:?}", parser.peek().kind);
             parser.peek()
         };
         let name = name.lexeme.clone();
+        println!("name: {:?}", name);
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
@@ -78,17 +81,27 @@ impl<T: Parse> Parser<T> {
     fn is_at_end(&self) -> bool {
         self.peek().kind == TokenKind::Eof
     }
-    pub fn block(&mut self) -> Result<Block> {
-        let label = self.advance().lexeme.clone();
-        let arguments = vec![];
-        let ops = vec![T::op(self)?];
-        Ok(Block::new(label, arguments, ops))
-    }
     pub fn check(&self, kind: TokenKind) -> bool {
         if self.is_at_end() {
             return false;
         }
         self.peek().kind == kind
+    }
+    fn expect(&mut self, kind: TokenKind) -> Result<Token> {
+        if self.check(kind) {
+            self.advance();
+            Ok(self.previous().clone())
+        } else {
+            Err(anyhow::anyhow!("Expected {:?}, but got {:?}", kind, self.peek().lexeme))
+        }
+    }
+    pub fn block(&mut self) -> Result<Block> {
+        let label = self.expect(TokenKind::PercentIdentifier)?;
+        let label = label.lexeme.clone();
+        let _equal = self.expect(TokenKind::Equal)?;
+        let arguments = vec![];
+        let ops = vec![T::op(self)?];
+        Ok(Block::new(label, arguments, ops))
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
@@ -100,15 +113,13 @@ impl<T: Parse> Parser<T> {
         false
     }
     pub fn region(&mut self) -> Result<Region> {
-        if !self.check(TokenKind::LBrace) {
-            todo!("Expected region to start with a '{{'");
-        }
-        self.advance();
+        let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
         while !self.check(TokenKind::RBrace) {
             let block = self.block()?;
             blocks.push(Box::pin(block));
         }
+        println!("RBrace: {:?}", self.peek().lexeme);
         self.advance();
         Ok(Region::new(blocks))
     }
