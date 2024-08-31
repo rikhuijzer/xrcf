@@ -40,8 +40,9 @@ pub struct Operation {
     name: OperationName,
     operands: Arc<Vec<Value>>,
     attributes: Vec<Arc<dyn Attribute>>,
+    results: Vec<Value>,
     result_types: Vec<Type>,
-    regions: Vec<Pin<Box<Region>>>,
+    region: Region,
     parent_block: Option<Pin<Box<Block>>>,
 }
 impl Operation {
@@ -49,16 +50,18 @@ impl Operation {
         name: OperationName,
         operands: Arc<Vec<Value>>,
         attributes: Vec<Arc<dyn Attribute>>,
+        results: Vec<Value>,
         result_types: Vec<Type>,
-        regions: Vec<Pin<Box<Region>>>,
+        region: Region,
         parent_block: Option<Pin<Box<Block>>>,
     ) -> Self {
         Self {
             name,
             operands,
             attributes,
+            results,
             result_types,
-            regions,
+            region,
             parent_block,
         }
     }
@@ -68,11 +71,14 @@ impl Operation {
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
         self.attributes.clone()
     }
+    pub fn results(&self) -> &Vec<Value> {
+        &self.results
+    }
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn regions(&self) -> Vec<&Pin<Box<Region>>> {
-        self.regions.iter().collect()
+    pub fn region(&self) -> &Region {
+        &self.region
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
@@ -93,8 +99,8 @@ impl Operation {
         self.result_types = result_types;
         self
     }
-    pub fn set_regions(&mut self, regions: Vec<Pin<Box<Region>>>) -> &mut Self {
-        self.regions = regions;
+    pub fn set_region(&mut self, region: Region) -> &mut Self {
+        self.region = region;
         self
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -102,9 +108,7 @@ impl Operation {
         for attribute in self.attributes.iter() {
             write!(f, " {}", attribute.display())?;
         }
-        for region in self.regions() {
-            write!(f, " {}", region)?;
-        }
+        write!(f, " {}", self.region())?;
         Ok(())
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
@@ -124,8 +128,9 @@ impl Default for Operation {
             name: OperationName::new("".to_string()),
             operands: Arc::new(vec![]),
             attributes: vec![],
+            results: vec![],
             result_types: vec![],
-            regions: vec![],
+            region: Region::new(vec![]),
             parent_block: None,
         }
     }

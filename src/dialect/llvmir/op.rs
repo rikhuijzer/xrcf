@@ -57,6 +57,7 @@ impl Display for GlobalOp {
 
 impl Parse for GlobalOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        let _operation_name = parser.advance();
         let name = OperationName::new(GlobalOp::name().to_string());
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
         if parser.check(TokenKind::BareIdentifier) {

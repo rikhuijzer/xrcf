@@ -1,7 +1,9 @@
 use crate::ir::BlockArgument;
 use crate::ir::Operation;
 use crate::ir::Type;
+use crate::ir::Region;
 use crate::ir::Value;
+use crate::ir::OpResult;
 use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
@@ -31,8 +33,8 @@ pub trait Op: Display {
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
-    operation: Pin<Box<Operation>>,
     identifier: String,
+    operation: Pin<Box<Operation>>,
 }
 
 impl Op for FuncOp {
@@ -150,6 +152,15 @@ impl<T: Parse> Parser<T> {
 impl Parse for FuncOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
+        let result = if parser.peek_n(1).kind == TokenKind::Equal {
+            let result = parser.advance().lexeme.clone();
+            let result: Value = Value::OpResult(OpResult::new(
+                result, Type::new("any".to_string())));
+            Some(result)
+        } else {
+            None
+        };
+        let _operation_name = parser.advance();
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
         if !parser.check(TokenKind::LParen) {
             return Err(anyhow::anyhow!(
@@ -157,16 +168,15 @@ impl Parse for FuncOp {
                 parser.peek().kind
             ));
         }
-        parser.advance();
-        let operands = parser.operands()?;
-        let result_types = parser.result_types()?;
+        let _lparen = parser.advance();
         let mut operation = Box::pin(Operation::default());
-        operation.set_operands(Arc::new(operands));
-        operation.set_result_types(result_types);
+        operation.set_operands(Arc::new(parser.operands()?));
+        operation.set_result_types(parser.result_types()?);
+        operation.set_region(parser.region()?);
 
         let op = FuncOp {
-            operation,
             identifier,
+            operation,
         };
         Ok(Arc::new(op))
     }
@@ -188,9 +198,10 @@ mod tests {
         let module = Parser::<BuiltinParse>::parse(src).unwrap();
         let op = module.first_op().unwrap();
         let repr = format!("{}", op);
+        let lines = repr.lines().collect::<Vec<&str>>();
         assert_eq!(
-            repr,
-            "func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64"
+            lines[0],
+            "func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64 {"
         );
     }
 }

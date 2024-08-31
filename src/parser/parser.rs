@@ -41,12 +41,17 @@ enum Dialects {
 
 impl Parse for BuiltinParse {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
-        let name = parser.advance();
-        let name = OperationName::new(name.lexeme.clone());
-        match name.name().as_str() {
+        let name = if parser.peek().kind == TokenKind::Equal {
+            // Ignore result name and '='.
+            parser.peek_n(2)
+        } else {
+            parser.peek()
+        };
+        let name = name.lexeme.clone();
+        match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
-            _ => Err(anyhow::anyhow!("Unknown operation: {}", name.name())),
+            _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }
 }
@@ -54,6 +59,9 @@ impl Parse for BuiltinParse {
 impl<T: Parse> Parser<T> {
     pub fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
+    }
+    pub fn previous_n(&self, n: usize) -> &Token {
+        &self.tokens[self.current - n]
     }
     pub fn advance(&mut self) -> &Token {
         if !self.is_at_end() {
@@ -64,10 +72,13 @@ impl<T: Parse> Parser<T> {
     pub fn peek(&self) -> &Token {
         self.tokens.get(self.current).unwrap()
     }
+    pub fn peek_n(&self, n: usize) -> &Token {
+        self.tokens.get(self.current + n).unwrap()
+    }
     fn is_at_end(&self) -> bool {
         self.peek().kind == TokenKind::Eof
     }
-    fn block(&mut self) -> Result<Block> {
+    pub fn block(&mut self) -> Result<Block> {
         let label = self.advance().lexeme.clone();
         let arguments = vec![];
         let ops = vec![T::op(self)?];
@@ -88,7 +99,7 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    fn region(&mut self) -> Result<Region> {
+    pub fn region(&mut self) -> Result<Region> {
         if !self.check(TokenKind::LBrace) {
             todo!("Expected region to start with a '{{'");
         }
@@ -100,14 +111,6 @@ impl<T: Parse> Parser<T> {
         }
         self.advance();
         Ok(Region::new(blocks))
-    }
-    fn regions(&mut self) -> Result<Vec<Region>> {
-        let mut regions = vec![];
-        while self.check(TokenKind::LBrace) {
-            let region = self.region()?;
-            regions.push(region);
-        }
-        Ok(regions)
     }
     pub fn parse(src: &str) -> Result<ModuleOp> {
         let mut parser = Parser::<T> {
@@ -124,9 +127,8 @@ impl<T: Parse> Parser<T> {
             let ops: Vec<Arc<dyn Op>> = vec![op];
             let block = Block::new("".to_string(), vec![], ops);
             let region = Region::new(vec![Box::pin(block)]);
-            let regions = vec![Box::pin(region)];
             let mut operation = Operation::default();
-            operation.set_name(name).set_regions(regions);
+            operation.set_name(name).set_region(region);
             let module_op = ModuleOp::from_operation(Box::pin(operation));
             module_op.unwrap()
         };

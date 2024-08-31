@@ -12,10 +12,12 @@ pub use block::Block;
 pub use op::FuncOp;
 pub use op::Op;
 pub use operation::Operation;
+pub use operation::OperationName;
 pub use region::Region;
 pub use value::BlockArgument;
 pub use value::Type;
 pub use value::Value;
+pub use value::OpResult;
 
 use anyhow::Result;
 use std::fmt::Display;
@@ -37,12 +39,6 @@ impl Op for ModuleOp {
         if operation.name() != Self::name() {
             return Err(anyhow::anyhow!("Expected module, got {}", operation.name()));
         }
-        if operation.regions().len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Expected 1 region, got {}",
-                operation.regions().len()
-            ));
-        }
         Ok(Self {
             operation: operation,
         })
@@ -62,14 +58,8 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    pub fn get_body_region(&self) -> Result<&Pin<Box<Region>>> {
-        if self.operation.regions().len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Expected 1 region, got {}",
-                self.operation.regions().len()
-            ));
-        }
-        Ok(self.operation.regions().first().unwrap())
+    pub fn get_body_region(&self) -> Result<&Region> {
+        Ok(&self.operation.region())
     }
     pub fn first_op(&self) -> Result<Arc<dyn Op>> {
         let body_region = self.get_body_region()?;
