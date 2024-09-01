@@ -1,7 +1,4 @@
 use crate::ir::Op;
-use crate::parser::Parse;
-use crate::parser::Parser;
-use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
 
