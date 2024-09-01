@@ -1,6 +1,9 @@
 use crate::parser::token::Token;
+use crate::parser::token::Location;
+use std::fmt::Display;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
+use std::fmt::Formatter;
 
 pub struct Scanner {
     source: String,
@@ -21,6 +24,9 @@ impl Scanner {
             line: 0,
             column: 0,
         }
+    }
+    fn source(&self) -> &str {
+        &self.source
     }
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
@@ -76,11 +82,12 @@ impl Scanner {
             self.source[self.start..self.current].to_string()
         };
         let diff = lexeme.len();
+        let column = self.column - diff;
+        let location = Location::new(self.line, column, self.start);
         self.tokens.push(Token::new(
             kind,
             lexeme,
-            self.line,
-            self.column - diff,
+            location,
         ));
     }
     fn match_next(&mut self, expected: char) -> bool {
@@ -202,6 +209,12 @@ impl Scanner {
         scanner.scan_tokens()?;
         Ok(scanner.tokens)
     }
+    pub fn show_error(&self, loc: &Location, msg: &str) -> String {
+        let lines = self.source.split('\n').collect::<Vec<&str>>();
+        let line = loc.line();
+        let line = lines[line];
+        format!("{}\n{}^ {}", line, " ".repeat(loc.column()), msg)
+    }
 }
 
 #[cfg(test)]
@@ -217,8 +230,8 @@ mod tests {
         let token = scan_token("42.5").unwrap();
         assert_eq!(token.kind, TokenKind::FloatLiteral);
         assert_eq!(token.lexeme, "42.5");
-        assert_eq!(token.line, 0);
-        assert_eq!(token.column, 0);
+        assert_eq!(token.location.line(), 0);
+        assert_eq!(token.location.column(), 0);
         let token = scan_token("42").unwrap();
         assert_eq!(token.kind, TokenKind::Integer);
         assert_eq!(token.lexeme, "42");
@@ -273,5 +286,24 @@ mod tests {
         assert_eq!(tokens[4].kind, TokenKind::Colon);
         assert_eq!(tokens[5].kind, TokenKind::IntType);
         assert_eq!(tokens[5].lexeme, "i64");
+
+        let src = "module {\n  %1 = arith.addi %0, %0 : i32\n}";
+        let mut scanner = Scanner::new(src.to_string());
+        scanner.scan_tokens().unwrap();
+        let tokens = &scanner.tokens;
+        for token in tokens {
+            println!("{}", token);
+        }
+        assert_eq!(tokens[4].lexeme, "arith.addi");
+        assert_eq!(tokens[4].location.line(), 1);
+        assert_eq!(tokens[4].location.column(), 7);
+
+        let text = scanner.source();
+        assert_eq!(text, src);
+
+        let text = scanner.show_error(&tokens[4].location, "test");
+        let lines = text.split('\n').collect::<Vec<&str>>();
+        assert_eq!(lines[0], "  %1 = arith.addi %0, %0 : i32");
+        assert_eq!(lines[1], "       ^ test");
     }
 }
