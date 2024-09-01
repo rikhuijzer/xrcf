@@ -203,8 +203,8 @@ impl Scanner {
         scanner.scan_tokens()?;
         Ok(scanner.tokens)
     }
-    pub fn show_error(&self, loc: &Location, msg: &str) -> String {
-        let lines = self.source.split('\n').collect::<Vec<&str>>();
+    pub fn report_error(src: &str, loc: &Location, msg: &str) -> String {
+        let lines = src.split('\n').collect::<Vec<&str>>();
         let n = loc.line();
         let prev_n = n - 1;
         let prev = if n > 0 { lines[prev_n] } else { "" };
@@ -214,7 +214,8 @@ impl Scanner {
             "".to_string()
         };
         let line = lines[n];
-        let err_indent = " ".repeat(loc.column());
+        let line_num_width = 4 + n.to_string().len();
+        let err_indent = " ".repeat(loc.column() + line_num_width);
         format!("{prev_line}\n{n}  | {line}\n{err_indent}^ {msg}")
     }
 }
@@ -303,10 +304,10 @@ mod tests {
         let text = scanner.source();
         assert_eq!(text, src);
 
-        let text = scanner.show_error(&tokens[4].location, "test");
+        let text = Scanner::report_error(src, &tokens[4].location, "test");
         let lines = text.split('\n').collect::<Vec<&str>>();
         assert_eq!(lines[0], "0  | module {");
         assert_eq!(lines[1], "1  |   %1 = arith.addi %0, %0 : i32");
-        assert_eq!(lines[2], "       ^ test");
+        assert_eq!(lines[2], "            ^ test");
     }
 }

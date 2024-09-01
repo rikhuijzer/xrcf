@@ -16,6 +16,7 @@ use std::any::Any;
 use std::sync::Arc;
 
 pub struct Parser<T: Parse> {
+    src: String,
     tokens: Vec<Token>,
     current: usize,
     parse_op: std::marker::PhantomData<T>,
@@ -96,13 +97,12 @@ impl<T: Parse> Parser<T> {
             .map(|t| t.lexeme.to_string())
             .collect::<Vec<String>>()
             .join(" ");
-        Err(anyhow::anyhow!(
+        let msg = format!(
             "Expected {:?}, but got \"{}\" of kind {:?}\n{}",
-            expected,
-            token.lexeme,
-            token.kind,
-            code
-        ))
+            expected, token.lexeme, token.kind, code
+        );
+        let msg = Scanner::report_error(&self.src, &token.location, &msg);
+        Err(anyhow::anyhow!(msg))
     }
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token> {
         if self.check(kind) {
@@ -147,6 +147,7 @@ impl<T: Parse> Parser<T> {
     }
     pub fn parse(src: &str) -> Result<ModuleOp> {
         let mut parser = Parser::<T> {
+            src: src.to_string(),
             tokens: Scanner::scan(src)?,
             current: 0,
             parse_op: std::marker::PhantomData,

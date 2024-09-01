@@ -30,7 +30,7 @@ impl Op for ConstantOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn display(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!()
     }
 }
