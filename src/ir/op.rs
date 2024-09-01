@@ -12,6 +12,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
+
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
 /// Note that the parser will parse the tokens into an `Operation`
@@ -27,6 +28,9 @@ pub trait Op: Display {
     fn operation(&self) -> &Pin<Box<Operation>>;
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.operation())
+    }
+    fn is_terminator(&self) -> bool {
+        false
     }
 }
 
@@ -152,18 +156,14 @@ impl Parse for FuncOp {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
-            println!("foo: {:?}", result);
             let result: Value =
                 Value::OpResult(OpResult::new(result, Type::new("any".to_string())));
             Some(result)
         } else {
-            println!("bar: {:?}", parser.peek().lexeme);
             None
         };
         let _operation_name = parser.advance();
-        println!("operation_name: {:?}", parser.previous().lexeme);
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
-        println!("identifier: {:?}", identifier);
         if !parser.check(TokenKind::LParen) {
             return Err(anyhow::anyhow!(
                 "Expected '(', got {:?}",

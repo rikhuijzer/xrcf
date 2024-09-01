@@ -95,6 +95,7 @@ impl Parse for Addi {
         let result_type = Type::new(result_type.lexeme.clone());
         operation.set_result_types(vec![result_type]);
 
+        println!("addi: {}", operation);
         Ok(Arc::new(Addi {
             operation: Box::pin(operation),
         }))

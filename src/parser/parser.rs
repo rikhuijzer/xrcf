@@ -42,16 +42,16 @@ enum Dialects {
 
 impl Parse for BuiltinParse {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        if parser.peek().lexeme == "return" {
+            todo!("found return");
+        }
         let name = if parser.peek().kind == TokenKind::Equal {
             // Ignore result name and '='.
-            println!("peek_n(2): {:?}", parser.peek_n(2).kind);
             parser.peek_n(2)
         } else {
-            println!("peek: {:?}", parser.peek().kind);
             parser.peek()
         };
         let name = name.lexeme.clone();
-        println!("name: {:?}", name);
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
@@ -112,7 +112,13 @@ impl<T: Parse> Parser<T> {
         let label = label.lexeme.clone();
         let _equal = self.expect(TokenKind::Equal)?;
         let arguments = vec![];
-        let ops = vec![T::op(self)?];
+        let mut ops = vec![];
+        while let Ok(op) = T::op(self) {
+            ops.push(op.clone());
+            if op.is_terminator() {
+                break;
+            }
+        }
         Ok(Block::new(label, arguments, ops))
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
@@ -131,7 +137,6 @@ impl<T: Parse> Parser<T> {
             let block = self.block()?;
             blocks.push(Box::pin(block));
         }
-        println!("RBrace: {:?}", self.peek().lexeme);
         self.advance();
         Ok(Region::new(blocks))
     }

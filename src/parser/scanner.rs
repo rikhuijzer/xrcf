@@ -64,7 +64,6 @@ impl Scanner {
         } else {
             word
         };
-        println!("word: {}", word);
         word
     }
     fn add_token(&mut self, kind: TokenKind) {
@@ -236,7 +235,7 @@ mod tests {
         assert_eq!(tokens[4].kind, TokenKind::Integer);
         assert_eq!(tokens[4].lexeme, "42");
         assert_eq!(tokens[5].kind, TokenKind::Colon);
-        assert_eq!(tokens[6].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[6].kind, TokenKind::IntType);
         assert_eq!(tokens[6].lexeme, "i32");
         assert_eq!(tokens[7].kind, TokenKind::RParen);
         assert_eq!(tokens[8].kind, TokenKind::Colon);
@@ -258,10 +257,10 @@ mod tests {
         assert_eq!(tokens[0].kind, TokenKind::BareIdentifier);
         assert_eq!(tokens[0].lexeme, "arith.addi");
         assert_eq!(tokens[1].kind, TokenKind::PercentIdentifier);
-        assert_eq!(tokens[1].lexeme, "%0");
+        assert_eq!(tokens[1].lexeme, "%arg0");
         assert_eq!(tokens[2].kind, TokenKind::Comma);
         assert_eq!(tokens[3].kind, TokenKind::PercentIdentifier);
-        assert_eq!(tokens[3].lexeme, "%1");
+        assert_eq!(tokens[3].lexeme, "%arg1");
         assert_eq!(tokens[4].kind, TokenKind::Colon);
         assert_eq!(tokens[5].kind, TokenKind::IntType);
         assert_eq!(tokens[5].lexeme, "i64");
