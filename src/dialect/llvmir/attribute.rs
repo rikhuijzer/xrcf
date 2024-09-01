@@ -32,6 +32,6 @@ impl Attribute for LinkageAttr {
         self.value.clone()
     }
     fn display(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "\"{}\"", self.value)
+        write!(f, "{}", self.value)
     }
 }

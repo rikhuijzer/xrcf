@@ -9,7 +9,6 @@ use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
 use anyhow::Result;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -33,10 +32,7 @@ impl Op for GlobalOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-}
-
-impl Display for GlobalOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", Self::name())?;
         for attribute in self.operation().attributes() {
             write!(f, "{}", attribute)?;

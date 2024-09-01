@@ -111,8 +111,6 @@ impl Operation {
     fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
         self.parent_block.as_ref()
     }
-    // TODO: This is a temporary test.
-    // TODO: This is a temporary test.
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
@@ -138,7 +136,9 @@ impl Display for Operation {
         for attribute in self.attributes.iter() {
             write!(f, " {}", attribute)?;
         }
-        write!(f, " {}", self.region())?;
+        if !self.region().is_empty() {
+            write!(f, " {}", self.region())?;
+        }
         Ok(())
     }
 }
