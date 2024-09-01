@@ -42,11 +42,11 @@ impl Display for ConstantOp {
     }
 }
 
-pub struct Addi {
+pub struct AddiOp {
     operation: Pin<Box<Operation>>,
 }
 
-impl Op for Addi {
+impl Op for AddiOp {
     fn name() -> &'static str {
         "arith.addi"
     }
@@ -78,7 +78,7 @@ impl<T: Parse> Parser<T> {
     }
 }
 
-impl Parse for Addi {
+impl Parse for AddiOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
@@ -89,13 +89,13 @@ impl Parse for Addi {
         operation.set_result_types(vec![result_type]);
 
         println!("addi: {}", operation);
-        Ok(Arc::new(Addi {
+        Ok(Arc::new(AddiOp {
             operation: Box::pin(operation),
         }))
     }
 }
 
-impl Display for Addi {
+impl Display for AddiOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         todo!("Implement display for addi")
     }

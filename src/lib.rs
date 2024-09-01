@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-mod arith;
 mod compile;
 mod dialect;
 mod ir;

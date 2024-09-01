@@ -1,4 +1,4 @@
-use crate::arith;
+use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
 use crate::ir;
@@ -57,7 +57,7 @@ impl Parse for BuiltinParse {
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
-            "arith.addi" => <arith::Addi as Parse>::op(parser),
+            "arith.addi" => <arith::AddiOp as Parse>::op(parser),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }

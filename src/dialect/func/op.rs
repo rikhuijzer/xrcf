@@ -215,5 +215,6 @@ mod tests {
             lines[0],
             "func.func @test_addi(%arg0 : i64, %arg1 : i64) -> i64 {"
         );
+        assert_eq!(lines[1], "  %0 = arith.addi %arg0, %arg1 : i64");
     }
 }
