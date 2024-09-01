@@ -92,14 +92,9 @@ impl<T: Parse> Parser<T> {
         self.peek().kind == kind
     }
     pub fn report_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
-        let code = self.tokens[0..self.current + 1]
-            .iter()
-            .map(|t| t.lexeme.to_string())
-            .collect::<Vec<String>>()
-            .join(" ");
         let msg = format!(
-            "Expected {:?}, but got \"{}\" of kind {:?}\n{}",
-            expected, token.lexeme, token.kind, code
+            "Expected {:?}, but got \"{}\" of kind {:?}",
+            expected, token.lexeme, token.kind
         );
         let msg = Scanner::report_error(&self.src, &token.location, &msg);
         Err(anyhow::anyhow!(format!("\n\n{msg}\n")))
@@ -186,6 +181,7 @@ mod tests {
 
         let repr = format!("{:#}", module_op);
         let lines: Vec<&str> = repr.split('\n').collect();
+        println!("{}", repr);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
         assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42) ");

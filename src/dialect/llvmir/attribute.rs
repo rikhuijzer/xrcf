@@ -1,6 +1,8 @@
 use crate::parser::Parser;
 use crate::Attribute;
 use crate::Parse;
+use std::fmt::Formatter;
+use std::fmt::Result;
 
 pub struct LinkageAttr {
     name: String,
@@ -26,10 +28,10 @@ impl Attribute for LinkageAttr {
             Some(Self::new(name, "external"))
         }
     }
-    fn value(&self) -> &'static str {
-        "todo"
-    }
-    fn display(&self) -> String {
+    fn value(&self) -> String {
         self.value.clone()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "\"{}\"", self.value)
     }
 }

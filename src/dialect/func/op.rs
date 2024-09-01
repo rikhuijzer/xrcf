@@ -8,7 +8,6 @@ use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
 use anyhow::Result;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -59,13 +58,8 @@ impl Op for FuncOp {
                 )?;
             }
         }
+        write!(f, " {}", self.operation().region())?;
         Ok(())
-    }
-}
-
-impl Display for FuncOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
     }
 }
 
@@ -185,12 +179,6 @@ impl Op for ReturnOp {
     }
 }
 
-impl Display for ReturnOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
-    }
-}
-
 impl Parse for ReturnOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
@@ -221,6 +209,7 @@ mod tests {
         let module = Parser::<BuiltinParse>::parse(src).unwrap();
         let op = module.first_op().unwrap();
         let repr = format!("{}", op);
+        println!("repr:\n{}\n", repr);
         let lines = repr.lines().collect::<Vec<&str>>();
         assert_eq!(
             lines[0],

@@ -9,7 +9,7 @@ use std::pin::Pin;
 /// Note that the parser will parse the tokens into an `Operation`
 /// and MLIR would cast the `Operation` into a specific `Op` variant
 /// such as `FuncOp`.
-pub trait Op: Display {
+pub trait Op {
     fn name() -> &'static str
     where
         Self: Sized;
@@ -17,10 +17,16 @@ pub trait Op: Display {
     where
         Self: Sized;
     fn operation(&self) -> &Pin<Box<Operation>>;
+    fn is_terminator(&self) -> bool {
+        false
+    }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.operation())
     }
-    fn is_terminator(&self) -> bool {
-        false
+}
+
+impl Display for dyn Op {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
     }
 }

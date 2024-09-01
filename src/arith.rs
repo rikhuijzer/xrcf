@@ -1,12 +1,16 @@
 use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
 use crate::ir::Op;
+use crate::ir::OpResult;
+use crate::ir::Type;
+use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
+use std::boxed::Box;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
@@ -30,14 +34,11 @@ impl Op for ConstantOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-    fn display(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
 }
 
 impl Display for ConstantOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
+        todo!()
     }
 }
 
@@ -55,15 +56,7 @@ impl Op for Addi {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
-    }
 }
-
-use crate::ir::OpResult;
-use crate::ir::Type;
-use crate::ir::Value;
-use std::boxed::Box;
 
 impl<T: Parse> Parser<T> {
     fn argument(&mut self) -> Result<Value> {
@@ -104,7 +97,7 @@ impl Parse for Addi {
 
 impl Display for Addi {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
+        todo!("Implement display for addi")
     }
 }
 

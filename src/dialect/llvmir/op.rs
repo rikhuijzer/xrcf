@@ -33,10 +33,13 @@ impl Op for GlobalOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+}
+
+impl Display for GlobalOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} ", Self::name())?;
         for attribute in self.operation().attributes() {
-            write!(f, "{}", attribute.display())?;
+            write!(f, "{}", attribute)?;
             if attribute.name() == "symbol_name" {
                 write!(f, "(")?;
             } else if attribute.name() == "value" {
@@ -46,12 +49,6 @@ impl Op for GlobalOp {
         }
         write!(f, ")")?;
         Ok(())
-    }
-}
-
-impl Display for GlobalOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
     }
 }
 

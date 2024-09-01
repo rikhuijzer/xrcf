@@ -14,8 +14,8 @@ impl Region {
     pub fn blocks(&self) -> Vec<&Pin<Box<Block>>> {
         self.blocks.iter().collect()
     }
-    fn print(&self) -> String {
-        todo!()
+    pub fn is_empty(&self) -> bool {
+        self.blocks.is_empty()
     }
 }
 
@@ -25,7 +25,6 @@ impl Display for Region {
         for block in self.blocks() {
             write!(f, "  {}", block)?;
         }
-        write!(f, "\n}}")?;
-        Ok(())
+        write!(f, "\n}}")
     }
 }

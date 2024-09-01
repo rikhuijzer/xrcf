@@ -3,6 +3,8 @@ use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Parse;
 use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result;
 
 /// Attributes are known-constant values of operations (a variable is not allowed).
 /// Attributes belong to operations and can be used to, for example, specify
@@ -16,8 +18,16 @@ pub trait Attribute {
         Self: Sized;
 
     fn name(&self) -> String;
-    fn value(&self) -> &'static str;
-    fn display(&self) -> String;
+    fn value(&self) -> String;
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{} = {}", self.name(), self.value())
+    }
+}
+
+impl Display for dyn Attribute {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        self.display(f)
+    }
 }
 
 pub struct Attributes {
@@ -31,9 +41,9 @@ impl Attributes {
 }
 
 impl Display for Attributes {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         for attribute in &self.attrs {
-            write!(f, "{}", attribute.display())?;
+            write!(f, "{}", attribute)?;
         }
         Ok(())
     }
@@ -70,11 +80,11 @@ impl Attribute for StrAttr {
     fn name(&self) -> String {
         self.name.clone()
     }
-    fn value(&self) -> &'static str {
-        todo!()
-    }
-    fn display(&self) -> String {
+    fn value(&self) -> String {
         self.value.clone()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "\"{}\"", self.value)
     }
 }
 
@@ -106,10 +116,10 @@ impl Attribute for AnyAttr {
     fn name(&self) -> String {
         self.name.clone()
     }
-    fn value(&self) -> &'static str {
-        todo!()
-    }
-    fn display(&self) -> String {
+    fn value(&self) -> String {
         self.value.clone()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.value)
     }
 }

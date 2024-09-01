@@ -94,13 +94,10 @@ impl Token {
     pub fn column(&self) -> usize {
         self.location.column()
     }
-    pub fn display(&self) -> String {
-        format!("{:?} \"{}\" {}", self.kind, self.lexeme, self.location)
-    }
 }
 
 impl Display for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.display())
+        write!(f, "{:?} \"{}\" {}", self.kind, self.lexeme, self.location)
     }
 }

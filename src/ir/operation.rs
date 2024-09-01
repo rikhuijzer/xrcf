@@ -107,14 +107,6 @@ impl Operation {
         self.region = region;
         self
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())?;
-        for attribute in self.attributes.iter() {
-            write!(f, " {}", attribute.display())?;
-        }
-        write!(f, " {}", self.region())?;
-        Ok(())
-    }
     /// Get the parent block (this is called `getBlock` in MLIR).
     fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
         self.parent_block.as_ref()
@@ -142,6 +134,11 @@ impl Default for Operation {
 
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
+        write!(f, "{}", self.name())?;
+        for attribute in self.attributes.iter() {
+            write!(f, " {}", attribute)?;
+        }
+        write!(f, " {}", self.region())?;
+        Ok(())
     }
 }

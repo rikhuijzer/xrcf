@@ -45,14 +45,11 @@ impl Op for ModuleOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation())
-    }
 }
 
 impl Display for ModuleOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
+        write!(f, "{}", self.operation())
     }
 }
 
