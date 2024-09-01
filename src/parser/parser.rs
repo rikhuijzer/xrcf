@@ -1,11 +1,11 @@
-use crate::dialect::llvmir;
+use crate::arith;
 use crate::dialect::func;
+use crate::dialect::llvmir;
 use crate::ir;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
-use crate::arith;
 use crate::ir::Operation;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
@@ -91,7 +91,11 @@ impl<T: Parse> Parser<T> {
         self.peek().kind == kind
     }
     pub fn report_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
-        let code = self.tokens[0..self.current + 1].iter().map(|t| t.lexeme.to_string()).collect::<Vec<String>>().join(" ");
+        let code = self.tokens[0..self.current + 1]
+            .iter()
+            .map(|t| t.lexeme.to_string())
+            .collect::<Vec<String>>()
+            .join(" ");
         Err(anyhow::anyhow!(
             "Expected {:?}, but got \"{}\" of kind {:?}\n{}",
             expected,

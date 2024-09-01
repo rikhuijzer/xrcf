@@ -1,16 +1,16 @@
 use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
+use crate::ir::Op;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
-use std::sync::Arc;
-use crate::ir::Op;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
+use std::sync::Arc;
 
 struct Arith {}
 
@@ -60,9 +60,9 @@ impl Op for Addi {
     }
 }
 
-use crate::ir::Value;
 use crate::ir::OpResult;
 use crate::ir::Type;
+use crate::ir::Value;
 use std::boxed::Box;
 
 impl<T: Parse> Parser<T> {

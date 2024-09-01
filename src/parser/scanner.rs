@@ -1,8 +1,8 @@
-use crate::parser::token::Token;
 use crate::parser::token::Location;
-use std::fmt::Display;
+use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
+use std::fmt::Display;
 use std::fmt::Formatter;
 
 pub struct Scanner {
@@ -84,11 +84,7 @@ impl Scanner {
         let diff = lexeme.len();
         let column = self.column - diff;
         let location = Location::new(self.line, column, self.start);
-        self.tokens.push(Token::new(
-            kind,
-            lexeme,
-            location,
-        ));
+        self.tokens.push(Token::new(kind, lexeme, location));
     }
     fn match_next(&mut self, expected: char) -> bool {
         if self.is_at_end() {

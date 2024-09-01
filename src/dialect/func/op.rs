@@ -1,4 +1,5 @@
 use crate::ir::BlockArgument;
+use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
@@ -11,7 +12,6 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
-use crate::ir::Op;
 
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.

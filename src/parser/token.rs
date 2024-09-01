@@ -57,7 +57,11 @@ impl Display for Location {
 
 impl Location {
     pub fn new(line: usize, column: usize, start: usize) -> Self {
-        Self { line, column, start}
+        Self {
+            line,
+            column,
+            start,
+        }
     }
     pub fn line(&self) -> usize {
         self.line

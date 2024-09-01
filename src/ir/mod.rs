@@ -5,11 +5,11 @@ pub mod operation;
 pub mod region;
 pub mod value;
 
+pub use crate::dialect::func::FuncOp;
 pub use attribute::AnyAttr;
 pub use attribute::Attribute;
 pub use attribute::StrAttr;
 pub use block::Block;
-pub use crate::dialect::func::FuncOp;
 pub use op::Op;
 pub use operation::Operation;
 pub use region::Region;

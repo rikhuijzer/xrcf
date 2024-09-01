@@ -1,2 +1,2 @@
-pub mod llvmir;
 pub mod func;
+pub mod llvmir;
