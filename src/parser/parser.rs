@@ -102,7 +102,7 @@ impl<T: Parse> Parser<T> {
             expected, token.lexeme, token.kind, code
         );
         let msg = Scanner::report_error(&self.src, &token.location, &msg);
-        Err(anyhow::anyhow!(msg))
+        Err(anyhow::anyhow!(format!("\n\n{msg}\n")))
     }
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token> {
         if self.check(kind) {
