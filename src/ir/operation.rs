@@ -133,10 +133,27 @@ impl Default for Operation {
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name())?;
+        if !self.operands().is_empty() {
+            let joined = self
+                .operands()
+                .iter()
+                .map(|o| o.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+            write!(f, " {}", joined)?;
+        }
         for attribute in self.attributes.iter() {
             write!(f, " {}", attribute)?;
         }
-        if !self.region().is_empty() {
+        if !self.result_types.is_empty() {
+            write!(f, " :")?;
+            for result_type in self.result_types.iter() {
+                write!(f, " {}", result_type)?;
+            }
+        }
+        if self.region().is_empty() {
+            write!(f, "\n")?;
+        } else {
             write!(f, " {}", self.region())?;
         }
         Ok(())
