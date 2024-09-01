@@ -8,6 +8,7 @@ pub struct Scanner {
     start: usize,
     current: usize,
     line: usize,
+    column: usize,
 }
 
 impl Scanner {
@@ -17,7 +18,8 @@ impl Scanner {
             tokens: Vec::new(),
             start: 0,
             current: 0,
-            line: 1,
+            line: 0,
+            column: 0,
         }
     }
     fn is_at_end(&self) -> bool {
@@ -26,6 +28,7 @@ impl Scanner {
     fn advance(&mut self) -> char {
         let c = self.source.chars().nth(self.current).unwrap();
         self.current += 1;
+        self.column += 1;
         c
     }
     fn peek(&self) -> char {
@@ -72,11 +75,12 @@ impl Scanner {
         } else {
             self.source[self.start..self.current].to_string()
         };
+        let diff = lexeme.len();
         self.tokens.push(Token::new(
             kind,
             lexeme,
-            None,
-            self.start,
+            self.line,
+            self.column - diff,
         ));
     }
     fn match_next(&mut self, expected: char) -> bool {
@@ -172,7 +176,10 @@ impl Scanner {
             ',' => self.add_token(TokenKind::Comma),
             '=' => self.add_token(TokenKind::Equal),
             ' ' | '\r' | '\t' => (),
-            '\n' => self.line += 1,
+            '\n' => {
+                self.line += 1;
+                self.column = 0;
+            }
             '-' => self.arrow_or_minus()?,
             s if self.is_int_type_start(s) => self.int_type(s)?,
             s if s.is_digit(10) => self.number()?,
@@ -210,6 +217,8 @@ mod tests {
         let token = scan_token("42.5").unwrap();
         assert_eq!(token.kind, TokenKind::FloatLiteral);
         assert_eq!(token.lexeme, "42.5");
+        assert_eq!(token.line, 0);
+        assert_eq!(token.column, 0);
         let token = scan_token("42").unwrap();
         assert_eq!(token.kind, TokenKind::Integer);
         assert_eq!(token.lexeme, "42");

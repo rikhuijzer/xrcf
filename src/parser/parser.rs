@@ -1,4 +1,5 @@
 use crate::dialect::llvmir;
+use crate::dialect::func;
 use crate::ir;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
@@ -43,7 +44,7 @@ enum Dialects {
 impl Parse for BuiltinParse {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         if parser.peek().lexeme == "return" {
-            todo!("found return");
+            return <func::ReturnOp as Parse>::op(parser);
         }
         let name = if parser.peek().kind == TokenKind::Equal {
             // Ignore result name and '='.

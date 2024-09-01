@@ -73,7 +73,7 @@ impl<T: Parse> Parser<T> {
         let value = Value::OpResult(OpResult::new(name, typ));
         Ok(value)
     }
-    fn arguments(&mut self) -> Result<Vec<Value>> {
+    pub fn arguments(&mut self) -> Result<Vec<Value>> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             arguments.push(self.argument()?);

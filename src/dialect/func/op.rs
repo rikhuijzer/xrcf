@@ -166,6 +166,45 @@ impl Parse for FuncOp {
     }
 }
 
+pub struct ReturnOp {
+    operation: Pin<Box<Operation>>,
+}
+
+impl Op for ReturnOp {
+    fn name() -> &'static str {
+        "return"
+    }
+    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+        Ok(ReturnOp { operation })
+    }
+    fn operation(&self) -> &Pin<Box<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "return FOOO")
+    }
+}
+
+impl Display for ReturnOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f)
+    }
+}
+
+impl Parse for ReturnOp {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        let mut operation = Box::pin(Operation::default());
+        operation.set_operands(Arc::new(parser.arguments()?));
+        let _colon = parser.expect(TokenKind::Colon)?;
+        let return_type = parser.expect(TokenKind::IntType)?;
+        let return_type = Type::new(return_type.lexeme.clone());
+        operation.set_result_types(vec![return_type]);
+        let op = ReturnOp { operation };
+        Ok(Arc::new(op))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::parser::parser::BuiltinParse;

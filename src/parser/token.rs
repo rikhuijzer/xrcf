@@ -38,19 +38,21 @@ pub enum TokenKind {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Token {
+    /// The kind of token, such as `@foo` (AtIdentifier) or `i64` (IntType).
     pub kind: TokenKind,
+    /// The lexeme of the token, such as `@foo` (AtIdentifier) or `i64` (IntType).
     pub lexeme: String,
-    pub literal: Option<String>,
-    pub position: usize,
+    pub line: usize,
+    pub column: usize,
 }
 
 impl Token {
-    pub fn new(kind: TokenKind, lexeme: String, literal: Option<String>, position: usize) -> Self {
+    pub fn new(kind: TokenKind, lexeme: String, line: usize, column: usize) -> Self {
         Self {
             kind,
             lexeme,
-            literal,
-            position,
+            line,
+            column,
         }
     }
     pub fn print(&self) -> String {
