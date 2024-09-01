@@ -207,9 +207,12 @@ impl Scanner {
     }
     pub fn show_error(&self, loc: &Location, msg: &str) -> String {
         let lines = self.source.split('\n').collect::<Vec<&str>>();
-        let line = loc.line();
-        let line = lines[line];
-        format!("{}\n{}^ {}", line, " ".repeat(loc.column()), msg)
+        let n = loc.line();
+        let prev_n = n - 1;
+        let prev = if n > 0 { lines[prev_n] } else { "" };
+        let line = lines[n];
+        let err_indent = " ".repeat(loc.column());
+        format!("{prev_n}  | {prev}\n{n}  | {line}\n{err_indent}^ {msg}")
     }
 }
 
@@ -299,7 +302,8 @@ mod tests {
 
         let text = scanner.show_error(&tokens[4].location, "test");
         let lines = text.split('\n').collect::<Vec<&str>>();
-        assert_eq!(lines[0], "  %1 = arith.addi %0, %0 : i32");
-        assert_eq!(lines[1], "       ^ test");
+        assert_eq!(lines[0], "0  | module {");
+        assert_eq!(lines[1], "1  |   %1 = arith.addi %0, %0 : i32");
+        assert_eq!(lines[2], "       ^ test");
     }
 }
