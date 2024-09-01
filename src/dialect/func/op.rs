@@ -2,6 +2,7 @@ use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
+use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::TokenKind;
@@ -20,8 +21,8 @@ pub struct FuncOp {
 }
 
 impl Op for FuncOp {
-    fn name() -> &'static str {
-        "func.func"
+    fn operation_name() -> OperationName {
+        OperationName::new("func.func".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
@@ -165,8 +166,8 @@ pub struct ReturnOp {
 }
 
 impl Op for ReturnOp {
-    fn name() -> &'static str {
-        "return"
+    fn operation_name() -> OperationName {
+        OperationName::new("return".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         Ok(ReturnOp { operation })

@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 #[derive(Clone)]
 pub struct OperationName {
-    name: String, // TODO: Should be StringAttr,
+    name: String,
 }
 
 impl OperationName {

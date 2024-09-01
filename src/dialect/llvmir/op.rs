@@ -18,11 +18,11 @@ pub struct GlobalOp {
 }
 
 impl Op for GlobalOp {
-    fn name() -> &'static str {
-        "llvm.mlir.global"
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.mlir.global".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
-        if operation.name() != Self::name() {
+        if operation.name() != Self::operation_name().name() {
             return Err(anyhow::anyhow!("Expected global, got {}", operation.name()));
         }
         Ok(Self {
@@ -33,7 +33,7 @@ impl Op for GlobalOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} ", Self::name())?;
+        write!(f, "{} ", Self::operation_name().name())?;
         for attribute in self.operation().attributes() {
             write!(f, "{}", attribute)?;
             if attribute.name() == "symbol_name" {
@@ -51,7 +51,7 @@ impl Op for GlobalOp {
 impl Parse for GlobalOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.advance();
-        let name = OperationName::new(GlobalOp::name().to_string());
+        let name = GlobalOp::operation_name();
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {

@@ -2,6 +2,7 @@ use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
 use crate::ir::Op;
 use crate::ir::OpResult;
+use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parse;
@@ -11,7 +12,6 @@ use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
 use std::boxed::Box;
-use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
@@ -25,8 +25,8 @@ struct ConstantOp {
 }
 
 impl Op for ConstantOp {
-    fn name() -> &'static str {
-        "arith.contant"
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.contant".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
@@ -34,11 +34,8 @@ impl Op for ConstantOp {
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
     }
-}
-
-impl Display for ConstantOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!("Implement display for constant")
     }
 }
 
@@ -47,14 +44,17 @@ pub struct AddiOp {
 }
 
 impl Op for AddiOp {
-    fn name() -> &'static str {
-        "arith.addi"
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.addi".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
     fn operation(&self) -> &Pin<Box<Operation>> {
         &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.operation())
     }
 }
 
@@ -82,22 +82,16 @@ impl Parse for AddiOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
+        operation.set_name(AddiOp::operation_name());
         operation.set_operands(Arc::new(parser.arguments()?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = Type::new(result_type.lexeme.clone());
         operation.set_result_types(vec![result_type]);
 
-        println!("addi: {}", operation);
         Ok(Arc::new(AddiOp {
             operation: Box::pin(operation),
         }))
-    }
-}
-
-impl Display for AddiOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!("Implement display for addi")
     }
 }
 

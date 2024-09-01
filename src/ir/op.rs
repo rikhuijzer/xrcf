@@ -1,4 +1,5 @@
 use crate::ir::Operation;
+use crate::ir::OperationName;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -10,7 +11,7 @@ use std::pin::Pin;
 /// and MLIR would cast the `Operation` into a specific `Op` variant
 /// such as `FuncOp`.
 pub trait Op {
-    fn name() -> &'static str
+    fn operation_name() -> OperationName
     where
         Self: Sized;
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self>

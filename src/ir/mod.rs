@@ -12,6 +12,7 @@ pub use attribute::StrAttr;
 pub use block::Block;
 pub use op::Op;
 pub use operation::Operation;
+pub use operation::OperationName;
 pub use region::Region;
 pub use value::BlockArgument;
 pub use value::OpResult;
@@ -31,11 +32,11 @@ pub struct ModuleOp {
 }
 
 impl Op for ModuleOp {
-    fn name() -> &'static str {
-        "module"
+    fn operation_name() -> OperationName {
+        OperationName::new("module".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
-        if operation.name() != Self::name() {
+        if operation.name() != Self::operation_name().name() {
             return Err(anyhow::anyhow!("Expected module, got {}", operation.name()));
         }
         Ok(Self {
