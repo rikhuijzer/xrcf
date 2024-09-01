@@ -92,8 +92,9 @@ impl<T: Parse> Parser<T> {
     pub fn report_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
         let code = self.tokens[0..self.current + 1].iter().map(|t| t.lexeme.to_string()).collect::<Vec<String>>().join(" ");
         Err(anyhow::anyhow!(
-            "Expected {:?}, but got {:?}\n{}",
+            "Expected {:?}, but got \"{}\" of kind {:?}\n{}",
             expected,
+            token.lexeme,
             token.kind,
             code
         ))

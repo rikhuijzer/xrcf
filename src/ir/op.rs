@@ -175,6 +175,9 @@ impl Parse for FuncOp {
         operation.set_operands(Arc::new(parser.block_arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
+        if let Some(result) = result {
+            operation.set_results(vec![result]);
+        }
 
         let op = FuncOp {
             identifier,

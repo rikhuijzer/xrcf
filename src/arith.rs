@@ -90,6 +90,10 @@ impl Parse for Addi {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
         operation.set_operands(Arc::new(parser.arguments()?));
+        let _colon = parser.expect(TokenKind::Colon)?;
+        let result_type = parser.expect(TokenKind::IntType)?;
+        let result_type = Type::new(result_type.lexeme.clone());
+        operation.set_result_types(vec![result_type]);
 
         Ok(Arc::new(Addi {
             operation: Box::pin(operation),

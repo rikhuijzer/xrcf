@@ -46,15 +46,25 @@ impl Scanner {
         }
         self.source.chars().nth(self.current + n).unwrap()
     }
-    fn peek_word(&self) -> String {
+    fn peek_word(&mut self, already_matched: Option<char>) -> String {
         let mut word = String::new();
         for i in 0..10 {
             let c = self.peek_n(i);
-            if c == ' ' || c == '\0' {
-                break;
-            }
-            word.push(c);
+            match c {
+                '0'..='9' | 'a'..='z' | 'A'..='Z' | '_' => {
+                    word.push(c);
+                }
+                _ => {
+                    break;
+                }
+            };
         }
+        let word = if let Some(c) = already_matched {
+            format!("{}{}", c, word)
+        } else {
+            word
+        };
+        println!("word: {}", word);
         word
     }
     fn add_token(&mut self, kind: TokenKind) {
@@ -139,7 +149,7 @@ impl Scanner {
         types.contains(&word)
     }
     fn int_type(&mut self, c: char) -> Result<()> {
-        let word = format!("{}{}", c, self.peek_word());
+        let word = self.peek_word(Some(c));
         if Scanner::is_int_type(&word) {
             for _ in 0..(word.len() - 1) {
                 self.advance();
@@ -149,7 +159,7 @@ impl Scanner {
         Ok(())
     }
     fn is_int_type_start(&mut self, c: char) -> bool {
-        let word = format!("{}{}", c, self.peek_word());
+        let word = self.peek_word(Some(c));
         Scanner::is_int_type(&word)
     }
     fn scan_token(&mut self) -> Result<()> {
@@ -242,5 +252,18 @@ mod tests {
         assert_eq!(tokens[2].kind, TokenKind::IntType);
         assert_eq!(tokens[2].lexeme, "i32");
         assert_eq!(tokens[3].kind, TokenKind::Eof);
+
+        let tokens = Scanner::scan("arith.addi %arg0, %arg1 : i64\n").unwrap();
+        assert_eq!(tokens.len(), 7);
+        assert_eq!(tokens[0].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[0].lexeme, "arith.addi");
+        assert_eq!(tokens[1].kind, TokenKind::PercentIdentifier);
+        assert_eq!(tokens[1].lexeme, "%0");
+        assert_eq!(tokens[2].kind, TokenKind::Comma);
+        assert_eq!(tokens[3].kind, TokenKind::PercentIdentifier);
+        assert_eq!(tokens[3].lexeme, "%1");
+        assert_eq!(tokens[4].kind, TokenKind::Colon);
+        assert_eq!(tokens[5].kind, TokenKind::IntType);
+        assert_eq!(tokens[5].lexeme, "i64");
     }
 }
