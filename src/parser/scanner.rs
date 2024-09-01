@@ -2,8 +2,6 @@ use crate::parser::token::Location;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
-use std::fmt::Display;
-use std::fmt::Formatter;
 
 pub struct Scanner {
     source: String,
@@ -210,9 +208,14 @@ impl Scanner {
         let n = loc.line();
         let prev_n = n - 1;
         let prev = if n > 0 { lines[prev_n] } else { "" };
+        let prev_line = if n > 0 {
+            format!("{prev_n}  | {prev}")
+        } else {
+            "".to_string()
+        };
         let line = lines[n];
         let err_indent = " ".repeat(loc.column());
-        format!("{prev_n}  | {prev}\n{n}  | {line}\n{err_indent}^ {msg}")
+        format!("{prev_line}\n{n}  | {line}\n{err_indent}^ {msg}")
     }
 }
 
