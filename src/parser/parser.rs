@@ -22,6 +22,12 @@ pub struct Parser<T: Parse> {
     parse_op: std::marker::PhantomData<T>,
 }
 
+impl<T: Parse> Parser<T> {
+    pub fn tokens(&self) -> &Vec<Token> {
+        &self.tokens
+    }
+}
+
 /// Downstream crates can implement this trait to support custom parsing.
 /// The default implementation can only know about operations defined in
 /// this crate.
@@ -108,9 +114,11 @@ impl<T: Parse> Parser<T> {
         }
     }
     pub fn block(&mut self) -> Result<Block> {
-        let label = self.expect(TokenKind::PercentIdentifier)?;
-        let label = label.lexeme.clone();
-        let _equal = self.expect(TokenKind::Equal)?;
+        // Not all blocks have a label.
+        // let label = self.expect(TokenKind::PercentIdentifier)?;
+        // let label = label.lexeme.clone();
+        // println!("label: {}", label);
+        // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = vec![];
         let mut ops = vec![];
         while let Ok(op) = T::op(self) {
@@ -119,7 +127,7 @@ impl<T: Parse> Parser<T> {
                 break;
             }
         }
-        Ok(Block::new(label, arguments, ops))
+        Ok(Block::new(None, arguments, ops))
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
@@ -154,7 +162,7 @@ impl<T: Parse> Parser<T> {
         } else {
             let name = OperationName::new("module".to_string());
             let ops: Vec<Arc<dyn Op>> = vec![op];
-            let block = Block::new("".to_string(), vec![], ops);
+            let block = Block::new(None, vec![], ops);
             let region = Region::new(vec![Box::pin(block)]);
             let mut operation = Operation::default();
             operation.set_name(name).set_region(region);

@@ -142,6 +142,7 @@ impl Display for Operation {
                 .join(", ");
             write!(f, " {}", joined)?;
         }
+        println!("self.results: {:?}", self.results());
         for attribute in self.attributes.iter() {
             write!(f, " {}", attribute)?;
         }

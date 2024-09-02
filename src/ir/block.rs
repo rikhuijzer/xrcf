@@ -8,13 +8,17 @@ pub struct BlockArgument {
 }
 
 pub struct Block {
-    label: String,
+    label: Option<String>,
     arguments: Vec<BlockArgument>,
     ops: Vec<Arc<dyn Op>>,
 }
 
 impl Block {
-    pub fn new(label: String, arguments: Vec<BlockArgument>, ops: Vec<Arc<dyn Op>>) -> Self {
+    pub fn new(
+        label: Option<String>,
+        arguments: Vec<BlockArgument>,
+        ops: Vec<Arc<dyn Op>>,
+    ) -> Self {
         Self {
             label,
             arguments,
@@ -28,8 +32,8 @@ impl Block {
 
 impl Display for Block {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if !self.label.is_empty() {
-            write!(f, "{} ", self.label)?;
+        if let Some(label) = &self.label {
+            write!(f, "{} ", label)?;
         }
         for op in self.ops() {
             write!(f, "{} ", op)?;
