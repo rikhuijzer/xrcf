@@ -97,7 +97,11 @@ impl<T: Parse> Parser<T> {
         }
         self.peek().kind == kind
     }
-    pub fn report_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
+    pub fn report_error(&self, token: &Token, msg: &str) -> Result<Token> {
+        let msg = Scanner::report_error(&self.src, &token.location, msg);
+        Err(anyhow::anyhow!(format!("\n\n{msg}\n")))
+    }
+    pub fn report_token_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
         let msg = format!(
             "Expected {:?}, but got \"{}\" of kind {:?}",
             expected, token.lexeme, token.kind
@@ -110,7 +114,7 @@ impl<T: Parse> Parser<T> {
             self.advance();
             Ok(self.previous().clone())
         } else {
-            self.report_error(self.peek(), kind)
+            self.report_token_error(self.peek(), kind)
         }
     }
     pub fn block(&mut self) -> Result<Block> {
@@ -121,11 +125,22 @@ impl<T: Parse> Parser<T> {
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = vec![];
         let mut ops = vec![];
+        let mut i = 0;
+        let max = 100_000;
         while let Ok(op) = T::op(self) {
             ops.push(op.clone());
             if op.is_terminator() {
                 break;
             }
+
+            i += 1;
+            if 100_000 < i {
+                return Err(anyhow::anyhow!("Operation parsing ended up in an infinite loop"))
+            }
+        }
+        if i == 0 {
+            let token = self.peek();
+            self.report_error(&token, "Block has no operations.")?;
         }
         Ok(Block::new(None, arguments, ops))
     }
@@ -141,10 +156,10 @@ impl<T: Parse> Parser<T> {
     pub fn region(&mut self) -> Result<Region> {
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
-        while !self.check(TokenKind::RBrace) {
-            let block = self.block()?;
-            blocks.push(Box::pin(block));
-        }
+        // while !self.check(TokenKind::RBrace) {
+        let block = self.block()?;
+        blocks.push(Box::pin(block));
+        // }
         self.advance();
         Ok(Region::new(blocks))
     }

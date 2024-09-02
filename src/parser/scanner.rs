@@ -294,9 +294,6 @@ mod tests {
         let mut scanner = Scanner::new(src.to_string());
         scanner.scan_tokens().unwrap();
         let tokens = &scanner.tokens;
-        for token in tokens {
-            println!("{}", token);
-        }
         assert_eq!(tokens[4].lexeme, "arith.addi");
         assert_eq!(tokens[4].location.line(), 1);
         assert_eq!(tokens[4].location.column(), 7);

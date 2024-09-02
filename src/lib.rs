@@ -23,7 +23,3 @@ pub trait Dialect {
     fn name(&self) -> &'static str;
     fn description(&self) -> &'static str;
 }
-
-fn main() {
-    println!("Hello, world!");
-}
