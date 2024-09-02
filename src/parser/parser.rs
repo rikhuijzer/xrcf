@@ -125,22 +125,13 @@ impl<T: Parse> Parser<T> {
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = vec![];
         let mut ops = vec![];
-        let mut i = 0;
-        let max = 100_000;
         while let Ok(op) = T::op(self) {
             ops.push(op.clone());
             if op.is_terminator() {
                 break;
             }
-
-            i += 1;
-            if 100_000 < i {
-                return Err(anyhow::anyhow!(
-                    "Operation parsing ended up in an infinite loop"
-                ));
-            }
         }
-        if i == 0 {
+        if ops.is_empty() {
             let token = self.peek();
             self.report_error(&token, "Could not find operations in block")?;
         }
