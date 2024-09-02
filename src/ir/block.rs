@@ -14,7 +14,11 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn new(label: Option<String>, arguments: Vec<BlockArgument>, ops: Vec<Arc<dyn Op>>) -> Self {
+    pub fn new(
+        label: Option<String>,
+        arguments: Vec<BlockArgument>,
+        ops: Vec<Arc<dyn Op>>,
+    ) -> Self {
         Self {
             label,
             arguments,

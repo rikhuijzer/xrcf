@@ -135,12 +135,14 @@ impl<T: Parse> Parser<T> {
 
             i += 1;
             if 100_000 < i {
-                return Err(anyhow::anyhow!("Operation parsing ended up in an infinite loop"))
+                return Err(anyhow::anyhow!(
+                    "Operation parsing ended up in an infinite loop"
+                ));
             }
         }
         if i == 0 {
             let token = self.peek();
-            self.report_error(&token, "Block has no operations.")?;
+            self.report_error(&token, "Could not find operations in block")?;
         }
         Ok(Block::new(None, arguments, ops))
     }
