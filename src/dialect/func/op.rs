@@ -176,7 +176,21 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "return FOOO")
+        let operation = self.operation();
+        let operands = operation.operands().clone();
+        write!(f, "  return")?;
+        for operand in &*operands {
+            write!(f, " {}", operand)?;
+        }
+        let result_types = operation.result_types();
+        assert!(!result_types.is_empty(), "Expected result types to be set");
+        let result_types = result_types
+            .iter()
+            .map(|t| t.to_string())
+            .collect::<Vec<String>>()
+            .join(", ");
+        write!(f, " : {}", result_types)?;
+        Ok(())
     }
 }
 
