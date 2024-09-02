@@ -157,7 +157,9 @@ impl Display for Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        if !self.region().is_empty() {
+        if self.region().is_empty() {
+            write!(f, "\n")?;
+        } else {
             write!(f, " {}", self.region())?;
         }
         Ok(())

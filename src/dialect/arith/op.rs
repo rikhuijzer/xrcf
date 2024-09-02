@@ -92,7 +92,7 @@ impl Parse for AddiOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
-        
+
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());

@@ -126,7 +126,9 @@ impl<T: Parse> Parser<T> {
         let arguments = vec![];
         let mut ops = vec![];
         loop {
-            if self.peek_n(1).kind == TokenKind::Equal {
+            let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
+            let is_return = self.peek().lexeme == "return";
+            if is_ssa_def || is_return {
                 let op = T::op(self)?;
                 ops.push(op.clone());
                 if op.is_terminator() {
@@ -154,10 +156,8 @@ impl<T: Parse> Parser<T> {
     pub fn region(&mut self) -> Result<Region> {
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
-        // while !self.check(TokenKind::RBrace) {
         let block = self.block()?;
         blocks.push(Box::pin(block));
-        // }
         self.advance();
         Ok(Region::new(blocks))
     }
