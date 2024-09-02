@@ -36,7 +36,7 @@ impl Display for Block {
             write!(f, "{} ", label)?;
         }
         for op in self.ops() {
-            write!(f, "{} ", op)?;
+            write!(f, "{}", op)?;
         }
         Ok(())
     }

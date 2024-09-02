@@ -53,7 +53,7 @@ impl Parse for BuiltinParse {
         if parser.peek().lexeme == "return" {
             return <func::ReturnOp as Parse>::op(parser);
         }
-        let name = if parser.peek().kind == TokenKind::Equal {
+        let name = if parser.peek_n(1).kind == TokenKind::Equal {
             // Ignore result name and '='.
             parser.peek_n(2)
         } else {
@@ -125,9 +125,14 @@ impl<T: Parse> Parser<T> {
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = vec![];
         let mut ops = vec![];
-        while let Ok(op) = T::op(self) {
-            ops.push(op.clone());
-            if op.is_terminator() {
+        loop {
+            if self.peek_n(1).kind == TokenKind::Equal {
+                let op = T::op(self)?;
+                ops.push(op.clone());
+                if op.is_terminator() {
+                    break;
+                }
+            } else {
                 break;
             }
         }
@@ -200,7 +205,7 @@ mod tests {
         println!("{}", repr);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
-        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42) ");
+        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42)");
         assert_eq!(lines[2], "}");
     }
 }

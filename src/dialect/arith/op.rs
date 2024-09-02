@@ -76,13 +76,25 @@ impl<T: Parse> Parser<T> {
         }
         Ok(arguments)
     }
+    pub fn results(&mut self) -> Result<Vec<Value>> {
+        let mut results = vec![];
+        while self.check(TokenKind::PercentIdentifier) {
+            results.push(self.argument()?);
+            if self.check(TokenKind::Equal) {
+                let _equal = self.advance();
+            }
+        }
+        Ok(results)
+    }
 }
 
 impl Parse for AddiOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
-        let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        println!("operation_name: {:?}", _operation_name);
         let mut operation = Operation::default();
+        operation.set_results(parser.results()?);
+        
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());
         operation.set_operands(Arc::new(parser.arguments()?));
         let _colon = parser.expect(TokenKind::Colon)?;

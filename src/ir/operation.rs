@@ -132,6 +132,12 @@ impl Default for Operation {
 
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if !self.results().is_empty() {
+            for result in self.results().iter() {
+                write!(f, "{}", result)?;
+            }
+            write!(f, " = ")?;
+        }
         write!(f, "{}", self.name())?;
         if !self.operands().is_empty() {
             let joined = self
@@ -151,9 +157,7 @@ impl Display for Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        if self.region().is_empty() {
-            write!(f, "\n")?;
-        } else {
+        if !self.region().is_empty() {
             write!(f, " {}", self.region())?;
         }
         Ok(())
