@@ -4,7 +4,7 @@
 mod compile;
 mod dialect;
 mod ir;
-mod parser;
+pub mod parser;
 mod typ;
 
 pub use compile::compile;
