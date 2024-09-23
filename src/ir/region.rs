@@ -1,7 +1,7 @@
 use crate::ir::block::Block;
 use std::fmt::Display;
-use std::sync::RwLock;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 /// A list of blocks.
 pub struct Region {

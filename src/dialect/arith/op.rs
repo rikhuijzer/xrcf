@@ -1,8 +1,7 @@
-use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
+use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
-use crate::ir::BlockArgument;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -62,7 +61,7 @@ impl Parse for ConstantOp {
                 let typ = parser.typ()?;
                 let argument = BlockArgument::new(integer, typ);
                 Value::BlockArgument(argument)
-            },
+            }
             _ => {
                 return Err(anyhow::anyhow!("Expected integer constant"));
             }
