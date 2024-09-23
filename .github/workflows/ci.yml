@@ -40,4 +40,6 @@ jobs:
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
 
+      - run: cargo install cargo-fmt
+
       - run: cargo fmt --all -- --check
