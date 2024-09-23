@@ -2,13 +2,13 @@ use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
 use crate::ir::Op;
 use crate::ir::OpResult;
+use crate::ir::BlockArgument;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
-use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
 use std::boxed::Box;
@@ -18,15 +18,13 @@ use std::sync::Arc;
 
 struct Arith {}
 
-struct ConstantOp {
+pub struct ConstantOp {
     operation: Pin<Box<Operation>>,
-    typ: IntegerType,
-    value: IntegerAttr,
 }
 
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
-        OperationName::new("arith.contant".to_string())
+        OperationName::new("arith.constant".to_string())
     }
     fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
@@ -35,7 +33,45 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!("Implement display for constant")
+        write!(f, "{}", self.operation())
+    }
+}
+
+impl<T: Parse> Parser<T> {
+    /// Parse a type definition (e.g., `: i64`).
+    fn typ(&mut self) -> Result<Type> {
+        let _colon = self.expect(TokenKind::Colon)?;
+        let typ = self.expect(TokenKind::IntType)?;
+        let typ = Type::new(typ.lexeme.clone());
+        Ok(typ)
+    }
+}
+
+impl Parse for ConstantOp {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+        let mut operation = Operation::default();
+        operation.set_results(parser.results()?);
+
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == "arith.constant");
+        operation.set_name(ConstantOp::operation_name());
+        let operand = match parser.peek().kind {
+            TokenKind::Integer => {
+                let integer = parser.advance();
+                let integer = integer.lexeme.clone();
+                let typ = parser.typ()?;
+                let argument = BlockArgument::new(integer, typ);
+                Value::BlockArgument(argument)
+            },
+            _ => {
+                return Err(anyhow::anyhow!("Expected integer constant"));
+            }
+        };
+        operation.set_operands(Arc::new(vec![operand]));
+
+        Ok(Arc::new(ConstantOp {
+            operation: Box::pin(operation),
+        }))
     }
 }
 

@@ -64,6 +64,7 @@ impl Parse for BuiltinParse {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
             "func.func" => <ir::FuncOp as Parse>::op(parser),
             "arith.addi" => <arith::AddiOp as Parse>::op(parser),
+            "arith.constant" => <arith::ConstantOp as Parse>::op(parser),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }

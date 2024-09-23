@@ -44,7 +44,10 @@ pub struct Operation {
     result_types: Vec<Type>,
     region: Region,
     parent_block: Option<Pin<Box<Block>>>,
+    /// Indentation level (typically parent indentation + 1).
+    indentation: i32,
 }
+
 impl Operation {
     pub fn new(
         name: OperationName,
@@ -54,6 +57,7 @@ impl Operation {
         result_types: Vec<Type>,
         region: Region,
         parent_block: Option<Pin<Box<Block>>>,
+        indentation: i32,
     ) -> Self {
         Self {
             name,
@@ -63,6 +67,7 @@ impl Operation {
             result_types,
             region,
             parent_block,
+            indentation,
         }
     }
     pub fn operands(&self) -> Arc<Vec<Value>> {
@@ -82,6 +87,9 @@ impl Operation {
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
+    }
+    pub fn indentation(&self) -> i32 {
+        self.indentation
     }
     pub fn set_name(&mut self, name: OperationName) -> &mut Self {
         self.name = name;
@@ -107,6 +115,10 @@ impl Operation {
         self.region = region;
         self
     }
+    pub fn set_indentation(&mut self, indentation: i32) -> &mut Self {
+        self.indentation = indentation;
+        self
+    }
     /// Get the parent block (this is called `getBlock` in MLIR).
     fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
         self.parent_block.as_ref()
@@ -126,12 +138,15 @@ impl Default for Operation {
             result_types: vec![],
             region: Region::new(vec![]),
             parent_block: None,
+            indentation: 0,
         }
     }
 }
 
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let indentation = " ".repeat(self.indentation() as usize);
+        write!(f, "{indentation}")?;
         if !self.results().is_empty() {
             for result in self.results().iter() {
                 write!(f, "{}", result)?;
