@@ -22,7 +22,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
 
       # Compile, but don't run.
       - run: cargo test --no-run
@@ -38,8 +38,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
 
-      - run: cargo install cargo-fmt
-
-      - run: cargo fmt --all -- --check
+      - run: cargo fmt --all --check
