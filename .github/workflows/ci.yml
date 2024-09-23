@@ -40,4 +40,6 @@ jobs:
         with:
           toolchain: '${{ env.RUST_TOOLCHAIN }}'
 
+      - run: rustup component add rustfmt
+
       - run: cargo fmt --all --check
