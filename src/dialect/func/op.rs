@@ -59,7 +59,7 @@ impl Op for FuncOp {
                 )?;
             }
         }
-        write!(f, " {}", self.operation().region())?;
+        write!(f, " {}", self.operation().region().read().unwrap())?;
         Ok(())
     }
 }

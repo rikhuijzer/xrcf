@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -42,7 +43,7 @@ pub struct Operation {
     attributes: Vec<Arc<dyn Attribute>>,
     results: Vec<Value>,
     result_types: Vec<Type>,
-    region: Region,
+    region: Arc<RwLock<Region>>,
     parent_block: Option<Pin<Box<Block>>>,
     /// Indentation level (typically parent indentation + 1).
     indentation: i32,
@@ -55,7 +56,7 @@ impl Operation {
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Value>,
         result_types: Vec<Type>,
-        region: Region,
+        region: Arc<RwLock<Region>>,
         parent_block: Option<Pin<Box<Block>>>,
         indentation: i32,
     ) -> Self {
@@ -82,8 +83,8 @@ impl Operation {
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn region(&self) -> &Region {
-        &self.region
+    pub fn region(&self) -> Arc<RwLock<Region>> {
+        self.region.clone()
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
@@ -111,8 +112,8 @@ impl Operation {
         self.result_types = result_types;
         self
     }
-    pub fn set_region(&mut self, region: Region) -> &mut Self {
-        self.region = region;
+    pub fn set_region(&mut self, region: Arc<RwLock<Region>>) -> &mut Self {
+        self.region = region.clone();
         self
     }
     pub fn set_indentation(&mut self, indentation: i32) -> &mut Self {
@@ -136,7 +137,7 @@ impl Default for Operation {
             attributes: vec![],
             results: vec![],
             result_types: vec![],
-            region: Region::new(vec![]),
+            region: Arc::new(RwLock::new(Region::default())),
             parent_block: None,
             indentation: 0,
         }
@@ -172,10 +173,10 @@ impl Display for Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        if self.region().is_empty() {
+        if self.region().read().unwrap().is_empty() {
             write!(f, "\n")?;
         } else {
-            write!(f, " {}", self.region())?;
+            write!(f, " {}", self.region().read().unwrap())?;
         }
         Ok(())
     }

@@ -24,6 +24,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
@@ -55,13 +56,14 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    pub fn get_body_region(&self) -> Result<&Region> {
-        Ok(&self.operation.region())
+    pub fn get_body_region(&self) -> Result<Arc<RwLock<Region>>> {
+        Ok(self.operation.region())
     }
     pub fn first_op(&self) -> Result<Arc<dyn Op>> {
         let body_region = self.get_body_region()?;
-        let block = *body_region.blocks().first().unwrap();
-        let ops = block.ops();
+        let binding = body_region.read().unwrap();
+        let block = binding.blocks().first().unwrap();
+        let ops = block.read().unwrap().ops();
         let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));

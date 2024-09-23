@@ -14,6 +14,7 @@ use crate::parser::token::TokenKind;
 use anyhow::Result;
 use std::any::Any;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 pub struct Parser<T: Parse> {
     src: String,
@@ -118,7 +119,7 @@ impl<T: Parse> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
-    pub fn block(&mut self) -> Result<Block> {
+    pub fn block(&mut self, parent: Arc<RwLock<Region>>) -> Result<Arc<RwLock<Block>>> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
@@ -143,7 +144,8 @@ impl<T: Parse> Parser<T> {
             let token = self.peek();
             self.report_error(&token, "Could not find operations in block")?;
         }
-        Ok(Block::new(None, arguments, ops))
+        let block = Block::new(None, arguments, ops, parent);
+        Ok(Arc::new(RwLock::new(block)))
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
@@ -154,13 +156,16 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self) -> Result<Region> {
+    pub fn region(&mut self) -> Result<Arc<RwLock<Region>>> {
+        let region = Region::default();
+        let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
-        let block = self.block()?;
-        blocks.push(Box::pin(block));
+        let block = self.block(region.clone())?;
+        blocks.push(block);
+        region.write().unwrap().set_blocks(blocks);
         self.advance();
-        Ok(Region::new(blocks))
+        Ok(region)
     }
     pub fn parse(src: &str) -> Result<ModuleOp> {
         let mut parser = Parser::<T> {
@@ -176,10 +181,12 @@ impl<T: Parse> Parser<T> {
         } else {
             let name = OperationName::new("module".to_string());
             let ops: Vec<Arc<dyn Op>> = vec![op];
-            let block = Block::new(None, vec![], ops);
-            let region = Region::new(vec![Box::pin(block)]);
+
+            let region = Region::default();
+            let region = Arc::new(RwLock::new(region));
+            let block = Block::new(None, vec![], ops, region.clone());
             let mut operation = Operation::default();
-            operation.set_name(name).set_region(region);
+            operation.set_name(name).set_region(region.clone());
             let module_op = ModuleOp::from_operation(Box::pin(operation));
             module_op.unwrap()
         };
@@ -200,10 +207,11 @@ mod tests {
         assert_eq!(module_op.operation().name(), "module");
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
+        assert!(module_op.first_op().is_ok());
 
         let repr = format!("{:#}", module_op);
         let lines: Vec<&str> = repr.split('\n').collect();
-        println!("{}", repr);
+        println!("repr:\n{}", repr);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
         assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42)");
