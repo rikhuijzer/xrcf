@@ -23,3 +23,16 @@ jobs:
       - run: cargo test --no-run
 
       - run: cargo test --all-features
+
+  fmt:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.80'
+
+      - run: cargo fmt --all -- --check
