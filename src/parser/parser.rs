@@ -131,7 +131,7 @@ impl<T: Parse> Parser<T> {
             let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
             let is_return = self.peek().lexeme == "return";
             if is_ssa_def || is_return {
-                let indent = 7;
+                let indent = 0;
                 let op = T::op(self, indent)?;
                 ops.push(op.clone());
                 if op.is_terminator() {

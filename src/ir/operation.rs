@@ -127,26 +127,8 @@ impl Operation {
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
-}
-
-impl Default for Operation {
-    fn default() -> Self {
-        Self {
-            name: OperationName::new("".to_string()),
-            operands: Arc::new(vec![]),
-            attributes: vec![],
-            results: vec![],
-            result_types: vec![],
-            region: Arc::new(RwLock::new(Region::default())),
-            parent_block: None,
-            indent: 0,
-        }
-    }
-}
-
-impl Display for Operation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let indentation = " ".repeat(self.indent() as usize);
+    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let indentation = " ".repeat(indent as usize);
         write!(f, "{indentation}")?;
         if !self.results().is_empty() {
             for result in self.results().iter() {
@@ -173,11 +155,34 @@ impl Display for Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        if self.region().read().unwrap().is_empty() {
+        let region = self.region();
+        let region = region.read().unwrap();
+        if region.is_empty() {
             write!(f, "\n")?;
         } else {
-            write!(f, " {}", self.region().read().unwrap())?;
+            region.display(f, indent)?;
         }
         Ok(())
+    }
+}
+
+impl Default for Operation {
+    fn default() -> Self {
+        Self {
+            name: OperationName::new("".to_string()),
+            operands: Arc::new(vec![]),
+            attributes: vec![],
+            results: vec![],
+            result_types: vec![],
+            region: Arc::new(RwLock::new(Region::default())),
+            parent_block: None,
+            indent: 0,
+        }
+    }
+}
+
+impl Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
     }
 }

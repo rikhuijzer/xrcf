@@ -36,16 +36,20 @@ impl Block {
     pub fn parent(&self) -> Arc<RwLock<Region>> {
         self.parent.clone()
     }
-}
-
-impl Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;
         }
         for op in self.ops() {
-            write!(f, "{}", op)?;
+            op.display(f, indent)?;
         }
         Ok(())
+    }
+}
+
+impl Display for Block {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let indent = 0;
+        self.display(f, indent)
     }
 }

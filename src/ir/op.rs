@@ -23,13 +23,17 @@ pub trait Op {
     fn is_terminator(&self) -> bool {
         false
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let operation = self.operation().read().unwrap();
+        println!("indent for op: {} {}", indent, operation);
+        let indentation = " ".repeat(indent as usize);
+        write!(f, "{indentation}")?;
+        operation.display(f, indent)
     }
 }
 
 impl Display for dyn Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f)
+        self.display(f, 0)
     }
 }

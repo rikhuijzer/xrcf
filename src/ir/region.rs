@@ -24,15 +24,19 @@ impl Region {
     pub fn set_blocks(&mut self, blocks: Vec<Arc<RwLock<Block>>>) {
         self.blocks = blocks;
     }
+    pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
+        write!(f, " {{\n")?;
+        for block in self.blocks() {
+            let block = block.read().unwrap();
+            block.display(f, indent + 1)?;
+        }
+        write!(f, "\n}}")
+    }
 }
 
 impl Display for Region {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{\n")?;
-        for block in self.blocks() {
-            write!(f, "  {}", block.read().unwrap())?;
-        }
-        write!(f, "\n}}")
+        self.display(f, 0)
     }
 }
 
