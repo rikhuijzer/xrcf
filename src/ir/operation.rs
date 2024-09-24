@@ -45,8 +45,6 @@ pub struct Operation {
     result_types: Vec<Type>,
     region: Arc<RwLock<Region>>,
     parent_block: Option<Pin<Box<Block>>>,
-    /// Indentation level (typically parent indentation + 1).
-    indent: i32,
 }
 
 impl Operation {
@@ -58,7 +56,6 @@ impl Operation {
         result_types: Vec<Type>,
         region: Arc<RwLock<Region>>,
         parent_block: Option<Pin<Box<Block>>>,
-        indent: i32,
     ) -> Self {
         Self {
             name,
@@ -68,7 +65,6 @@ impl Operation {
             result_types,
             region,
             parent_block,
-            indent,
         }
     }
     pub fn operands(&self) -> Arc<Vec<Value>> {
@@ -88,9 +84,6 @@ impl Operation {
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
-    }
-    pub fn indent(&self) -> i32 {
-        self.indent
     }
     pub fn set_name(&mut self, name: OperationName) -> &mut Self {
         self.name = name;
@@ -114,10 +107,6 @@ impl Operation {
     }
     pub fn set_region(&mut self, region: Arc<RwLock<Region>>) -> &mut Self {
         self.region = region.clone();
-        self
-    }
-    pub fn set_indent(&mut self, indent: i32) -> &mut Self {
-        self.indent = indent;
         self
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
@@ -174,7 +163,6 @@ impl Default for Operation {
             result_types: vec![],
             region: Arc::new(RwLock::new(Region::default())),
             parent_block: None,
-            indent: 0,
         }
     }
 }

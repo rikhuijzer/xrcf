@@ -18,7 +18,6 @@ pub trait Op {
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized;
-    fn set_indent(&self, indent: i32);
     fn operation(&self) -> &Arc<RwLock<Operation>>;
     fn is_terminator(&self) -> bool {
         false

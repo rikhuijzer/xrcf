@@ -27,10 +27,6 @@ impl Op for ConstantOp {
     fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn set_indent(&self, indent: i32) {
-        let mut operation = self.operation.write().unwrap();
-        operation.set_indent(indent);
-    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -50,14 +46,13 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for ConstantOp {
-    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
-        operation.set_indent(indent);
         let operand = match parser.peek().kind {
             TokenKind::Integer => {
                 let integer = parser.advance();
@@ -87,10 +82,6 @@ impl Op for AddiOp {
     }
     fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
-    }
-    fn set_indent(&self, indent: i32) {
-        let mut operation = self.operation.write().unwrap();
-        operation.set_indent(indent);
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
@@ -131,14 +122,13 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for AddiOp {
-    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());
-        operation.set_indent(indent);
         operation.set_operands(Arc::new(parser.arguments()?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;

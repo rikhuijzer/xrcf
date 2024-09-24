@@ -28,10 +28,6 @@ impl Op for FuncOp {
         todo!()
         // Ok(FuncOp { operation })
     }
-    fn set_indent(&self, indent: i32) {
-        let mut operation = self.operation.write().unwrap();
-        operation.set_indent(indent);
-    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -135,7 +131,7 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for FuncOp {
-    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
@@ -158,7 +154,6 @@ impl Parse for FuncOp {
         operation.set_operands(Arc::new(parser.block_arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
-        operation.set_indent(indent);
         if let Some(result) = result {
             operation.set_results(vec![result]);
         }
@@ -182,10 +177,6 @@ impl Op for ReturnOp {
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         Ok(ReturnOp { operation })
-    }
-    fn set_indent(&self, indent: i32) {
-        let mut operation = self.operation.write().unwrap();
-        operation.set_indent(indent);
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
@@ -211,7 +202,7 @@ impl Op for ReturnOp {
 }
 
 impl Parse for ReturnOp {
-    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
         operation.set_operands(Arc::new(parser.arguments()?));
@@ -219,7 +210,6 @@ impl Parse for ReturnOp {
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
         operation.set_result_types(vec![return_type]);
-        operation.set_indent(indent);
         let operation = Arc::new(RwLock::new(operation));
         let op = ReturnOp { operation };
         Ok(Arc::new(op))
