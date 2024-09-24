@@ -47,9 +47,9 @@ impl Op for ModuleOp {
             operation: operation,
         })
     }
-    fn set_indentation(&self, indentation: i32) {
+    fn set_indent(&self, indent: i32) {
         let mut operation = self.operation.write().unwrap();
-        operation.set_indentation(indentation);
+        operation.set_indent(indent);
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation

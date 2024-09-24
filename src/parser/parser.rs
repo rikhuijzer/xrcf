@@ -34,7 +34,7 @@ impl<T: Parse> Parser<T> {
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
 pub trait Parse {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>>
+    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>>
     where
         Self: Sized;
 }
@@ -50,9 +50,9 @@ enum Dialects {
 }
 
 impl Parse for BuiltinParse {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
         if parser.peek().lexeme == "return" {
-            return <func::ReturnOp as Parse>::op(parser);
+            return <func::ReturnOp as Parse>::op(parser, indent);
         }
         let name = if parser.peek_n(1).kind == TokenKind::Equal {
             // Ignore result name and '='.
@@ -62,10 +62,10 @@ impl Parse for BuiltinParse {
         };
         let name = name.lexeme.clone();
         match name.as_str() {
-            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
-            "func.func" => <ir::FuncOp as Parse>::op(parser),
-            "arith.addi" => <arith::AddiOp as Parse>::op(parser),
-            "arith.constant" => <arith::ConstantOp as Parse>::op(parser),
+            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, indent),
+            "func.func" => <ir::FuncOp as Parse>::op(parser, indent),
+            "arith.addi" => <arith::AddiOp as Parse>::op(parser, indent),
+            "arith.constant" => <arith::ConstantOp as Parse>::op(parser, indent),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }
@@ -131,7 +131,8 @@ impl<T: Parse> Parser<T> {
             let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
             let is_return = self.peek().lexeme == "return";
             if is_ssa_def || is_return {
-                let op = T::op(self)?;
+                let indent = 7;
+                let op = T::op(self, indent)?;
                 ops.push(op.clone());
                 if op.is_terminator() {
                     break;
@@ -174,17 +175,22 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op: Arc<dyn Op> = T::op(&mut parser)?;
+        let peek = parser.peek();
+        let indent = if peek.kind == TokenKind::BareIdentifier && peek.lexeme == "module" {
+            0
+        } else {
+            1
+        };
+        let op: Arc<dyn Op> = T::op(&mut parser, indent)?;
         let any_op: Box<dyn Any> = Box::new(op.clone());
         let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
-            op.set_indentation(1);
-            let ops: Vec<Arc<dyn Op>> = vec![op];
-
             let region = Region::default();
             let region = Arc::new(RwLock::new(region));
+            op.set_indent(1);
+            let ops: Vec<Arc<dyn Op>> = vec![op];
             let block = Block::new(None, vec![], ops, region.clone());
             let block = Arc::new(RwLock::new(block));
             region.write().unwrap().blocks_mut().push(block);

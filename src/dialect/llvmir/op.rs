@@ -29,9 +29,9 @@ impl Op for GlobalOp {
         }
         Ok(Self { operation })
     }
-    fn set_indentation(&self, indentation: i32) {
+    fn set_indent(&self, indent: i32) {
         let mut operation = self.operation.write().unwrap();
-        operation.set_indentation(indentation);
+        operation.set_indent(indent);
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
@@ -54,7 +54,7 @@ impl Op for GlobalOp {
 }
 
 impl Parse for GlobalOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>, indent: i32) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
@@ -82,6 +82,7 @@ impl Parse for GlobalOp {
         println!("{:?}", parser.advance());
         let mut operation = Operation::default();
         operation.set_name(name).set_attributes(attributes);
+        operation.set_indent(indent);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(op.unwrap()))

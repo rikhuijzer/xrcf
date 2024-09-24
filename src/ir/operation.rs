@@ -46,7 +46,7 @@ pub struct Operation {
     region: Arc<RwLock<Region>>,
     parent_block: Option<Pin<Box<Block>>>,
     /// Indentation level (typically parent indentation + 1).
-    indentation: i32,
+    indent: i32,
 }
 
 impl Operation {
@@ -58,7 +58,7 @@ impl Operation {
         result_types: Vec<Type>,
         region: Arc<RwLock<Region>>,
         parent_block: Option<Pin<Box<Block>>>,
-        indentation: i32,
+        indent: i32,
     ) -> Self {
         Self {
             name,
@@ -68,7 +68,7 @@ impl Operation {
             result_types,
             region,
             parent_block,
-            indentation,
+            indent,
         }
     }
     pub fn operands(&self) -> Arc<Vec<Value>> {
@@ -89,8 +89,8 @@ impl Operation {
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    pub fn indentation(&self) -> i32 {
-        self.indentation
+    pub fn indent(&self) -> i32 {
+        self.indent
     }
     pub fn set_name(&mut self, name: OperationName) -> &mut Self {
         self.name = name;
@@ -116,8 +116,8 @@ impl Operation {
         self.region = region.clone();
         self
     }
-    pub fn set_indentation(&mut self, indentation: i32) -> &mut Self {
-        self.indentation = indentation;
+    pub fn set_indent(&mut self, indent: i32) -> &mut Self {
+        self.indent = indent;
         self
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
@@ -139,14 +139,14 @@ impl Default for Operation {
             result_types: vec![],
             region: Arc::new(RwLock::new(Region::default())),
             parent_block: None,
-            indentation: 0,
+            indent: 0,
         }
     }
 }
 
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let indentation = " ".repeat(self.indentation() as usize);
+        let indentation = " ".repeat(self.indent() as usize);
         write!(f, "{indentation}")?;
         if !self.results().is_empty() {
             for result in self.results().iter() {
