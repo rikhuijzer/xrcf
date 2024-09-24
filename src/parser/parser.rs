@@ -185,6 +185,8 @@ impl<T: Parse> Parser<T> {
             let region = Region::default();
             let region = Arc::new(RwLock::new(region));
             let block = Block::new(None, vec![], ops, region.clone());
+            let block = Arc::new(RwLock::new(block));
+            region.write().unwrap().blocks_mut().push(block);
             let mut operation = Operation::default();
             operation.set_name(name).set_region(region.clone());
             let module_op = ModuleOp::from_operation(Box::pin(operation));
@@ -207,7 +209,7 @@ mod tests {
         assert_eq!(module_op.operation().name(), "module");
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
-        assert!(module_op.first_op().is_ok());
+        module_op.first_op().unwrap();
 
         let repr = format!("{:#}", module_op);
         let lines: Vec<&str> = repr.split('\n').collect();

@@ -62,7 +62,11 @@ impl ModuleOp {
     pub fn first_op(&self) -> Result<Arc<dyn Op>> {
         let body_region = self.get_body_region()?;
         let binding = body_region.read().unwrap();
-        let block = binding.blocks().first().unwrap();
+        let blocks = binding.blocks();
+        let block = match blocks.first() {
+            Some(block) => block,
+            None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
+        };
         let ops = block.read().unwrap().ops();
         let op = ops.first();
         if op.is_none() {
