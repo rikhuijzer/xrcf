@@ -10,31 +10,32 @@ use crate::Attribute;
 use crate::Parse;
 use anyhow::Result;
 use std::fmt::Formatter;
-use std::pin::Pin;
 use std::sync::Arc;
-
+use std::sync::RwLock;
 pub struct GlobalOp {
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
-        if operation.name() != Self::operation_name().name() {
-            return Err(anyhow::anyhow!("Expected global, got {}", operation.name()));
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        if operation.read().unwrap().name() != Self::operation_name().name() {
+            return Err(anyhow::anyhow!(
+                "Expected global, got {}",
+                operation.read().unwrap().name()
+            ));
         }
-        Ok(Self {
-            operation: operation,
-        })
+        Ok(Self { operation })
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
-        for attribute in self.operation().attributes() {
+        let operation = self.operation().read().unwrap();
+        for attribute in operation.attributes() {
             write!(f, "{}", attribute)?;
             if attribute.name() == "symbol_name" {
                 write!(f, "(")?;
@@ -77,7 +78,8 @@ impl Parse for GlobalOp {
         println!("{:?}", parser.advance());
         let mut operation = Operation::default();
         operation.set_name(name).set_attributes(attributes);
-        let op = GlobalOp::from_operation(Box::pin(operation));
+        let operation = Arc::new(RwLock::new(operation));
+        let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(op.unwrap()))
     }
 }

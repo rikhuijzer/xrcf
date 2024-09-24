@@ -1,8 +1,7 @@
-use crate::ir::attribute::IntegerAttr;
 use crate::ir::operation::Operation;
+use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
-use crate::ir::BlockArgument;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -11,29 +10,28 @@ use crate::parser::Parser;
 use crate::parser::TokenKind;
 use crate::Dialect;
 use anyhow::Result;
-use std::boxed::Box;
 use std::fmt::Formatter;
-use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 struct Arith {}
 
 pub struct ConstantOp {
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation())
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{}", self.operation().read().unwrap())
     }
 }
 
@@ -62,35 +60,34 @@ impl Parse for ConstantOp {
                 let typ = parser.typ()?;
                 let argument = BlockArgument::new(integer, typ);
                 Value::BlockArgument(argument)
-            },
+            }
             _ => {
                 return Err(anyhow::anyhow!("Expected integer constant"));
             }
         };
         operation.set_operands(Arc::new(vec![operand]));
 
-        Ok(Arc::new(ConstantOp {
-            operation: Box::pin(operation),
-        }))
+        let operation = Arc::new(RwLock::new(operation));
+        Ok(Arc::new(ConstantOp { operation }))
     }
 }
 
 pub struct AddiOp {
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation())
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{}", self.operation().read().unwrap())
     }
 }
 
@@ -138,9 +135,8 @@ impl Parse for AddiOp {
         let result_type = Type::new(result_type.lexeme.clone());
         operation.set_result_types(vec![result_type]);
 
-        Ok(Arc::new(AddiOp {
-            operation: Box::pin(operation),
-        }))
+        let operation = Arc::new(RwLock::new(operation));
+        Ok(Arc::new(AddiOp { operation }))
     }
 }
 

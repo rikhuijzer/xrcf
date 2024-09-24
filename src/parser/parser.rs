@@ -1,7 +1,6 @@
 use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
-use crate::ir;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
@@ -14,6 +13,7 @@ use crate::parser::token::TokenKind;
 use anyhow::Result;
 use std::any::Any;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 pub struct Parser<T: Parse> {
     src: String,
@@ -62,7 +62,7 @@ impl Parse for BuiltinParse {
         let name = name.lexeme.clone();
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
-            "func.func" => <ir::FuncOp as Parse>::op(parser),
+            "func.func" => <func::FuncOp as Parse>::op(parser),
             "arith.addi" => <arith::AddiOp as Parse>::op(parser),
             "arith.constant" => <arith::ConstantOp as Parse>::op(parser),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
@@ -118,7 +118,7 @@ impl<T: Parse> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
-    pub fn block(&mut self) -> Result<Block> {
+    pub fn block(&mut self, parent: Arc<RwLock<Region>>) -> Result<Arc<RwLock<Block>>> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
@@ -143,7 +143,8 @@ impl<T: Parse> Parser<T> {
             let token = self.peek();
             self.report_error(&token, "Could not find operations in block")?;
         }
-        Ok(Block::new(None, arguments, ops))
+        let block = Block::new(None, arguments, ops, parent);
+        Ok(Arc::new(RwLock::new(block)))
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
@@ -154,13 +155,16 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self) -> Result<Region> {
+    pub fn region(&mut self) -> Result<Arc<RwLock<Region>>> {
+        let region = Region::default();
+        let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
-        let block = self.block()?;
-        blocks.push(Box::pin(block));
+        let block = self.block(region.clone())?;
+        blocks.push(block);
+        region.write().unwrap().set_blocks(blocks);
         self.advance();
-        Ok(Region::new(blocks))
+        Ok(region)
     }
     pub fn parse(src: &str) -> Result<ModuleOp> {
         let mut parser = Parser::<T> {
@@ -175,12 +179,16 @@ impl<T: Parse> Parser<T> {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
+            let region = Region::default();
+            let region = Arc::new(RwLock::new(region));
             let ops: Vec<Arc<dyn Op>> = vec![op];
-            let block = Block::new(None, vec![], ops);
-            let region = Region::new(vec![Box::pin(block)]);
+            let block = Block::new(None, vec![], ops, region.clone());
+            let block = Arc::new(RwLock::new(block));
+            region.write().unwrap().blocks_mut().push(block);
             let mut operation = Operation::default();
-            operation.set_name(name).set_region(region);
-            let module_op = ModuleOp::from_operation(Box::pin(operation));
+            operation.set_name(name).set_region(region.clone());
+            let operation = Arc::new(RwLock::new(operation));
+            let module_op = ModuleOp::from_operation(operation);
             module_op.unwrap()
         };
         Ok(op)
@@ -197,13 +205,14 @@ mod tests {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
-        assert_eq!(module_op.operation().name(), "module");
+        assert_eq!(module_op.operation().read().unwrap().name(), "module");
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
+        module_op.first_op().unwrap();
 
         let repr = format!("{:#}", module_op);
         let lines: Vec<&str> = repr.split('\n').collect();
-        println!("{}", repr);
+        println!("repr:\n{}", repr);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
         assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42)");

@@ -8,6 +8,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 #[derive(Clone)]
 pub struct OperationName {
@@ -42,10 +43,8 @@ pub struct Operation {
     attributes: Vec<Arc<dyn Attribute>>,
     results: Vec<Value>,
     result_types: Vec<Type>,
-    region: Region,
-    parent_block: Option<Pin<Box<Block>>>,
-    /// Indentation level (typically parent indentation + 1).
-    indentation: i32,
+    region: Arc<RwLock<Region>>,
+    parent: Option<Pin<Box<Block>>>,
 }
 
 impl Operation {
@@ -55,9 +54,8 @@ impl Operation {
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Value>,
         result_types: Vec<Type>,
-        region: Region,
-        parent_block: Option<Pin<Box<Block>>>,
-        indentation: i32,
+        region: Arc<RwLock<Region>>,
+        parent: Option<Pin<Box<Block>>>,
     ) -> Self {
         Self {
             name,
@@ -66,8 +64,7 @@ impl Operation {
             results,
             result_types,
             region,
-            parent_block,
-            indentation,
+            parent,
         }
     }
     pub fn operands(&self) -> Arc<Vec<Value>> {
@@ -82,14 +79,11 @@ impl Operation {
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn region(&self) -> &Region {
-        &self.region
+    pub fn region(&self) -> Arc<RwLock<Region>> {
+        self.region.clone()
     }
     pub fn name(&self) -> String {
         self.name.name.clone()
-    }
-    pub fn indentation(&self) -> i32 {
-        self.indentation
     }
     pub fn set_name(&mut self, name: OperationName) -> &mut Self {
         self.name = name;
@@ -111,42 +105,20 @@ impl Operation {
         self.result_types = result_types;
         self
     }
-    pub fn set_region(&mut self, region: Region) -> &mut Self {
-        self.region = region;
-        self
-    }
-    pub fn set_indentation(&mut self, indentation: i32) -> &mut Self {
-        self.indentation = indentation;
+    pub fn set_region(&mut self, region: Arc<RwLock<Region>>) -> &mut Self {
+        self.region = region.clone();
         self
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
-        self.parent_block.as_ref()
+    fn parent(&self) -> Option<&Pin<Box<Block>>> {
+        self.parent.as_ref()
     }
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
-}
-
-impl Default for Operation {
-    fn default() -> Self {
-        Self {
-            name: OperationName::new("".to_string()),
-            operands: Arc::new(vec![]),
-            attributes: vec![],
-            results: vec![],
-            result_types: vec![],
-            region: Region::new(vec![]),
-            parent_block: None,
-            indentation: 0,
-        }
-    }
-}
-
-impl Display for Operation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let indentation = " ".repeat(self.indentation() as usize);
-        write!(f, "{indentation}")?;
+    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let spaces = crate::ir::spaces(indent);
+        write!(f, "{spaces}")?;
         if !self.results().is_empty() {
             for result in self.results().iter() {
                 write!(f, "{}", result)?;
@@ -172,11 +144,33 @@ impl Display for Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        if self.region().is_empty() {
+        let region = self.region();
+        let region = region.read().unwrap();
+        if region.is_empty() {
             write!(f, "\n")?;
         } else {
-            write!(f, " {}", self.region())?;
+            region.display(f, indent)?;
         }
         Ok(())
+    }
+}
+
+impl Default for Operation {
+    fn default() -> Self {
+        Self {
+            name: OperationName::new("".to_string()),
+            operands: Arc::new(vec![]),
+            attributes: vec![],
+            results: vec![],
+            result_types: vec![],
+            region: Arc::new(RwLock::new(Region::default())),
+            parent: None,
+        }
+    }
+}
+
+impl Display for Operation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
     }
 }

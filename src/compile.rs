@@ -10,7 +10,7 @@ pub trait Transform {
 struct MLIRToLLVMIRTranslation {}
 
 impl Transform for MLIRToLLVMIRTranslation {
-    fn transform(&self, src: &str, out: &mut dyn Write) -> Result<(), Error> {
+    fn transform(&self, _src: &str, _out: &mut dyn Write) -> Result<(), Error> {
         todo!()
     }
 }

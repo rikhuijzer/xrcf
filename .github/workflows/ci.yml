@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+env:
+  RUST_TOOLCHAIN: '1.80'
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
+
+      # Compile, but don't run.
+      - run: cargo test --no-run
+
+      - run: cargo test --all-features
+
+  fmt:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    if: github.ref != 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
+
+      - run: rustup component add rustfmt
+
+      - run: cargo fmt --all --check

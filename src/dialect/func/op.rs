@@ -10,31 +10,33 @@ use crate::Parse;
 use crate::Parser;
 use anyhow::Result;
 use std::fmt::Formatter;
-use std::pin::Pin;
 use std::sync::Arc;
+use std::sync::RwLock;
 
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
     identifier: String,
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
         // Ok(FuncOp { operation })
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
         let joined = self
             .operation()
+            .read()
+            .unwrap()
             .operands()
             .iter()
             .map(|o| o.to_string())
@@ -43,7 +45,8 @@ impl Op for FuncOp {
         write!(f, "{}", joined)?;
         write!(f, ")")?;
         let operation = self.operation();
-        if !operation.result_types().is_empty() {
+        if !operation.read().unwrap().result_types().is_empty() {
+            let operation = operation.read().unwrap();
             let result_types = operation.result_types();
             if result_types.len() == 1 {
                 write!(f, " -> {}", result_types.get(0).unwrap())?;
@@ -59,7 +62,9 @@ impl Op for FuncOp {
                 )?;
             }
         }
-        write!(f, " {}", self.operation().region())?;
+        let region = self.operation().read().unwrap().region();
+        let region = region.read().unwrap();
+        region.display(f, indent)?;
         Ok(())
     }
 }
@@ -145,13 +150,14 @@ impl Parse for FuncOp {
             ));
         }
         let _lparen = parser.advance();
-        let mut operation = Box::pin(Operation::default());
+        let mut operation = Operation::default();
         operation.set_operands(Arc::new(parser.block_arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
         if let Some(result) = result {
             operation.set_results(vec![result]);
         }
+        let operation = Arc::new(RwLock::new(operation));
 
         let op = FuncOp {
             identifier,
@@ -162,23 +168,24 @@ impl Parse for FuncOp {
 }
 
 pub struct ReturnOp {
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("return".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         Ok(ReturnOp { operation })
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();
+        let operation = operation.read().unwrap();
         let operands = operation.operands().clone();
-        write!(f, "  return")?;
+        write!(f, "return")?;
         for operand in &*operands {
             write!(f, " {}", operand)?;
         }
@@ -197,12 +204,13 @@ impl Op for ReturnOp {
 impl Parse for ReturnOp {
     fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        let mut operation = Box::pin(Operation::default());
+        let mut operation = Operation::default();
         operation.set_operands(Arc::new(parser.arguments()?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
         operation.set_result_types(vec![return_type]);
+        let operation = Arc::new(RwLock::new(operation));
         let op = ReturnOp { operation };
         Ok(Arc::new(op))
     }
