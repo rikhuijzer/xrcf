@@ -14,12 +14,13 @@ fn parse_addi() {
     ";
     let module = Parser::<BuiltinParse>::parse(src).unwrap();
     println!("\n{}\n", module);
-    let op = module.first_op().unwrap();
-    let repr = format!("{}", op);
+    let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
-    assert_eq!(lines[0], "func.func @test_addi(%arg0 : i64) -> i64 {");
-    assert_eq!(lines[1], "  %0 = arith.constant 1 : i64");
-    assert_eq!(lines[2], "  %1 = arith.addi %arg0, %0 : i64");
-    assert_eq!(lines[2], "  return %0 : i64");
-    assert_eq!(lines[3], "}");
+    assert_eq!(lines[0], "module {");
+    assert_eq!(lines[1], "  func.func @test_addi(%arg0 : i64) -> i64 {");
+    assert_eq!(lines[2], "    %0 = arith.constant 1 : i64");
+    assert_eq!(lines[3], "    %1 = arith.addi %arg0, %0 : i64");
+    assert_eq!(lines[4], "    return %0 : i64");
+    assert_eq!(lines[5], "  }");
+    assert_eq!(lines[6], "}");
 }
