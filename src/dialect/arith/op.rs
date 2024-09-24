@@ -25,7 +25,7 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
     fn operation(&self) -> &Pin<Box<Operation>> {
@@ -82,7 +82,7 @@ impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
     }
     fn operation(&self) -> &Pin<Box<Operation>> {

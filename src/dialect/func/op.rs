@@ -24,7 +24,7 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
+    fn from_operation(_operation: Pin<Box<Operation>>) -> Result<Self> {
         todo!()
         // Ok(FuncOp { operation })
     }
