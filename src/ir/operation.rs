@@ -44,7 +44,7 @@ pub struct Operation {
     results: Vec<Value>,
     result_types: Vec<Type>,
     region: Arc<RwLock<Region>>,
-    parent_block: Option<Pin<Box<Block>>>,
+    parent: Option<Pin<Box<Block>>>,
 }
 
 impl Operation {
@@ -55,7 +55,7 @@ impl Operation {
         results: Vec<Value>,
         result_types: Vec<Type>,
         region: Arc<RwLock<Region>>,
-        parent_block: Option<Pin<Box<Block>>>,
+        parent: Option<Pin<Box<Block>>>,
     ) -> Self {
         Self {
             name,
@@ -64,7 +64,7 @@ impl Operation {
             results,
             result_types,
             region,
-            parent_block,
+            parent,
         }
     }
     pub fn operands(&self) -> Arc<Vec<Value>> {
@@ -110,8 +110,8 @@ impl Operation {
         self
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent_block(&self) -> Option<&Pin<Box<Block>>> {
-        self.parent_block.as_ref()
+    fn parent(&self) -> Option<&Pin<Box<Block>>> {
+        self.parent.as_ref()
     }
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
@@ -164,7 +164,7 @@ impl Default for Operation {
             results: vec![],
             result_types: vec![],
             region: Arc::new(RwLock::new(Region::default())),
-            parent_block: None,
+            parent: None,
         }
     }
 }

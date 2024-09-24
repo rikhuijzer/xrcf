@@ -84,16 +84,6 @@ impl Scanner {
         let location = Location::new(self.line, column, self.start);
         self.tokens.push(Token::new(kind, lexeme, location));
     }
-    fn match_next(&mut self, expected: char) -> bool {
-        if self.is_at_end() {
-            return false;
-        }
-        if self.peek() != expected {
-            return false;
-        }
-        self.current += 1;
-        true
-    }
     fn number(&mut self) -> Result<()> {
         while self.peek().is_digit(10) {
             self.advance();
