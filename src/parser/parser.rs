@@ -63,7 +63,7 @@ impl Parse for BuiltinParse {
         let name = name.lexeme.clone();
         match name.as_str() {
             "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, indent),
-            "func.func" => <ir::FuncOp as Parse>::op(parser, indent),
+            "func.func" => <func::FuncOp as Parse>::op(parser, indent),
             "arith.addi" => <arith::AddiOp as Parse>::op(parser, indent),
             "arith.constant" => <arith::ConstantOp as Parse>::op(parser, indent),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
