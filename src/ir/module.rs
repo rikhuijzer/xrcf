@@ -36,7 +36,7 @@ impl Op for ModuleOp {
         let operation = self.operation().read().unwrap();
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        operation.display(f, indent)
+        operation.display(f, indent + 1)
     }
 }
 

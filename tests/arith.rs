@@ -20,7 +20,7 @@ fn parse_addi() {
     assert_eq!(lines[1], "  func.func @test_addi(%arg0 : i64) -> i64 {");
     assert_eq!(lines[2], "    %0 = arith.constant 1 : i64");
     assert_eq!(lines[3], "    %1 = arith.addi %arg0, %0 : i64");
-    assert_eq!(lines[4], "    return %0 : i64");
+    assert_eq!(lines[4], "    return %1 : i64");
     assert_eq!(lines[5], "  }");
     assert_eq!(lines[6], "}");
 }

@@ -31,7 +31,7 @@ impl Region {
             block.display(f, indent + 1)?;
         }
         let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}\n}}")
+        write!(f, "\n{spaces}}}")
     }
 }
 

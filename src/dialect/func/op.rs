@@ -64,7 +64,7 @@ impl Op for FuncOp {
         }
         let region = self.operation().read().unwrap().region();
         let region = region.read().unwrap();
-        region.display(f, indent + 1)?;
+        region.display(f, indent)?;
         Ok(())
     }
 }
