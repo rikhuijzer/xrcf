@@ -30,7 +30,8 @@ impl Region {
             let block = block.read().unwrap();
             block.display(f, indent + 1)?;
         }
-        write!(f, "\n}}")
+        let spaces = crate::ir::spaces(indent);
+        write!(f, "{spaces}\n}}")
     }
 }
 
