@@ -3,7 +3,8 @@ use crate::ir::OperationName;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::pin::Pin;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 /// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
@@ -14,15 +15,16 @@ pub trait Op {
     fn operation_name() -> OperationName
     where
         Self: Sized;
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self>
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized;
-    fn operation(&self) -> &Pin<Box<Operation>>;
+    fn set_indentation(&self, indentation: i32);
+    fn operation(&self) -> &Arc<RwLock<Operation>>;
     fn is_terminator(&self) -> bool {
         false
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation())
+        write!(f, "{}", self.operation().read().unwrap())
     }
 }
 

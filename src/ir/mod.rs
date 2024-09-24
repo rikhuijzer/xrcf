@@ -29,35 +29,42 @@ use std::sync::RwLock;
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
 pub struct ModuleOp {
-    operation: Pin<Box<Operation>>,
+    operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("module".to_string())
     }
-    fn from_operation(operation: Pin<Box<Operation>>) -> Result<Self> {
-        if operation.name() != Self::operation_name().name() {
-            return Err(anyhow::anyhow!("Expected module, got {}", operation.name()));
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        if operation.read().unwrap().name() != Self::operation_name().name() {
+            return Err(anyhow::anyhow!(
+                "Expected module, got {}",
+                operation.read().unwrap().name()
+            ));
         }
         Ok(Self {
             operation: operation,
         })
     }
-    fn operation(&self) -> &Pin<Box<Operation>> {
+    fn set_indentation(&self, indentation: i32) {
+        let mut operation = self.operation.write().unwrap();
+        operation.set_indentation(indentation);
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
 }
 
 impl Display for ModuleOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation())
+        write!(f, "{}", self.operation().read().unwrap())
     }
 }
 
 impl ModuleOp {
     pub fn get_body_region(&self) -> Result<Arc<RwLock<Region>>> {
-        Ok(self.operation.region())
+        Ok(self.operation().read().unwrap().region())
     }
     pub fn first_op(&self) -> Result<Arc<dyn Op>> {
         let body_region = self.get_body_region()?;

@@ -180,6 +180,7 @@ impl<T: Parse> Parser<T> {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
+            op.set_indentation(1);
             let ops: Vec<Arc<dyn Op>> = vec![op];
 
             let region = Region::default();
@@ -189,7 +190,8 @@ impl<T: Parse> Parser<T> {
             region.write().unwrap().blocks_mut().push(block);
             let mut operation = Operation::default();
             operation.set_name(name).set_region(region.clone());
-            let module_op = ModuleOp::from_operation(Box::pin(operation));
+            let operation = Arc::new(RwLock::new(operation));
+            let module_op = ModuleOp::from_operation(operation);
             module_op.unwrap()
         };
         Ok(op)
@@ -206,7 +208,7 @@ mod tests {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
-        assert_eq!(module_op.operation().name(), "module");
+        assert_eq!(module_op.operation().read().unwrap().name(), "module");
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
         module_op.first_op().unwrap();
