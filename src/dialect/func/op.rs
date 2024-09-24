@@ -35,7 +35,7 @@ impl Op for FuncOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
         let joined = self
             .operation()
@@ -67,7 +67,8 @@ impl Op for FuncOp {
             }
         }
         let region = self.operation().read().unwrap().region();
-        write!(f, " {}", region.read().unwrap())?;
+        let region = region.read().unwrap();
+        region.display(f, indent + 1)?;
         Ok(())
     }
 }
@@ -193,7 +194,7 @@ impl Op for ReturnOp {
         let operation = self.operation();
         let operation = operation.read().unwrap();
         let operands = operation.operands().clone();
-        write!(f, "  return")?;
+        write!(f, "return")?;
         for operand in &*operands {
             write!(f, " {}", operand)?;
         }

@@ -1,7 +1,6 @@
 use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
-use crate::ir;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;

@@ -128,8 +128,8 @@ impl Operation {
         self.name = OperationName::new(name);
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let indentation = " ".repeat(indent as usize);
-        write!(f, "{indentation}")?;
+        let spaces = crate::ir::spaces(indent);
+        write!(f, "{spaces}")?;
         if !self.results().is_empty() {
             for result in self.results().iter() {
                 write!(f, "{}", result)?;

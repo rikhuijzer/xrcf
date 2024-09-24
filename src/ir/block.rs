@@ -41,6 +41,8 @@ impl Block {
             write!(f, "{} ", label)?;
         }
         for op in self.ops() {
+            let spaces = crate::ir::spaces(indent);
+            write!(f, "{spaces}")?;
             op.display(f, indent)?;
         }
         Ok(())

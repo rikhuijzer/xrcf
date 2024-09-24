@@ -36,6 +36,12 @@ impl Op for ModuleOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let operation = self.operation().read().unwrap();
+        let spaces = crate::ir::spaces(indent);
+        write!(f, "{spaces}")?;
+        operation.display(f, indent)
+    }
 }
 
 impl Display for ModuleOp {

@@ -20,5 +20,5 @@ pub use crate::ir::value::Type;
 pub use crate::ir::value::Value;
 
 pub fn spaces(indent: i32) -> String {
-    " ".repeat(indent as usize)
+    "  ".repeat(indent as usize)
 }

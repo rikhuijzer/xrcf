@@ -26,8 +26,8 @@ pub trait Op {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         println!("indent for op: {} {}", indent, operation);
-        let indentation = " ".repeat(indent as usize);
-        write!(f, "{indentation}")?;
+        let spaces = crate::ir::spaces(indent);
+        write!(f, "{spaces}")?;
         operation.display(f, indent)
     }
 }
