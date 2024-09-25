@@ -143,6 +143,7 @@ impl<T: Parse> Parser<T> {
             let token = self.peek();
             self.report_error(&token, "Could not find operations in block")?;
         }
+        let ops = Arc::new(ops);
         let block = Block::new(None, arguments, ops, parent);
         Ok(Arc::new(RwLock::new(block)))
     }
@@ -181,7 +182,7 @@ impl<T: Parse> Parser<T> {
             let name = OperationName::new("module".to_string());
             let region = Region::default();
             let region = Arc::new(RwLock::new(Some(region)));
-            let ops: Vec<Arc<dyn Op>> = vec![op];
+            let ops: Arc<Vec<Arc<dyn Op>>> = Arc::new(vec![op]);
             let block = Block::new(None, vec![], ops, region.clone());
             let block = Arc::new(RwLock::new(block));
             region

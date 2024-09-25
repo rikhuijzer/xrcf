@@ -66,7 +66,9 @@ impl ModuleOp {
         let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));
+        } else {
+            let op = op.unwrap().clone();
+            Ok(op)
         }
-        Ok(op.unwrap().clone())
     }
 }

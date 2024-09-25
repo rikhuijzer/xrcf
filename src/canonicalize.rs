@@ -1,16 +1,18 @@
-use crate::ir::ModuleOp;
 use crate::ir::Op;
+use std::sync::Arc;
 
-pub fn canonicalize(module: &mut ModuleOp) {
-    let region = module.region();
+pub fn canonicalize(op: &mut dyn Op) {
+    let region = op.region();
     let region = region.read().unwrap();
     if let Some(region) = region.as_ref() {
         for block in region.blocks() {
-            let block = block.read().unwrap();
+            let mut block = block.write().unwrap();
             println!("block:\n{}", block);
-            for op in block.ops() {
-                let op = op.as_ref();
-                println!("op: {}", op);
+            let ops = Arc::make_mut(block.ops_mut());
+            for op in ops.iter_mut() {
+                if let Some(op) = Arc::get_mut(op) {
+                    canonicalize(op);
+                }
             }
         }
     }

@@ -12,7 +12,7 @@ pub struct BlockArgument {
 pub struct Block {
     label: Option<String>,
     arguments: Vec<BlockArgument>,
-    ops: Vec<Arc<dyn Op>>,
+    ops: Arc<Vec<Arc<dyn Op>>>,
     parent: Arc<RwLock<Option<Region>>>,
 }
 
@@ -20,7 +20,7 @@ impl Block {
     pub fn new(
         label: Option<String>,
         arguments: Vec<BlockArgument>,
-        ops: Vec<Arc<dyn Op>>,
+        ops: Arc<Vec<Arc<dyn Op>>>,
         parent: Arc<RwLock<Option<Region>>>,
     ) -> Self {
         Self {
@@ -30,8 +30,11 @@ impl Block {
             parent,
         }
     }
-    pub fn ops(&self) -> Vec<Arc<dyn Op>> {
+    pub fn ops(&self) -> Arc<Vec<Arc<dyn Op>>> {
         self.ops.clone()
+    }
+    pub fn ops_mut(&mut self) -> &mut Arc<Vec<Arc<dyn Op>>> {
+        &mut self.ops
     }
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
@@ -40,7 +43,7 @@ impl Block {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;
         }
-        for op in self.ops() {
+        for op in self.ops.iter() {
             let spaces = crate::ir::spaces(indent);
             write!(f, "{spaces}")?;
             op.display(f, indent)?;
