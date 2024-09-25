@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
-mod compile;
 mod dialect;
 mod ir;
+mod opt;
 pub mod parser;
 mod typ;
 
-pub use compile::compile;
 pub use ir::attribute::Attribute;
 pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
 pub use ir::Block;
+pub use opt::opt;
 pub use parser::Parse;
 pub use parser::Parser;
 

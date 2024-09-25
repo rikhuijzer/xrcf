@@ -1,3 +1,5 @@
+use crate::parser::BuiltinParse;
+use crate::parser::Parser;
 use core::fmt::Error;
 use core::fmt::Write;
 
@@ -15,9 +17,14 @@ impl Transform for MLIRToLLVMIRTranslation {
     }
 }
 
-pub fn compile(src: &str) -> String {
-    let step = MLIRToLLVMIRTranslation {};
-    let mut out = String::new();
-    step.transform(src, &mut out).unwrap();
-    out
+pub struct Options {
+    canonicalize: bool,
+}
+
+pub fn opt(src: &str, options: Options) -> String {
+    let module = Parser::<BuiltinParse>::parse(src).unwrap();
+    if options.canonicalize {
+        println!("canonicalize");
+    }
+    format!("{}", module)
 }

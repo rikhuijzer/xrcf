@@ -2,7 +2,7 @@
 #![allow(unused)]
 extern crate rrcf;
 
-use rrcf::compile;
+use rrcf::opt;
 
 #[test]
 fn test_translate() {
