@@ -43,7 +43,7 @@ pub struct Operation {
     attributes: Vec<Arc<dyn Attribute>>,
     results: Vec<Value>,
     result_types: Vec<Type>,
-    region: Arc<RwLock<Region>>,
+    region: Arc<RwLock<Option<Region>>>,
     parent: Option<Pin<Box<Block>>>,
 }
 
@@ -54,7 +54,7 @@ impl Operation {
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Value>,
         result_types: Vec<Type>,
-        region: Arc<RwLock<Region>>,
+        region: Arc<RwLock<Option<Region>>>,
         parent: Option<Pin<Box<Block>>>,
     ) -> Self {
         Self {
@@ -79,7 +79,7 @@ impl Operation {
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn region(&self) -> Arc<RwLock<Region>> {
+    pub fn region(&self) -> Arc<RwLock<Option<Region>>> {
         self.region.clone()
     }
     pub fn name(&self) -> String {
@@ -105,8 +105,8 @@ impl Operation {
         self.result_types = result_types;
         self
     }
-    pub fn set_region(&mut self, region: Arc<RwLock<Region>>) -> &mut Self {
-        self.region = region.clone();
+    pub fn set_region(&mut self, region: Arc<RwLock<Option<Region>>>) -> &mut Self {
+        self.region = region;
         self
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
@@ -145,11 +145,14 @@ impl Operation {
             }
         }
         let region = self.region();
-        let region = region.read().unwrap();
-        if region.is_empty() {
-            write!(f, "\n")?;
+        if let Some(region) = region.read().unwrap().as_ref() {
+            if region.blocks().is_empty() {
+                write!(f, "\n")?;
+            } else {
+                region.display(f, indent)?;
+            }
         } else {
-            region.display(f, indent)?;
+            write!(f, "\n")?;
         }
         Ok(())
     }
@@ -163,7 +166,7 @@ impl Default for Operation {
             attributes: vec![],
             results: vec![],
             result_types: vec![],
-            region: Arc::new(RwLock::new(Region::default())),
+            region: Arc::new(RwLock::new(None)),
             parent: None,
         }
     }

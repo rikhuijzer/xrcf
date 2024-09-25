@@ -118,7 +118,7 @@ impl<T: Parse> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
-    pub fn block(&mut self, parent: Arc<RwLock<Region>>) -> Result<Arc<RwLock<Block>>> {
+    pub fn block(&mut self, parent: Arc<RwLock<Option<Region>>>) -> Result<Arc<RwLock<Block>>> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
@@ -155,14 +155,14 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self) -> Result<Arc<RwLock<Region>>> {
+    pub fn region(&mut self) -> Result<Arc<RwLock<Option<Region>>>> {
         let region = Region::default();
-        let region = Arc::new(RwLock::new(region));
+        let region = Arc::new(RwLock::new(Some(region)));
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
         let block = self.block(region.clone())?;
         blocks.push(block);
-        region.write().unwrap().set_blocks(blocks);
+        region.write().unwrap().as_mut().unwrap().set_blocks(blocks);
         self.advance();
         Ok(region)
     }
@@ -180,11 +180,17 @@ impl<T: Parse> Parser<T> {
         } else {
             let name = OperationName::new("module".to_string());
             let region = Region::default();
-            let region = Arc::new(RwLock::new(region));
+            let region = Arc::new(RwLock::new(Some(region)));
             let ops: Vec<Arc<dyn Op>> = vec![op];
             let block = Block::new(None, vec![], ops, region.clone());
             let block = Arc::new(RwLock::new(block));
-            region.write().unwrap().blocks_mut().push(block);
+            region
+                .write()
+                .unwrap()
+                .as_mut()
+                .unwrap()
+                .blocks_mut()
+                .push(block);
             let mut operation = Operation::default();
             operation.set_name(name).set_region(region.clone());
             let operation = Arc::new(RwLock::new(operation));

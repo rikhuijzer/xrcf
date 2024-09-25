@@ -13,7 +13,7 @@ pub struct Block {
     label: Option<String>,
     arguments: Vec<BlockArgument>,
     ops: Vec<Arc<dyn Op>>,
-    parent: Arc<RwLock<Region>>,
+    parent: Arc<RwLock<Option<Region>>>,
 }
 
 impl Block {
@@ -21,7 +21,7 @@ impl Block {
         label: Option<String>,
         arguments: Vec<BlockArgument>,
         ops: Vec<Arc<dyn Op>>,
-        parent: Arc<RwLock<Region>>,
+        parent: Arc<RwLock<Option<Region>>>,
     ) -> Self {
         Self {
             label,
@@ -33,7 +33,7 @@ impl Block {
     pub fn ops(&self) -> Vec<Arc<dyn Op>> {
         self.ops.clone()
     }
-    pub fn parent(&self) -> Arc<RwLock<Region>> {
+    pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -51,7 +51,6 @@ impl Block {
 
 impl Display for Block {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let indent = 0;
-        self.display(f, indent)
+        self.display(f, 0)
     }
 }

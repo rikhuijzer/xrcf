@@ -47,13 +47,17 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    pub fn get_body_region(&self) -> Result<Arc<RwLock<Region>>> {
+    pub fn get_body_region(&self) -> Result<Arc<RwLock<Option<Region>>>> {
         Ok(self.operation().read().unwrap().region())
     }
     pub fn first_op(&self) -> Result<Arc<dyn Op>> {
         let body_region = self.get_body_region()?;
         let binding = body_region.read().unwrap();
-        let blocks = binding.blocks();
+        let region = match binding.as_ref() {
+            Some(region) => region,
+            None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
+        };
+        let blocks = region.blocks();
         let block = match blocks.first() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),

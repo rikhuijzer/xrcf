@@ -12,8 +12,8 @@ impl Region {
     pub fn new(blocks: Vec<Arc<RwLock<Block>>>) -> Self {
         Self { blocks }
     }
-    pub fn blocks(&self) -> &Vec<Arc<RwLock<Block>>> {
-        &self.blocks
+    pub fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        self.blocks.clone()
     }
     pub fn blocks_mut(&mut self) -> &mut Vec<Arc<RwLock<Block>>> {
         &mut self.blocks

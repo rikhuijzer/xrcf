@@ -1,5 +1,6 @@
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Region;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -19,6 +20,10 @@ pub trait Op {
     where
         Self: Sized;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
+    fn region(&self) -> Arc<RwLock<Option<Region>>> {
+        let operation = self.operation().read().unwrap();
+        operation.region()
+    }
     fn is_terminator(&self) -> bool {
         false
     }

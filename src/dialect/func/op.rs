@@ -64,7 +64,9 @@ impl Op for FuncOp {
         }
         let region = self.operation().read().unwrap().region();
         let region = region.read().unwrap();
-        region.display(f, indent)?;
+        if let Some(region) = region.as_ref() {
+            region.display(f, indent)?;
+        }
         Ok(())
     }
 }

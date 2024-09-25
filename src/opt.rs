@@ -1,3 +1,4 @@
+use crate::canonicalize;
 use crate::ir::Op;
 use crate::parser::BuiltinParse;
 use crate::parser::Parser;
@@ -21,9 +22,9 @@ pub struct OptOptions {
 }
 
 pub fn opt(src: &str, options: OptOptions) -> String {
-    let module = Parser::<BuiltinParse>::parse(src).unwrap();
+    let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
     if options.canonicalize {
-        println!("canonicalize");
+        canonicalize(&mut module);
     }
     format!("{}", module)
 }
