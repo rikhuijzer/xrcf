@@ -1,3 +1,4 @@
+use crate::canonicalize::CanonicalizeResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -23,6 +24,9 @@ pub trait Op {
     fn region(&self) -> Arc<RwLock<Option<Region>>> {
         let operation = self.operation().read().unwrap();
         operation.region()
+    }
+    fn canonicalize(&mut self) -> CanonicalizeResult {
+        CanonicalizeResult::Unchanged
     }
     fn is_terminator(&self) -> bool {
         false
