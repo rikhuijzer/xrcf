@@ -1,8 +1,8 @@
+use crate::ir::Op;
 use crate::parser::BuiltinParse;
 use crate::parser::Parser;
 use core::fmt::Error;
 use core::fmt::Write;
-use crate::ir::Op;
 
 pub trait Transform {
     fn transform(&self, from: &dyn Op, to: &mut dyn Write) -> Result<(), Error>;
