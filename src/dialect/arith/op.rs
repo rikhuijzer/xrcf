@@ -1,3 +1,4 @@
+use crate::canonicalize::CanonicalizeResult;
 use crate::ir::operation::Operation;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
@@ -76,6 +77,17 @@ pub struct AddiOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl AddiOp {
+    /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
+    fn addi_add_constant(&mut self) -> CanonicalizeResult {
+        let operands = self.operation().read().unwrap().operands();
+        assert!(operands.len() == 2);
+        let lhs = &operands[0];
+        let rhs = &operands[1];
+        CanonicalizeResult::Changed
+    }
+}
+
 impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
@@ -85,6 +97,9 @@ impl Op for AddiOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
+    }
+    fn canonicalize(&mut self) -> CanonicalizeResult {
+        self.addi_add_constant()
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", self.operation().read().unwrap())

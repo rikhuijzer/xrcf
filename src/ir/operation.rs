@@ -70,6 +70,9 @@ impl Operation {
     pub fn operands(&self) -> Arc<Vec<Value>> {
         self.operands.clone()
     }
+    pub fn operands_mut(&mut self) -> &mut Arc<Vec<Value>> {
+        &mut self.operands
+    }
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
         self.attributes.clone()
     }
