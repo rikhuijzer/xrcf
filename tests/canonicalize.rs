@@ -16,8 +16,9 @@ fn canonicalize_addi() {
     }
     ";
     let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
+    println!("\nBefore canonicalize:{src}");
     canonicalize(&mut module);
-    println!("\n{}\n", module);
+    println!("\nAfter canonicalize:\n{module}\n");
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");

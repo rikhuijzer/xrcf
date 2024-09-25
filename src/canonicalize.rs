@@ -15,7 +15,6 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
         let mut changed = CanonicalizeResult::Unchanged;
         for block in region.blocks() {
             let mut block = block.write().unwrap();
-            println!("block:\n{}", block);
             let ops = Arc::make_mut(block.ops_mut());
             for op in ops.iter_mut() {
                 if let Some(op) = Arc::get_mut(op) {
@@ -33,7 +32,7 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
 }
 
 pub fn canonicalize(module: &mut ModuleOp) {
-    let max_iterations = 10;
+    let max_iterations = 16;
     for _ in 0..max_iterations {
         let result = canonicalize_op(module);
         if result == CanonicalizeResult::Unchanged {
