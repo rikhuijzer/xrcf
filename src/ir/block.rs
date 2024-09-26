@@ -38,18 +38,23 @@ impl Block {
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
-    pub fn first_use(&self, name: String) -> Option<Arc<Value>> {
+    pub fn assignment(&self, name: String) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
         for op in ops.iter() {
             let op = op.read().unwrap();
             let operation = op.operation();
             let operands = operation.read().unwrap().operands();
+            let operands = operands.read().unwrap();
             for operand in operands.iter() {
-                match operand.as_ref() {
+                let other_operand = operand.clone();
+                let write = other_operand.write().unwrap();
+                let value = operand.write().unwrap().value();
+                let value = value.clone().read().unwrap();
+                match value {
                     Value::BlockArgument(block_argument) => {
                         if block_argument.name() == name {
-                            return Some(operand.clone());
+                            return Some(write.value().clone());
                         }
                     }
                     Value::OpResult(_) => {
