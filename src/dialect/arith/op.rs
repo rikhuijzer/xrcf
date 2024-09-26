@@ -161,8 +161,8 @@ impl Parse for AddiOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());
-        operation.set_operands(Arc::new(parser.arguments(parent.clone())?));
-        operation.set_parent(parent);
+        operation.set_parent(parent.clone());
+        operation.set_operands(Arc::new(parser.arguments(parent)?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = Type::new(result_type.lexeme.clone());

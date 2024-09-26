@@ -33,10 +33,7 @@ impl<T: Parse> Parser<T> {
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
 pub trait Parse {
-    fn op<T: Parse>(
-        parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>>
+    fn op<T: Parse>(parser: &mut Parser<T>, parent: Option<Arc<RwLock<Block>>>) -> Result<Arc<dyn Op>>
     where
         Self: Sized;
 }
@@ -52,10 +49,7 @@ enum Dialects {
 }
 
 impl Parse for BuiltinParse {
-    fn op<T: Parse>(
-        parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(parser: &mut Parser<T>, parent: Option<Arc<RwLock<Block>>>) -> Result<Arc<dyn Op>> {
         if parser.peek().lexeme == "return" {
             return <func::ReturnOp as Parse>::op(parser, parent);
         }
