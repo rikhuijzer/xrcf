@@ -131,12 +131,17 @@ impl<T: Parse> Parser<T> {
         // println!("label: {}", label);
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = Arc::new(vec![]);
-        let mut ops = vec![];
+        let ops = vec![];
+        let ops = Arc::new(RwLock::new(ops));
+        let block = Block::new(None, arguments, ops.clone(), parent);
+        let block = Arc::new(RwLock::new(block));
         loop {
             let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
             let is_return = self.peek().lexeme == "return";
             if is_ssa_def || is_return {
-                let op = T::op(self, None)?;
+                let parent = Some(block.clone());
+                let op = T::op(self, parent)?;
+                let mut ops = ops.write().unwrap();
                 ops.push(op.clone());
                 if op.is_terminator() {
                     break;
@@ -145,14 +150,13 @@ impl<T: Parse> Parser<T> {
                 break;
             }
         }
-        if ops.is_empty() {
+        if ops.read().unwrap().is_empty() {
             let token = self.peek();
             self.report_error(&token, "Could not find operations in block")?;
         }
-        let ops = Arc::new(ops);
-        let block = Block::new(None, arguments, ops, parent);
-        let block = Arc::new(RwLock::new(block));
-        for op in block.write().unwrap().ops().iter() {
+        let ops = block.write().unwrap().ops();
+        let ops = ops.read().unwrap();
+        for op in ops.iter() {
             let mut operation = op.operation().write().unwrap();
             operation.set_parent(Some(block.clone()));
         }
@@ -193,7 +197,7 @@ impl<T: Parse> Parser<T> {
             let name = OperationName::new("module".to_string());
             let region = Region::default();
             let region = Arc::new(RwLock::new(Some(region)));
-            let ops: Arc<Vec<Arc<dyn Op>>> = Arc::new(vec![op]);
+            let ops = Arc::new(RwLock::new(vec![op]));
             let arguments = Arc::new(vec![]);
             let block = Block::new(None, arguments, ops, region.clone());
             let block = Arc::new(RwLock::new(block));

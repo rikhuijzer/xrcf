@@ -1,6 +1,5 @@
 use crate::ir::ModuleOp;
 use crate::ir::Op;
-use std::sync::Arc;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum CanonicalizeResult {
@@ -14,14 +13,12 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
     if let Some(region) = region.as_ref() {
         let mut changed = CanonicalizeResult::Unchanged;
         for block in region.blocks() {
-            let mut block = block.write().unwrap();
-            let ops = Arc::make_mut(block.ops_mut());
-            for op in ops.iter_mut() {
-                if let Some(op) = Arc::get_mut(op) {
-                    let result = canonicalize_op(op);
-                    if result == CanonicalizeResult::Changed {
-                        changed = CanonicalizeResult::Changed;
-                    }
+            let block = block.write().unwrap();
+            for op in block.ops().write().unwrap().iter_mut() {
+                let op: &mut dyn Op = &mut *op.write().unwrap();
+                let result = canonicalize_op(op);
+                if result == CanonicalizeResult::Changed {
+                    changed = CanonicalizeResult::Changed;
                 }
             }
         }

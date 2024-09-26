@@ -8,7 +8,7 @@ use std::sync::RwLock;
 pub struct Block {
     label: Option<String>,
     arguments: Arc<Vec<Value>>,
-    ops: Arc<Vec<Arc<dyn Op>>>,
+    ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
     parent: Arc<RwLock<Option<Region>>>,
 }
 
@@ -16,7 +16,7 @@ impl Block {
     pub fn new(
         label: Option<String>,
         arguments: Arc<Vec<Value>>,
-        ops: Arc<Vec<Arc<dyn Op>>>,
+        ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
         parent: Arc<RwLock<Option<Region>>>,
     ) -> Self {
         Self {
@@ -29,17 +29,20 @@ impl Block {
     pub fn arguments(&self) -> Arc<Vec<Value>> {
         self.arguments.clone()
     }
-    pub fn ops(&self) -> Arc<Vec<Arc<dyn Op>>> {
+    pub fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.ops.clone()
     }
-    pub fn ops_mut(&mut self) -> &mut Arc<Vec<Arc<dyn Op>>> {
+    pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
     pub fn first_use(&self, name: String) -> Option<Arc<Value>> {
-        for op in self.ops.iter() {
+        let ops = self.ops();
+        let ops = ops.read().unwrap();
+        for op in ops.iter() {
+            let op = op.read().unwrap();
             let operation = op.operation();
             let operands = operation.read().unwrap().operands();
             for operand in operands.iter() {
@@ -61,9 +64,12 @@ impl Block {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;
         }
-        for op in self.ops.iter() {
+        let ops = self.ops();
+        let ops = ops.read().unwrap();
+        for op in ops.iter() {
             let spaces = crate::ir::spaces(indent);
             write!(f, "{spaces}")?;
+            let op = op.read().unwrap();
             op.display(f, indent)?;
         }
         Ok(())

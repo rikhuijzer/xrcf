@@ -50,7 +50,7 @@ impl ModuleOp {
     pub fn get_body_region(&self) -> Result<Arc<RwLock<Option<Region>>>> {
         Ok(self.operation().read().unwrap().region())
     }
-    pub fn first_op(&self) -> Result<Arc<dyn Op>> {
+    pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
         let body_region = self.get_body_region()?;
         let binding = body_region.read().unwrap();
         let region = match binding.as_ref() {
@@ -63,6 +63,7 @@ impl ModuleOp {
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
         let ops = block.read().unwrap().ops();
+        let ops = ops.read().unwrap();
         let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));
