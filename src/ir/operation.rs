@@ -48,7 +48,7 @@ pub struct Operation {
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
     /// `ModuleOp` that is created after parsing of the `FuncOp`).
-    parent: Arc<RwLock<Option<Block>>>,
+    parent: Option<Arc<RwLock<Block>>>,
 }
 
 impl Operation {
@@ -59,7 +59,7 @@ impl Operation {
         results: Vec<Value>,
         result_types: Vec<Type>,
         region: Arc<RwLock<Option<Region>>>,
-        parent: Arc<RwLock<Option<Block>>>,
+        parent: Option<Arc<RwLock<Block>>>,
     ) -> Self {
         Self {
             name,
@@ -93,7 +93,7 @@ impl Operation {
         self.region.clone()
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent(&self) -> Arc<RwLock<Option<Block>>> {
+    fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
     pub fn set_name(&mut self, name: OperationName) {
@@ -114,7 +114,7 @@ impl Operation {
     pub fn set_region(&mut self, region: Arc<RwLock<Option<Region>>>) {
         self.region = region;
     }
-    pub fn set_parent(&mut self, parent: Arc<RwLock<Option<Block>>>) {
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;
     }
     pub fn rename(&mut self, name: String) {
@@ -171,7 +171,7 @@ impl Default for Operation {
             results: vec![],
             result_types: vec![],
             region: Arc::new(RwLock::new(None)),
-            parent: Arc::new(RwLock::new(None)),
+            parent: None,
         }
     }
 }
