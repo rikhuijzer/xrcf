@@ -6,7 +6,6 @@ use crate::Attribute;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -49,7 +48,7 @@ pub struct Operation {
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
     /// `ModuleOp` that is created after parsing of the `FuncOp`).
-    parent: Option<Pin<Box<Block>>>,
+    parent: Arc<RwLock<Option<Block>>>,
 }
 
 impl Operation {
@@ -60,7 +59,7 @@ impl Operation {
         results: Vec<Value>,
         result_types: Vec<Type>,
         region: Arc<RwLock<Option<Region>>>,
-        parent: Option<Pin<Box<Block>>>,
+        parent: Arc<RwLock<Option<Block>>>,
     ) -> Self {
         Self {
             name,
@@ -94,36 +93,29 @@ impl Operation {
         self.region.clone()
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent(&self) -> Option<&Pin<Box<Block>>> {
-        self.parent.as_ref()
+    fn parent(&self) -> Arc<RwLock<Option<Block>>> {
+        self.parent.clone()
     }
-    pub fn set_name(&mut self, name: OperationName) -> &mut Self {
+    pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
-        self
     }
-    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) -> &mut Self {
+    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) {
         self.operands = operands;
-        self
     }
-    pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) -> &mut Self {
+    pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {
         self.attributes = attributes;
-        self
     }
-    pub fn set_results(&mut self, results: Vec<Value>) -> &mut Self {
+    pub fn set_results(&mut self, results: Vec<Value>) {
         self.results = results;
-        self
     }
-    pub fn set_result_types(&mut self, result_types: Vec<Type>) -> &mut Self {
+    pub fn set_result_types(&mut self, result_types: Vec<Type>) {
         self.result_types = result_types;
-        self
     }
-    pub fn set_region(&mut self, region: Arc<RwLock<Option<Region>>>) -> &mut Self {
+    pub fn set_region(&mut self, region: Arc<RwLock<Option<Region>>>) {
         self.region = region;
-        self
     }
-    pub fn set_parent(&mut self, parent: Option<Pin<Box<Block>>>) -> &mut Self {
+    pub fn set_parent(&mut self, parent: Arc<RwLock<Option<Block>>>) {
         self.parent = parent;
-        self
     }
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
@@ -179,7 +171,7 @@ impl Default for Operation {
             results: vec![],
             result_types: vec![],
             region: Arc::new(RwLock::new(None)),
-            parent: None,
+            parent: Arc::new(RwLock::new(None)),
         }
     }
 }

@@ -174,7 +174,7 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op: Arc<dyn Op> = T::op(&mut parser)?;
+        let mut op: Arc<dyn Op> = T::op(&mut parser)?;
         let any_op: Box<dyn Any> = Box::new(op.clone());
         let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op
@@ -186,6 +186,7 @@ impl<T: Parse> Parser<T> {
             let arguments = Arc::new(vec![]);
             let block = Block::new(None, arguments, ops, region.clone());
             let block = Arc::new(RwLock::new(block));
+            op.set_parent(Some(block));
             region
                 .write()
                 .unwrap()
@@ -194,7 +195,8 @@ impl<T: Parse> Parser<T> {
                 .blocks_mut()
                 .push(block);
             let mut operation = Operation::default();
-            operation.set_name(name).set_region(region.clone());
+            operation.set_name(name);
+            operation.set_region(region.clone());
             let operation = Arc::new(RwLock::new(operation));
             let module_op = ModuleOp::from_operation(operation);
             module_op.unwrap()

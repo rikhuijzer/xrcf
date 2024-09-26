@@ -77,7 +77,8 @@ impl Parse for GlobalOp {
         }
         println!("{:?}", parser.advance());
         let mut operation = Operation::default();
-        operation.set_name(name).set_attributes(attributes);
+        operation.set_name(name);
+        operation.set_attributes(attributes);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(op.unwrap()))
