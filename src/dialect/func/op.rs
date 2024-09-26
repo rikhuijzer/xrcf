@@ -3,6 +3,7 @@ use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::OpOperand;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::TokenKind;
@@ -103,7 +104,7 @@ impl<T: Parse> Parser<T> {
     }
     /// Parse operands:
     /// %arg0 : i64, %arg1 : i64
-    pub fn block_arguments(&mut self) -> Result<Vec<Value>> {
+    pub fn arguments(&mut self) -> Result<Vec<Value>> {
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             operands.push(self.block_argument()?);
@@ -153,7 +154,7 @@ impl Parse for FuncOp {
         }
         let _lparen = parser.advance();
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.block_arguments()?));
+        operation.set_operands(Arc::new(parser.arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
         if let Some(result) = result {

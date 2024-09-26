@@ -124,7 +124,7 @@ impl<T: Parse> Parser<T> {
         // let label = label.lexeme.clone();
         // println!("label: {}", label);
         // let _equal = self.expect(TokenKind::Equal)?;
-        let arguments = vec![];
+        let arguments = Arc::new(vec![]);
         let mut ops = vec![];
         loop {
             let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
@@ -183,7 +183,8 @@ impl<T: Parse> Parser<T> {
             let region = Region::default();
             let region = Arc::new(RwLock::new(Some(region)));
             let ops: Arc<Vec<Arc<dyn Op>>> = Arc::new(vec![op]);
-            let block = Block::new(None, vec![], ops, region.clone());
+            let arguments = Arc::new(vec![]);
+            let block = Block::new(None, arguments, ops, region.clone());
             let block = Arc::new(RwLock::new(block));
             region
                 .write()

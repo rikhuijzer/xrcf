@@ -1,17 +1,13 @@
 use crate::ir::Op;
 use crate::ir::Region;
 use std::fmt::Display;
+use crate::ir::Value;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-#[derive(Clone)]
-pub struct BlockArgument {
-    name: String,
-}
-
 pub struct Block {
     label: Option<String>,
-    arguments: Vec<BlockArgument>,
+    arguments: Arc<Vec<Value>>,
     ops: Arc<Vec<Arc<dyn Op>>>,
     parent: Arc<RwLock<Option<Region>>>,
 }
@@ -19,7 +15,7 @@ pub struct Block {
 impl Block {
     pub fn new(
         label: Option<String>,
-        arguments: Vec<BlockArgument>,
+        arguments: Arc<Vec<Value>>,
         ops: Arc<Vec<Arc<dyn Op>>>,
         parent: Arc<RwLock<Option<Region>>>,
     ) -> Self {
@@ -29,6 +25,9 @@ impl Block {
             ops,
             parent,
         }
+    }
+    pub fn arguments(&self) -> Arc<Vec<Value>> {
+        self.arguments.clone()
     }
     pub fn ops(&self) -> Arc<Vec<Arc<dyn Op>>> {
         self.ops.clone()
