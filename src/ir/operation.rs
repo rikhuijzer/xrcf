@@ -42,7 +42,7 @@ pub struct Operation {
     /// makes sense.
     operands: Arc<Vec<Arc<Value>>>,
     attributes: Vec<Arc<dyn Attribute>>,
-    results: Vec<Value>,
+    results: Vec<Arc<Value>>,
     result_types: Vec<Type>,
     region: Arc<RwLock<Option<Region>>>,
     /// This is set after parsing because not all parents are known during
@@ -56,7 +56,7 @@ impl Operation {
         name: OperationName,
         operands: Arc<Vec<Arc<Value>>>,
         attributes: Vec<Arc<dyn Attribute>>,
-        results: Vec<Value>,
+        results: Vec<Arc<Value>>,
         result_types: Vec<Type>,
         region: Arc<RwLock<Option<Region>>>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -83,7 +83,7 @@ impl Operation {
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
         self.attributes.clone()
     }
-    pub fn results(&self) -> &Vec<Value> {
+    pub fn results(&self) -> &Vec<Arc<Value>> {
         &self.results
     }
     pub fn result_types(&self) -> &Vec<Type> {
@@ -105,7 +105,7 @@ impl Operation {
     pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {
         self.attributes = attributes;
     }
-    pub fn set_results(&mut self, results: Vec<Value>) {
+    pub fn set_results(&mut self, results: Vec<Arc<Value>>) {
         self.results = results;
     }
     pub fn set_result_types(&mut self, result_types: Vec<Type>) {

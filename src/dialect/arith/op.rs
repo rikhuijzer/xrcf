@@ -70,7 +70,7 @@ impl Parse for ConstantOp {
                 return Err(anyhow::anyhow!("Expected integer constant"));
             }
         };
-        operation.set_operands(Arc::new(vec![operand]));
+        operation.set_operands(Arc::new(vec![Arc::new(operand)]));
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(ConstantOp { operation }))
@@ -111,26 +111,24 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    fn argument(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Value> {
+    fn argument(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Arc<Value>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         match parent {
             Some(parent) => {
                 let block = parent.read().unwrap();
-                let first_use = block.first_use(name);
+                let first_use = block.first_use(name.clone());
                 let typ = Type::new("any".to_string());
                 let value = Value::OpResult(OpResult::new(name, typ));
-                Ok(value)
+                Ok(Arc::new(value))
             }
-            None => {
-                Err(anyhow::anyhow!(
-                    "Expected parent block to determine first use `Value` for `{}`",
-                    name
-                ))
-            }
+            None => Err(anyhow::anyhow!(
+                "Expected parent block to determine first use `Value` for `{}`",
+                name
+            )),
         }
     }
-    pub fn arguments(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Vec<Value>> {
+    pub fn arguments(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Vec<Arc<Value>>> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             arguments.push(self.argument(parent.clone())?);
@@ -140,7 +138,7 @@ impl<T: Parse> Parser<T> {
         }
         Ok(arguments)
     }
-    pub fn results(&mut self) -> Result<Vec<Value>> {
+    pub fn results(&mut self) -> Result<Vec<Arc<Value>>> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             results.push(self.argument(None)?);

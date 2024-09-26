@@ -155,7 +155,7 @@ impl Parse for FuncOp {
         operation.set_region(parser.region()?);
         operation.set_parent(parent);
         if let Some(result) = result {
-            operation.set_results(vec![result]);
+            operation.set_results(vec![Arc::new(result)]);
         }
         let operation = Arc::new(RwLock::new(operation));
 
@@ -208,7 +208,7 @@ impl Parse for ReturnOp {
     ) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.arguments(parent)?));
+        operation.set_operands(Arc::new(parser.arguments(parent.clone())?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
