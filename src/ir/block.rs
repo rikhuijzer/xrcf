@@ -1,7 +1,7 @@
 use crate::ir::Op;
 use crate::ir::Region;
-use std::fmt::Display;
 use crate::ir::Value;
+use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 

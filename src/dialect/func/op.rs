@@ -1,9 +1,9 @@
 use crate::ir::BlockArgument;
 use crate::ir::Op;
+use crate::ir::OpOperand;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::OpOperand;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::TokenKind;
@@ -84,7 +84,7 @@ impl<T: Parse> Parser<T> {
         }
         Ok(identifier.lexeme.clone())
     }
-    /// %arg0 : i64
+    /// %arg0 : i64,
     pub fn block_argument(&mut self) -> Result<Value> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
@@ -102,9 +102,9 @@ impl<T: Parse> Parser<T> {
         }
         Ok(operand)
     }
-    /// Parse operands:
-    /// %arg0 : i64, %arg1 : i64
-    pub fn arguments(&mut self) -> Result<Vec<Value>> {
+    /// Parse `(%arg0 : i64, %arg1 : i64)`.
+    pub fn function_arguments(&mut self) -> Result<Vec<Value>> {
+        let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             operands.push(self.block_argument()?);
@@ -146,15 +146,8 @@ impl Parse for FuncOp {
         };
         let _operation_name = parser.advance();
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
-        if !parser.check(TokenKind::LParen) {
-            return Err(anyhow::anyhow!(
-                "Expected '(', got {:?}",
-                parser.peek().kind
-            ));
-        }
-        let _lparen = parser.advance();
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.arguments()?));
+        operation.set_operands(Arc::new(parser.function_arguments()?));
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
         if let Some(result) = result {
