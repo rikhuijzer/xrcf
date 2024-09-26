@@ -40,7 +40,7 @@ pub struct Operation {
     /// Note that function arguments are also operands (for now?).
     /// Operands are values that are used by the operation, so it sort of
     /// makes sense.
-    operands: Arc<Vec<Value>>,
+    operands: Arc<Vec<Arc<Value>>>,
     attributes: Vec<Arc<dyn Attribute>>,
     results: Vec<Value>,
     result_types: Vec<Type>,
@@ -54,7 +54,7 @@ pub struct Operation {
 impl Operation {
     pub fn new(
         name: OperationName,
-        operands: Arc<Vec<Value>>,
+        operands: Arc<Vec<Arc<Value>>>,
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Value>,
         result_types: Vec<Type>,
@@ -74,10 +74,10 @@ impl Operation {
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    pub fn operands(&self) -> Arc<Vec<Value>> {
+    pub fn operands(&self) -> Arc<Vec<Arc<Value>>> {
         self.operands.clone()
     }
-    pub fn operands_mut(&mut self) -> &mut Arc<Vec<Value>> {
+    pub fn operands_mut(&mut self) -> &mut Arc<Vec<Arc<Value>>> {
         &mut self.operands
     }
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
@@ -99,7 +99,7 @@ impl Operation {
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
-    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) {
+    pub fn set_operands(&mut self, operands: Arc<Vec<Arc<Value>>>) {
         self.operands = operands;
     }
     pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {

@@ -38,6 +38,23 @@ impl Block {
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
+    pub fn first_use(&self, name: String) -> Option<&Value> {
+        for op in self.ops.iter() {
+            let operation = op.operation();
+            let operands = operation.read().unwrap().operands();
+            for operand in operands.iter() {
+                match operand {
+                    Value::BlockArgument(block_argument) => {
+                        if block_argument.name() == name {
+                            return Some(&block_argument);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        None
+    }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;

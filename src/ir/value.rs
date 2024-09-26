@@ -28,6 +28,9 @@ impl BlockArgument {
     pub fn new(name: String, typ: Type) -> Self {
         BlockArgument { name, typ }
     }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 #[derive(Debug)]

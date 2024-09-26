@@ -111,17 +111,29 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    fn argument(&mut self) -> Result<Value> {
+    fn argument(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Value> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
-        let typ = Type::new("any".to_string());
-        let value = Value::OpResult(OpResult::new(name, typ));
-        Ok(value)
+        match parent {
+            Some(parent) => {
+                let block = parent.read().unwrap();
+                let first_use = block.first_use(name);
+                let typ = Type::new("any".to_string());
+                let value = Value::OpResult(OpResult::new(name, typ));
+                Ok(value)
+            }
+            None => {
+                Err(anyhow::anyhow!(
+                    "Expected parent block to determine first use `Value` for `{}`",
+                    name
+                ))
+            }
+        }
     }
-    pub fn arguments(&mut self) -> Result<Vec<Value>> {
+    pub fn arguments(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Vec<Value>> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            arguments.push(self.argument()?);
+            arguments.push(self.argument(parent.clone())?);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
             }
@@ -131,7 +143,7 @@ impl<T: Parse> Parser<T> {
     pub fn results(&mut self) -> Result<Vec<Value>> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            results.push(self.argument()?);
+            results.push(self.argument(None)?);
             if self.check(TokenKind::Equal) {
                 let _equal = self.advance();
             }
@@ -151,7 +163,7 @@ impl Parse for AddiOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());
-        operation.set_operands(Arc::new(parser.arguments()?));
+        operation.set_operands(Arc::new(parser.arguments(parent.clone())?));
         operation.set_parent(parent);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;

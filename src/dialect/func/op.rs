@@ -85,7 +85,7 @@ impl<T: Parse> Parser<T> {
         Ok(identifier.lexeme.clone())
     }
     /// %arg0 : i64,
-    pub fn block_argument(&mut self) -> Result<Value> {
+    pub fn function_argument(&mut self) -> Result<Arc<Value>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
@@ -100,14 +100,14 @@ impl<T: Parse> Parser<T> {
         if self.check(TokenKind::Comma) {
             self.advance();
         }
-        Ok(operand)
+        Ok(Arc::new(operand))
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`.
-    pub fn function_arguments(&mut self) -> Result<Vec<Value>> {
+    pub fn function_arguments(&mut self) -> Result<Vec<Arc<Value>>> {
         let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            operands.push(self.block_argument()?);
+            operands.push(self.function_argument()?);
         }
         if self.check(TokenKind::RParen) {
             let _rparen = self.advance();
@@ -208,7 +208,7 @@ impl Parse for ReturnOp {
     ) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.arguments()?));
+        operation.set_operands(Arc::new(parser.arguments(parent)?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
