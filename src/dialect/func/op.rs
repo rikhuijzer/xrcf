@@ -206,14 +206,16 @@ impl Parse for ReturnOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<dyn Op>> {
-        let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == "return");
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.arguments(parent.clone())?));
+        assert!(parent.is_some());
+        operation.set_parent(parent.clone());
+        operation.set_operands(Arc::new(parser.operands(parent.clone().unwrap())?));
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
         operation.set_result_types(vec![return_type]);
-        operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         let op = ReturnOp { operation };
         Ok(Arc::new(op))
