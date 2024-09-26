@@ -54,7 +54,7 @@ impl Parse for GlobalOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
@@ -86,6 +86,6 @@ impl Parse for GlobalOp {
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
-        Ok(Arc::new(op.unwrap()))
+        Ok(Arc::new(RwLock::new(op.unwrap())))
     }
 }

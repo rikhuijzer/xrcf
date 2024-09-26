@@ -137,7 +137,7 @@ impl Parse for FuncOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
@@ -163,7 +163,7 @@ impl Parse for FuncOp {
             identifier,
             operation,
         };
-        Ok(Arc::new(op))
+        Ok(Arc::new(RwLock::new(op)))
     }
 }
 
@@ -205,7 +205,7 @@ impl Parse for ReturnOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "return");
         let mut operation = Operation::default();
@@ -218,6 +218,6 @@ impl Parse for ReturnOp {
         operation.set_result_types(vec![return_type]);
         let operation = Arc::new(RwLock::new(operation));
         let op = ReturnOp { operation };
-        Ok(Arc::new(op))
+        Ok(Arc::new(RwLock::new(op)))
     }
 }

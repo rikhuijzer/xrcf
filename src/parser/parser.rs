@@ -36,7 +36,7 @@ pub trait Parse {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>>
+    ) -> Result<Arc<RwLock<dyn Op>>>
     where
         Self: Sized;
 }
@@ -55,7 +55,7 @@ impl Parse for BuiltinParse {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         if parser.peek().lexeme == "return" {
             return <func::ReturnOp as Parse>::op(parser, parent);
         }
@@ -143,7 +143,7 @@ impl<T: Parse> Parser<T> {
                 let op = T::op(self, parent)?;
                 let mut ops = ops.write().unwrap();
                 ops.push(op.clone());
-                if op.is_terminator() {
+                if op.read().unwrap().is_terminator() {
                     break;
                 }
             } else {
@@ -157,6 +157,7 @@ impl<T: Parse> Parser<T> {
         let ops = block.write().unwrap().ops();
         let ops = ops.read().unwrap();
         for op in ops.iter() {
+            let op = op.read().unwrap();
             let mut operation = op.operation().write().unwrap();
             operation.set_parent(Some(block.clone()));
         }
@@ -189,7 +190,7 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op: Arc<dyn Op> = T::op(&mut parser, None)?;
+        let op = T::op(&mut parser, None)?;
         let any_op: Box<dyn Any> = Box::new(op.clone());
         let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op

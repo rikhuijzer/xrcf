@@ -51,7 +51,7 @@ impl Parse for ConstantOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
@@ -73,7 +73,7 @@ impl Parse for ConstantOp {
         operation.set_operands(Arc::new(vec![Arc::new(operand)]));
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
-        Ok(Arc::new(ConstantOp { operation }))
+        Ok(Arc::new(RwLock::new(ConstantOp { operation })))
     }
 }
 
@@ -150,7 +150,7 @@ impl Parse for AddiOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<dyn Op>> {
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
@@ -166,7 +166,7 @@ impl Parse for AddiOp {
         operation.set_result_types(vec![result_type]);
 
         let operation = Arc::new(RwLock::new(operation));
-        Ok(Arc::new(AddiOp { operation }))
+        Ok(Arc::new(RwLock::new(AddiOp { operation })))
     }
 }
 
