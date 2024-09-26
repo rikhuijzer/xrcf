@@ -33,7 +33,10 @@ impl<T: Parse> Parser<T> {
 /// this crate.
 /// This avoids having some global hashmap registry of all possible operations.
 pub trait Parse {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>>
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<dyn Op>>
     where
         Self: Sized;
 }
@@ -49,9 +52,12 @@ enum Dialects {
 }
 
 impl Parse for BuiltinParse {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<dyn Op>> {
         if parser.peek().lexeme == "return" {
-            return <func::ReturnOp as Parse>::op(parser);
+            return <func::ReturnOp as Parse>::op(parser, parent);
         }
         let name = if parser.peek_n(1).kind == TokenKind::Equal {
             // Ignore result name and '='.
@@ -61,10 +67,10 @@ impl Parse for BuiltinParse {
         };
         let name = name.lexeme.clone();
         match name.as_str() {
-            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser),
-            "func.func" => <func::FuncOp as Parse>::op(parser),
-            "arith.addi" => <arith::AddiOp as Parse>::op(parser),
-            "arith.constant" => <arith::ConstantOp as Parse>::op(parser),
+            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, parent),
+            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
+            "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
+            "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }
@@ -130,7 +136,7 @@ impl<T: Parse> Parser<T> {
             let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
             let is_return = self.peek().lexeme == "return";
             if is_ssa_def || is_return {
-                let op = T::op(self)?;
+                let op = T::op(self, None)?;
                 ops.push(op.clone());
                 if op.is_terminator() {
                     break;
@@ -145,7 +151,12 @@ impl<T: Parse> Parser<T> {
         }
         let ops = Arc::new(ops);
         let block = Block::new(None, arguments, ops, parent);
-        Ok(Arc::new(RwLock::new(block)))
+        let block = Arc::new(RwLock::new(block));
+        for op in block.write().unwrap().ops().iter() {
+            let mut operation = op.operation().write().unwrap();
+            operation.set_parent(Some(block.clone()));
+        }
+        Ok(block)
     }
     pub fn match_kinds(&mut self, kinds: &[TokenKind]) -> bool {
         for kind in kinds {
@@ -174,7 +185,7 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op: Arc<dyn Op> = T::op(&mut parser)?;
+        let op: Arc<dyn Op> = T::op(&mut parser, None)?;
         let any_op: Box<dyn Any> = Box::new(op.clone());
         let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op

@@ -1,6 +1,7 @@
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation::OperationName;
 use crate::ir::AnyAttr;
+use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::StrAttr;
@@ -50,7 +51,10 @@ impl Op for GlobalOp {
 }
 
 impl Parse for GlobalOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<dyn Op>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
         let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
@@ -79,6 +83,7 @@ impl Parse for GlobalOp {
         let mut operation = Operation::default();
         operation.set_name(name);
         operation.set_attributes(attributes);
+        operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(op.unwrap()))

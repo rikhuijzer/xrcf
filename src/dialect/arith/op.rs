@@ -1,5 +1,6 @@
 use crate::canonicalize::CanonicalizeResult;
 use crate::ir::operation::Operation;
+use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
@@ -47,7 +48,10 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for ConstantOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
@@ -67,7 +71,7 @@ impl Parse for ConstantOp {
             }
         };
         operation.set_operands(Arc::new(vec![operand]));
-
+        operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(ConstantOp { operation }))
     }
@@ -137,7 +141,10 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for AddiOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_results(parser.results()?);
 
@@ -145,6 +152,7 @@ impl Parse for AddiOp {
         assert!(operation_name.lexeme == "arith.addi");
         operation.set_name(AddiOp::operation_name());
         operation.set_operands(Arc::new(parser.arguments()?));
+        operation.set_parent(parent);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = Type::new(result_type.lexeme.clone());

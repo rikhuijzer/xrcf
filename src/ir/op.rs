@@ -1,5 +1,4 @@
 use crate::canonicalize::CanonicalizeResult;
-use crate::ir::Block;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
