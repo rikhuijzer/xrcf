@@ -1,4 +1,6 @@
 use crate::ir::Block;
+use crate::ir::BlockArgument;
+use crate::ir::OpOperand;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -36,12 +38,11 @@ impl OperationName {
 /// inherent to the fact that an `Operation` aims to be very generic.
 pub struct Operation {
     name: OperationName,
-    /// Operands can be `Values`, so either `BlockArgument` or `OpResult`.
-    /// Note that function arguments are also operands (for now?).
-    /// Operands are values that are used by the operation, so it sort of
-    /// makes sense.
-    operands: Arc<Vec<Arc<Value>>>,
+    /// Used by `FuncOp` to store its arguments.
+    arguments: Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>,
+    operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
     attributes: Vec<Arc<dyn Attribute>>,
+    /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Vec<Arc<Value>>,
     result_types: Vec<Type>,
     region: Arc<RwLock<Option<Region>>>,
@@ -54,7 +55,8 @@ pub struct Operation {
 impl Operation {
     pub fn new(
         name: OperationName,
-        operands: Arc<Vec<Arc<Value>>>,
+        arguments: Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>,
+        operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Arc<Value>>,
         result_types: Vec<Type>,
@@ -63,6 +65,7 @@ impl Operation {
     ) -> Self {
         Self {
             name,
+            arguments,
             operands,
             attributes,
             results,
@@ -74,10 +77,13 @@ impl Operation {
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    pub fn operands(&self) -> Arc<Vec<Arc<Value>>> {
+    pub fn arguments(&self) -> Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>> {
+        self.arguments.clone()
+    }
+    pub fn operands(&self) -> Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
         self.operands.clone()
     }
-    pub fn operands_mut(&mut self) -> &mut Arc<Vec<Arc<Value>>> {
+    pub fn operands_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
         &mut self.operands
     }
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
@@ -99,7 +105,7 @@ impl Operation {
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
-    pub fn set_operands(&mut self, operands: Arc<Vec<Arc<Value>>>) {
+    pub fn set_operands(&mut self, operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>) {
         self.operands = operands;
     }
     pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {
@@ -130,11 +136,13 @@ impl Operation {
             write!(f, " = ")?;
         }
         write!(f, "{}", self.name())?;
-        if !self.operands().is_empty() {
+        if !self.operands().read().unwrap().is_empty() {
             let joined = self
                 .operands()
+                .read()
+                .unwrap()
                 .iter()
-                .map(|o| o.to_string())
+                .map(|o| o.read().unwrap().operand_name().to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             write!(f, " {}", joined)?;
@@ -166,7 +174,8 @@ impl Default for Operation {
     fn default() -> Self {
         Self {
             name: OperationName::new("".to_string()),
-            operands: Arc::new(vec![]),
+            arguments: Arc::new(RwLock::new(vec![])),
+            operands: Arc::new(RwLock::new(vec![])),
             attributes: vec![],
             results: vec![],
             result_types: vec![],

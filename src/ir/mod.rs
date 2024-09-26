@@ -15,6 +15,7 @@ pub use crate::ir::operation::Operation;
 pub use crate::ir::operation::OperationName;
 pub use crate::ir::region::Region;
 pub use crate::ir::value::BlockArgument;
+pub use crate::ir::value::OpOperand;
 pub use crate::ir::value::OpResult;
 pub use crate::ir::value::Type;
 pub use crate::ir::value::Value;

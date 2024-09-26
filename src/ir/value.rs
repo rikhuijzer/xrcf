@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 #[derive(Clone, Debug)]
 pub struct Type {
@@ -66,5 +68,24 @@ impl Display for Value {
             Value::BlockArgument(arg) => write!(f, "{} : {}", arg.name, arg.typ.name),
             Value::OpResult(result) => write!(f, "{}", result.name),
         }
+    }
+}
+pub struct OpOperand {
+    pub value: Arc<RwLock<Value>>,
+    pub operand_name: String,
+}
+
+impl OpOperand {
+    pub fn new(value: Arc<RwLock<Value>>, operand_name: String) -> Self {
+        OpOperand {
+            value,
+            operand_name,
+        }
+    }
+    pub fn value(&self) -> Arc<RwLock<Value>> {
+        self.value.clone()
+    }
+    pub fn operand_name(&self) -> &str {
+        &self.operand_name
     }
 }

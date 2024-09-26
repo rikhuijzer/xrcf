@@ -3,6 +3,7 @@ use crate::ir::operation::Operation;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
+use crate::ir::OpOperand;
 use crate::ir::OpResult;
 use crate::ir::OperationName;
 use crate::ir::Type;
@@ -111,16 +112,17 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<Value>> {
+    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<OpOperand>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let block = parent.read().unwrap();
         let first_use = block.first_use(name.clone());
         let typ = Type::new("any".to_string());
         let value = Value::OpResult(OpResult::new(name, typ));
-        Ok(Arc::new(value))
+        let operand = OpOperand::new(value, name);
+        Ok(Arc::new(operand))
     }
-    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<Vec<Arc<Value>>> {
+    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<Vec<OpOperand>> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             arguments.push(self.operand(parent.clone())?);
