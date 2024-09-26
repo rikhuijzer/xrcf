@@ -39,7 +39,7 @@ impl OperationName {
 /// inherent to the fact that an `Operation` aims to be very generic.
 pub struct Operation {
     name: OperationName,
-    operands: Arc<Vec<Value>>,
+    operands: Arc<Vec<OpOperand>>,
     attributes: Vec<Arc<dyn Attribute>>,
     results: Vec<Value>,
     result_types: Vec<Type>,
@@ -47,10 +47,20 @@ pub struct Operation {
     parent: Option<Pin<Box<Block>>>,
 }
 
+pub struct OpOperand {
+    value: Arc<Value>,
+}
+
+impl Display for OpOperand {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value.clone())
+    }
+}
+
 impl Operation {
     pub fn new(
         name: OperationName,
-        operands: Arc<Vec<Value>>,
+        operands: Arc<Vec<OpOperand>>,
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Value>,
         result_types: Vec<Type>,
@@ -67,10 +77,10 @@ impl Operation {
             parent,
         }
     }
-    pub fn operands(&self) -> Arc<Vec<Value>> {
+    pub fn operands(&self) -> Arc<Vec<OpOperand>> {
         self.operands.clone()
     }
-    pub fn operands_mut(&mut self) -> &mut Arc<Vec<Value>> {
+    pub fn operands_mut(&mut self) -> &mut Arc<Vec<OpOperand>> {
         &mut self.operands
     }
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
@@ -92,7 +102,7 @@ impl Operation {
         self.name = name;
         self
     }
-    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) -> &mut Self {
+    pub fn set_operands(&mut self, operands: Arc<Vec<OpOperand>>) -> &mut Self {
         self.operands = operands;
         self
     }
