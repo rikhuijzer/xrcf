@@ -43,7 +43,7 @@ impl Block {
             let operation = op.operation();
             let operands = operation.read().unwrap().operands();
             for operand in operands.iter() {
-                match operand {
+                match operand.as_ref() {
                     Value::BlockArgument(block_argument) => {
                         if block_argument.name() == name {
                             return Some(operand.clone());

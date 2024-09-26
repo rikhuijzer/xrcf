@@ -123,7 +123,7 @@ impl<T: Parse> Parser<T> {
                 Ok(Arc::new(value))
             }
             None => Err(anyhow::anyhow!(
-                "Expected parent block to determine first use `Value` for `{}`",
+                "Expected parent block (in order to determine first use `Value` for argument {})",
                 name
             )),
         }
