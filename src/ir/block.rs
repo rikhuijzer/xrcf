@@ -1,4 +1,5 @@
 use crate::ir::Op;
+use crate::ir::OperationOperands;
 use crate::ir::Region;
 use crate::ir::Value;
 use std::fmt::Display;
@@ -44,17 +45,17 @@ impl Block {
         for op in ops.iter() {
             let op = op.read().unwrap();
             let operation = op.operation();
-            let operands = operation.read().unwrap().operands();
+            let operation = operation.read().unwrap();
+            let operands = operation.operands();
             let operands = operands.read().unwrap();
             for operand in operands.iter() {
-                let other_operand = operand.clone();
-                let write = other_operand.write().unwrap();
-                let value = other_operand.write().unwrap().value();
-                let value = value.clone().read().unwrap();
+                let operand = operand.write().unwrap();
+                let value = operand.value();
+                let value = &*value.read().unwrap();
                 match value {
                     Value::BlockArgument(block_argument) => {
                         if block_argument.name() == name {
-                            return Some(write.value().clone());
+                            return Some(operand.value().clone());
                         }
                     }
                     Value::OpResult(_) => {
