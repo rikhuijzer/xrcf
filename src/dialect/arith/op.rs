@@ -122,7 +122,14 @@ impl<T: Parse> Parser<T> {
         let name = identifier.lexeme.clone();
         let block = parent.read().unwrap();
         let assignment = block.assignment(name.clone());
-        todo!();
+        let assignment = match assignment {
+            Some(assignment) => assignment,
+            None => {
+                let msg = "Expected assignment before use.";
+                let msg = self.error(&identifier, msg);
+                return Err(anyhow::anyhow!(msg));
+            }
+        };
         // let typ = Type::new("any".to_string());
         // let value = Value::OpResult(OpResult::new(name, typ));
         // let operand = OpOperand::new(value, name);

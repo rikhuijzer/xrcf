@@ -104,16 +104,16 @@ impl<T: Parse> Parser<T> {
         }
         self.peek().kind == kind
     }
-    pub fn report_error(&self, token: &Token, msg: &str) -> Result<Token> {
-        let msg = Scanner::report_error(&self.src, &token.location, msg);
-        Err(anyhow::anyhow!(format!("\n\n{msg}\n")))
+    pub fn error(&self, token: &Token, msg: &str) -> String {
+        let msg = Scanner::error(&self.src, &token.location, msg);
+        format!("\n\n{msg}\n")
     }
     pub fn report_token_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
         let msg = format!(
             "Expected {:?}, but got \"{}\" of kind {:?}",
             expected, token.lexeme, token.kind
         );
-        let msg = Scanner::report_error(&self.src, &token.location, &msg);
+        let msg = Scanner::error(&self.src, &token.location, &msg);
         Err(anyhow::anyhow!(format!("\n\n{msg}\n")))
     }
     pub fn expect(&mut self, kind: TokenKind) -> Result<Token> {
@@ -152,7 +152,8 @@ impl<T: Parse> Parser<T> {
         }
         if ops.read().unwrap().is_empty() {
             let token = self.peek();
-            self.report_error(&token, "Could not find operations in block")?;
+            let msg = self.error(&token, "Could not find operations in block");
+            return Err(anyhow::anyhow!(msg));
         }
         let ops = block.write().unwrap().ops();
         let ops = ops.read().unwrap();
