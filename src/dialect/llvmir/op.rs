@@ -4,12 +4,14 @@ use crate::ir::AnyAttr;
 use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
+use crate::ir::OperationAttributes;
 use crate::ir::StrAttr;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
 use anyhow::Result;
+use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -36,11 +38,11 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let operation = self.operation().read().unwrap();
-        for attribute in operation.attributes() {
+        for (name, attribute) in operation.attributes().read().unwrap().iter() {
             write!(f, "{}", attribute)?;
-            if attribute.name() == "symbol_name" {
+            if name == "symbol_name" {
                 write!(f, "(")?;
-            } else if attribute.name() == "value" {
+            } else if name == "value" {
             } else {
                 write!(f, " ")?;
             }
@@ -57,10 +59,13 @@ impl Parse for GlobalOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
-        let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
+        let attributes: OperationAttributes = Arc::new(RwLock::new(HashMap::new()));
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
-                attributes.push(Arc::new(attribute));
+                attributes
+                    .write()
+                    .unwrap()
+                    .insert("linkage".to_string(), Arc::new(attribute));
             }
         }
         let symbol_name = parser.peek();
@@ -71,12 +76,18 @@ impl Parse for GlobalOp {
             ));
         }
         if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
-            attributes.push(Arc::new(attribute));
+            attributes
+                .write()
+                .unwrap()
+                .insert("symbol_name".to_string(), Arc::new(attribute));
         }
         if parser.check(TokenKind::LParen) {
             parser.advance();
             if let Some(attribute) = AnyAttr::parse(parser, "value") {
-                attributes.push(Arc::new(attribute));
+                attributes
+                    .write()
+                    .unwrap()
+                    .insert("value".to_string(), Arc::new(attribute));
             }
         }
         println!("{:?}", parser.advance());

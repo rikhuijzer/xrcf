@@ -13,6 +13,7 @@ pub use crate::ir::module::ModuleOp;
 pub use crate::ir::op::Op;
 pub use crate::ir::operation::Operation;
 pub use crate::ir::operation::OperationArguments;
+pub use crate::ir::operation::OperationAttributes;
 pub use crate::ir::operation::OperationName;
 pub use crate::ir::operation::OperationOperands;
 pub use crate::ir::region::Region;

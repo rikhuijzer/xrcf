@@ -16,9 +16,6 @@ impl Attribute for LinkageAttr {
             value: value.to_string(),
         }
     }
-    fn name(&self) -> String {
-        self.name.clone()
-    }
     fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
         let next = parser.peek();
         if next.lexeme == "internal" {
