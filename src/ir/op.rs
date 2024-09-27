@@ -2,7 +2,6 @@ use crate::canonicalize::CanonicalizeResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
-use crate::ir::Value;
 use crate::ir::Values;
 use anyhow::Result;
 use std::fmt::Display;

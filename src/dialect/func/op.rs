@@ -1,4 +1,3 @@
-use crate::ir::operation;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;

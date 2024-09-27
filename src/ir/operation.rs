@@ -1,5 +1,4 @@
 use crate::ir::Block;
-use crate::ir::BlockArgument;
 use crate::ir::OpOperand;
 use crate::ir::Region;
 use crate::ir::Type;
