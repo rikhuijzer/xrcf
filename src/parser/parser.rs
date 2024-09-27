@@ -267,7 +267,7 @@ mod tests {
 
         let repr = format!("{:#}", module_op);
         let lines: Vec<&str> = repr.split('\n').collect();
-        println!("repr:\n{}", repr);
+        println!("-- After:\n{}\n", repr);
         assert_eq!(lines.len(), 3);
         assert_eq!(lines[0], "module {");
         assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42)");

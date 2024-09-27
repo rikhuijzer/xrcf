@@ -38,14 +38,16 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let operation = self.operation().read().unwrap();
-        for (name, attribute) in operation.attributes().read().unwrap().iter() {
+        let attributes = operation.attributes();
+        let attributes = attributes.read().unwrap();
+        if let Some(attribute) = attributes.get("linkage") {
+            write!(f, "{} ", attribute)?;
+        }
+        if let Some(attribute) = attributes.get("symbol_name") {
+            write!(f, "{}(", attribute)?;
+        }
+        if let Some(attribute) = attributes.get("value") {
             write!(f, "{}", attribute)?;
-            if name == "symbol_name" {
-                write!(f, "(")?;
-            } else if name == "value" {
-            } else {
-                write!(f, " ")?;
-            }
         }
         write!(f, ")")?;
         Ok(())
@@ -90,7 +92,6 @@ impl Parse for GlobalOp {
                     .insert("value".to_string(), Arc::new(attribute));
             }
         }
-        println!("{:?}", parser.advance());
         let mut operation = Operation::default();
         operation.set_name(name);
         operation.set_attributes(attributes);
