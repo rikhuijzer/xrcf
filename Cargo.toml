@@ -7,3 +7,6 @@ license = "Apache-2.0 with LLVM-exceptions"
 
 [dependencies]
 anyhow = "1.0.86"
+
+[dev-dependencies]
+indoc = "2"

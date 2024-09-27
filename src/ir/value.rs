@@ -35,6 +35,12 @@ impl BlockArgument {
     }
 }
 
+impl Display for BlockArgument {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} : {}", self.name, self.typ)
+    }
+}
+
 #[derive(Debug)]
 pub struct OpResult {
     name: String,

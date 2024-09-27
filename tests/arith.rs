@@ -5,7 +5,9 @@ use rrcf::Parser;
 
 #[test]
 fn parse_addi() {
-    let src = "
+    use indoc::indoc;
+
+    let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
         %1 = arith.constant 2 : i64
@@ -13,9 +15,10 @@ fn parse_addi() {
         %3 = arith.addi %arg0, %2 : i64
         return %3 : i64
     }
-    ";
+    "};
+    println!("-- Before:\n{}", src);
     let module = Parser::<BuiltinParse>::parse(src).unwrap();
-    println!("\n{}\n", module);
+    println!("-- After:\n{}\n", module);
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");

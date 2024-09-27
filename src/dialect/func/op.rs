@@ -39,7 +39,7 @@ impl Op for FuncOp {
             .operation()
             .read()
             .unwrap()
-            .operands()
+            .arguments()
             .read()
             .unwrap()
             .iter()
@@ -187,8 +187,8 @@ impl Op for ReturnOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();
         let operation = operation.read().unwrap();
-        let operands = operation.operands().clone();
         write!(f, "return")?;
+        let operands = operation.operands().clone();
         let operands = operands.read().unwrap();
         for operand in operands.iter() {
             write!(f, " {}", operand.read().unwrap())?;

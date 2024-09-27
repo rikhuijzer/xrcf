@@ -60,23 +60,8 @@ impl Parse for ConstantOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
-        let operand: OpOperand = match parser.peek().kind {
-            TokenKind::Integer => {
-                let integer = parser.advance();
-                let integer = integer.lexeme.clone();
-                let typ = parser.typ()?;
-                // Determine value.
-                todo!();
-                // let operand = OpOperand::new(
-                // Value::BlockArgument(argument)
-            }
-            _ => {
-                return Err(anyhow::anyhow!("Expected integer constant"));
-            }
-        };
-        let operand = Arc::new(RwLock::new(operand));
-        operation.set_operands(Arc::new(RwLock::new(vec![operand])));
-        operation.set_parent(parent);
+        operation.set_parent(parent.clone());
+        operation.set_operands(parser.operands(parent.unwrap())?);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(RwLock::new(ConstantOp { operation })))
     }
