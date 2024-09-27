@@ -51,6 +51,9 @@ impl OpResult {
     pub fn new(name: String, typ: Type) -> Self {
         OpResult { name, typ }
     }
+    pub fn name(&self) -> &str {
+        &self.name
+    }
 }
 
 /// Represents an instance of an SSA value in the IR,
@@ -78,18 +81,18 @@ impl Display for Value {
 }
 
 pub struct OpOperand {
-    pub value: Arc<RwLock<Value>>,
+    pub value: Arc<Value>,
     pub operand_name: String,
 }
 
 impl OpOperand {
-    pub fn new(value: Arc<RwLock<Value>>, operand_name: String) -> Self {
+    pub fn new(value: Arc<Value>, operand_name: String) -> Self {
         OpOperand {
             value,
             operand_name,
         }
     }
-    pub fn value(&self) -> Arc<RwLock<Value>> {
+    pub fn value(&self) -> Arc<Value> {
         self.value.clone()
     }
     pub fn operand_name(&self) -> &str {

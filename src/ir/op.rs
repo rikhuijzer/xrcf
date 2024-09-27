@@ -2,6 +2,7 @@ use crate::canonicalize::CanonicalizeResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
+use crate::ir::Value;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -25,6 +26,14 @@ pub trait Op {
     fn region(&self) -> Arc<RwLock<Option<Region>>> {
         let operation = self.operation().read().unwrap();
         operation.region()
+    }
+    /// Returns the values which this `Op` assigns to.
+    /// For most ops, this is the `results` field of type `OpResult`.
+    /// But for some other ops like `FuncOp`, this can be different.
+    fn assignments(&self) -> Result<Vec<Arc<Value>>> {
+        let operation = self.operation().read().unwrap();
+        let results = operation.results();
+        Ok(results.clone())
     }
     fn canonicalize(&mut self) -> CanonicalizeResult {
         CanonicalizeResult::Unchanged
