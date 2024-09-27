@@ -1,3 +1,4 @@
+use crate::dialect::func::FuncOp;
 use crate::ir::Op;
 use crate::ir::Region;
 use crate::ir::Value;
@@ -9,7 +10,9 @@ pub struct Block {
     label: Option<String>,
     arguments: Arc<Vec<Value>>,
     ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
-    parent: Arc<RwLock<Option<Region>>>,
+    /// This field does not have to be an `Arc<RwLock<..>>` because
+    /// the `Region` is shared via `Arc<RwLock<..>>`.
+    parent: Option<Arc<RwLock<Region>>>,
 }
 
 impl Block {
@@ -17,7 +20,7 @@ impl Block {
         label: Option<String>,
         arguments: Arc<Vec<Value>>,
         ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
-        parent: Arc<RwLock<Option<Region>>>,
+        parent: Option<Arc<RwLock<Region>>>,
     ) -> Self {
         Self {
             label,
@@ -35,11 +38,40 @@ impl Block {
     pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
-    pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
+    pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
     }
     pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
-        todo!()
+        let region = self.parent();
+        assert!(region.is_some());
+        let region = region.unwrap();
+        let region = region.read().unwrap();
+        let parent = region.parent();
+        assert!(parent.is_some());
+        let op = parent.unwrap();
+        let op = &*op.read().unwrap();
+        let operation = op.operation();
+        let operation = operation.read().unwrap();
+        if operation.name() == "func" {
+            let arguments = operation.arguments();
+            let arguments = arguments.read().unwrap();
+            for argument in arguments.iter() {
+                match &*argument.read().unwrap() {
+                    Value::BlockArgument(block_argument) => {
+                        if block_argument.name() == name {
+                            return Some(argument.clone());
+                        }
+                    }
+                    _ => panic!("Expected BlockArgument, but got OpResult"),
+                }
+            }
+        } else {
+            panic!(
+                "Expected parent op to be FuncOp, but got {}",
+                operation.name()
+            );
+        }
+        None
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();

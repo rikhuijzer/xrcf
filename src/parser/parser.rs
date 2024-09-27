@@ -200,7 +200,8 @@ impl<T: Parse> Parser<T> {
             *module_op
         } else {
             let name = OperationName::new("module".to_string());
-            let region = Region::default();
+            let mut region = Region::default();
+            region.set_parent(Some(op.clone()));
             let region = Arc::new(RwLock::new(Some(region)));
             let ops = Arc::new(RwLock::new(vec![op]));
             let arguments = Arc::new(vec![]);

@@ -10,7 +10,6 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 /// This is the trait that is implemented by all operations.
-/// This is the trait that is implemented by all operations.
 /// FuncOp, for example, will be implemented by various dialects.
 /// Note that the parser will parse the tokens into an `Operation`
 /// and MLIR would cast the `Operation` into a specific `Op` variant
