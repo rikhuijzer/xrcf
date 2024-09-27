@@ -184,6 +184,18 @@ impl Op for ReturnOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn assignments(&self) -> Result<Vec<Arc<Value>>> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        let arguments = arguments.read().unwrap();
+        let values: Vec<Arc<Value>> = vec![];
+        for argument in arguments.iter() {
+            let value = *argument.read().unwrap();
+            values.push(value);
+        }
+        Ok(values)
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();
         let operation = operation.read().unwrap();

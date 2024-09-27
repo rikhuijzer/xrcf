@@ -26,7 +26,7 @@ impl OperationName {
     }
 }
 
-pub type Arguments = Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>;
+pub type Values = Arc<RwLock<Vec<Arc<RwLock<Value>>>>>;
 pub type Operands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
 
 #[derive(Clone)]
@@ -75,11 +75,11 @@ impl Display for Attributes {
 pub struct Operation {
     name: OperationName,
     /// Used by `FuncOp` to store its arguments.
-    arguments: Arguments,
+    arguments: Values,
     operands: Operands,
     attributes: Attributes,
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
-    results: Vec<Arc<Value>>,
+    results: Values,
     result_types: Vec<Type>,
     region: Arc<RwLock<Option<Region>>>,
     /// This is set after parsing because not all parents are known during

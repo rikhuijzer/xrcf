@@ -3,6 +3,7 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Value;
+use crate::ir::Values;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -30,7 +31,7 @@ pub trait Op {
     /// Returns the values which this `Op` assigns to.
     /// For most ops, this is the `results` field of type `OpResult`.
     /// But for some other ops like `FuncOp`, this can be different.
-    fn assignments(&self) -> Result<Vec<Arc<Value>>> {
+    fn assignments(&self) -> Result<Values> {
         let operation = self.operation().read().unwrap();
         let results = operation.results();
         Ok(results.clone())

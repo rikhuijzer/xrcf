@@ -38,7 +38,7 @@ impl Block {
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
-    pub fn assignment(&self, name: String) -> Option<Arc<Value>> {
+    pub fn assignment(&self, name: String) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
         println!("name: {}", name);
@@ -46,9 +46,11 @@ impl Block {
             let op = op.read().unwrap();
             let values = op.assignments();
             assert!(values.is_ok());
-            for value in values.unwrap().iter() {
+            let values = values.unwrap();
+            let values = values.read().unwrap();
+            for value in values.iter() {
                 println!("iter operand");
-                match &*value.clone() {
+                match &*value.read().unwrap() {
                     Value::BlockArgument(block_argument) => {
                         println!("block_argument: {}", block_argument.name());
                         if block_argument.name() == name {
