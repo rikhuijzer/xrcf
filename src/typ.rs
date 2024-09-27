@@ -19,6 +19,12 @@ impl IntegerType {
 
 impl Type for IntegerType {}
 
+impl Display for IntegerType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "i{}", self.num_bits)
+    }
+}
+
 /// Arbitrary precision integer.
 pub struct APInt {
     num_bits: u64,
