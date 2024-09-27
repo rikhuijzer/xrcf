@@ -11,7 +11,6 @@ use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
 use anyhow::Result;
-use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -38,7 +37,7 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let operation = self.operation().read().unwrap();
-        let attributes = operation.attributes();
+        let attributes = operation.attributes().map();
         let attributes = attributes.read().unwrap();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
@@ -61,10 +60,11 @@ impl Parse for GlobalOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
-        let attributes: operation::Attributes = Arc::new(RwLock::new(HashMap::new()));
+        let attributes = operation::Attributes::new();
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
                 attributes
+                    .map()
                     .write()
                     .unwrap()
                     .insert("linkage".to_string(), Arc::new(attribute));
@@ -79,6 +79,7 @@ impl Parse for GlobalOp {
         }
         if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
             attributes
+                .map()
                 .write()
                 .unwrap()
                 .insert("symbol_name".to_string(), Arc::new(attribute));
@@ -87,6 +88,7 @@ impl Parse for GlobalOp {
             parser.advance();
             if let Some(attribute) = AnyAttr::parse(parser, "value") {
                 attributes
+                    .map()
                     .write()
                     .unwrap()
                     .insert("value".to_string(), Arc::new(attribute));
