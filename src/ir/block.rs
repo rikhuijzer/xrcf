@@ -38,16 +38,26 @@ impl Block {
     pub fn parent(&self) -> Arc<RwLock<Option<Region>>> {
         self.parent.clone()
     }
-    pub fn assignment(&self, name: String) -> Option<Arc<RwLock<Value>>> {
+    pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+        todo!()
+    }
+    pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
-        println!("name: {}", name);
+        println!("\nname: {}", name);
         for op in ops.iter() {
             let op = op.read().unwrap();
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
             let values = values.read().unwrap();
+            let operation = op.operation();
+            let operation = operation.read().unwrap();
+            println!(
+                "Found {} values for {name} and op {}",
+                values.len(),
+                operation.name()
+            );
             for value in values.iter() {
                 println!("iter operand");
                 match &*value.read().unwrap() {
@@ -67,6 +77,13 @@ impl Block {
             }
         }
         None
+    }
+    pub fn assignment(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+        let from_arguments = self.assignment_in_func_arguments(name);
+        match from_arguments {
+            Some(value) => Some(value),
+            None => self.assignment_in_ops(name),
+        }
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {

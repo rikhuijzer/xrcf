@@ -231,7 +231,7 @@ impl<T: Parse> Parser<T> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let block = parent.read().unwrap();
-        let assignment = block.assignment(name.clone());
+        let assignment = block.assignment(&name);
         let assignment = match assignment {
             Some(assignment) => assignment,
             None => {

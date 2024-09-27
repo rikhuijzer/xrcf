@@ -33,6 +33,12 @@ impl Op for FuncOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn assignments(&self) -> Result<Values> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        Ok(arguments.clone())
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
         let joined = self
@@ -185,12 +191,6 @@ impl Op for ReturnOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
-    }
-    fn assignments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let arguments = operation.arguments();
-        Ok(arguments.clone())
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();
