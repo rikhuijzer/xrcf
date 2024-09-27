@@ -1,13 +1,13 @@
 use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
+use crate::ir::operation;
 use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
-use crate::ir::OperationOperands;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -237,7 +237,7 @@ impl<T: Parse> Parser<T> {
         Ok(Arc::new(RwLock::new(operand)))
     }
     /// Parse %0, %1.
-    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<OperationOperands> {
+    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<operation::Operands> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             let operand = self.operand(parent.clone())?;

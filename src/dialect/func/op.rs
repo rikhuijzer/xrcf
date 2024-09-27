@@ -1,9 +1,9 @@
+use crate::ir::operation;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
-use crate::ir::OperationArguments;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -106,7 +106,7 @@ impl<T: Parse> Parser<T> {
         Ok(operand)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`.
-    pub fn function_arguments(&mut self) -> Result<OperationArguments> {
+    pub fn function_arguments(&mut self) -> Result<operation::Arguments> {
         let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {

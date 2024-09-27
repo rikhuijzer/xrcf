@@ -1,10 +1,10 @@
 use crate::dialect::llvmir::attribute::LinkageAttr;
+use crate::ir::operation;
 use crate::ir::operation::OperationName;
 use crate::ir::AnyAttr;
 use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
-use crate::ir::OperationAttributes;
 use crate::ir::StrAttr;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
@@ -59,7 +59,7 @@ impl Parse for GlobalOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
         let name = GlobalOp::operation_name();
-        let attributes: OperationAttributes = Arc::new(RwLock::new(HashMap::new()));
+        let attributes: operation::Attributes = Arc::new(RwLock::new(HashMap::new()));
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
                 attributes

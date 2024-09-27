@@ -58,7 +58,8 @@ impl Parse for ConstantOp {
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
-        operation.set_arguments(parser.operands(parent.unwrap())?);
+        let attributes: operation::Attributes = Arc::new(RwLock::new(HashMap::new()));
+        operation.set_attributes(parser.operands(parent.unwrap())?);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(RwLock::new(ConstantOp { operation })))
     }
@@ -74,9 +75,10 @@ impl AddiOp {
         let operands = self.operation().read().unwrap().operands();
         let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
-        let lhs = &operands[0];
-        let rhs = &operands[1];
-        CanonicalizeResult::Changed
+        todo!();
+        // let lhs = &operands[0];
+        // let rhs = &operands[1];
+        // CanonicalizeResult::Changed
     }
 }
 
