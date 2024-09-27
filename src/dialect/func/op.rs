@@ -3,6 +3,7 @@ use crate::ir::BlockArgument;
 use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
+use crate::ir::OperationArguments;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -39,8 +40,10 @@ impl Op for FuncOp {
             .read()
             .unwrap()
             .operands()
+            .read()
+            .unwrap()
             .iter()
-            .map(|o| o.to_string())
+            .map(|o| o.read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)?;
@@ -85,7 +88,7 @@ impl<T: Parse> Parser<T> {
         Ok(identifier.lexeme.clone())
     }
     /// %arg0 : i64,
-    pub fn function_argument(&mut self) -> Result<Arc<Value>> {
+    pub fn function_argument(&mut self) -> Result<Arc<RwLock<BlockArgument>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
@@ -96,14 +99,14 @@ impl<T: Parse> Parser<T> {
             Type::new("any".to_string())
         };
         let arg = BlockArgument::new(name, typ);
-        let operand: Value = Value::BlockArgument(arg);
+        let operand = Arc::new(RwLock::new(arg));
         if self.check(TokenKind::Comma) {
             self.advance();
         }
-        Ok(Arc::new(operand))
+        Ok(operand)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`.
-    pub fn function_arguments(&mut self) -> Result<Vec<Arc<Value>>> {
+    pub fn function_arguments(&mut self) -> Result<OperationArguments> {
         let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
@@ -115,7 +118,7 @@ impl<T: Parse> Parser<T> {
         } else {
             return Err(anyhow::anyhow!("Expected ')', got {:?}", self.peek().kind));
         }
-        Ok(operands)
+        Ok(Arc::new(RwLock::new(operands)))
     }
     pub fn result_types(&mut self) -> Result<Vec<Type>> {
         let mut result_types = vec![];
@@ -150,7 +153,7 @@ impl Parse for FuncOp {
         let _operation_name = parser.advance();
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.function_arguments()?));
+        operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
         operation.set_region(parser.region()?);
         operation.set_parent(parent);
@@ -186,8 +189,9 @@ impl Op for ReturnOp {
         let operation = operation.read().unwrap();
         let operands = operation.operands().clone();
         write!(f, "return")?;
-        for operand in &*operands {
-            write!(f, " {}", operand)?;
+        let operands = operands.read().unwrap();
+        for operand in operands.iter() {
+            write!(f, " {}", operand.read().unwrap())?;
         }
         let result_types = operation.result_types();
         assert!(!result_types.is_empty(), "Expected result types to be set");
@@ -211,7 +215,7 @@ impl Parse for ReturnOp {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        operation.set_operands(Arc::new(parser.operands(parent.clone().unwrap())?));
+        operation.set_operands(parser.operands(parent.clone().unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());

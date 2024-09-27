@@ -25,6 +25,9 @@ impl OperationName {
     }
 }
 
+pub type OperationArguments = Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>;
+pub type OperationOperands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
+
 /// Note that MLIR distinguishes between Operation and Op.
 /// Operation generically models all operations.
 /// Op is an interface for more specific operations.
@@ -39,8 +42,8 @@ impl OperationName {
 pub struct Operation {
     name: OperationName,
     /// Used by `FuncOp` to store its arguments.
-    arguments: Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>,
-    operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
+    arguments: OperationArguments,
+    operands: OperationOperands,
     attributes: Vec<Arc<dyn Attribute>>,
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Vec<Arc<Value>>,
@@ -55,8 +58,8 @@ pub struct Operation {
 impl Operation {
     pub fn new(
         name: OperationName,
-        arguments: Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>,
-        operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
+        arguments: OperationArguments,
+        operands: OperationOperands,
         attributes: Vec<Arc<dyn Attribute>>,
         results: Vec<Arc<Value>>,
         result_types: Vec<Type>,
@@ -77,13 +80,13 @@ impl Operation {
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    pub fn arguments(&self) -> Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>> {
+    pub fn arguments(&self) -> OperationArguments {
         self.arguments.clone()
     }
-    pub fn operands(&self) -> Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
+    pub fn operands(&self) -> OperationOperands {
         self.operands.clone()
     }
-    pub fn operands_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
+    pub fn operands_mut(&mut self) -> &mut OperationOperands {
         &mut self.operands
     }
     pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
@@ -105,7 +108,10 @@ impl Operation {
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
-    pub fn set_operands(&mut self, operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>) {
+    pub fn set_arguments(&mut self, arguments: OperationArguments) {
+        self.arguments = arguments;
+    }
+    pub fn set_operands(&mut self, operands: OperationOperands) {
         self.operands = operands;
     }
     pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {

@@ -49,7 +49,7 @@ impl Block {
             for operand in operands.iter() {
                 let other_operand = operand.clone();
                 let write = other_operand.write().unwrap();
-                let value = operand.write().unwrap().value();
+                let value = other_operand.write().unwrap().value();
                 let value = value.clone().read().unwrap();
                 match value {
                     Value::BlockArgument(block_argument) => {

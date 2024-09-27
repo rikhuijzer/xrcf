@@ -6,6 +6,7 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpResult;
 use crate::ir::OperationName;
+use crate::ir::OperationOperands;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parse;
@@ -59,19 +60,22 @@ impl Parse for ConstantOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
-        let operand = match parser.peek().kind {
+        let operand: OpOperand = match parser.peek().kind {
             TokenKind::Integer => {
                 let integer = parser.advance();
                 let integer = integer.lexeme.clone();
                 let typ = parser.typ()?;
-                let argument = BlockArgument::new(integer, typ);
-                Value::BlockArgument(argument)
+                // Determine value.
+                todo!();
+                // let operand = OpOperand::new(
+                // Value::BlockArgument(argument)
             }
             _ => {
                 return Err(anyhow::anyhow!("Expected integer constant"));
             }
         };
-        operation.set_operands(Arc::new(vec![Arc::new(operand)]));
+        let operand = Arc::new(RwLock::new(operand));
+        operation.set_operands(Arc::new(RwLock::new(vec![operand])));
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(RwLock::new(ConstantOp { operation })))
@@ -86,6 +90,7 @@ impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&mut self) -> CanonicalizeResult {
         let operands = self.operation().read().unwrap().operands();
+        let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
         let lhs = &operands[0];
         let rhs = &operands[1];
@@ -112,25 +117,27 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<OpOperand>> {
+    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<OpOperand>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let block = parent.read().unwrap();
-        let first_use = block.first_use(name.clone());
-        let typ = Type::new("any".to_string());
-        let value = Value::OpResult(OpResult::new(name, typ));
-        let operand = OpOperand::new(value, name);
-        Ok(Arc::new(operand))
+        let assignment = block.assignment(name.clone());
+        todo!();
+        // let typ = Type::new("any".to_string());
+        // let value = Value::OpResult(OpResult::new(name, typ));
+        // let operand = OpOperand::new(value, name);
+        // Ok(Arc::new(operand))
     }
-    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<Vec<OpOperand>> {
+    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<OperationOperands> {
         let mut arguments = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            arguments.push(self.operand(parent.clone())?);
+            let operand = self.operand(parent.clone())?;
+            arguments.push(operand);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
             }
         }
-        Ok(arguments)
+        Ok(Arc::new(RwLock::new(arguments)))
     }
     pub fn results(&mut self) -> Result<Vec<Arc<Value>>> {
         let mut results = vec![];
@@ -161,7 +168,7 @@ impl Parse for AddiOp {
         operation.set_name(AddiOp::operation_name());
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        operation.set_operands(Arc::new(parser.operands(parent.unwrap())?));
+        operation.set_operands(parser.operands(parent.unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = Type::new(result_type.lexeme.clone());

@@ -70,6 +70,7 @@ impl Display for Value {
         }
     }
 }
+
 pub struct OpOperand {
     pub value: Arc<RwLock<Value>>,
     pub operand_name: String,
@@ -87,5 +88,11 @@ impl OpOperand {
     }
     pub fn operand_name(&self) -> &str {
         &self.operand_name
+    }
+}
+
+impl Display for OpOperand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }
