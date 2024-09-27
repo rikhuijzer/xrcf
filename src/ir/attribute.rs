@@ -75,8 +75,8 @@ impl Attribute for IntegerAttr {
     fn value(&self) -> String {
         todo!()
     }
-    fn display(&self, _f: &mut Formatter<'_>) -> Result {
-        todo!()
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.value)
     }
 }
 

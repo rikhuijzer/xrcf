@@ -1,3 +1,7 @@
+use std::fmt::Display;
+use std::fmt::Formatter;
+use std::fmt::Result;
+
 trait Type {}
 
 /// Represents an integer type such as i32 or i64.
@@ -29,5 +33,11 @@ impl APInt {
             value,
             is_signed,
         }
+    }
+}
+
+impl Display for APInt {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{}", self.value)
     }
 }

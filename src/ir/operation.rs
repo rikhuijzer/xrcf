@@ -51,7 +51,11 @@ impl Attributes {
 impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for (name, attribute) in self.map.read().unwrap().iter() {
-            write!(f, "{} = {}", name, attribute)?;
+            if name == "value" {
+                write!(f, " {}", attribute)?;
+            } else {
+                write!(f, "{} = {}", name, attribute)?;
+            }
         }
         Ok(())
     }
