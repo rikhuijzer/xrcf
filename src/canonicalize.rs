@@ -9,10 +9,9 @@ pub enum CanonicalizeResult {
 
 pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
     let region = op.region();
-    let region = region.read().unwrap();
-    if let Some(region) = region.as_ref() {
+    if let Some(region) = region {
         let mut changed = CanonicalizeResult::Unchanged;
-        for block in region.blocks() {
+        for block in region.read().unwrap().blocks() {
             let block = block.write().unwrap();
             for op in block.ops().write().unwrap().iter_mut() {
                 let op: &mut dyn Op = &mut *op.write().unwrap();

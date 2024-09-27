@@ -22,7 +22,7 @@ pub trait Op {
     where
         Self: Sized;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
-    fn region(&self) -> Arc<RwLock<Option<Region>>> {
+    fn region(&self) -> Option<Arc<RwLock<Region>>> {
         let operation = self.operation().read().unwrap();
         operation.region()
     }

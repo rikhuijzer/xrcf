@@ -120,7 +120,7 @@ impl<T: Parse> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
-    pub fn block(&mut self, parent: Arc<RwLock<Option<Region>>>) -> Result<Arc<RwLock<Block>>> {
+    pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
@@ -176,14 +176,14 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self) -> Result<Arc<RwLock<Option<Region>>>> {
+    pub fn region(&mut self) -> Result<Arc<RwLock<Region>>> {
         let region = Region::default();
-        let region = Arc::new(RwLock::new(Some(region)));
+        let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
-        let block = self.block(region.clone())?;
+        let block = self.block(Some(region.clone()))?;
         blocks.push(block);
-        region.write().unwrap().as_mut().unwrap().set_blocks(blocks);
+        region.write().unwrap().set_blocks(blocks);
         self.advance();
         Ok(region)
     }
@@ -202,21 +202,15 @@ impl<T: Parse> Parser<T> {
             let name = OperationName::new("module".to_string());
             let mut region = Region::default();
             region.set_parent(Some(op.clone()));
-            let region = Arc::new(RwLock::new(Some(region)));
+            let region = Arc::new(RwLock::new(region));
             let ops = Arc::new(RwLock::new(vec![op]));
             let arguments = Arc::new(vec![]);
-            let block = Block::new(None, arguments, ops, region.clone());
+            let block = Block::new(None, arguments, ops, Some(region.clone()));
             let block = Arc::new(RwLock::new(block));
-            region
-                .write()
-                .unwrap()
-                .as_mut()
-                .unwrap()
-                .blocks_mut()
-                .push(block.clone());
+            region.write().unwrap().blocks_mut().push(block.clone());
             let mut operation = Operation::default();
             operation.set_name(name);
-            operation.set_region(region.clone());
+            operation.set_region(Some(region.clone()));
             operation.set_parent(Some(block));
             let operation = Arc::new(RwLock::new(operation));
             let module_op = ModuleOp::from_operation(operation);

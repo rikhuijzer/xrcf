@@ -80,7 +80,7 @@ pub struct Operation {
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Values,
     result_types: Vec<Type>,
-    region: Arc<RwLock<Option<Region>>>,
+    region: Option<Arc<RwLock<Region>>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
     /// `ModuleOp` that is created after parsing of the `FuncOp`).
@@ -95,7 +95,7 @@ impl Operation {
         attributes: Attributes,
         results: Values,
         result_types: Vec<Type>,
-        region: Arc<RwLock<Option<Region>>>,
+        region: Option<Arc<RwLock<Region>>>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Self {
         Self {
@@ -130,7 +130,7 @@ impl Operation {
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn region(&self) -> Arc<RwLock<Option<Region>>> {
+    pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
@@ -155,7 +155,7 @@ impl Operation {
     pub fn set_result_types(&mut self, result_types: Vec<Type>) {
         self.result_types = result_types;
     }
-    pub fn set_region(&mut self, region: Arc<RwLock<Option<Region>>>) {
+    pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
@@ -193,7 +193,8 @@ impl Operation {
             }
         }
         let region = self.region();
-        if let Some(region) = region.read().unwrap().as_ref() {
+        if let Some(region) = region {
+            let region = region.read().unwrap();
             if region.blocks().is_empty() {
                 write!(f, "\n")?;
             } else {
@@ -215,7 +216,7 @@ impl Default for Operation {
             attributes: Attributes::new(),
             results: Arc::new(RwLock::new(vec![])),
             result_types: vec![],
-            region: Arc::new(RwLock::new(None)),
+            region: None,
             parent: None,
         }
     }

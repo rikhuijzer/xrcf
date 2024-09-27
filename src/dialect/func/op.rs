@@ -73,8 +73,8 @@ impl Op for FuncOp {
             }
         }
         let region = self.operation().read().unwrap().region();
-        let region = region.read().unwrap();
-        if let Some(region) = region.as_ref() {
+        if let Some(region) = region {
+            let region = region.read().unwrap();
             region.display(f, indent)?;
         }
         Ok(())
@@ -161,7 +161,7 @@ impl Parse for FuncOp {
         let mut operation = Operation::default();
         operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
-        operation.set_region(parser.region()?);
+        operation.set_region(Some(parser.region()?));
         operation.set_parent(parent);
         if let Some(result) = result {
             let result = Arc::new(RwLock::new(result));
