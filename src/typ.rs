@@ -15,6 +15,11 @@ impl IntegerType {
     pub fn new(num_bits: u64) -> Self {
         Self { num_bits }
     }
+    pub fn from_str(s: &str) -> Self {
+        let s = s.strip_prefix("i").unwrap();
+        let num_bits = s.parse::<u64>().unwrap();
+        Self { num_bits }
+    }
 }
 
 impl Type for IntegerType {}
@@ -39,6 +44,11 @@ impl APInt {
             value,
             is_signed,
         }
+    }
+    pub fn from_str(typ: &str, value: &str) -> Self {
+        let typ = IntegerType::from_str(typ);
+        let value = value.parse::<u64>().unwrap();
+        Self::new(typ.num_bits, value, true)
     }
 }
 

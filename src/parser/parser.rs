@@ -138,12 +138,19 @@ impl<T: Parse> Parser<T> {
                 let parent = Some(block.clone());
                 let op = T::op(self, parent)?;
                 let mut ops = ops.write().unwrap();
+                println!("pushing op");
                 ops.push(op.clone());
                 if op.read().unwrap().is_terminator() {
                     break;
                 }
             } else {
-                break;
+                let next = self.peek();
+                if next.kind == TokenKind::RBrace {
+                    break;
+                }
+                let token = self.peek();
+                let msg = self.error(&token, "Expected closing brace for block");
+                return Err(anyhow::anyhow!(msg));
             }
         }
         if ops.read().unwrap().is_empty() {

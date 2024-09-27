@@ -64,9 +64,13 @@ impl Parse for ConstantOp {
         operation.set_parent(parent.clone());
         let attributes = operation::Attributes::new();
         let integer = parser.expect(TokenKind::Integer)?;
-        let value = integer.lexeme.parse::<i64>().unwrap();
-        let value = APInt::new(64, value as u64, true);
-        let typ = IntegerType::new(64);
+        let value = integer.lexeme;
+
+        let _colon = parser.expect(TokenKind::Colon)?;
+
+        let num_bits = parser.expect(TokenKind::IntType)?;
+        let typ = IntegerType::from_str(&num_bits.lexeme);
+        let value = APInt::from_str(&num_bits.lexeme, &value);
         let integer = IntegerAttr::new(typ, value);
         attributes
             .map()
