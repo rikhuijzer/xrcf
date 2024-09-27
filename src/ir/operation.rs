@@ -28,7 +28,34 @@ impl OperationName {
 
 pub type Arguments = Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>;
 pub type Operands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
-pub type Attributes = Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>;
+
+#[derive(Clone)]
+pub struct Attributes {
+    map: Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>,
+}
+
+impl Attributes {
+    pub fn new() -> Self {
+        Self {
+            map: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
+        self.map.clone()
+    }
+    pub fn insert(&mut self, name: String, attribute: Arc<dyn Attribute>) {
+        self.map.write().unwrap().insert(name, attribute);
+    }
+}
+
+impl Display for Attributes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (name, attribute) in self.map.read().unwrap().iter() {
+            write!(f, "{} = {}", name, attribute)?;
+        }
+        Ok(())
+    }
+}
 
 /// Note that MLIR distinguishes between Operation and Op.
 /// Operation generically models all operations.
@@ -155,9 +182,7 @@ impl Operation {
                 .join(", ");
             write!(f, " {}", joined)?;
         }
-        for (name, attribute) in self.attributes().read().unwrap().iter() {
-            write!(f, "{} = {}", name, attribute)?;
-        }
+        write!(f, "{}", self.attributes())?;
         if !self.result_types.is_empty() {
             write!(f, " :")?;
             for result_type in self.result_types.iter() {
@@ -184,7 +209,7 @@ impl Default for Operation {
             name: OperationName::new("".to_string()),
             arguments: Arc::new(RwLock::new(vec![])),
             operands: Arc::new(RwLock::new(vec![])),
-            attributes: Arc::new(RwLock::new(HashMap::new())),
+            attributes: Attributes::new(),
             results: vec![],
             result_types: vec![],
             region: Arc::new(RwLock::new(None)),

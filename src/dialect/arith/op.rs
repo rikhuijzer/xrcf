@@ -15,7 +15,6 @@ use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
-use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -63,13 +62,14 @@ impl Parse for ConstantOp {
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
-        let attributes: operation::Attributes = Arc::new(RwLock::new(HashMap::new()));
+        let attributes = operation::Attributes::new();
         let integer = parser.expect(TokenKind::Integer)?;
         let value = integer.lexeme.parse::<i64>().unwrap();
         let value = APInt::new(64, value as u64, true);
         let typ = IntegerType::new(64);
         let integer = IntegerAttr::new(typ, value);
         attributes
+            .map()
             .write()
             .unwrap()
             .insert("value".to_string(), Arc::new(integer));
