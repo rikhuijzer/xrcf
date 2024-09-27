@@ -5,7 +5,9 @@ use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
+use crate::ir::OpOperand;
 use crate::ir::Operation;
+use crate::ir::OperationOperands;
 use crate::ir::Region;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -20,12 +22,6 @@ pub struct Parser<T: Parse> {
     tokens: Vec<Token>,
     current: usize,
     parse_op: std::marker::PhantomData<T>,
-}
-
-impl<T: Parse> Parser<T> {
-    pub fn tokens(&self) -> &Vec<Token> {
-        &self.tokens
-    }
 }
 
 /// Downstream crates can implement this trait to support custom parsing.
@@ -219,6 +215,38 @@ impl<T: Parse> Parser<T> {
             module_op.unwrap()
         };
         Ok(op)
+    }
+}
+
+impl<T: Parse> Parser<T> {
+    // Parse %0.
+    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<OpOperand>>> {
+        let identifier = self.expect(TokenKind::PercentIdentifier)?;
+        let name = identifier.lexeme.clone();
+        let block = parent.read().unwrap();
+        let assignment = block.assignment(name.clone());
+        let assignment = match assignment {
+            Some(assignment) => assignment,
+            None => {
+                let msg = "Expected assignment before use.";
+                let msg = self.error(&identifier, msg);
+                return Err(anyhow::anyhow!(msg));
+            }
+        };
+        let operand = OpOperand::new(assignment, name);
+        Ok(Arc::new(RwLock::new(operand)))
+    }
+    /// Parse %0, %1.
+    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<OperationOperands> {
+        let mut arguments = vec![];
+        while self.check(TokenKind::PercentIdentifier) {
+            let operand = self.operand(parent.clone())?;
+            arguments.push(operand);
+            if self.check(TokenKind::Comma) {
+                let _comma = self.advance();
+            }
+        }
+        Ok(Arc::new(RwLock::new(arguments)))
     }
 }
 

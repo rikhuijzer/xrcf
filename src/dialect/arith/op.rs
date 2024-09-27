@@ -117,35 +117,6 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<OpOperand>>> {
-        let identifier = self.expect(TokenKind::PercentIdentifier)?;
-        let name = identifier.lexeme.clone();
-        let block = parent.read().unwrap();
-        let assignment = block.assignment(name.clone());
-        let assignment = match assignment {
-            Some(assignment) => assignment,
-            None => {
-                let msg = "Expected assignment before use.";
-                let msg = self.error(&identifier, msg);
-                return Err(anyhow::anyhow!(msg));
-            }
-        };
-        // let typ = Type::new("any".to_string());
-        // let value = Value::OpResult(OpResult::new(name, typ));
-        // let operand = OpOperand::new(value, name);
-        // Ok(Arc::new(operand))
-    }
-    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<OperationOperands> {
-        let mut arguments = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
-            let operand = self.operand(parent.clone())?;
-            arguments.push(operand);
-            if self.check(TokenKind::Comma) {
-                let _comma = self.advance();
-            }
-        }
-        Ok(Arc::new(RwLock::new(arguments)))
-    }
     pub fn results(&mut self) -> Result<Vec<Arc<Value>>> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {

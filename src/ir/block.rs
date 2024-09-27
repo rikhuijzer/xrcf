@@ -1,5 +1,4 @@
 use crate::ir::Op;
-use crate::ir::OperationOperands;
 use crate::ir::Region;
 use crate::ir::Value;
 use std::fmt::Display;
