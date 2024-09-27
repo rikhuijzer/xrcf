@@ -32,7 +32,8 @@ pub trait Op {
     /// For most ops, this is the `results` field of type `OpResult`.
     /// But for some other ops like `FuncOp`, this can be different.
     fn assignments(&self) -> Result<Values> {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
         let results = operation.results();
         Ok(results.clone())
     }

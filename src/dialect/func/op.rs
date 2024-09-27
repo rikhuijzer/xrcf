@@ -7,6 +7,7 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
+use crate::ir::Values;
 use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
@@ -88,7 +89,7 @@ impl<T: Parse> Parser<T> {
         Ok(identifier.lexeme.clone())
     }
     /// %arg0 : i64,
-    pub fn function_argument(&mut self) -> Result<Arc<RwLock<BlockArgument>>> {
+    pub fn function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
@@ -98,7 +99,7 @@ impl<T: Parse> Parser<T> {
         } else {
             Type::new("any".to_string())
         };
-        let arg = BlockArgument::new(name, typ);
+        let arg = Value::BlockArgument(BlockArgument::new(name, typ));
         let operand = Arc::new(RwLock::new(arg));
         if self.check(TokenKind::Comma) {
             self.advance();
@@ -106,7 +107,7 @@ impl<T: Parse> Parser<T> {
         Ok(operand)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`.
-    pub fn function_arguments(&mut self) -> Result<operation::Arguments> {
+    pub fn function_arguments(&mut self) -> Result<Values> {
         let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
@@ -158,7 +159,9 @@ impl Parse for FuncOp {
         operation.set_region(parser.region()?);
         operation.set_parent(parent);
         if let Some(result) = result {
-            operation.set_results(vec![Arc::new(result)]);
+            let result = Arc::new(RwLock::new(result));
+            let results = Arc::new(RwLock::new(vec![result]));
+            operation.set_results(results);
         }
         let operation = Arc::new(RwLock::new(operation));
 
@@ -184,17 +187,11 @@ impl Op for ReturnOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn assignments(&self) -> Result<Vec<Arc<Value>>> {
+    fn assignments(&self) -> Result<Values> {
         let operation = self.operation();
         let operation = operation.read().unwrap();
         let arguments = operation.arguments();
-        let arguments = arguments.read().unwrap();
-        let values: Vec<Arc<Value>> = vec![];
-        for argument in arguments.iter() {
-            let value = *argument.read().unwrap();
-            values.push(value);
-        }
-        Ok(values)
+        Ok(arguments.clone())
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();

@@ -8,6 +8,7 @@ use crate::ir::OpResult;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
+use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
@@ -119,18 +120,19 @@ impl Op for AddiOp {
 }
 
 impl<T: Parse> Parser<T> {
-    pub fn results(&mut self) -> Result<Vec<Arc<Value>>> {
+    pub fn results(&mut self) -> Result<Values> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
             let name = identifier.lexeme.clone();
             let typ = Type::new("any".to_string());
             let result = Value::OpResult(OpResult::new(name, typ));
-            results.push(Arc::new(result));
+            results.push(Arc::new(RwLock::new(result)));
             if self.check(TokenKind::Equal) {
                 let _equal = self.advance();
             }
         }
+        let results = Arc::new(RwLock::new(results));
         Ok(results)
     }
 }

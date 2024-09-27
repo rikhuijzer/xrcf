@@ -91,10 +91,10 @@ pub struct Operation {
 impl Operation {
     pub fn new(
         name: OperationName,
-        arguments: Arguments,
+        arguments: Values,
         operands: Operands,
         attributes: Attributes,
-        results: Vec<Arc<Value>>,
+        results: Values,
         result_types: Vec<Type>,
         region: Arc<RwLock<Option<Region>>>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -113,7 +113,7 @@ impl Operation {
     pub fn name(&self) -> String {
         self.name.name.clone()
     }
-    pub fn arguments(&self) -> Arguments {
+    pub fn arguments(&self) -> Values {
         self.arguments.clone()
     }
     pub fn operands(&self) -> Operands {
@@ -125,8 +125,8 @@ impl Operation {
     pub fn attributes(&self) -> Attributes {
         self.attributes.clone()
     }
-    pub fn results(&self) -> &Vec<Arc<Value>> {
-        &self.results
+    pub fn results(&self) -> Values {
+        self.results.clone()
     }
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
@@ -141,7 +141,7 @@ impl Operation {
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
-    pub fn set_arguments(&mut self, arguments: Arguments) {
+    pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
     pub fn set_operands(&mut self, operands: Operands) {
@@ -150,7 +150,7 @@ impl Operation {
     pub fn set_attributes(&mut self, attributes: Attributes) {
         self.attributes = attributes;
     }
-    pub fn set_results(&mut self, results: Vec<Arc<Value>>) {
+    pub fn set_results(&mut self, results: Values) {
         self.results = results;
     }
     pub fn set_result_types(&mut self, result_types: Vec<Type>) {
@@ -168,9 +168,9 @@ impl Operation {
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        if !self.results().is_empty() {
-            for result in self.results().iter() {
-                write!(f, "{}", result)?;
+        if !self.results().read().unwrap().is_empty() {
+            for result in self.results().read().unwrap().iter() {
+                write!(f, "{}", result.read().unwrap())?;
             }
             write!(f, " = ")?;
         }
@@ -214,7 +214,7 @@ impl Default for Operation {
             arguments: Arc::new(RwLock::new(vec![])),
             operands: Arc::new(RwLock::new(vec![])),
             attributes: Attributes::new(),
-            results: vec![],
+            results: Arc::new(RwLock::new(vec![])),
             result_types: vec![],
             region: Arc::new(RwLock::new(None)),
             parent: None,

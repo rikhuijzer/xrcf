@@ -81,18 +81,18 @@ impl Display for Value {
 }
 
 pub struct OpOperand {
-    pub value: Arc<Value>,
+    pub value: Arc<RwLock<Value>>,
     pub operand_name: String,
 }
 
 impl OpOperand {
-    pub fn new(value: Arc<Value>, operand_name: String) -> Self {
+    pub fn new(value: Arc<RwLock<Value>>, operand_name: String) -> Self {
         OpOperand {
             value,
             operand_name,
         }
     }
-    pub fn value(&self) -> Arc<Value> {
+    pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
     }
     pub fn operand_name(&self) -> &str {
