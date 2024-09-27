@@ -1,6 +1,8 @@
 use crate::canonicalize::CanonicalizeResult;
+use crate::ir::operation;
 use crate::ir::operation::Operation;
 use crate::ir::Block;
+use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::OperationName;
@@ -9,8 +11,11 @@ use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
+use crate::typ::APInt;
+use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
+use std::collections::HashMap;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -59,7 +64,16 @@ impl Parse for ConstantOp {
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
         let attributes: operation::Attributes = Arc::new(RwLock::new(HashMap::new()));
-        operation.set_attributes(parser.operands(parent.unwrap())?);
+        let integer = parser.expect(TokenKind::Integer)?;
+        let value = integer.lexeme.parse::<i64>().unwrap();
+        let value = APInt::new(64, value as u64, true);
+        let typ = IntegerType::new(64);
+        let integer = IntegerAttr::new(typ, value);
+        attributes
+            .write()
+            .unwrap()
+            .insert("value".to_string(), Arc::new(integer));
+        operation.set_attributes(attributes);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(RwLock::new(ConstantOp { operation })))
     }

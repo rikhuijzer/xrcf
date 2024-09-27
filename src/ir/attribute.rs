@@ -50,11 +50,34 @@ impl Display for Attributes {
 
 /// An attribute containing an integer value.
 pub struct IntegerAttr {
-    name: String,
     // The type of the integer like the precision.
     typ: IntegerType,
     // An arbitrary precision integer value.
     value: APInt,
+}
+
+impl IntegerAttr {
+    pub fn new(typ: IntegerType, value: APInt) -> Self {
+        Self { typ, value }
+    }
+}
+
+impl Attribute for IntegerAttr {
+    fn new(_name: &str, value: &str) -> Self {
+        Self {
+            typ: IntegerType::new(64),
+            value: APInt::new(64, value.parse::<u64>().unwrap(), true),
+        }
+    }
+    fn parse<T: Parse>(_parser: &mut Parser<T>, _name: &str) -> Option<Self> {
+        todo!()
+    }
+    fn value(&self) -> String {
+        todo!()
+    }
+    fn display(&self, _f: &mut Formatter<'_>) -> Result {
+        todo!()
+    }
 }
 
 pub struct StrAttr {
