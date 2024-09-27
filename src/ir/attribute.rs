@@ -17,10 +17,9 @@ pub trait Attribute {
     where
         Self: Sized;
 
-    fn name(&self) -> String;
     fn value(&self) -> String;
     fn display(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "{} = {}", self.name(), self.value())
+        write!(f, "{}", self.value())
     }
 }
 
@@ -77,9 +76,6 @@ impl Attribute for StrAttr {
             value: value.lexeme.to_string(),
         })
     }
-    fn name(&self) -> String {
-        self.name.clone()
-    }
     fn value(&self) -> String {
         self.value.clone()
     }
@@ -112,9 +108,6 @@ impl Attribute for AnyAttr {
             name: name.to_string(),
             value: value.lexeme.to_string(),
         })
-    }
-    fn name(&self) -> String {
-        self.name.clone()
     }
     fn value(&self) -> String {
         self.value.clone()

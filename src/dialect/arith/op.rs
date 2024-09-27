@@ -1,12 +1,9 @@
 use crate::canonicalize::CanonicalizeResult;
 use crate::ir::operation::Operation;
 use crate::ir::Block;
-use crate::ir::BlockArgument;
 use crate::ir::Op;
-use crate::ir::OpOperand;
 use crate::ir::OpResult;
 use crate::ir::OperationName;
-use crate::ir::OperationOperands;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parse;
@@ -61,7 +58,7 @@ impl Parse for ConstantOp {
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
-        operation.set_operands(parser.operands(parent.unwrap())?);
+        operation.set_arguments(parser.operands(parent.unwrap())?);
         let operation = Arc::new(RwLock::new(operation));
         Ok(Arc::new(RwLock::new(ConstantOp { operation })))
     }

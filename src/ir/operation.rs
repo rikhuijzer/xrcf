@@ -5,6 +5,7 @@ use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::Attribute;
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -27,6 +28,7 @@ impl OperationName {
 
 pub type OperationArguments = Arc<RwLock<Vec<Arc<RwLock<BlockArgument>>>>>;
 pub type OperationOperands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
+pub type OperationAttributes = Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>;
 
 /// Note that MLIR distinguishes between Operation and Op.
 /// Operation generically models all operations.
@@ -44,7 +46,7 @@ pub struct Operation {
     /// Used by `FuncOp` to store its arguments.
     arguments: OperationArguments,
     operands: OperationOperands,
-    attributes: Vec<Arc<dyn Attribute>>,
+    attributes: OperationAttributes,
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Vec<Arc<Value>>,
     result_types: Vec<Type>,
@@ -60,7 +62,7 @@ impl Operation {
         name: OperationName,
         arguments: OperationArguments,
         operands: OperationOperands,
-        attributes: Vec<Arc<dyn Attribute>>,
+        attributes: OperationAttributes,
         results: Vec<Arc<Value>>,
         result_types: Vec<Type>,
         region: Arc<RwLock<Option<Region>>>,
@@ -89,7 +91,7 @@ impl Operation {
     pub fn operands_mut(&mut self) -> &mut OperationOperands {
         &mut self.operands
     }
-    pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
+    pub fn attributes(&self) -> OperationAttributes {
         self.attributes.clone()
     }
     pub fn results(&self) -> &Vec<Arc<Value>> {
@@ -114,7 +116,7 @@ impl Operation {
     pub fn set_operands(&mut self, operands: OperationOperands) {
         self.operands = operands;
     }
-    pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) {
+    pub fn set_attributes(&mut self, attributes: OperationAttributes) {
         self.attributes = attributes;
     }
     pub fn set_results(&mut self, results: Vec<Arc<Value>>) {
@@ -153,8 +155,8 @@ impl Operation {
                 .join(", ");
             write!(f, " {}", joined)?;
         }
-        for attribute in self.attributes.iter() {
-            write!(f, " {}", attribute)?;
+        for (name, attribute) in self.attributes().read().unwrap().iter() {
+            write!(f, "{} = {}", name, attribute)?;
         }
         if !self.result_types.is_empty() {
             write!(f, " :")?;
@@ -182,7 +184,7 @@ impl Default for Operation {
             name: OperationName::new("".to_string()),
             arguments: Arc::new(RwLock::new(vec![])),
             operands: Arc::new(RwLock::new(vec![])),
-            attributes: vec![],
+            attributes: Arc::new(RwLock::new(HashMap::new())),
             results: vec![],
             result_types: vec![],
             region: Arc::new(RwLock::new(None)),
