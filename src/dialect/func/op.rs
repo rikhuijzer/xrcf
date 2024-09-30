@@ -147,10 +147,6 @@ impl Parse for FuncOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        assert!(
-            parent.is_some(),
-            "Expected parent block to be set for func.func"
-        );
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();

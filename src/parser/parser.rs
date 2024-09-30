@@ -121,6 +121,10 @@ impl<T: Parse> Parser<T> {
         }
     }
     pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
+        assert!(
+            parent.is_some(),
+            "Expected parent region to be passed when parsing a block"
+        );
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
