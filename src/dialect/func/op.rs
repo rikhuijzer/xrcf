@@ -147,6 +147,10 @@ impl Parse for FuncOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
+        assert!(
+            parent.is_some(),
+            "Expected parent block to be set for func.func"
+        );
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             let result = parser.advance().lexeme.clone();
@@ -161,20 +165,26 @@ impl Parse for FuncOp {
         let mut operation = Operation::default();
         operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
-        operation.set_region(Some(parser.region()?));
+        let region = parser.region()?;
+        assert!(parent.is_some());
         operation.set_parent(parent);
         if let Some(result) = result {
             let result = Arc::new(RwLock::new(result));
             let results = Arc::new(RwLock::new(vec![result]));
             operation.set_results(results);
         }
+        operation.set_region(Some(region.clone()));
         let operation = Arc::new(RwLock::new(operation));
 
         let op = FuncOp {
             identifier,
             operation,
         };
-        Ok(Arc::new(RwLock::new(op)))
+        let op = Arc::new(RwLock::new(op));
+        let mut region = region.write().unwrap();
+        region.set_parent(Some(op.clone()));
+
+        Ok(op)
     }
 }
 

@@ -1,4 +1,3 @@
-use crate::dialect::func::FuncOp;
 use crate::ir::Op;
 use crate::ir::Region;
 use crate::ir::Value;
@@ -11,7 +10,7 @@ pub struct Block {
     arguments: Arc<Vec<Value>>,
     ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
-    /// the `Region` is shared via `Arc<RwLock<..>>`.
+    /// the `Block` is shared via `Arc<RwLock<..>>`.
     parent: Option<Arc<RwLock<Region>>>,
 }
 
@@ -47,7 +46,10 @@ impl Block {
         let region = region.unwrap();
         let region = region.read().unwrap();
         let parent = region.parent();
-        assert!(parent.is_some());
+        assert!(
+            parent.is_some(),
+            "Found no parent for region {region} when searching for assignment of {name}"
+        );
         let op = parent.unwrap();
         let op = &*op.read().unwrap();
         let operation = op.operation();
