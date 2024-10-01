@@ -1,3 +1,4 @@
+use crate::ir::Op;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -45,14 +46,22 @@ impl Display for BlockArgument {
 pub struct OpResult {
     name: String,
     typ: Type,
+    defining_op: Arc<RwLock<dyn Op>>,
 }
 
 impl OpResult {
-    pub fn new(name: String, typ: Type) -> Self {
-        OpResult { name, typ }
+    pub fn new(name: String, typ: Type, defining_op: Arc<RwLock<dyn Op>>) -> Self {
+        OpResult {
+            name,
+            typ,
+            defining_op,
+        }
     }
     pub fn name(&self) -> &str {
         &self.name
+    }
+    pub fn defining_op(&self) -> Arc<RwLock<dyn Op>> {
+        self.defining_op.clone()
     }
 }
 
@@ -81,22 +90,32 @@ impl Display for Value {
 }
 
 pub struct OpOperand {
-    pub value: Arc<RwLock<Value>>,
     pub operand_name: String,
+    pub value: Arc<RwLock<Value>>,
 }
 
 impl OpOperand {
-    pub fn new(value: Arc<RwLock<Value>>, operand_name: String) -> Self {
+    pub fn new(operand_name: String, value: Arc<RwLock<Value>>) -> Self {
         OpOperand {
-            value,
             operand_name,
+            value,
         }
+    }
+    pub fn operand_name(&self) -> &str {
+        &self.operand_name
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
     }
-    pub fn operand_name(&self) -> &str {
-        &self.operand_name
+    /// If this `OpOperand` is the result of an operation, return the operation
+    /// that defines it.
+    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+        let value = self.value();
+        let value = &*value.read().unwrap();
+        match value {
+            Value::BlockArgument(_) => None,
+            Value::OpResult(op_res) => Some(op_res.defining_op()),
+        }
     }
 }
 

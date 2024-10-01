@@ -91,13 +91,15 @@ pub struct AddiOp {
 impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&mut self) -> CanonicalizeResult {
-        let operands = self.operation().read().unwrap().operands();
+        let operation = self.operation.read().unwrap();
+        let operands = operation.operands();
         let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
-        todo!();
-        // let lhs = &operands[0];
-        // let rhs = &operands[1];
-        // CanonicalizeResult::Changed
+        let lhs = operands[0].clone();
+        let lop = lhs.read().unwrap().defining_op();
+        let rhs = operands[1].clone();
+
+        CanonicalizeResult::Changed
     }
 }
 

@@ -237,7 +237,7 @@ impl<T: Parse> Parser<T> {
                 return Err(anyhow::anyhow!(msg));
             }
         };
-        let operand = OpOperand::new(assignment, name);
+        let operand = OpOperand::new(name, assignment);
         Ok(Arc::new(RwLock::new(operand)))
     }
     /// Parse %0, %1.
