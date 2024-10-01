@@ -149,10 +149,7 @@ impl Parse for FuncOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
-            let result = parser.advance().lexeme.clone();
-            let result: Value =
-                Value::OpResult(OpResult::new(result, Type::new("any".to_string())));
-            Some(result)
+            todo!("This case does not occur?");
         } else {
             None
         };

@@ -127,8 +127,9 @@ impl<T: Parse> Parser<T> {
         while self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
             let name = identifier.lexeme.clone();
-            let typ = Type::new("any".to_string());
-            let result = Value::OpResult(OpResult::new(name, typ));
+            let mut op_result = OpResult::default();
+            op_result.set_name(&name);
+            let result = Value::OpResult(op_result);
             results.push(Arc::new(RwLock::new(result)));
             if self.check(TokenKind::Equal) {
                 let _equal = self.advance();
@@ -139,13 +140,27 @@ impl<T: Parse> Parser<T> {
     }
 }
 
+pub fn set_defining_op(results: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>, op: Arc<RwLock<dyn Op>>) {
+    let mut results = results.write().unwrap();
+    for result in results.iter_mut() {
+        let mut mut_result = result.write().unwrap();
+        match &mut *mut_result {
+            Value::BlockArgument(_) => {
+                panic!("This case should not occur")
+            }
+            Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
+        }
+    }
+}
+
 impl Parse for AddiOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
-        operation.set_results(parser.results()?);
+        let results = parser.results()?;
+        operation.set_results(results.clone());
 
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.addi");
@@ -159,7 +174,10 @@ impl Parse for AddiOp {
         operation.set_result_types(vec![result_type]);
 
         let operation = Arc::new(RwLock::new(operation));
-        Ok(Arc::new(RwLock::new(AddiOp { operation })))
+        let op = AddiOp { operation };
+        let op = Arc::new(RwLock::new(op));
+        set_defining_op(results, op.clone());
+        Ok(op)
     }
 }
 

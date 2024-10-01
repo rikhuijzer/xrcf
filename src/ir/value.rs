@@ -42,15 +42,14 @@ impl Display for BlockArgument {
     }
 }
 
-#[derive(Debug)]
 pub struct OpResult {
     name: String,
     typ: Type,
-    defining_op: Arc<RwLock<dyn Op>>,
+    defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
-    pub fn new(name: String, typ: Type, defining_op: Arc<RwLock<dyn Op>>) -> Self {
+    pub fn new(name: String, typ: Type, defining_op: Option<Arc<RwLock<dyn Op>>>) -> Self {
         OpResult {
             name,
             typ,
@@ -60,8 +59,30 @@ impl OpResult {
     pub fn name(&self) -> &str {
         &self.name
     }
-    pub fn defining_op(&self) -> Arc<RwLock<dyn Op>> {
+    pub fn typ(&self) -> Type {
+        self.typ.clone()
+    }
+    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.defining_op.clone()
+    }
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
+    pub fn set_typ(&mut self, typ: Type) {
+        self.typ = typ;
+    }
+    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+        self.defining_op = op;
+    }
+}
+
+impl Default for OpResult {
+    fn default() -> Self {
+        Self {
+            name: "Undefined name".to_string(),
+            typ: Type::new("Unset type".to_string()),
+            defining_op: None,
+        }
     }
 }
 
@@ -74,7 +95,6 @@ impl OpResult {
 /// As most IR construct, this isn't const-correct, but we keep method
 /// consistent and as such methods that immediately modify this Value aren't
 /// marked `const` (include modifying the Value use-list).
-#[derive(Debug)]
 pub enum Value {
     BlockArgument(BlockArgument),
     OpResult(OpResult),
@@ -114,7 +134,7 @@ impl OpOperand {
         let value = &*value.read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
-            Value::OpResult(op_res) => Some(op_res.defining_op()),
+            Value::OpResult(op_res) => op_res.defining_op(),
         }
     }
 }
