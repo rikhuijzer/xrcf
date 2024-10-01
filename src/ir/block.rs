@@ -79,31 +79,20 @@ impl Block {
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
-        println!("\nname: {}", name);
         for op in ops.iter() {
             let op = op.read().unwrap();
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
             let values = values.read().unwrap();
-            let operation = op.operation();
-            let operation = operation.read().unwrap();
-            println!(
-                "Found {} values for {name} and op {}",
-                values.len(),
-                operation.name()
-            );
             for value in values.iter() {
-                println!("iter operand");
                 match &*value.read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        println!("block_argument: {}", block_argument.name());
                         if block_argument.name() == name {
                             return Some(value.clone());
                         }
                     }
                     Value::OpResult(op_result) => {
-                        println!("op_result: {}", op_result.name());
                         if op_result.name() == name {
                             return Some(value.clone());
                         }
