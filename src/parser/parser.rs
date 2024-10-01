@@ -180,7 +180,7 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self) -> Result<Arc<RwLock<Region>>> {
+    pub fn region(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) -> Result<Arc<RwLock<Region>>> {
         let region = Region::default();
         let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;

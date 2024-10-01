@@ -161,22 +161,22 @@ impl Parse for FuncOp {
         let mut operation = Operation::default();
         operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
-        let region = parser.region()?;
-        assert!(parent.is_some());
         operation.set_parent(parent);
         if let Some(result) = result {
             let result = Arc::new(RwLock::new(result));
             let results = Arc::new(RwLock::new(vec![result]));
             operation.set_results(results);
         }
-        operation.set_region(Some(region.clone()));
         let operation = Arc::new(RwLock::new(operation));
-
         let op = FuncOp {
             identifier,
-            operation,
+            operation: operation.clone(),
         };
         let op = Arc::new(RwLock::new(op));
+        let region = parser.region(Some(op.clone()))?;
+        let mut operation = operation.write().unwrap();
+        operation.set_region(Some(region.clone()));
+
         let mut region = region.write().unwrap();
         region.set_parent(Some(op.clone()));
 
