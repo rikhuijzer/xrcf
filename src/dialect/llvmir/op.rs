@@ -23,7 +23,7 @@ impl Op for GlobalOp {
         OperationName::new("llvm.mlir.global".to_string())
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        if operation.read().unwrap().name() != Self::operation_name().name() {
+        if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected global, got {}",
                 operation.read().unwrap().name()
@@ -59,7 +59,6 @@ impl Parse for GlobalOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
-        let name = GlobalOp::operation_name();
         let attributes = operation::Attributes::new();
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
@@ -95,7 +94,7 @@ impl Parse for GlobalOp {
             }
         }
         let mut operation = Operation::default();
-        operation.set_name(name);
+        operation.set_name(GlobalOp::operation_name());
         operation.set_attributes(attributes);
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));

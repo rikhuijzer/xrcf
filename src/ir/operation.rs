@@ -11,7 +11,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OperationName {
     name: String,
 }
@@ -22,6 +22,12 @@ impl OperationName {
     }
     pub fn name(&self) -> String {
         self.name.clone()
+    }
+}
+
+impl Display for OperationName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
     }
 }
 
@@ -109,8 +115,8 @@ impl Operation {
             parent,
         }
     }
-    pub fn name(&self) -> String {
-        self.name.name.clone()
+    pub fn name(&self) -> OperationName {
+        self.name.clone()
     }
     pub fn arguments(&self) -> Values {
         self.arguments.clone()

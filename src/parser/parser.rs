@@ -2,7 +2,6 @@ use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
 use crate::ir::operation;
-use crate::ir::operation::OperationName;
 use crate::ir::Block;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
@@ -180,8 +179,9 @@ impl<T: Parse> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) -> Result<Arc<RwLock<Region>>> {
-        let region = Region::default();
+    pub fn region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
+        let mut region = Region::default();
+        region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let mut blocks = vec![];
@@ -203,7 +203,6 @@ impl<T: Parse> Parser<T> {
         let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
             *module_op
         } else {
-            let name = OperationName::new("module".to_string());
             let mut region = Region::default();
             region.set_parent(Some(op.clone()));
             let region = Arc::new(RwLock::new(region));
@@ -213,7 +212,7 @@ impl<T: Parse> Parser<T> {
             let block = Arc::new(RwLock::new(block));
             region.write().unwrap().blocks_mut().push(block.clone());
             let mut operation = Operation::default();
-            operation.set_name(name);
+            operation.set_name(ModuleOp::operation_name());
             operation.set_region(Some(region.clone()));
             operation.set_parent(Some(block));
             let operation = Arc::new(RwLock::new(operation));
@@ -266,7 +265,10 @@ mod tests {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
-        assert_eq!(module_op.operation().read().unwrap().name(), "module");
+        assert_eq!(
+            module_op.operation().read().unwrap().name().to_string(),
+            "module"
+        );
         // let body = module_op.operation().get_body_region();
         // assert_eq!(body.blocks().len(), 1);
         module_op.first_op().unwrap();

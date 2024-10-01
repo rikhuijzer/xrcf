@@ -156,9 +156,11 @@ impl Parse for FuncOp {
         } else {
             None
         };
-        let _operation_name = parser.advance();
+        let operation_name = parser.advance();
+        assert!(operation_name.lexeme == "func.func");
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
         let mut operation = Operation::default();
+        operation.set_name(FuncOp::operation_name());
         operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
         operation.set_parent(parent);
@@ -173,7 +175,7 @@ impl Parse for FuncOp {
             operation: operation.clone(),
         };
         let op = Arc::new(RwLock::new(op));
-        let region = parser.region(Some(op.clone()))?;
+        let region = parser.region(op.clone())?;
         let mut operation = operation.write().unwrap();
         operation.set_region(Some(region.clone()));
 

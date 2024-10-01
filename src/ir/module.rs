@@ -19,7 +19,7 @@ impl Op for ModuleOp {
         OperationName::new("module".to_string())
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        if operation.read().unwrap().name() != Self::operation_name().name() {
+        if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected module, got {}",
                 operation.read().unwrap().name()
