@@ -135,12 +135,8 @@ impl OpOperand {
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
         let value = &*value.read().unwrap();
-        println!("here 1");
         match value {
-            Value::BlockArgument(_) => {
-                println!("here 3");
-                None
-            }
+            Value::BlockArgument(_) => None,
             Value::OpResult(op_res) => Some(op_res.defining_op()),
         }
     }

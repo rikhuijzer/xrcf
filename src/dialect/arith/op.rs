@@ -157,7 +157,6 @@ impl AddiOp {
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
-                println!("here 2");
                 return CanonicalizeResult::Unchanged;
             }
         };
@@ -188,6 +187,9 @@ impl AddiOp {
         let mut new_operation = Operation::default();
         new_operation.set_name(ConstantOp::operation_name());
         new_operation.set_parent(rhs.operation().read().unwrap().parent());
+        let mut attributes = rhs.operation().read().unwrap().attributes();
+        attributes.insert("value", Arc::new(new_value));
+        new_operation.set_attributes(attributes.clone());
 
         let new_const = Arc::new(RwLock::new(new_operation));
         let new_const = match ConstantOp::from_operation(new_const) {
@@ -197,9 +199,9 @@ impl AddiOp {
             }
         };
         let new_const = Arc::new(RwLock::new(new_const));
-        self.insert_before(new_const);
+        // self.insert_before(new_const);
 
-        CanonicalizeResult::Changed
+        CanonicalizeResult::Unchanged
     }
 }
 
