@@ -7,6 +7,7 @@ pub mod region;
 pub mod value;
 
 pub use crate::ir::attribute::AnyAttr;
+pub use crate::ir::attribute::Attribute;
 pub use crate::ir::attribute::IntegerAttr;
 pub use crate::ir::attribute::StrAttr;
 pub use crate::ir::block::Block;

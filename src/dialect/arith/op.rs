@@ -1,6 +1,7 @@
 use crate::canonicalize::CanonicalizeResult;
 use crate::ir::operation;
 use crate::ir::operation::Operation;
+use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
@@ -16,7 +17,6 @@ use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
-use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -42,6 +42,17 @@ impl Op for ConstantOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", self.operation().read().unwrap())
+    }
+}
+
+impl ConstantOp {
+    fn value(&self) -> Arc<dyn Attribute> {
+        let operation = self.operation.read().unwrap();
+        let attributes = operation.attributes();
+        let attributes = attributes.map();
+        let attributes = attributes.read().unwrap();
+        let value = attributes.get("value").unwrap();
+        value.clone()
     }
 }
 

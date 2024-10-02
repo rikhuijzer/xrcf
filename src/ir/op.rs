@@ -1,4 +1,5 @@
 use crate::canonicalize::CanonicalizeResult;
+use crate::ir::Attribute;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -41,6 +42,14 @@ pub trait Op {
     }
     fn is_terminator(&self) -> bool {
         false
+    }
+    fn attribute(&self, key: &str) -> Arc<dyn Attribute> {
+        let operation = self.operation().read().unwrap();
+        let attributes = operation.attributes();
+        let attributes = attributes.map();
+        let attributes = attributes.read().unwrap();
+        let value = attributes.get(key).unwrap();
+        value.clone()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
