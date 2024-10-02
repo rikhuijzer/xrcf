@@ -113,16 +113,21 @@ impl Block {
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
         let ops = self.ops();
         println!("this never finishes");
-        let mut ops_mut = ops.write().unwrap();
-        for (i, current) in ops.read().unwrap().iter().enumerate() {
+        let mut ops = ops.try_write().unwrap();
+        println!("here7");
+        let mut index = 0;
+        for (i, current) in (&ops).iter().enumerate() {
             let current = current.read().unwrap();
             let current = current.operation();
             if Arc::ptr_eq(current, &later) {
-                ops_mut.insert(i, earlier);
-                return;
+                index = i;
+                break;
             }
         }
-        panic!("Could not find op in block");
+        if index == 0 {
+            panic!("Could not find op in block");
+        }
+        ops.insert(index, earlier);
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
