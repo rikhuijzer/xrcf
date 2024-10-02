@@ -25,6 +25,9 @@ impl Attribute for LinkageAttr {
             Some(Self::new(name, "external"))
         }
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn value(&self) -> String {
         self.value.clone()
     }

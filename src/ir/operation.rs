@@ -140,7 +140,7 @@ impl Operation {
         self.region.clone()
     }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
     pub fn set_name(&mut self, name: OperationName) {

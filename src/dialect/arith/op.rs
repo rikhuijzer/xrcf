@@ -1,5 +1,4 @@
 use crate::canonicalize::CanonicalizeResult;
-use crate::ir::operation;
 use crate::ir::operation::Operation;
 use crate::ir::Attribute;
 use crate::ir::Block;
@@ -54,6 +53,13 @@ impl ConstantOp {
         let value = attributes.get("value").unwrap();
         value.clone()
     }
+    fn set_value(&mut self, value: Arc<dyn Attribute>) {
+        let operation = self.operation.write().unwrap();
+        let attributes = operation.attributes();
+        let attributes = attributes.map();
+        let mut attributes = attributes.write().unwrap();
+        attributes.insert("value".to_string(), value);
+    }
 }
 
 impl<T: Parse> Parser<T> {
@@ -78,7 +84,6 @@ impl Parse for ConstantOp {
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
-        let attributes = operation::Attributes::new();
         let integer = parser.expect(TokenKind::Integer)?;
         let value = integer.lexeme;
 
@@ -88,14 +93,12 @@ impl Parse for ConstantOp {
         let typ = IntegerType::from_str(&num_bits.lexeme);
         let value = APInt::from_str(&num_bits.lexeme, &value);
         let integer = IntegerAttr::new(typ, value);
-        attributes
-            .map()
-            .write()
-            .unwrap()
-            .insert("value".to_string(), Arc::new(integer));
-        operation.set_attributes(attributes);
+        let integer = Arc::new(integer);
         let operation = Arc::new(RwLock::new(operation));
-        Ok(Arc::new(RwLock::new(ConstantOp { operation })))
+        let mut op = ConstantOp { operation };
+        op.set_value(integer);
+
+        Ok(Arc::new(RwLock::new(op)))
     }
 }
 
@@ -133,6 +136,21 @@ impl AddiOp {
         let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
             Some(rhs) => rhs,
             None => return CanonicalizeResult::Unchanged,
+        };
+
+        let lhs_value = lhs.attribute("value").unwrap();
+        let lhs_value = lhs_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
+        let rhs_value = rhs.attribute("value").unwrap();
+        let rhs_value = rhs_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
+        let new_value = IntegerAttr::add(lhs_value, rhs_value);
+
+        let mut new_operation = Operation::default();
+        new_operation.set_name(ConstantOp::operation_name());
+        new_operation.set_parent(rhs.operation().read().unwrap().parent());
+
+        let new_operation = Arc::new(RwLock::new(new_operation));
+        let new_op = ConstantOp {
+            operation: new_operation,
         };
 
         CanonicalizeResult::Changed

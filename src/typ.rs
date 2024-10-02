@@ -7,6 +7,7 @@ trait Type {}
 /// Represents an integer type such as i32 or i64.
 /// This does not include the sign bit like in LLVM since
 /// it doesn't matter for 2s complement integer arithmetic.
+#[derive(Debug, Clone, Copy)]
 pub struct IntegerType {
     num_bits: u64,
 }

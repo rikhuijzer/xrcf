@@ -1,7 +1,6 @@
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
-use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
