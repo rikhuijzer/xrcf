@@ -1,5 +1,6 @@
 use crate::dialect::func::FuncOp;
 use crate::ir::Op;
+use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use std::fmt::Display;
@@ -108,6 +109,19 @@ impl Block {
             Some(value) => Some(value),
             None => self.assignment_in_ops(name),
         }
+    }
+    pub fn insert_before(&mut self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+        let ops = self.ops();
+        let mut ops_mut = ops.write().unwrap();
+        for (i, current) in ops.read().unwrap().iter().enumerate() {
+            let current = current.read().unwrap();
+            let current = current.operation();
+            if Arc::ptr_eq(current, &later) {
+                ops_mut.insert(i, earlier);
+                return;
+            }
+        }
+        panic!("Could not find op in block");
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {

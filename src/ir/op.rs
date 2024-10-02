@@ -51,6 +51,12 @@ pub trait Op {
         let value = attributes.get(key)?;
         Some(value.clone())
     }
+    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
+        let operation = self.operation().read().unwrap();
+        let block = operation.parent().unwrap();
+        let mut block = block.write().unwrap();
+        block.insert_before(earlier, self.operation().clone());
+    }
     fn replace(&mut self, new: Arc<dyn Op>) {}
     fn verify(&self) -> Result<()> {
         Ok(())

@@ -147,11 +147,16 @@ impl AddiOp {
         let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
 
+        println!("Looking up {}", self.operation().read().unwrap());
+
         let lhs = operands[0].clone();
-        let lhs = lhs.read().unwrap().defining_op();
-        let lhs = match lhs {
+        let lhs = lhs.read().unwrap();
+        let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
-            None => return CanonicalizeResult::Unchanged,
+            None => {
+                println!("here 2");
+                return CanonicalizeResult::Unchanged;
+            }
         };
         let lhs = lhs.read().unwrap();
         let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
@@ -188,7 +193,8 @@ impl AddiOp {
                 panic!("{}", err);
             }
         };
-        let parent = rhs.operation().read().unwrap().parent();
+        let new_const = Arc::new(RwLock::new(new_const));
+        self.insert_before(new_const);
 
         CanonicalizeResult::Changed
     }

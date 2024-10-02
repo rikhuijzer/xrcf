@@ -62,8 +62,11 @@ impl OpResult {
     pub fn typ(&self) -> Type {
         self.typ.clone()
     }
-    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        self.defining_op.clone()
+    pub fn defining_op(&self) -> Arc<RwLock<dyn Op>> {
+        if self.defining_op.is_none() {
+            panic!("Defining op not set for {}", self.name);
+        }
+        self.defining_op.clone().unwrap()
     }
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
@@ -132,9 +135,13 @@ impl OpOperand {
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
         let value = &*value.read().unwrap();
+        println!("here 1");
         match value {
-            Value::BlockArgument(_) => None,
-            Value::OpResult(op_res) => op_res.defining_op(),
+            Value::BlockArgument(_) => {
+                println!("here 3");
+                None
+            }
+            Value::OpResult(op_res) => Some(op_res.defining_op()),
         }
     }
 }
