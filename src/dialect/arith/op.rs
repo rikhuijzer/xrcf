@@ -181,11 +181,14 @@ impl AddiOp {
         new_operation.set_name(ConstantOp::operation_name());
         new_operation.set_parent(rhs.operation().read().unwrap().parent());
 
-        let new_operation = Arc::new(RwLock::new(new_operation));
-        let mut new_op = ConstantOp {
-            operation: new_operation,
+        let new_const = Arc::new(RwLock::new(new_operation));
+        let new_const = match ConstantOp::from_operation(new_const) {
+            Ok(new_const) => new_const,
+            Err(err) => {
+                panic!("{}", err);
+            }
         };
-        new_op.set_value(Arc::new(new_value));
+        let parent = rhs.operation().read().unwrap().parent();
 
         CanonicalizeResult::Changed
     }
