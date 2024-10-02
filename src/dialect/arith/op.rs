@@ -105,7 +105,8 @@ impl Parse for ConstantOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
-        operation.set_results(parser.results()?);
+        let results = parser.results()?;
+        operation.set_results(results.clone());
 
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "arith.constant");
@@ -131,7 +132,9 @@ impl Parse for ConstantOp {
                 return Err(anyhow::anyhow!(err));
             }
         };
-        Ok(Arc::new(RwLock::new(op)))
+        let op = Arc::new(RwLock::new(op));
+        set_defining_op(results, op.clone());
+        Ok(op)
     }
 }
 
