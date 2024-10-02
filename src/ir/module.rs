@@ -29,6 +29,9 @@ impl Op for ModuleOp {
             operation: operation,
         })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }

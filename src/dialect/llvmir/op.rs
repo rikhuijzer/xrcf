@@ -31,6 +31,9 @@ impl Op for GlobalOp {
         }
         Ok(Self { operation })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }

@@ -16,6 +16,7 @@ use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Dialect;
 use anyhow::Result;
+use std::any::Any;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -32,6 +33,9 @@ impl Op for ConstantOp {
     }
     fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
@@ -95,9 +99,30 @@ impl AddiOp {
         let operands = operation.operands();
         let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
+
         let lhs = operands[0].clone();
-        let lop = lhs.read().unwrap().defining_op();
+        let lhs = lhs.read().unwrap().defining_op();
+        let lhs = match lhs {
+            Some(lhs) => lhs,
+            None => return CanonicalizeResult::Unchanged,
+        };
+        let lhs = lhs.read().unwrap();
+        let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
+            Some(lhs) => lhs,
+            None => return CanonicalizeResult::Unchanged,
+        };
+
         let rhs = operands[1].clone();
+        let rhs = rhs.read().unwrap().defining_op();
+        let rhs = match rhs {
+            Some(rhs) => rhs,
+            None => return CanonicalizeResult::Unchanged,
+        };
+        let rhs = rhs.read().unwrap();
+        let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
+            Some(rhs) => rhs,
+            None => return CanonicalizeResult::Unchanged,
+        };
 
         CanonicalizeResult::Changed
     }
@@ -109,6 +134,9 @@ impl Op for AddiOp {
     }
     fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
         todo!()
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation

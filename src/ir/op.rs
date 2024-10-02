@@ -21,6 +21,7 @@ pub trait Op {
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized;
+    fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
         let operation = self.operation().read().unwrap();

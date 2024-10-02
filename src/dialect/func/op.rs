@@ -30,6 +30,9 @@ impl Op for FuncOp {
         todo!()
         // Ok(FuncOp { operation })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -193,6 +196,9 @@ impl Op for ReturnOp {
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         Ok(ReturnOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
