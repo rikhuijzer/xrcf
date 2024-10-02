@@ -199,7 +199,7 @@ impl AddiOp {
             }
         };
         let new_const = Arc::new(RwLock::new(new_const));
-        // self.insert_before(new_const);
+        self.insert_before(new_const);
 
         CanonicalizeResult::Unchanged
     }

@@ -52,10 +52,15 @@ pub trait Op {
         Some(value.clone())
     }
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
+        println!("here1");
         let operation = self.operation().read().unwrap();
+        println!("here2");
         let block = operation.parent().unwrap();
-        let mut block = block.write().unwrap();
-        block.insert_before(earlier, self.operation().clone());
+        let block = block.read().unwrap();
+        println!("here3");
+        let later = self.operation().clone();
+        println!("here4");
+        block.insert_before(earlier, later);
     }
     fn replace(&mut self, new: Arc<dyn Op>) {}
     fn verify(&self) -> Result<()> {

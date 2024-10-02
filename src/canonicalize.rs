@@ -12,8 +12,8 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
     if let Some(region) = region {
         let mut changed = CanonicalizeResult::Unchanged;
         for block in region.read().unwrap().blocks() {
-            let block = block.write().unwrap();
-            for op in block.ops().write().unwrap().iter_mut() {
+            let block = block.read().unwrap();
+            for op in block.ops().read().unwrap().iter() {
                 let op: &mut dyn Op = &mut *op.write().unwrap();
                 let result = canonicalize_op(op);
                 if result == CanonicalizeResult::Changed {

@@ -110,8 +110,9 @@ impl Block {
             None => self.assignment_in_ops(name),
         }
     }
-    pub fn insert_before(&mut self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
         let ops = self.ops();
+        println!("this never finishes");
         let mut ops_mut = ops.write().unwrap();
         for (i, current) in ops.read().unwrap().iter().enumerate() {
             let current = current.read().unwrap();
