@@ -30,8 +30,35 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
     }
-    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        todo!()
+    fn verify(&self) -> Result<()> {
+        let read_only = self.operation().read().unwrap();
+        if read_only.name() != ConstantOp::operation_name() {
+            return Err(anyhow::anyhow!(
+                "Invalid operation name for ConstantOp:\n  {}",
+                read_only
+            ));
+        }
+        if read_only.parent().is_none() {
+            return Err(anyhow::anyhow!(
+                "Parent is none for ConstantOp:\n  {}",
+                read_only
+            ));
+        }
+        let attributes = read_only.attributes();
+        let attributes = attributes.map();
+        let attributes = attributes.read().unwrap();
+        if attributes.get("value").is_none() {
+            return Err(anyhow::anyhow!(
+                "Value is none for ConstantOp:\n  {}",
+                read_only
+            ));
+        }
+        Ok(())
+    }
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        let op = ConstantOp { operation };
+        op.verify()?;
+        Ok(op)
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -94,10 +121,16 @@ impl Parse for ConstantOp {
         let value = APInt::from_str(&num_bits.lexeme, &value);
         let integer = IntegerAttr::new(typ, value);
         let integer = Arc::new(integer);
+        let mut attributes = operation.attributes();
+        attributes.insert("value", integer);
         let operation = Arc::new(RwLock::new(operation));
-        let mut op = ConstantOp { operation };
-        op.set_value(integer);
-
+        let op = ConstantOp::from_operation(operation);
+        let op = match op {
+            Ok(op) => op,
+            Err(err) => {
+                return Err(anyhow::anyhow!(err));
+            }
+        };
         Ok(Arc::new(RwLock::new(op)))
     }
 }
@@ -149,9 +182,10 @@ impl AddiOp {
         new_operation.set_parent(rhs.operation().read().unwrap().parent());
 
         let new_operation = Arc::new(RwLock::new(new_operation));
-        let new_op = ConstantOp {
+        let mut new_op = ConstantOp {
             operation: new_operation,
         };
+        new_op.set_value(Arc::new(new_value));
 
         CanonicalizeResult::Changed
     }

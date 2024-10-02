@@ -51,6 +51,10 @@ pub trait Op {
         let value = attributes.get(key)?;
         Some(value.clone())
     }
+    fn replace(&mut self, new: Arc<dyn Op>) {}
+    fn verify(&self) -> Result<()> {
+        Ok(())
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let spaces = crate::ir::spaces(indent);
