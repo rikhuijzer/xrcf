@@ -144,7 +144,7 @@ pub struct AddiOp {
 
 impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
-    fn addi_add_constant(&mut self) -> CanonicalizeResult {
+    fn addi_add_constant(&self) -> CanonicalizeResult {
         let operation = self.operation.read().unwrap();
         let operands = operation.operands();
         let operands = operands.read().unwrap();
@@ -218,7 +218,7 @@ impl Op for AddiOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn canonicalize(&mut self) -> CanonicalizeResult {
+    fn canonicalize(&self) -> CanonicalizeResult {
         self.addi_add_constant()
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {

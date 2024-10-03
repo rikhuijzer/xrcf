@@ -112,12 +112,10 @@ impl Block {
     }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
         let ops = self.ops();
-        println!("this never finishes");
         let mut ops = ops.try_write().unwrap();
-        println!("here7");
         let mut index = 0;
         for (i, current) in (&ops).iter().enumerate() {
-            let current = current.read().unwrap();
+            let current = current.try_read().unwrap();
             let current = current.operation();
             if Arc::ptr_eq(current, &later) {
                 index = i;

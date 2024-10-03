@@ -7,7 +7,7 @@ pub enum CanonicalizeResult {
     Unchanged,
 }
 
-pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
+pub fn canonicalize_op(op: &dyn Op) -> CanonicalizeResult {
     let region = op.region();
     if let Some(region) = region {
         let mut changed = CanonicalizeResult::Unchanged;
@@ -18,7 +18,7 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
             let readonly_copy = ops.clone();
             drop(ops);
             for op in readonly_copy.iter() {
-                let op: &mut dyn Op = &mut *op.write().unwrap();
+                let op: &dyn Op = &*op.read().unwrap();
                 let result = canonicalize_op(op);
                 if result == CanonicalizeResult::Changed {
                     changed = CanonicalizeResult::Changed;
