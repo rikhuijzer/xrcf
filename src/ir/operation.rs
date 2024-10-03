@@ -48,7 +48,7 @@ impl Attributes {
     pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
         self.map.clone()
     }
-    pub fn insert(&mut self, name: &str, attribute: Arc<dyn Attribute>) {
+    pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
         self.map
             .write()
             .unwrap()

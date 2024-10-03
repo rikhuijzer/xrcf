@@ -122,7 +122,7 @@ impl Parse for ConstantOp {
         let value = APInt::from_str(&num_bits.lexeme, &value);
         let integer = IntegerAttr::new(typ, value);
         let integer = Arc::new(integer);
-        let mut attributes = operation.attributes();
+        let attributes = operation.attributes();
         attributes.insert("value", integer);
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp::from_operation(operation);
@@ -187,7 +187,7 @@ impl AddiOp {
         let mut new_operation = Operation::default();
         new_operation.set_name(ConstantOp::operation_name());
         new_operation.set_parent(rhs.operation().read().unwrap().parent());
-        let mut attributes = rhs.operation().read().unwrap().attributes();
+        let attributes = rhs.operation().read().unwrap().attributes();
         attributes.insert("value", Arc::new(new_value));
         new_operation.set_attributes(attributes.clone());
 

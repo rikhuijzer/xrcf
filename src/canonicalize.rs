@@ -13,7 +13,11 @@ pub fn canonicalize_op(op: &mut dyn Op) -> CanonicalizeResult {
         let mut changed = CanonicalizeResult::Unchanged;
         for block in region.read().unwrap().blocks() {
             let block = block.read().unwrap();
-            for op in block.ops().read().unwrap().iter() {
+            let ops = block.ops();
+            let ops = ops.read().unwrap();
+            let readonly_copy = ops.clone();
+            drop(ops);
+            for op in readonly_copy.iter() {
                 let op: &mut dyn Op = &mut *op.write().unwrap();
                 let result = canonicalize_op(op);
                 if result == CanonicalizeResult::Changed {

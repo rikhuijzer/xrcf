@@ -62,7 +62,9 @@ pub trait Op {
         println!("here4");
         block.insert_before(earlier, later);
     }
-    fn replace(&mut self, new: Arc<dyn Op>) {}
+    fn replace(&mut self, _new: Arc<dyn Op>) {
+        todo!()
+    }
     fn verify(&self) -> Result<()> {
         Ok(())
     }
