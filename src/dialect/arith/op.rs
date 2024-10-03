@@ -81,7 +81,7 @@ impl ConstantOp {
         value.clone()
     }
     fn set_value(&mut self, value: Arc<dyn Attribute>) {
-        let operation = self.operation.write().unwrap();
+        let operation = self.operation.read().unwrap();
         let attributes = operation.attributes();
         let attributes = attributes.map();
         let mut attributes = attributes.write().unwrap();
@@ -246,8 +246,8 @@ impl<T: Parse> Parser<T> {
 }
 
 pub fn set_defining_op(results: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>, op: Arc<RwLock<dyn Op>>) {
-    let mut results = results.write().unwrap();
-    for result in results.iter_mut() {
+    let results = results.read().unwrap();
+    for result in results.iter() {
         let mut mut_result = result.write().unwrap();
         match &mut *mut_result {
             Value::BlockArgument(_) => {

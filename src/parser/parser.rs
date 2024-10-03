@@ -160,7 +160,7 @@ impl<T: Parse> Parser<T> {
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        let ops = block.write().unwrap().ops();
+        let ops = block.read().unwrap().ops();
         let ops = ops.read().unwrap();
         for op in ops.iter() {
             let op = op.read().unwrap();
