@@ -53,6 +53,14 @@ impl Op for ConstantOp {
                 read_only
             ));
         }
+        let results = read_only.results();
+        let results = results.read().unwrap();
+        if results.len() != 1 {
+            return Err(anyhow::anyhow!(
+                "Results length for ConstantOp is not 1:\n  {}",
+                read_only
+            ));
+        }
         Ok(())
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
