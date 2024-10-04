@@ -199,6 +199,14 @@ impl AddiOp {
         attributes.insert("value", Arc::new(new_value));
         new_operation.set_attributes(attributes.clone());
 
+        let results: Values = Arc::new(RwLock::new(vec![]));
+        let mut result = OpResult::default();
+        result.set_name("%c3_i64");
+        let result = Value::OpResult(result);
+        let result = Arc::new(RwLock::new(result));
+        results.write().unwrap().push(result.clone());
+        new_operation.set_results(results);
+
         let new_const = Arc::new(RwLock::new(new_operation));
         let new_const = match ConstantOp::from_operation(new_const) {
             Ok(new_const) => new_const,
@@ -207,6 +215,10 @@ impl AddiOp {
             }
         };
         let new_const = Arc::new(RwLock::new(new_const));
+        let mut result = result.try_write().unwrap();
+        if let Value::OpResult(result) = &mut *result {
+            result.set_defining_op(Some(new_const.clone()));
+        }
         self.insert_before(new_const);
 
         CanonicalizeResult::Unchanged

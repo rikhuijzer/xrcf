@@ -73,8 +73,8 @@ impl Display for Attributes {
 /// Operation generically models all operations.
 /// Op is an interface for more specific operations.
 /// For example, `ConstantOp` does not take inputs and gives one output.
-/// `ConstantOp` does also not specify fields since they are accessed
-/// via a pointer to the `Operation`.
+/// `ConstantOp` does also not specify fields apart from `operation` since
+/// they are accessed via a pointer to the `Operation`.
 /// In MLIR, a specific Op can be casted from an Operation.
 /// The operation also represents functions and modules.
 ///
