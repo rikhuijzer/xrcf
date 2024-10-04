@@ -219,7 +219,15 @@ impl AddiOp {
         if let Value::OpResult(result) = &mut *result {
             result.set_defining_op(Some(new_const.clone()));
         }
-        self.insert_before(new_const);
+
+        // outdated:
+        // self.insert_before(new_const);
+
+        // TODO: Replace itself (first addi) with the new constant.
+        // Then automatically all uses of the first addi are replaced too.
+        // And it's then easy to remove the old constants which might now
+        // be unused.
+        self.replace(new_const);
 
         CanonicalizeResult::Unchanged
     }
