@@ -134,6 +134,18 @@ impl Block {
         let mut ops = ops.try_write().unwrap();
         ops.insert(index, earlier);
     }
+    pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
+        let index = self.index_of(old.clone());
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find op in block");
+            }
+        };
+        let ops = self.ops();
+        let mut ops = ops.try_write().unwrap();
+        ops[index] = new;
+    }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;

@@ -75,8 +75,9 @@ pub trait Op {
         }
         new_operation.set_results(results.clone());
 
-        // TODO: Replace the old op in the block.
         let block = old_operation.parent().unwrap();
+        let block = block.read().unwrap();
+        block.replace(self.operation().clone(), new.clone());
     }
     fn verify(&self) -> Result<()> {
         Ok(())
