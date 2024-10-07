@@ -58,14 +58,25 @@ pub trait Op {
         let later = self.operation().clone();
         block.insert_before(earlier, later);
     }
-    /// Replace self with `new` by replacing the results of the old operation with
-    /// the results of the specified new op. In effect, this makes all the uses of
-    /// the old op refer to the new op instead.
+    /// Replace self with `new` by moving the results of the old operation to
+    /// the results of the specified new op, and pointing the defining op to the new op.
+    /// In effect, this makes all the uses of the old op refer to the new op instead.
+    /// Note that the old op now has a reference to the outdated results vector,
+    /// but that should solve itself once all references to the old op are dropped.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        todo!()
-        // TODO: Move the results of the old op to the new op.
+        // TODO: Copy the results of the old op to the new op.
+        let old_operation = self.operation().read().unwrap();
+        let results = old_operation.results();
+        let new_op = new.read().unwrap();
+        let mut new_operation = new_op.operation().write().unwrap();
+        for result in results.read().unwrap().iter() {
+            let mut result = result.write().unwrap();
+            result.set_defining_op(Some(new.clone()));
+        }
+        new_operation.set_results(results.clone());
 
         // TODO: Replace the old op in the block.
+        let block = old_operation.parent().unwrap();
     }
     fn verify(&self) -> Result<()> {
         Ok(())

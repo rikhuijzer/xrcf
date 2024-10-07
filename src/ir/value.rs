@@ -103,6 +103,15 @@ pub enum Value {
     OpResult(OpResult),
 }
 
+impl Value {
+    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+        match self {
+            Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
+            Value::OpResult(op_res) => op_res.set_defining_op(op),
+        }
+    }
+}
+
 impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

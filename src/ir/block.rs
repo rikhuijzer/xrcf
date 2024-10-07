@@ -110,21 +110,28 @@ impl Block {
             None => self.assignment_in_ops(name),
         }
     }
-    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+    fn index_of(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        let mut index = 0;
+        let ops = ops.read().unwrap();
         for (i, current) in (&ops).iter().enumerate() {
-            let current = current.try_read().unwrap();
+            let current = current.read().unwrap();
             let current = current.operation();
-            if Arc::ptr_eq(current, &later) {
-                index = i;
-                break;
+            if Arc::ptr_eq(current, &op) {
+                return Some(i);
             }
         }
-        if index == 0 {
-            panic!("Could not find op in block");
-        }
+        None
+    }
+    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+        let index = self.index_of(later);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find op in block");
+            }
+        };
+        let ops = self.ops();
+        let mut ops = ops.try_write().unwrap();
         ops.insert(index, earlier);
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
