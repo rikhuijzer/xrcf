@@ -64,15 +64,14 @@ pub trait Op {
     /// Note that the old op now has a reference to the outdated results vector,
     /// but that should solve itself once all references to the old op are dropped.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        // TODO: Copy the results of the old op to the new op.
         let old_operation = self.operation().read().unwrap();
         let results = old_operation.results();
         let new_op = new.read().unwrap();
-        let mut new_operation = new_op.operation().write().unwrap();
         for result in results.read().unwrap().iter() {
             let mut result = result.write().unwrap();
             result.set_defining_op(Some(new.clone()));
         }
+        let mut new_operation = new_op.operation().write().unwrap();
         new_operation.set_results(results.clone());
 
         let block = old_operation.parent().unwrap();
