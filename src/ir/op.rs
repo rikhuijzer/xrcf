@@ -58,10 +58,14 @@ pub trait Op {
         let later = self.operation().clone();
         block.insert_before(earlier, later);
     }
-    /// Replace the results of the old operation with the results of the specified new op.
-    fn replace(&self, _new: Arc<RwLock<dyn Op>>) {
+    /// Replace self with `new` by replacing the results of the old operation with
+    /// the results of the specified new op. In effect, this makes all the uses of
+    /// the old op refer to the new op instead.
+    fn replace(&self, new: Arc<RwLock<dyn Op>>) {
         todo!()
-        // TODO: Move the results of the new op to the old op.
+        // TODO: Move the results of the old op to the new op.
+
+        // TODO: Replace the old op in the block.
     }
     fn verify(&self) -> Result<()> {
         Ok(())

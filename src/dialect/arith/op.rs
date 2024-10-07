@@ -225,6 +225,7 @@ impl AddiOp {
 
         // TODO: Replace itself (first addi) with the new constant.
         // Then automatically all uses of the first addi are replaced too.
+        // (when replacing the result.)
         // And it's then easy to remove the old constants which might now
         // be unused.
         self.replace(new_const);
