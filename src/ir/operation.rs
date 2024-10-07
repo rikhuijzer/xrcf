@@ -54,6 +54,16 @@ impl Attributes {
             .unwrap()
             .insert(name.to_string(), attribute);
     }
+    pub fn deep_clone(&self) -> Self {
+        let map = self.map.read().unwrap();
+        let mut out = HashMap::new();
+        for (name, attribute) in map.iter() {
+            let attribute = attribute.clone();
+            out.insert(name.to_string(), attribute);
+        }
+        let map = Arc::new(RwLock::new(out));
+        Self { map }
+    }
 }
 
 impl Display for Attributes {

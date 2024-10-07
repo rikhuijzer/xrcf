@@ -196,8 +196,9 @@ impl AddiOp {
         new_operation.set_name(ConstantOp::operation_name());
         new_operation.set_parent(rhs.operation().read().unwrap().parent());
         let attributes = rhs.operation().read().unwrap().attributes();
+        let attributes = attributes.deep_clone();
         attributes.insert("value", Arc::new(new_value));
-        new_operation.set_attributes(attributes.clone());
+        new_operation.set_attributes(attributes);
 
         let results: Values = Arc::new(RwLock::new(vec![]));
         let mut result = OpResult::default();

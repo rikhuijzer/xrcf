@@ -18,6 +18,7 @@ pub trait Attribute {
         Self: Sized;
 
     fn as_any(&self) -> &dyn std::any::Any;
+    fn name(&self) -> String;
     fn value(&self) -> String;
     fn display(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{}", self.value())
@@ -70,6 +71,9 @@ impl Attribute for IntegerAttr {
             value: APInt::new(64, value.parse::<u64>().unwrap(), true),
         }
     }
+    fn name(&self) -> String {
+        todo!()
+    }
     fn parse<T: Parse>(_parser: &mut Parser<T>, _name: &str) -> Option<Self> {
         todo!()
     }
@@ -113,6 +117,9 @@ impl Attribute for StrAttr {
             value: value.lexeme.to_string(),
         })
     }
+    fn name(&self) -> String {
+        todo!()
+    }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
@@ -148,6 +155,9 @@ impl Attribute for AnyAttr {
             name: name.to_string(),
             value: value.lexeme.to_string(),
         })
+    }
+    fn name(&self) -> String {
+        todo!()
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
