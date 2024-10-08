@@ -19,7 +19,7 @@ impl Op for ModuleOp {
         OperationName::new("module".to_string())
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        if operation.read().unwrap().name() != Self::operation_name().name() {
+        if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected module, got {}",
                 operation.read().unwrap().name()
@@ -28,6 +28,9 @@ impl Op for ModuleOp {
         Ok(Self {
             operation: operation,
         })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
@@ -47,22 +50,28 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    pub fn get_body_region(&self) -> Result<Arc<RwLock<Region>>> {
+    pub fn get_body_region(&self) -> Result<Option<Arc<RwLock<Region>>>> {
         Ok(self.operation().read().unwrap().region())
     }
-    pub fn first_op(&self) -> Result<Arc<dyn Op>> {
+    pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
         let body_region = self.get_body_region()?;
-        let binding = body_region.read().unwrap();
-        let blocks = binding.blocks();
+        let region = match body_region {
+            Some(region) => region,
+            None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
+        };
+        let blocks = region.read().unwrap().blocks();
         let block = match blocks.first() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
         let ops = block.read().unwrap().ops();
+        let ops = ops.read().unwrap();
         let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));
+        } else {
+            let op = op.unwrap().clone();
+            Ok(op)
         }
-        Ok(op.unwrap().clone())
     }
 }

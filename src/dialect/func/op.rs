@@ -1,10 +1,11 @@
+use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Op;
-use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
+use crate::ir::Values;
 use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
@@ -28,8 +29,17 @@ impl Op for FuncOp {
         todo!()
         // Ok(FuncOp { operation })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
+    }
+    fn assignments(&self) -> Result<Values> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        Ok(arguments.clone())
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         write!(f, "func.func {}(", self.identifier)?;
@@ -37,9 +47,11 @@ impl Op for FuncOp {
             .operation()
             .read()
             .unwrap()
-            .operands()
+            .arguments()
+            .read()
+            .unwrap()
             .iter()
-            .map(|o| o.to_string())
+            .map(|o| o.read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)?;
@@ -63,8 +75,10 @@ impl Op for FuncOp {
             }
         }
         let region = self.operation().read().unwrap().region();
-        let region = region.read().unwrap();
-        region.display(f, indent)?;
+        if let Some(region) = region {
+            let region = region.read().unwrap();
+            region.display(f, indent)?;
+        }
         Ok(())
     }
 }
@@ -81,8 +95,8 @@ impl<T: Parse> Parser<T> {
         }
         Ok(identifier.lexeme.clone())
     }
-    /// %arg0 : i64
-    pub fn block_argument(&mut self) -> Result<Value> {
+    /// %arg0 : i64,
+    pub fn function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
@@ -92,19 +106,19 @@ impl<T: Parse> Parser<T> {
         } else {
             Type::new("any".to_string())
         };
-        let arg = BlockArgument::new(name, typ);
-        let operand: Value = Value::BlockArgument(arg);
+        let arg = Value::BlockArgument(BlockArgument::new(name, typ));
+        let operand = Arc::new(RwLock::new(arg));
         if self.check(TokenKind::Comma) {
             self.advance();
         }
         Ok(operand)
     }
-    /// Parse operands:
-    /// %arg0 : i64, %arg1 : i64
-    pub fn block_arguments(&mut self) -> Result<Vec<Value>> {
+    /// Parse `(%arg0 : i64, %arg1 : i64)`.
+    pub fn function_arguments(&mut self) -> Result<Values> {
+        let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
-            operands.push(self.block_argument()?);
+            operands.push(self.function_argument()?);
         }
         if self.check(TokenKind::RParen) {
             let _rparen = self.advance();
@@ -112,7 +126,7 @@ impl<T: Parse> Parser<T> {
         } else {
             return Err(anyhow::anyhow!("Expected ')', got {:?}", self.peek().kind));
         }
-        Ok(operands)
+        Ok(Arc::new(RwLock::new(operands)))
     }
     pub fn result_types(&mut self) -> Result<Vec<Type>> {
         let mut result_types = vec![];
@@ -131,39 +145,43 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for FuncOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
-            let result = parser.advance().lexeme.clone();
-            let result: Value =
-                Value::OpResult(OpResult::new(result, Type::new("any".to_string())));
-            Some(result)
+            todo!("This case does not occur?");
         } else {
             None
         };
-        let _operation_name = parser.advance();
+        let operation_name = parser.advance();
+        assert!(operation_name.lexeme == "func.func");
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
-        if !parser.check(TokenKind::LParen) {
-            return Err(anyhow::anyhow!(
-                "Expected '(', got {:?}",
-                parser.peek().kind
-            ));
-        }
-        let _lparen = parser.advance();
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.block_arguments()?));
+        operation.set_name(FuncOp::operation_name());
+        operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
-        operation.set_region(parser.region()?);
+        operation.set_parent(parent);
         if let Some(result) = result {
-            operation.set_results(vec![result]);
+            let result = Arc::new(RwLock::new(result));
+            let results = Arc::new(RwLock::new(vec![result]));
+            operation.set_results(results);
         }
         let operation = Arc::new(RwLock::new(operation));
-
         let op = FuncOp {
             identifier,
-            operation,
+            operation: operation.clone(),
         };
-        Ok(Arc::new(op))
+        let op = Arc::new(RwLock::new(op));
+        let region = parser.region(op.clone())?;
+        let mut operation = operation.write().unwrap();
+        operation.set_region(Some(region.clone()));
+
+        let mut region = region.write().unwrap();
+        region.set_parent(Some(op.clone()));
+
+        Ok(op)
     }
 }
 
@@ -178,16 +196,20 @@ impl Op for ReturnOp {
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         Ok(ReturnOp { operation })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation();
         let operation = operation.read().unwrap();
-        let operands = operation.operands().clone();
         write!(f, "return")?;
-        for operand in &*operands {
-            write!(f, " {}", operand)?;
+        let operands = operation.operands().clone();
+        let operands = operands.read().unwrap();
+        for operand in operands.iter() {
+            write!(f, " {}", operand.read().unwrap())?;
         }
         let result_types = operation.result_types();
         assert!(!result_types.is_empty(), "Expected result types to be set");
@@ -202,16 +224,22 @@ impl Op for ReturnOp {
 }
 
 impl Parse for ReturnOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
-        let _operation_name = parser.expect(TokenKind::BareIdentifier)?;
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == "return");
         let mut operation = Operation::default();
-        operation.set_operands(Arc::new(parser.arguments()?));
+        assert!(parent.is_some());
+        operation.set_parent(parent.clone());
+        operation.set_operands(parser.operands(parent.clone().unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let return_type = parser.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
         operation.set_result_types(vec![return_type]);
         let operation = Arc::new(RwLock::new(operation));
         let op = ReturnOp { operation };
-        Ok(Arc::new(op))
+        Ok(Arc::new(RwLock::new(op)))
     }
 }

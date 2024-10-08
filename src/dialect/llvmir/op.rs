@@ -1,6 +1,8 @@
 use crate::dialect::llvmir::attribute::LinkageAttr;
+use crate::ir::operation;
 use crate::ir::operation::OperationName;
 use crate::ir::AnyAttr;
+use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::StrAttr;
@@ -21,7 +23,7 @@ impl Op for GlobalOp {
         OperationName::new("llvm.mlir.global".to_string())
     }
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        if operation.read().unwrap().name() != Self::operation_name().name() {
+        if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected global, got {}",
                 operation.read().unwrap().name()
@@ -29,20 +31,25 @@ impl Op for GlobalOp {
         }
         Ok(Self { operation })
     }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let operation = self.operation().read().unwrap();
-        for attribute in operation.attributes() {
+        let attributes = operation.attributes().map();
+        let attributes = attributes.read().unwrap();
+        if let Some(attribute) = attributes.get("linkage") {
+            write!(f, "{} ", attribute)?;
+        }
+        if let Some(attribute) = attributes.get("symbol_name") {
+            write!(f, "{}(", attribute)?;
+        }
+        if let Some(attribute) = attributes.get("value") {
             write!(f, "{}", attribute)?;
-            if attribute.name() == "symbol_name" {
-                write!(f, "(")?;
-            } else if attribute.name() == "value" {
-            } else {
-                write!(f, " ")?;
-            }
         }
         write!(f, ")")?;
         Ok(())
@@ -50,13 +57,19 @@ impl Op for GlobalOp {
 }
 
 impl Parse for GlobalOp {
-    fn op<T: Parse>(parser: &mut Parser<T>) -> Result<Arc<dyn Op>> {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let _operation_name = parser.advance();
-        let name = GlobalOp::operation_name();
-        let mut attributes: Vec<Arc<dyn Attribute>> = vec![];
+        let attributes = operation::Attributes::new();
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser, "linkage") {
-                attributes.push(Arc::new(attribute));
+                attributes
+                    .map()
+                    .write()
+                    .unwrap()
+                    .insert("linkage".to_string(), Arc::new(attribute));
             }
         }
         let symbol_name = parser.peek();
@@ -67,19 +80,28 @@ impl Parse for GlobalOp {
             ));
         }
         if let Some(attribute) = StrAttr::parse(parser, "symbol_name") {
-            attributes.push(Arc::new(attribute));
+            attributes
+                .map()
+                .write()
+                .unwrap()
+                .insert("symbol_name".to_string(), Arc::new(attribute));
         }
         if parser.check(TokenKind::LParen) {
             parser.advance();
             if let Some(attribute) = AnyAttr::parse(parser, "value") {
-                attributes.push(Arc::new(attribute));
+                attributes
+                    .map()
+                    .write()
+                    .unwrap()
+                    .insert("value".to_string(), Arc::new(attribute));
             }
         }
-        println!("{:?}", parser.advance());
         let mut operation = Operation::default();
-        operation.set_name(name).set_attributes(attributes);
+        operation.set_name(GlobalOp::operation_name());
+        operation.set_attributes(attributes);
+        operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
-        Ok(Arc::new(op.unwrap()))
+        Ok(Arc::new(RwLock::new(op.unwrap())))
     }
 }

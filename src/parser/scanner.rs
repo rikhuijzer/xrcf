@@ -193,7 +193,7 @@ impl Scanner {
         scanner.scan_tokens()?;
         Ok(scanner.tokens)
     }
-    pub fn report_error(src: &str, loc: &Location, msg: &str) -> String {
+    pub fn error(src: &str, loc: &Location, msg: &str) -> String {
         let lines = src.split('\n').collect::<Vec<&str>>();
         let n = loc.line();
         let prev_n = n - 1;
@@ -291,7 +291,7 @@ mod tests {
         let text = scanner.source();
         assert_eq!(text, src);
 
-        let text = Scanner::report_error(src, &tokens[4].location, "test");
+        let text = Scanner::error(src, &tokens[4].location, "test");
         let lines = text.split('\n').collect::<Vec<&str>>();
         assert_eq!(lines[0], "0  | module {");
         assert_eq!(lines[1], "1  |   %1 = arith.addi %0, %0 : i32");

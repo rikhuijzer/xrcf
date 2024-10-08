@@ -17,10 +17,10 @@ pub trait Attribute {
     where
         Self: Sized;
 
-    fn name(&self) -> String;
+    fn as_any(&self) -> &dyn std::any::Any;
     fn value(&self) -> String;
     fn display(&self, f: &mut Formatter<'_>) -> Result {
-        write!(f, "{} = {}", self.name(), self.value())
+        write!(f, "{}", self.value())
     }
 }
 
@@ -51,11 +51,47 @@ impl Display for Attributes {
 
 /// An attribute containing an integer value.
 pub struct IntegerAttr {
-    name: String,
     // The type of the integer like the precision.
     typ: IntegerType,
     // An arbitrary precision integer value.
     value: APInt,
+}
+
+impl IntegerAttr {
+    pub fn new(typ: IntegerType, value: APInt) -> Self {
+        Self { typ, value }
+    }
+}
+
+impl Attribute for IntegerAttr {
+    fn new(_name: &str, value: &str) -> Self {
+        Self {
+            typ: IntegerType::new(64),
+            value: APInt::new(64, value.parse::<u64>().unwrap(), true),
+        }
+    }
+    fn parse<T: Parse>(_parser: &mut Parser<T>, _name: &str) -> Option<Self> {
+        todo!()
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn value(&self) -> String {
+        self.value.to_string()
+    }
+    fn display(&self, f: &mut Formatter<'_>) -> Result {
+        write!(f, "{} : {}", self.value, self.typ)
+    }
+}
+
+impl IntegerAttr {
+    pub fn add(a: &IntegerAttr, b: &IntegerAttr) -> IntegerAttr {
+        let a_value = a.value().parse::<u64>().unwrap();
+        let b_value = b.value().parse::<u64>().unwrap();
+        let value = a_value + b_value;
+        let value = APInt::new(64, value, true);
+        IntegerAttr::new(a.typ, value)
+    }
 }
 
 pub struct StrAttr {
@@ -77,8 +113,8 @@ impl Attribute for StrAttr {
             value: value.lexeme.to_string(),
         })
     }
-    fn name(&self) -> String {
-        self.name.clone()
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn value(&self) -> String {
         self.value.clone()
@@ -113,8 +149,8 @@ impl Attribute for AnyAttr {
             value: value.lexeme.to_string(),
         })
     }
-    fn name(&self) -> String {
-        self.name.clone()
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
     fn value(&self) -> String {
         self.value.clone()

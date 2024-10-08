@@ -1,16 +1,17 @@
 use crate::ir::Block;
+use crate::ir::OpOperand;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::Attribute;
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OperationName {
     name: String,
 }
@@ -24,14 +25,66 @@ impl OperationName {
     }
 }
 
-/// Takes attributes
-///
+impl Display for OperationName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+pub type Values = Arc<RwLock<Vec<Arc<RwLock<Value>>>>>;
+pub type Operands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
+
+#[derive(Clone)]
+pub struct Attributes {
+    map: Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>,
+}
+
+impl Attributes {
+    pub fn new() -> Self {
+        Self {
+            map: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
+        self.map.clone()
+    }
+    pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
+        self.map
+            .write()
+            .unwrap()
+            .insert(name.to_string(), attribute);
+    }
+    pub fn deep_clone(&self) -> Self {
+        let map = self.map.read().unwrap();
+        let mut out = HashMap::new();
+        for (name, attribute) in map.iter() {
+            let attribute = attribute.clone();
+            out.insert(name.to_string(), attribute);
+        }
+        let map = Arc::new(RwLock::new(out));
+        Self { map }
+    }
+}
+
+impl Display for Attributes {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        for (name, attribute) in self.map.read().unwrap().iter() {
+            if name == "value" {
+                write!(f, " {attribute}")?;
+            } else {
+                write!(f, " {name} = {attribute}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Note that MLIR distinguishes between Operation and Op.
 /// Operation generically models all operations.
 /// Op is an interface for more specific operations.
 /// For example, `ConstantOp` does not take inputs and gives one output.
-/// `ConstantOp` does also not specify fields since they are accessed
-/// via a pointer to the `Operation`.
+/// `ConstantOp` does also not specify fields apart from `operation` since
+/// they are accessed via a pointer to the `Operation`.
 /// In MLIR, a specific Op can be casted from an Operation.
 /// The operation also represents functions and modules.
 ///
@@ -39,26 +92,34 @@ impl OperationName {
 /// inherent to the fact that an `Operation` aims to be very generic.
 pub struct Operation {
     name: OperationName,
-    operands: Arc<Vec<Value>>,
-    attributes: Vec<Arc<dyn Attribute>>,
-    results: Vec<Value>,
+    /// Used by `FuncOp` to store its arguments.
+    arguments: Values,
+    operands: Operands,
+    attributes: Attributes,
+    /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
+    results: Values,
     result_types: Vec<Type>,
-    region: Arc<RwLock<Region>>,
-    parent: Option<Pin<Box<Block>>>,
+    region: Option<Arc<RwLock<Region>>>,
+    /// This is set after parsing because not all parents are known during
+    /// parsing (for example, the parent of a top-level function will be a
+    /// `ModuleOp` that is created after parsing of the `FuncOp`).
+    parent: Option<Arc<RwLock<Block>>>,
 }
 
 impl Operation {
     pub fn new(
         name: OperationName,
-        operands: Arc<Vec<Value>>,
-        attributes: Vec<Arc<dyn Attribute>>,
-        results: Vec<Value>,
+        arguments: Values,
+        operands: Operands,
+        attributes: Attributes,
+        results: Values,
         result_types: Vec<Type>,
-        region: Arc<RwLock<Region>>,
-        parent: Option<Pin<Box<Block>>>,
+        region: Option<Arc<RwLock<Region>>>,
+        parent: Option<Arc<RwLock<Block>>>,
     ) -> Self {
         Self {
             name,
+            arguments,
             operands,
             attributes,
             results,
@@ -67,51 +128,57 @@ impl Operation {
             parent,
         }
     }
-    pub fn operands(&self) -> Arc<Vec<Value>> {
+    pub fn name(&self) -> OperationName {
+        self.name.clone()
+    }
+    pub fn arguments(&self) -> Values {
+        self.arguments.clone()
+    }
+    pub fn operands(&self) -> Operands {
         self.operands.clone()
     }
-    pub fn attributes(&self) -> Vec<Arc<dyn Attribute>> {
+    pub fn operands_mut(&mut self) -> &mut Operands {
+        &mut self.operands
+    }
+    pub fn attributes(&self) -> Attributes {
         self.attributes.clone()
     }
-    pub fn results(&self) -> &Vec<Value> {
-        &self.results
+    pub fn results(&self) -> Values {
+        self.results.clone()
     }
     pub fn result_types(&self) -> &Vec<Type> {
         &self.result_types
     }
-    pub fn region(&self) -> Arc<RwLock<Region>> {
+    pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
     }
-    pub fn name(&self) -> String {
-        self.name.name.clone()
-    }
-    pub fn set_name(&mut self, name: OperationName) -> &mut Self {
-        self.name = name;
-        self
-    }
-    pub fn set_operands(&mut self, operands: Arc<Vec<Value>>) -> &mut Self {
-        self.operands = operands;
-        self
-    }
-    pub fn set_attributes(&mut self, attributes: Vec<Arc<dyn Attribute>>) -> &mut Self {
-        self.attributes = attributes;
-        self
-    }
-    pub fn set_results(&mut self, results: Vec<Value>) -> &mut Self {
-        self.results = results;
-        self
-    }
-    pub fn set_result_types(&mut self, result_types: Vec<Type>) -> &mut Self {
-        self.result_types = result_types;
-        self
-    }
-    pub fn set_region(&mut self, region: Arc<RwLock<Region>>) -> &mut Self {
-        self.region = region.clone();
-        self
-    }
     /// Get the parent block (this is called `getBlock` in MLIR).
-    fn parent(&self) -> Option<&Pin<Box<Block>>> {
-        self.parent.as_ref()
+    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+        self.parent.clone()
+    }
+    pub fn set_name(&mut self, name: OperationName) {
+        self.name = name;
+    }
+    pub fn set_arguments(&mut self, arguments: Values) {
+        self.arguments = arguments;
+    }
+    pub fn set_operands(&mut self, operands: Operands) {
+        self.operands = operands;
+    }
+    pub fn set_attributes(&mut self, attributes: Attributes) {
+        self.attributes = attributes;
+    }
+    pub fn set_results(&mut self, results: Values) {
+        self.results = results;
+    }
+    pub fn set_result_types(&mut self, result_types: Vec<Type>) {
+        self.result_types = result_types;
+    }
+    pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
+        self.region = region;
+    }
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+        self.parent = parent;
     }
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
@@ -119,25 +186,25 @@ impl Operation {
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        if !self.results().is_empty() {
-            for result in self.results().iter() {
-                write!(f, "{}", result)?;
+        if !self.results().read().unwrap().is_empty() {
+            for result in self.results().read().unwrap().iter() {
+                write!(f, "{}", result.read().unwrap())?;
             }
             write!(f, " = ")?;
         }
         write!(f, "{}", self.name())?;
-        if !self.operands().is_empty() {
+        if !self.operands().read().unwrap().is_empty() {
             let joined = self
                 .operands()
+                .read()
+                .unwrap()
                 .iter()
-                .map(|o| o.to_string())
+                .map(|o| o.read().unwrap().operand_name().to_string())
                 .collect::<Vec<String>>()
                 .join(", ");
             write!(f, " {}", joined)?;
         }
-        for attribute in self.attributes.iter() {
-            write!(f, " {}", attribute)?;
-        }
+        write!(f, "{}", self.attributes())?;
         if !self.result_types.is_empty() {
             write!(f, " :")?;
             for result_type in self.result_types.iter() {
@@ -145,11 +212,15 @@ impl Operation {
             }
         }
         let region = self.region();
-        let region = region.read().unwrap();
-        if region.is_empty() {
-            write!(f, "\n")?;
+        if let Some(region) = region {
+            let region = region.read().unwrap();
+            if region.blocks().is_empty() {
+                write!(f, "\n")?;
+            } else {
+                region.display(f, indent)?;
+            }
         } else {
-            region.display(f, indent)?;
+            write!(f, "\n")?;
         }
         Ok(())
     }
@@ -159,11 +230,12 @@ impl Default for Operation {
     fn default() -> Self {
         Self {
             name: OperationName::new("".to_string()),
-            operands: Arc::new(vec![]),
-            attributes: vec![],
-            results: vec![],
+            arguments: Arc::new(RwLock::new(vec![])),
+            operands: Arc::new(RwLock::new(vec![])),
+            attributes: Attributes::new(),
+            results: Arc::new(RwLock::new(vec![])),
             result_types: vec![],
-            region: Arc::new(RwLock::new(Region::default())),
+            region: None,
             parent: None,
         }
     }
