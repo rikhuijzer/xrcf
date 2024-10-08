@@ -15,27 +15,15 @@ struct CanonicalizeOp;
 
 impl Canonicalize for CanonicalizeOp {
     fn canonicalize(&self, op: &dyn Op) -> CanonicalizeResult {
-        let region = op.region();
-        if let Some(region) = region {
-            let mut changed = CanonicalizeResult::Unchanged;
-            for block in region.read().unwrap().blocks() {
-                let block = block.read().unwrap();
-                let ops = block.ops();
-                let ops = ops.read().unwrap();
-                let readonly_copy = ops.clone();
-                drop(ops);
-                for op in readonly_copy.iter() {
-                    let op: &dyn Op = &*op.read().unwrap();
-                    let result = CanonicalizeOp.canonicalize(op);
-                    if result == CanonicalizeResult::Changed {
-                        changed = result;
-                    }
-                }
+        let ops = op.ops();
+        for op in ops.iter() {
+            let op = op.read().unwrap();
+            let result = self.canonicalize(&*op);
+            if result == CanonicalizeResult::Changed {
+                return CanonicalizeResult::Changed;
             }
-            changed
-        } else {
-            op.canonicalize()
         }
+        op.canonicalize()
     }
 }
 

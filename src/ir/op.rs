@@ -81,6 +81,22 @@ pub trait Op {
     fn verify(&self) -> Result<()> {
         Ok(())
     }
+    /// Return ops that are children of this op (inside blocks that are inside the region).
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let mut result = Vec::new();
+        let region = self.region();
+        if let Some(region) = region {
+            for block in region.read().unwrap().blocks() {
+                let block = block.read().unwrap();
+                let ops = block.ops();
+                let ops = ops.read().unwrap();
+                for op in ops.iter() {
+                    result.push(op.clone());
+                }
+            }
+        }
+        result
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let spaces = crate::ir::spaces(indent);
