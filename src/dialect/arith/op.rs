@@ -221,14 +221,6 @@ impl AddiOp {
             result.set_defining_op(Some(new_const.clone()));
         }
 
-        // outdated:
-        // self.insert_before(new_const);
-
-        // TODO: Replace itself (first addi) with the new constant.
-        // Then automatically all uses of the first addi are replaced too.
-        // (when replacing the result.)
-        // And it's then easy to remove the old constants which might now
-        // be unused.
         self.replace(new_const);
 
         CanonicalizeResult::Unchanged

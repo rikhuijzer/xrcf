@@ -28,9 +28,6 @@ impl Attribute for LinkageAttr {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn name(&self) -> String {
-        self.name.clone()
-    }
     fn value(&self) -> String {
         self.value.clone()
     }

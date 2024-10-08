@@ -21,14 +21,8 @@ impl Canonicalize for CanonicalizeOp {
 
 struct DeadCodeElimination;
 
-impl DeadCodeElimination {
-    fn eliminate(&self, op: &dyn Op) -> CanonicalizeResult {
-        todo!()
-    }
-}
-
 impl Canonicalize for DeadCodeElimination {
-    fn canonicalize(&self, op: &dyn Op) -> CanonicalizeResult {
+    fn canonicalize(&self, _op: &dyn Op) -> CanonicalizeResult {
         CanonicalizeResult::Unchanged
     }
 }
