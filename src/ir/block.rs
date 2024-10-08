@@ -139,7 +139,7 @@ impl Block {
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Could not find op in block");
+                panic!("Replace could not find op in block");
             }
         };
         let ops = self.ops();
