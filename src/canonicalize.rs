@@ -37,10 +37,14 @@ fn canonicalize_op(op: &dyn Op) -> CanonicalizeResult {
     let canonicalizers: Vec<&dyn Canonicalize> = vec![&CanonicalizeOp]; // &DeadCodeElimination];
     let mut changed = CanonicalizeResult::Unchanged;
     let ops = op.ops();
-    for canonicalizer in canonicalizers {
+    for canonicalizer in &canonicalizers {
         for nested_op in ops.iter() {
             let nested_op = nested_op.read().unwrap();
             let result = canonicalize_op(&*nested_op);
+            if result == CanonicalizeResult::Changed {
+                changed = result;
+            }
+            let result = canonicalizer.canonicalize(op);
             if result == CanonicalizeResult::Changed {
                 changed = result;
             }
