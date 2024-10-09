@@ -183,16 +183,27 @@ impl Operation {
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
-    /// Return `Value`s (`OpOperand`s) that point to this operation.
-    pub fn users(&self) -> Vec<Arc<RwLock<Value>>> {
-        let mut users = Vec::new();
-        for result in self.results().read().unwrap().iter() {
-            let result = result.read().unwrap();
-            for usage in result.uses().iter() {
-                users.push(usage.value().clone());
+    /// Return `OpOperand`s that point to this operation if this operation
+    /// defines results. Otherwise, return `None`.
+    pub fn users(&self) -> Option<Vec<Arc<RwLock<OpOperand>>>> {
+        let mut out = Vec::new();
+        let defines_result = self.results().try_read().unwrap().len() > 0;
+        if !defines_result {
+            return None;
+        }
+        for result in self.results().try_read().unwrap().iter() {
+            let result = result.try_read().unwrap();
+            let users = result.users();
+            match users {
+                Some(users) => {
+                    for usage in users.iter() {
+                        out.push(usage.clone());
+                    }
+                }
+                None => (),
             }
         }
-        users
+        Some(out)
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);

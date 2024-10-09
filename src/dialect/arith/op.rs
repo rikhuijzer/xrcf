@@ -223,7 +223,7 @@ impl AddiOp {
 
         self.replace(new_const);
 
-        CanonicalizeResult::Unchanged
+        CanonicalizeResult::Changed
     }
 }
 

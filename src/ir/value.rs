@@ -142,7 +142,8 @@ impl Value {
         }
         out
     }
-    /// Return `OpOperand`s that point to this `Value` (`OpResult`).
+    /// Return `OpOperand`s that point to this `Value` (`OpResult`) if this `Value`
+    /// is an `OpResult`. Otherwise, return `None`.
     pub fn users(&self) -> Option<Vec<Arc<RwLock<OpOperand>>>> {
         match self {
             Value::BlockArgument(_) => None,
