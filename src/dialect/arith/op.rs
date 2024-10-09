@@ -158,8 +158,6 @@ impl AddiOp {
         let operands = operands.read().unwrap();
         assert!(operands.len() == 2);
 
-        println!("Looking up {}", self.operation().read().unwrap());
-
         let lhs = operands[0].clone();
         let lhs = lhs.read().unwrap();
         let lhs = match lhs.defining_op() {
