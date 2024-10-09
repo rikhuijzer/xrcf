@@ -34,6 +34,9 @@ impl BlockArgument {
     pub fn name(&self) -> &str {
         &self.name
     }
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
 }
 
 impl Display for BlockArgument {
@@ -116,6 +119,12 @@ impl Value {
             Value::OpResult(op_res) => op_res.set_defining_op(op),
         }
     }
+    pub fn set_name(&mut self, name: &str) {
+        match self {
+            Value::BlockArgument(arg) => arg.set_name(name),
+            Value::OpResult(result) => result.set_name(name),
+        }
+    }
     fn users_helper(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.try_read().unwrap();
@@ -153,6 +162,12 @@ impl Value {
             Value::BlockArgument(_) => Users::HasNoOpResults,
             Value::OpResult(op_res) => Users::OpOperands(self.users_helper(op_res)),
         }
+    }
+    /// Rename the value, and all its users.
+    pub fn rename(&mut self, users: &Users, new_name: &str) {
+        // TODO: Should just rename the OpResult and then the users should
+        // pull the name from the OpResult when printing.
+        println!("Renaming value to {}", new_name);
     }
 }
 

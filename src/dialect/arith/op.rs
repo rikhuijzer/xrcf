@@ -219,7 +219,19 @@ impl AddiOp {
             result.set_defining_op(Some(new_const.clone()));
         }
 
-        self.replace(new_const);
+        self.replace(new_const.clone());
+
+        let new_const = new_const.try_read().unwrap();
+        let new_const = new_const.operation().try_read().unwrap();
+        let results = new_const.results();
+        let results = results.try_read().unwrap();
+        assert!(results.len() == 1);
+        let users = {
+            let read_only = results[0].try_read().unwrap();
+            read_only.users()
+        };
+        let mut result = results[0].try_write().unwrap();
+        result.rename(&users, "%c3_i64");
 
         CanonicalizeResult::Changed
     }
