@@ -21,6 +21,7 @@ pub use crate::ir::value::BlockArgument;
 pub use crate::ir::value::OpOperand;
 pub use crate::ir::value::OpResult;
 pub use crate::ir::value::Type;
+pub use crate::ir::value::Users;
 pub use crate::ir::value::Value;
 
 pub fn spaces(indent: i32) -> String {

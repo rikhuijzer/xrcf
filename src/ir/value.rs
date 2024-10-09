@@ -88,6 +88,12 @@ impl Default for OpResult {
         }
     }
 }
+pub enum Users {
+    /// The operation defines no `OpResult`s.
+    HasNoOpResults,
+    /// The operation defines `OpResult`s (and can still have zero users).
+    OpOperands(Vec<Arc<RwLock<OpOperand>>>),
+}
 
 /// Represents an instance of an SSA value in the IR,
 /// representing a computable value that has a type and a set of users. An SSA
@@ -142,12 +148,10 @@ impl Value {
         }
         out
     }
-    /// Return `OpOperand`s that point to this `Value` (`OpResult`) if this `Value`
-    /// is an `OpResult`. Otherwise, return `None`.
-    pub fn users(&self) -> Option<Vec<Arc<RwLock<OpOperand>>>> {
+    pub fn users(&self) -> Users {
         match self {
-            Value::BlockArgument(_) => None,
-            Value::OpResult(op_res) => Some(self.op_result_users(op_res)),
+            Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
         }
     }
 }
