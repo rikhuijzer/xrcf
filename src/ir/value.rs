@@ -88,6 +88,12 @@ impl Default for OpResult {
         }
     }
 }
+pub enum Users {
+    /// The operation defines no `OpResult`s.
+    HasNoOpResults,
+    /// The operation defines `OpResult`s (and can still have zero users).
+    OpOperands(Vec<Arc<RwLock<OpOperand>>>),
+}
 
 /// Represents an instance of an SSA value in the IR,
 /// representing a computable value that has a type and a set of users. An SSA
@@ -108,6 +114,44 @@ impl Value {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
+        }
+    }
+    fn users_helper(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+        let op = op_res.defining_op();
+        let op = op.try_read().unwrap();
+        let operation = op.operation();
+        let operation_clone = operation.clone();
+        let operation = operation.try_read().unwrap();
+        let parent = operation.parent();
+        let parent = parent.unwrap();
+        let block = parent.try_read().unwrap();
+        let index = block.index_of(operation_clone);
+        let index = index.unwrap();
+        let ops = block.ops();
+        let ops = ops.try_read().unwrap();
+        let mut out = Vec::new();
+        for i in index..ops.len() {
+            let op = ops[i].try_read().unwrap();
+            let operation = op.operation();
+            let operation = operation.try_read().unwrap();
+            let operands = operation.operands();
+            let operands = operands.try_read().unwrap();
+            for operand in operands.iter() {
+                let operand_clone = operand.clone();
+                let operand_clone = operand_clone.try_read().unwrap();
+                let value = operand_clone.value();
+                let value = value.try_read().unwrap();
+                if std::ptr::eq(&*value as *const Value, self as *const Value) {
+                    out.push(operand.clone());
+                }
+            }
+        }
+        out
+    }
+    pub fn users(&self) -> Users {
+        match self {
+            Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::OpResult(op_res) => Users::OpOperands(self.users_helper(op_res)),
         }
     }
 }

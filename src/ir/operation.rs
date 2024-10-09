@@ -2,6 +2,7 @@ use crate::ir::Block;
 use crate::ir::OpOperand;
 use crate::ir::Region;
 use crate::ir::Type;
+use crate::ir::Users;
 use crate::ir::Value;
 use crate::Attribute;
 use std::collections::HashMap;
@@ -182,6 +183,26 @@ impl Operation {
     }
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
+    }
+    pub fn users(&self) -> Users {
+        let mut out = Vec::new();
+        let defines_result = self.results().try_read().unwrap().len() > 0;
+        if !defines_result {
+            return Users::HasNoOpResults;
+        }
+        for result in self.results().try_read().unwrap().iter() {
+            let result = result.try_read().unwrap();
+            let users = result.users();
+            match users {
+                Users::OpOperands(users) => {
+                    for usage in users.iter() {
+                        out.push(usage.clone());
+                    }
+                }
+                Users::HasNoOpResults => (),
+            }
+        }
+        Users::OpOperands(out)
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
