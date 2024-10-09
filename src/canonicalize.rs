@@ -28,10 +28,11 @@ impl Canonicalize for DeadCodeElimination {
 }
 
 fn canonicalize_op(op: &dyn Op) -> CanonicalizeResult {
-    let canonicalizers: Vec<&dyn Canonicalize> = vec![&CanonicalizeOp]; // &DeadCodeElimination];
+    let canonicalizers: Vec<&dyn Canonicalize> = vec![&CanonicalizeOp, &DeadCodeElimination];
     let mut changed = CanonicalizeResult::Unchanged;
-    let ops = op.ops();
     for canonicalizer in &canonicalizers {
+        // Determine ops here because `canonicalizer.canonicalize` may delete an op.
+        let ops = op.ops();
         for nested_op in ops.iter() {
             let nested_op = nested_op.read().unwrap();
             let result = canonicalize_op(&*nested_op);
