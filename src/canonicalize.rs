@@ -22,7 +22,20 @@ impl Canonicalize for CanonicalizeOp {
 struct DeadCodeElimination;
 
 impl Canonicalize for DeadCodeElimination {
-    fn canonicalize(&self, _op: &dyn Op) -> CanonicalizeResult {
+    fn canonicalize(&self, op: &dyn Op) -> CanonicalizeResult {
+        // TODO: Figure out whether this op has any uses.
+        let operation = op.operation().try_read().unwrap();
+        let results = operation.results();
+        let results = results.try_read().unwrap();
+        for result in results.iter() {
+            let result = result.read().unwrap();
+            let uses = result.uses();
+            if uses.is_empty() {
+                println!("DeadCodeElimination: deleting {:?}", result);
+            }
+        }
+
+        // TODO: If it doesn't, delete it.
         CanonicalizeResult::Unchanged
     }
 }

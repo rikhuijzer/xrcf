@@ -183,6 +183,17 @@ impl Operation {
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
+    /// Return `Value`s (`OpOperand`s) that point to this operation.
+    pub fn users(&self) -> Vec<Arc<RwLock<Value>>> {
+        let mut users = Vec::new();
+        for result in self.results().read().unwrap().iter() {
+            let result = result.read().unwrap();
+            for usage in result.uses().iter() {
+                users.push(usage.value().clone());
+            }
+        }
+        users
+    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;

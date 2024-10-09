@@ -110,7 +110,7 @@ impl Block {
             None => self.assignment_in_ops(name),
         }
     }
-    fn index_of(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+    pub fn index_of(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
         for (i, current) in (&ops).iter().enumerate() {
