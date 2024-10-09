@@ -116,7 +116,7 @@ impl Value {
             Value::OpResult(op_res) => op_res.set_defining_op(op),
         }
     }
-    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+    fn users_helper(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.try_read().unwrap();
         let operation = op.operation();
@@ -151,7 +151,7 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
-            Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
+            Value::OpResult(op_res) => Users::OpOperands(self.users_helper(op_res)),
         }
     }
 }

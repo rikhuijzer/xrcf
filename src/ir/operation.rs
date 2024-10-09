@@ -184,8 +184,6 @@ impl Operation {
     pub fn rename(&mut self, name: String) {
         self.name = OperationName::new(name);
     }
-    /// Return `OpOperand`s that point to this operation if this operation
-    /// defines results. Otherwise, return `None`.
     pub fn users(&self) -> Users {
         let mut out = Vec::new();
         let defines_result = self.results().try_read().unwrap().len() > 0;
