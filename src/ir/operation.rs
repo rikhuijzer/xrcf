@@ -220,7 +220,7 @@ impl Operation {
                 .read()
                 .unwrap()
                 .iter()
-                .map(|o| o.read().unwrap().operand_name().to_string())
+                .map(|o| o.read().unwrap().name())
                 .collect::<Vec<String>>()
                 .join(", ");
             write!(f, " {}", joined)?;

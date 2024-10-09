@@ -226,12 +226,8 @@ impl AddiOp {
         let results = new_const.results();
         let results = results.try_read().unwrap();
         assert!(results.len() == 1);
-        let users = {
-            let read_only = results[0].try_read().unwrap();
-            read_only.users()
-        };
         let mut result = results[0].try_write().unwrap();
-        result.rename(&users, "%c3_i64");
+        result.rename("%c3_i64");
 
         CanonicalizeResult::Changed
     }

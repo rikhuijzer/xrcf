@@ -113,6 +113,12 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn name(&self) -> &str {
+        match self {
+            Value::BlockArgument(arg) => &arg.name,
+            Value::OpResult(result) => &result.name,
+        }
+    }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
@@ -164,10 +170,8 @@ impl Value {
         }
     }
     /// Rename the value, and all its users.
-    pub fn rename(&mut self, users: &Users, new_name: &str) {
-        // TODO: Should just rename the OpResult and then the users should
-        // pull the name from the OpResult when printing.
-        println!("Renaming value to {}", new_name);
+    pub fn rename(&mut self, new_name: &str) {
+        self.set_name(new_name);
     }
 }
 
@@ -181,19 +185,16 @@ impl Display for Value {
 }
 
 pub struct OpOperand {
-    pub operand_name: String,
     pub value: Arc<RwLock<Value>>,
 }
 
 impl OpOperand {
-    pub fn new(operand_name: String, value: Arc<RwLock<Value>>) -> Self {
-        OpOperand {
-            operand_name,
-            value,
-        }
+    pub fn new(value: Arc<RwLock<Value>>) -> Self {
+        OpOperand { value }
     }
-    pub fn operand_name(&self) -> &str {
-        &self.operand_name
+    pub fn name(&self) -> String {
+        let value = self.value.try_read().unwrap();
+        value.name().to_string()
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
@@ -212,6 +213,6 @@ impl OpOperand {
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operand_name)
+        write!(f, "{}", self.name())
     }
 }
