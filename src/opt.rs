@@ -1,7 +1,5 @@
 use crate::canonicalize;
 use crate::ir::Op;
-use crate::parser::BuiltinParse;
-use crate::parser::Parser;
 use core::fmt::Error;
 use core::fmt::Write;
 

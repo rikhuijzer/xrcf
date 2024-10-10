@@ -1,4 +1,3 @@
-use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::Users;
 
