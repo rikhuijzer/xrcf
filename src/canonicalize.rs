@@ -63,7 +63,7 @@ fn canonicalize_op(op: &dyn Op) -> CanonicalizeResult {
     CanonicalizeResult::Unchanged
 }
 
-pub fn canonicalize(op: &ModuleOp) {
+pub fn canonicalize(op: &mut dyn Op) {
     let max_iterations = 16;
     for _ in 0..max_iterations {
         let result = canonicalize_op(op);
