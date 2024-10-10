@@ -1,19 +1,9 @@
 use crate::canonicalize;
 use crate::ir::Op;
+use crate::transform::ConvertFuncToLLVM;
+use crate::transform::Transform;
+use anyhow::Result;
 use core::fmt::Error;
-use core::fmt::Write;
-
-pub trait Transform {
-    fn transform(&self, from: &dyn Op, to: &mut dyn Write) -> Result<(), Error>;
-}
-
-struct MLIRToLLVMIRTranslation {}
-
-impl Transform for MLIRToLLVMIRTranslation {
-    fn transform(&self, _from: &dyn Op, _to: &mut dyn Write) -> Result<(), Error> {
-        todo!()
-    }
-}
 
 pub struct OptOptions {
     canonicalize: bool,
@@ -43,7 +33,8 @@ pub fn opt(op: &mut dyn Op, options: OptOptions) -> Result<(), Error> {
         canonicalize(op);
     }
     if options.convert_func_to_llvm {
-        todo!() // convert_func_to_llvm(op);
+        let conversion = ConvertFuncToLLVM {};
+        conversion.transform(op).unwrap();
     }
     Ok(())
 }

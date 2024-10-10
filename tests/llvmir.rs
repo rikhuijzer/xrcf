@@ -19,7 +19,6 @@ fn test_translate() {
 fn test_constant_func() {
     use indoc::indoc;
 
-    // mlir-opt --convert-func-to-llvm tmp.mlir | mlir-translate --mlir-to-llvmir
     let src = indoc! {"
       func.func @test_ret_1(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
@@ -29,6 +28,7 @@ fn test_constant_func() {
 
     let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
     println!("\nBefore convert-func-to-llvm:{src}");
+    // mlir-opt --convert-func-to-llvm tmp.mlir
     let mut options = OptOptions::default();
     options.set_convert_func_to_llvm(true);
     opt(&mut module, options).unwrap();
@@ -36,4 +36,9 @@ fn test_constant_func() {
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");
+    assert_eq!(lines[1], "  llvm.func @test_ret_1() -> i64 {");
+    assert_eq!(lines[2], "    llvm.mlir.constant(1 : i64) : i64");
+    assert_eq!(lines[3], "    llvm.return %0 : i64");
+    assert_eq!(lines[4], "  }");
+    assert_eq!(lines[5], "}");
 }

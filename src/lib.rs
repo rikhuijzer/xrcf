@@ -5,6 +5,7 @@ mod dialect;
 mod ir;
 mod opt;
 pub mod parser;
+mod transform;
 mod typ;
 
 pub use canonicalize::canonicalize;
