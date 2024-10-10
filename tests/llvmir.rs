@@ -20,19 +20,19 @@ fn test_constant_func() {
     use indoc::indoc;
 
     let src = indoc! {"
-      func.func @test_ret_1(%arg0 : i64) -> i64 {
+      func.func @test_ret_1() -> i64 {
         %0 = arith.constant 1 : i64
         return %0 : i64
       }
     "};
 
     let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
-    println!("\nBefore convert-func-to-llvm:{src}");
+    println!("\n-- Before convert-func-to-llvm:\n{src}");
     // mlir-opt --convert-func-to-llvm tmp.mlir
     let mut options = OptOptions::default();
     options.set_convert_func_to_llvm(true);
     opt(&mut module, options).unwrap();
-    println!("\nAfter convert-func-to-llvm:\n{module}\n");
+    println!("\n-- After convert-func-to-llvm:\n{module}\n");
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");
