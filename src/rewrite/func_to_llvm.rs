@@ -22,9 +22,11 @@ impl Rewrite for FuncLowering {
             let name = operation.name();
             assert!(name == func::FuncOp::operation_name());
             operation.set_name(llvmir::FuncOp::operation_name());
+
+            let parent = operation.parent();
+            assert!(parent.is_some(), "maybe func parent was not set during parsing?");
         }
 
-        let operation = op.operation().clone();
         let lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
         println!("here");
         op.replace(Arc::new(RwLock::new(lowered)));
