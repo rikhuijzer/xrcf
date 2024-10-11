@@ -91,6 +91,7 @@ impl Display for Attributes {
 ///
 /// Note that this type requires many methods. I guess this is a bit
 /// inherent to the fact that an `Operation` aims to be very generic.
+#[derive(Clone)]
 pub struct Operation {
     name: OperationName,
     /// Used by `FuncOp` to store its arguments.

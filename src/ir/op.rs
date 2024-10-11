@@ -70,30 +70,30 @@ pub trait Op {
         block.insert_before(earlier, later);
     }
     /// Replace self with `new` by moving the results of the old operation to
-    /// the results of the specified new op, and pointing the defining op to the new op.
+    /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
     /// In effect, this makes all the uses of the old op refer to the new op instead.
-    /// Note that the old op now has a reference to the outdated results vector,
-    /// but that should solve itself once all references to the old op are dropped.
+    /// 
+    /// Note that this function assumes that `self` will be dropped after this function call.
+    /// Therefore, the old op can still have references to objects that are now part of
+    /// the new op.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        if Arc::ptr_eq(self.operation(), new.try_read().unwrap().operation()) {
-            // If self.operation() and new.operation() are the same,
-            // then things become difficult to reason about.
-            panic!("Expected self.operation() and new.operation() to be different");
+        let results = {
+            let old_operation = self.operation().try_read().unwrap();
+            old_operation.results()
+        };
+        {
+            for result in results.try_read().unwrap().iter() {
+                let mut result = result.try_write().unwrap();
+                result.set_defining_op(Some(new.clone()));
+            }
+            let new_read = new.try_read().unwrap();
+            let mut new_operation = new_read.operation().try_write().unwrap();
+            new_operation.set_results(results.clone());
         }
         let old_operation = self.operation().try_read().unwrap();
-        let results = old_operation.results();
-        let new_op = new.try_read().unwrap();
-        for result in results.try_read().unwrap().iter() {
-            let mut result = result.try_write().unwrap();
-            result.set_defining_op(Some(new.clone()));
-        }
-        let block = old_operation.parent().unwrap();
-        drop(old_operation);
-        let mut new_operation = new_op.operation().try_write().unwrap();
-        new_operation.set_results(results.clone());
-
-        let block = block.try_read().unwrap();
-        block.replace(self.operation().clone(), new.clone());
+        let parent = old_operation.parent().unwrap();
+        let parent = parent.try_read().unwrap();
+        parent.replace(self.operation().clone(), new.clone());
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
