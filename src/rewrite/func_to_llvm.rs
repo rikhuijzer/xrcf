@@ -24,6 +24,7 @@ impl Rewrite for FuncLowering {
             operation.set_name(llvmir::FuncOp::operation_name());
         }
 
+        let operation = op.operation().clone();
         let lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
         println!("here");
         op.replace(Arc::new(RwLock::new(lowered)));
