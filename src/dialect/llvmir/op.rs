@@ -105,3 +105,25 @@ impl Parse for GlobalOp {
         Ok(Arc::new(RwLock::new(op.unwrap())))
     }
 }
+
+pub struct FuncOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for FuncOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.mlir.global".to_string())
+    }
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        todo!()
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        todo!()
+    }
+}

@@ -1,3 +1,4 @@
+use crate::dialect::func;
 use crate::ir::Op;
 use crate::rewrite::apply_rewrites;
 use crate::rewrite::Rewrite;
@@ -8,11 +9,11 @@ use anyhow::Result;
 struct FuncLowering;
 
 impl Rewrite for FuncLowering {
-    fn is_match(&self, _op: &dyn Op) -> Result<bool> {
-        Ok(true)
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.operation().read().unwrap().name() == func::FuncOp::operation_name())
     }
-    fn rewrite(&self, _op: &dyn Op) -> Result<RewriteResult> {
-        Ok(RewriteResult::Unchanged)
+    fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
+        todo!()
     }
 }
 
@@ -34,7 +35,7 @@ impl Pass for ConvertFuncToLLVM {
         "convert-func-to-llvm"
     }
     fn convert(op: &dyn Op) -> Result<()> {
-        let rewrites: Vec<&dyn Rewrite> = vec![&ConstantOpLowering];
+        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ConstantOpLowering];
         apply_rewrites(op, &rewrites)?;
         Ok(())
     }
