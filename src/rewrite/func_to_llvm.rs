@@ -1,10 +1,13 @@
 use crate::dialect::func;
+use crate::dialect::llvmir;
 use crate::ir::Op;
 use crate::rewrite::apply_rewrites;
 use crate::rewrite::Rewrite;
 use crate::rewrite::RewriteResult;
 use crate::Pass;
 use anyhow::Result;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 struct FuncLowering;
 
@@ -13,7 +16,18 @@ impl Rewrite for FuncLowering {
         Ok(op.operation().read().unwrap().name() == func::FuncOp::operation_name())
     }
     fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
-        todo!()
+        {
+            let operation = op.operation();
+            let mut operation = operation.try_write().unwrap();
+            let name = operation.name();
+            assert!(name == func::FuncOp::operation_name());
+            operation.set_name(llvmir::FuncOp::operation_name());
+        }
+
+        let lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
+        op.replace(Arc::new(RwLock::new(lowered)));
+
+        Ok(RewriteResult::Changed)
     }
 }
 

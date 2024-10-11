@@ -19,9 +19,20 @@ pub trait Op {
     fn operation_name() -> OperationName
     where
         Self: Sized;
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    fn verify(&self) -> Result<()> {
+        Ok(())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized;
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let op = Self::from_operation_without_verify(operation)?;
+        op.verify()?;
+        Ok(op)
+    }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
@@ -77,9 +88,6 @@ pub trait Op {
         let block = old_operation.parent().unwrap();
         let block = block.read().unwrap();
         block.replace(self.operation().clone(), new.clone());
-    }
-    fn verify(&self) -> Result<()> {
-        Ok(())
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {

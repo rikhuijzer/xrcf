@@ -63,10 +63,8 @@ impl Op for ConstantOp {
         }
         Ok(())
     }
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        let op = ConstantOp { operation };
-        op.verify()?;
-        Ok(op)
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ConstantOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -237,8 +235,8 @@ impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        todo!()
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(AddiOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self

@@ -22,7 +22,7 @@ impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected global, got {}",
@@ -114,8 +114,8 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        todo!()
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(FuncOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
