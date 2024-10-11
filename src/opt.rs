@@ -1,7 +1,9 @@
-use crate::canonicalize;
+use crate::canonicalize::CanonicalizeOp;
+use crate::canonicalize::DeadCodeElimination;
 use crate::ir::Op;
-use crate::transform::ConvertFuncToLLVM;
-use crate::transform::Transform;
+use crate::rewrite::apply_rewrites;
+use crate::rewrite::ConvertFuncToLLVM;
+use crate::rewrite::Rewrite;
 use anyhow::Result;
 use core::fmt::Error;
 
@@ -30,11 +32,14 @@ impl Default for OptOptions {
 
 pub fn opt(op: &mut dyn Op, options: OptOptions) -> Result<(), Error> {
     if options.canonicalize {
-        canonicalize(op);
+        let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
+        apply_rewrites(op, &rewrites).unwrap();
     }
     if options.convert_func_to_llvm {
         let conversion = ConvertFuncToLLVM {};
-        conversion.transform(op).unwrap();
+        if conversion.is_match(op).unwrap() {
+            conversion.rewrite(op).unwrap();
+        }
     }
     Ok(())
 }

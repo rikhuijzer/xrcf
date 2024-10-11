@@ -1,4 +1,3 @@
-use crate::canonicalize::CanonicalizeResult;
 use crate::ir::operation::Operation;
 use crate::ir::Attribute;
 use crate::ir::Block;
@@ -12,6 +11,7 @@ use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
+use crate::rewrite::RewriteResult;
 use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Dialect;
@@ -152,7 +152,7 @@ pub struct AddiOp {
 
 impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
-    fn addi_add_constant(&self) -> CanonicalizeResult {
+    fn addi_add_constant(&self) -> RewriteResult {
         let operation = self.operation.read().unwrap();
         let operands = operation.operands();
         let operands = operands.read().unwrap();
@@ -163,25 +163,25 @@ impl AddiOp {
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
-                return CanonicalizeResult::Unchanged;
+                return RewriteResult::Unchanged;
             }
         };
         let lhs = lhs.read().unwrap();
         let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
             Some(lhs) => lhs,
-            None => return CanonicalizeResult::Unchanged,
+            None => return RewriteResult::Unchanged,
         };
 
         let rhs = operands[1].clone();
         let rhs = rhs.read().unwrap().defining_op();
         let rhs = match rhs {
             Some(rhs) => rhs,
-            None => return CanonicalizeResult::Unchanged,
+            None => return RewriteResult::Unchanged,
         };
         let rhs = rhs.read().unwrap();
         let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
             Some(rhs) => rhs,
-            None => return CanonicalizeResult::Unchanged,
+            None => return RewriteResult::Unchanged,
         };
 
         let lhs_value = lhs.attribute("value").unwrap();
@@ -229,7 +229,7 @@ impl AddiOp {
         let mut result = results[0].try_write().unwrap();
         result.rename("%c3_i64");
 
-        CanonicalizeResult::Changed
+        RewriteResult::Changed
     }
 }
 
@@ -246,7 +246,7 @@ impl Op for AddiOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn canonicalize(&self) -> CanonicalizeResult {
+    fn canonicalize(&self) -> RewriteResult {
         self.addi_add_constant()
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {

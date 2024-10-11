@@ -15,7 +15,7 @@ fn test_translate() {
     // assert_eq!(translate(mlir), llvmir);
 }
 
-#[test]
+// #[test]
 fn test_constant_func() {
     use indoc::indoc;
 

@@ -1,9 +1,9 @@
-use crate::canonicalize::CanonicalizeResult;
 use crate::ir::Attribute;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Values;
+use crate::rewrite::RewriteResult;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -37,8 +37,8 @@ pub trait Op {
         let results = operation.results();
         Ok(results.clone())
     }
-    fn canonicalize(&self) -> CanonicalizeResult {
-        CanonicalizeResult::Unchanged
+    fn canonicalize(&self) -> RewriteResult {
+        RewriteResult::Unchanged
     }
     fn is_terminator(&self) -> bool {
         false

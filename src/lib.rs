@@ -5,10 +5,9 @@ mod dialect;
 mod ir;
 mod opt;
 pub mod parser;
-mod transform;
+mod rewrite;
 mod typ;
 
-pub use canonicalize::canonicalize;
 pub use ir::attribute::Attribute;
 pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
