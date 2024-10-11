@@ -5,6 +5,7 @@ mod dialect;
 mod ir;
 mod opt;
 pub mod parser;
+mod pass;
 mod rewrite;
 mod typ;
 
@@ -16,6 +17,7 @@ pub use opt::opt;
 pub use opt::OptOptions;
 pub use parser::Parse;
 pub use parser::Parser;
+pub use pass::Pass;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

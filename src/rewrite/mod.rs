@@ -41,7 +41,7 @@ fn apply_rewrites_helper(op: &dyn Op, rewrites: &[&dyn Rewrite]) -> Result<Rewri
     Ok(RewriteResult::Unchanged)
 }
 
-pub fn apply_rewrites(op: &mut dyn Op, rewrites: &[&dyn Rewrite]) -> Result<()> {
+pub fn apply_rewrites(op: &dyn Op, rewrites: &[&dyn Rewrite]) -> Result<()> {
     let max_iterations = 16;
     for _ in 0..max_iterations {
         let result = apply_rewrites_helper(op, rewrites)?;
