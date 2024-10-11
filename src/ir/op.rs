@@ -75,18 +75,24 @@ pub trait Op {
     /// Note that the old op now has a reference to the outdated results vector,
     /// but that should solve itself once all references to the old op are dropped.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        let old_operation = self.operation().read().unwrap();
+        if Arc::ptr_eq(self.operation(), new.try_read().unwrap().operation()) {
+            // If self.operation() and new.operation() are the same,
+            // then things become difficult to reason about.
+            panic!("Expected self.operation() and new.operation() to be different");
+        }
+        let old_operation = self.operation().try_read().unwrap();
         let results = old_operation.results();
-        let new_op = new.read().unwrap();
-        for result in results.read().unwrap().iter() {
-            let mut result = result.write().unwrap();
+        let new_op = new.try_read().unwrap();
+        for result in results.try_read().unwrap().iter() {
+            let mut result = result.try_write().unwrap();
             result.set_defining_op(Some(new.clone()));
         }
-        let mut new_operation = new_op.operation().write().unwrap();
+        let block = old_operation.parent().unwrap();
+        drop(old_operation);
+        let mut new_operation = new_op.operation().try_write().unwrap();
         new_operation.set_results(results.clone());
 
-        let block = old_operation.parent().unwrap();
-        let block = block.read().unwrap();
+        let block = block.try_read().unwrap();
         block.replace(self.operation().clone(), new.clone());
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).

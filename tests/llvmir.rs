@@ -41,4 +41,5 @@ fn test_constant_func() {
     assert_eq!(lines[3], "    llvm.return %0 : i64");
     assert_eq!(lines[4], "  }");
     assert_eq!(lines[5], "}");
+    assert!(false);
 }
