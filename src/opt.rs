@@ -6,7 +6,6 @@ use crate::rewrite::ConvertFuncToLLVM;
 use crate::rewrite::Rewrite;
 use crate::Pass;
 use anyhow::Result;
-use core::fmt::Error;
 
 pub struct OptOptions {
     canonicalize: bool,
