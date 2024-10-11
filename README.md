@@ -2,7 +2,7 @@
 
 RRCF Compiler Framework
 
-## But you don't know anything about compilers?
+## But you don't know much about compilers?
 
 Yet.
 
