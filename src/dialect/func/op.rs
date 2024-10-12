@@ -21,6 +21,53 @@ pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+pub fn display_func(
+    op: &dyn Op,
+    identifier: String,
+    f: &mut Formatter<'_>,
+    indent: i32,
+) -> std::fmt::Result {
+    let name = op.operation().try_read().unwrap().name();
+    write!(f, "{name} {identifier}(")?;
+    let arguments = op
+        .operation()
+        .try_read()
+        .unwrap()
+        .arguments()
+        .try_read()
+        .unwrap()
+        .iter()
+        .map(|o| o.try_read().unwrap().to_string())
+        .collect::<Vec<String>>()
+        .join(", ");
+    write!(f, "{}", arguments)?;
+    write!(f, ")")?;
+    let operation = op.operation();
+    if !operation.try_read().unwrap().result_types().is_empty() {
+        let operation = operation.read().unwrap();
+        let result_types = operation.result_types();
+        if result_types.len() == 1 {
+            write!(f, " -> {}", result_types.get(0).unwrap())?;
+        } else {
+            write!(
+                f,
+                " -> ({})",
+                result_types
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<String>>()
+                    .join(", ")
+            )?;
+        }
+    }
+    let region = op.operation().try_read().unwrap().region();
+    if let Some(region) = region {
+        let region = region.try_read().unwrap();
+        region.display(f, indent)?;
+    }
+    Ok(())
+}
+
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
@@ -44,44 +91,8 @@ impl Op for FuncOp {
         Ok(arguments.clone())
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        write!(f, "func.func {}(", self.identifier)?;
-        let joined = self
-            .operation()
-            .read()
-            .unwrap()
-            .arguments()
-            .read()
-            .unwrap()
-            .iter()
-            .map(|o| o.read().unwrap().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
-        write!(f, "{}", joined)?;
-        write!(f, ")")?;
-        let operation = self.operation();
-        if !operation.read().unwrap().result_types().is_empty() {
-            let operation = operation.read().unwrap();
-            let result_types = operation.result_types();
-            if result_types.len() == 1 {
-                write!(f, " -> {}", result_types.get(0).unwrap())?;
-            } else {
-                write!(
-                    f,
-                    " -> ({})",
-                    result_types
-                        .iter()
-                        .map(|t| t.to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                )?;
-            }
-        }
-        let region = self.operation().read().unwrap().region();
-        if let Some(region) = region {
-            let region = region.read().unwrap();
-            region.display(f, indent)?;
-        }
-        Ok(())
+        let identifier = self.identifier.clone();
+        display_func(self, identifier, f, indent)
     }
 }
 

@@ -107,15 +107,19 @@ impl Parse for GlobalOp {
 }
 
 pub struct FuncOp {
+    identifier: String,
     operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.mlir.global".to_string())
+        OperationName::new("llvm.func".to_string())
     }
     fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        Ok(FuncOp { operation })
+        Ok(FuncOp {
+            identifier: "didn't set identifier for llvm func".to_string(),
+            operation,
+        })
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -123,7 +127,8 @@ impl Op for FuncOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, _f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        todo!()
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let identifier = self.identifier.clone();
+        crate::dialect::func::display_func(self, identifier, f, indent)
     }
 }
