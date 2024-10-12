@@ -37,7 +37,7 @@ fn test_constant_func() {
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");
     assert_eq!(lines[1], "  llvm.func @test_ret_1() -> i64 {");
-    assert_eq!(lines[2], "    llvm.mlir.constant(1 : i64) : i64");
+    assert_eq!(lines[2], "    %0 = llvm.mlir.constant(1 : i64) : i64");
     assert_eq!(lines[3], "    llvm.return %0 : i64");
     assert_eq!(lines[4], "  }");
     assert_eq!(lines[5], "}");

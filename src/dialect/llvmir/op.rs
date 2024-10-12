@@ -111,6 +111,15 @@ pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl FuncOp {
+    pub fn identifier(&self) -> &str {
+        &self.identifier
+    }
+    pub fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
+    }
+}
+
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.func".to_string())

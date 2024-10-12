@@ -21,6 +21,15 @@ pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl FuncOp {
+    pub fn identifier(&self) -> &str {
+        &self.identifier
+    }
+    pub fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
+    }
+}
+
 pub fn display_func(
     op: &dyn Op,
     identifier: String,

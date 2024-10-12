@@ -1,3 +1,4 @@
+use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvmir;
 use crate::ir::Op;
@@ -13,9 +14,10 @@ struct FuncLowering;
 
 impl Rewrite for FuncLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.operation().read().unwrap().name() == func::FuncOp::operation_name())
+        Ok(op.as_any().downcast_ref::<func::FuncOp>().is_some())
     }
     fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
+        let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
         {
             let operation = op.operation();
             let mut operation = operation.try_write().unwrap();
@@ -30,10 +32,9 @@ impl Rewrite for FuncLowering {
             );
         }
 
-        let lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
-        println!("here");
+        let mut lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
+        lowered.set_identifier(op.identifier().to_string());
         op.replace(Arc::new(RwLock::new(lowered)));
-        println!("here2");
 
         Ok(RewriteResult::Changed)
     }
@@ -42,10 +43,12 @@ impl Rewrite for FuncLowering {
 struct ConstantOpLowering;
 
 impl Rewrite for ConstantOpLowering {
-    fn is_match(&self, _op: &dyn Op) -> Result<bool> {
-        Ok(true)
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().downcast_ref::<arith::ConstantOp>().is_some())
     }
-    fn rewrite(&self, _op: &dyn Op) -> Result<RewriteResult> {
+    fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
+        let op = op.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
+        println!("not done");
         Ok(RewriteResult::Unchanged)
     }
 }
