@@ -72,7 +72,7 @@ pub trait Op {
     /// Replace self with `new` by moving the results of the old operation to
     /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
     /// In effect, this makes all the uses of the old op refer to the new op instead.
-    /// 
+    ///
     /// Note that this function assumes that `self` will be dropped after this function call.
     /// Therefore, the old op can still have references to objects that are now part of
     /// the new op.

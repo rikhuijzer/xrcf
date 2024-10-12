@@ -123,7 +123,7 @@ impl Op for FuncOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+    fn display(&self, _f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         todo!()
     }
 }

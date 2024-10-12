@@ -24,7 +24,10 @@ impl Rewrite for FuncLowering {
             operation.set_name(llvmir::FuncOp::operation_name());
 
             let parent = operation.parent();
-            assert!(parent.is_some(), "maybe func parent was not set during parsing?");
+            assert!(
+                parent.is_some(),
+                "maybe func parent was not set during parsing?"
+            );
         }
 
         let lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
