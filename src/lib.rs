@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
 mod canonicalize;
-mod dialect;
-mod ir;
+pub mod dialect;
+pub mod ir;
 mod opt;
 pub mod parser;
 mod pass;

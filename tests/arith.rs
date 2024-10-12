@@ -2,6 +2,8 @@ extern crate rrcf;
 
 use rrcf::parser::BuiltinParse;
 use rrcf::Parser;
+use rrcf::ir::Op;
+use rrcf::dialect::func::FuncOp;
 
 #[test]
 fn parse_addi() {
@@ -20,6 +22,14 @@ fn parse_addi() {
     let module = Parser::<BuiltinParse>::parse(src).unwrap();
     println!("-- After:\n{}\n", module);
     let repr = format!("{}", module);
+
+    let ops = module.ops();
+    assert_eq!(ops.len(), 1);
+    let func_op = ops[0].try_read().unwrap();
+    let func_operation = func_op.operation().try_read().unwrap();
+    assert_eq!(func_operation.name(), FuncOp::operation_name());
+    assert!(func_operation.parent().is_some());
+
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");
     assert_eq!(lines[1], "  func.func @test_addi(%arg0 : i64) -> i64 {");
