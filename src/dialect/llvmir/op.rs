@@ -3,6 +3,7 @@ use crate::ir::operation;
 use crate::ir::operation::OperationName;
 use crate::ir::AnyAttr;
 use crate::ir::Block;
+use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::StrAttr;
@@ -139,5 +140,44 @@ impl Op for FuncOp {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let identifier = self.identifier.clone();
         crate::dialect::func::display_func(self, identifier, f, indent)
+    }
+}
+
+pub struct ConstantOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for ConstantOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.mlir.constant".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ConstantOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let operation = self.operation().try_read().unwrap();
+        let results = operation.results();
+        let results = results.try_read().unwrap();
+        let result = results.get(0).unwrap();
+        let result = result.try_read().unwrap();
+        write!(f, "{} = {}", result, Self::operation_name())?;
+        let attributes = operation.attributes().map();
+        let attributes = attributes.try_read().unwrap();
+        write!(f, "(")?;
+        let value = attributes.get("value").unwrap();
+        write!(f, "{}", value)?;
+        write!(f, ")")?;
+
+        let value = value.as_any().downcast_ref::<IntegerAttr>().unwrap();
+        write!(f, " : {}", value.typ())?;
+        write!(f, "\n")?;
+
+        Ok(())
     }
 }

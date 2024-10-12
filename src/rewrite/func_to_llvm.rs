@@ -48,8 +48,10 @@ impl Rewrite for ConstantOpLowering {
     }
     fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
         let op = op.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
-        println!("not done");
-        Ok(RewriteResult::Unchanged)
+        let lowered = llvmir::ConstantOp::from_operation(op.operation().clone())?;
+        op.replace(Arc::new(RwLock::new(lowered)));
+
+        Ok(RewriteResult::Changed)
     }
 }
 

@@ -61,6 +61,9 @@ impl IntegerAttr {
     pub fn new(typ: IntegerType, value: APInt) -> Self {
         Self { typ, value }
     }
+    pub fn typ(&self) -> &IntegerType {
+        &self.typ
+    }
 }
 
 impl Attribute for IntegerAttr {
