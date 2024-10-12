@@ -55,6 +55,21 @@ impl Rewrite for ConstantOpLowering {
     }
 }
 
+struct ReturnLowering;
+
+impl Rewrite for ReturnLowering {
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().downcast_ref::<func::ReturnOp>().is_some())
+    }
+    fn rewrite(&self, op: &dyn Op) -> Result<RewriteResult> {
+        let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
+        let lowered = llvmir::ReturnOp::from_operation(op.operation().clone())?;
+        op.replace(Arc::new(RwLock::new(lowered)));
+
+        Ok(RewriteResult::Changed)
+    }
+}
+
 pub struct ConvertFuncToLLVM;
 
 impl Pass for ConvertFuncToLLVM {
@@ -62,7 +77,7 @@ impl Pass for ConvertFuncToLLVM {
         "convert-func-to-llvm"
     }
     fn convert(op: &dyn Op) -> Result<()> {
-        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ConstantOpLowering];
+        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ConstantOpLowering, &ReturnLowering];
         apply_rewrites(op, &rewrites)?;
         Ok(())
     }

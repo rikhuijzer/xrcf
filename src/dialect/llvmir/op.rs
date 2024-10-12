@@ -182,3 +182,26 @@ impl Op for ConstantOp {
         Ok(())
     }
 }
+
+pub struct ReturnOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for ReturnOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.return".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ReturnOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let name = Self::operation_name().to_string();
+        func::ReturnOp::display_return(self, &name, f, _indent)
+    }
+}

@@ -213,23 +213,16 @@ pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
 
-impl Op for ReturnOp {
-    fn operation_name() -> OperationName {
-        OperationName::new("return".to_string())
-    }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        Ok(ReturnOp { operation })
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
-        &self.operation
-    }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation();
+impl ReturnOp {
+    pub fn display_return(
+        op: &dyn Op,
+        name: &str,
+        f: &mut Formatter<'_>,
+        _indent: i32,
+    ) -> std::fmt::Result {
+        let operation = op.operation();
         let operation = operation.read().unwrap();
-        write!(f, "return")?;
+        write!(f, "{name}")?;
         let operands = operation.operands().clone();
         let operands = operands.read().unwrap();
         for operand in operands.iter() {
@@ -244,6 +237,25 @@ impl Op for ReturnOp {
             .join(", ");
         write!(f, " : {}", result_types)?;
         Ok(())
+    }
+}
+
+impl Op for ReturnOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("return".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ReturnOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let name = Self::operation_name().to_string();
+        ReturnOp::display_return(self, &name, f, _indent)
     }
 }
 
