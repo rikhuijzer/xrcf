@@ -1,3 +1,4 @@
+use crate::dialect::func;
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation;
 use crate::ir::operation::OperationName;
@@ -139,7 +140,7 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let identifier = self.identifier.clone();
-        crate::dialect::func::display_func(self, identifier, f, indent)
+        func::FuncOp::display_func(self, identifier, f, indent)
     }
 }
 
