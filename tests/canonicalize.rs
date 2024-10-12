@@ -1,7 +1,8 @@
 extern crate rrcf;
 
-use rrcf::canonicalize;
+use rrcf::opt;
 use rrcf::parser::BuiltinParse;
+use rrcf::OptOptions;
 use rrcf::Parser;
 
 #[test]
@@ -17,7 +18,9 @@ fn canonicalize_addi() {
     ";
     let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
     println!("\nBefore canonicalize:{src}");
-    canonicalize(&mut module);
+    let mut options = OptOptions::default();
+    options.set_canonicalize(true);
+    opt(&mut module, options).unwrap();
     println!("\nAfter canonicalize:\n{module}\n");
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();

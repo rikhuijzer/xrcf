@@ -1,9 +1,9 @@
-use crate::canonicalize::CanonicalizeResult;
 use crate::ir::Attribute;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Values;
+use crate::rewrite::RewriteResult;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -19,9 +19,20 @@ pub trait Op {
     fn operation_name() -> OperationName
     where
         Self: Sized;
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    fn verify(&self) -> Result<()> {
+        Ok(())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized;
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    where
+        Self: Sized,
+    {
+        let op = Self::from_operation_without_verify(operation)?;
+        op.verify()?;
+        Ok(op)
+    }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
@@ -37,8 +48,8 @@ pub trait Op {
         let results = operation.results();
         Ok(results.clone())
     }
-    fn canonicalize(&self) -> CanonicalizeResult {
-        CanonicalizeResult::Unchanged
+    fn canonicalize(&self) -> RewriteResult {
+        RewriteResult::Unchanged
     }
     fn is_terminator(&self) -> bool {
         false
@@ -59,27 +70,30 @@ pub trait Op {
         block.insert_before(earlier, later);
     }
     /// Replace self with `new` by moving the results of the old operation to
-    /// the results of the specified new op, and pointing the defining op to the new op.
+    /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
     /// In effect, this makes all the uses of the old op refer to the new op instead.
-    /// Note that the old op now has a reference to the outdated results vector,
-    /// but that should solve itself once all references to the old op are dropped.
+    ///
+    /// Note that this function assumes that `self` will be dropped after this function call.
+    /// Therefore, the old op can still have references to objects that are now part of
+    /// the new op.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        let old_operation = self.operation().read().unwrap();
-        let results = old_operation.results();
-        let new_op = new.read().unwrap();
-        for result in results.read().unwrap().iter() {
-            let mut result = result.write().unwrap();
-            result.set_defining_op(Some(new.clone()));
+        let results = {
+            let old_operation = self.operation().try_read().unwrap();
+            old_operation.results()
+        };
+        {
+            for result in results.try_read().unwrap().iter() {
+                let mut result = result.try_write().unwrap();
+                result.set_defining_op(Some(new.clone()));
+            }
+            let new_read = new.try_read().unwrap();
+            let mut new_operation = new_read.operation().try_write().unwrap();
+            new_operation.set_results(results.clone());
         }
-        let mut new_operation = new_op.operation().write().unwrap();
-        new_operation.set_results(results.clone());
-
-        let block = old_operation.parent().unwrap();
-        let block = block.read().unwrap();
-        block.replace(self.operation().clone(), new.clone());
-    }
-    fn verify(&self) -> Result<()> {
-        Ok(())
+        let old_operation = self.operation().try_read().unwrap();
+        let parent = old_operation.parent().unwrap();
+        let parent = parent.try_read().unwrap();
+        parent.replace(self.operation().clone(), new.clone());
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {

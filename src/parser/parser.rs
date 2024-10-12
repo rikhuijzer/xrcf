@@ -205,17 +205,21 @@ impl<T: Parse> Parser<T> {
             let mut region = Region::default();
             region.set_parent(Some(op.clone()));
             let region = Arc::new(RwLock::new(region));
-            let ops = Arc::new(RwLock::new(vec![op]));
+            let ops = Arc::new(RwLock::new(vec![op.clone()]));
             let arguments = Arc::new(vec![]);
             let block = Block::new(None, arguments, ops, Some(region.clone()));
             let block = Arc::new(RwLock::new(block));
+            {
+                let func_op = op.try_read().unwrap();
+                let mut func_operation = func_op.operation().try_write().unwrap();
+                func_operation.set_parent(Some(block.clone()));
+            }
             region.write().unwrap().blocks_mut().push(block.clone());
-            let mut operation = Operation::default();
-            operation.set_name(ModuleOp::operation_name());
-            operation.set_region(Some(region.clone()));
-            operation.set_parent(Some(block));
-            let operation = Arc::new(RwLock::new(operation));
-            let module_op = ModuleOp::from_operation(operation);
+            let mut module_operation = Operation::default();
+            module_operation.set_name(ModuleOp::operation_name());
+            module_operation.set_region(Some(region.clone()));
+            let module_operation = Arc::new(RwLock::new(module_operation));
+            let module_op = ModuleOp::from_operation(module_operation);
             module_op.unwrap()
         };
         Ok(op)

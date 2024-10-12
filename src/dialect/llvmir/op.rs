@@ -1,8 +1,10 @@
+use crate::dialect::func;
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation;
 use crate::ir::operation::OperationName;
 use crate::ir::AnyAttr;
 use crate::ir::Block;
+use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::StrAttr;
@@ -22,7 +24,7 @@ impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
         if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected global, got {}",
@@ -103,5 +105,103 @@ impl Parse for GlobalOp {
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(RwLock::new(op.unwrap())))
+    }
+}
+
+pub struct FuncOp {
+    identifier: String,
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl FuncOp {
+    pub fn identifier(&self) -> &str {
+        &self.identifier
+    }
+    pub fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
+    }
+}
+
+impl Op for FuncOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.func".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(FuncOp {
+            identifier: "didn't set identifier for llvm func".to_string(),
+            operation,
+        })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let identifier = self.identifier.clone();
+        func::FuncOp::display_func(self, identifier, f, indent)
+    }
+}
+
+pub struct ConstantOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for ConstantOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.mlir.constant".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ConstantOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let operation = self.operation().try_read().unwrap();
+        let results = operation.results();
+        let results = results.try_read().unwrap();
+        let result = results.get(0).unwrap();
+        let result = result.try_read().unwrap();
+        write!(f, "{} = {}", result, Self::operation_name())?;
+        let attributes = operation.attributes().map();
+        let attributes = attributes.try_read().unwrap();
+        write!(f, "(")?;
+        let value = attributes.get("value").unwrap();
+        write!(f, "{}", value)?;
+        write!(f, ")")?;
+
+        let value = value.as_any().downcast_ref::<IntegerAttr>().unwrap();
+        write!(f, " : {}", value.typ())?;
+        write!(f, "\n")?;
+
+        Ok(())
+    }
+}
+
+pub struct ReturnOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for ReturnOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.return".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ReturnOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let name = Self::operation_name().to_string();
+        func::ReturnOp::display_return(self, &name, f, _indent)
     }
 }

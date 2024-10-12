@@ -21,43 +21,39 @@ pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
 }
 
-impl Op for FuncOp {
-    fn operation_name() -> OperationName {
-        OperationName::new("func.func".to_string())
+impl FuncOp {
+    pub fn identifier(&self) -> &str {
+        &self.identifier
     }
-    fn from_operation(_operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        todo!()
-        // Ok(FuncOp { operation })
+    pub fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
     }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
-        &self.operation
-    }
-    fn assignments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let arguments = operation.arguments();
-        Ok(arguments.clone())
-    }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        write!(f, "func.func {}(", self.identifier)?;
-        let joined = self
+}
+
+impl FuncOp {
+    pub fn display_func(
+        op: &dyn Op,
+        identifier: String,
+        f: &mut Formatter<'_>,
+        indent: i32,
+    ) -> std::fmt::Result {
+        let name = op.operation().try_read().unwrap().name();
+        write!(f, "{name} {identifier}(")?;
+        let arguments = op
             .operation()
-            .read()
+            .try_read()
             .unwrap()
             .arguments()
-            .read()
+            .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.read().unwrap().to_string())
+            .map(|o| o.try_read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        write!(f, "{}", joined)?;
+        write!(f, "{}", arguments)?;
         write!(f, ")")?;
-        let operation = self.operation();
-        if !operation.read().unwrap().result_types().is_empty() {
+        let operation = op.operation();
+        if !operation.try_read().unwrap().result_types().is_empty() {
             let operation = operation.read().unwrap();
             let result_types = operation.result_types();
             if result_types.len() == 1 {
@@ -74,12 +70,40 @@ impl Op for FuncOp {
                 )?;
             }
         }
-        let region = self.operation().read().unwrap().region();
+        let region = op.operation().try_read().unwrap().region();
         if let Some(region) = region {
-            let region = region.read().unwrap();
+            let region = region.try_read().unwrap();
             region.display(f, indent)?;
         }
         Ok(())
+    }
+}
+
+impl Op for FuncOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("func.func".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(FuncOp {
+            identifier: "didnt set identifier".to_string(),
+            operation: operation,
+        })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn assignments(&self) -> Result<Values> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        Ok(arguments.clone())
+    }
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let identifier = self.identifier.clone();
+        FuncOp::display_func(self, identifier, f, indent)
     }
 }
 
@@ -189,23 +213,16 @@ pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
 
-impl Op for ReturnOp {
-    fn operation_name() -> OperationName {
-        OperationName::new("return".to_string())
-    }
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        Ok(ReturnOp { operation })
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
-        &self.operation
-    }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation();
+impl ReturnOp {
+    pub fn display_return(
+        op: &dyn Op,
+        name: &str,
+        f: &mut Formatter<'_>,
+        _indent: i32,
+    ) -> std::fmt::Result {
+        let operation = op.operation();
         let operation = operation.read().unwrap();
-        write!(f, "return")?;
+        write!(f, "{name}")?;
         let operands = operation.operands().clone();
         let operands = operands.read().unwrap();
         for operand in operands.iter() {
@@ -220,6 +237,25 @@ impl Op for ReturnOp {
             .join(", ");
         write!(f, " : {}", result_types)?;
         Ok(())
+    }
+}
+
+impl Op for ReturnOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("return".to_string())
+    }
+    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+        Ok(ReturnOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let name = Self::operation_name().to_string();
+        ReturnOp::display_return(self, &name, f, _indent)
     }
 }
 
