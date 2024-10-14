@@ -1,9 +1,13 @@
 [package]
 name = "xrcf"
-description = "xr compiler framework"
+description = "A compiler framework to enable the rapid development of programming language compilers"
+keywords = ["compiler", "framework"]
 version = "0.1.0"
+authors = ["xrcf contributors"]
 edition = "2021"
 license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://git.huijzer.xyz/xrcf/xrcf"
+homepage = "https://xrcf.org"
 
 [dependencies]
 anyhow = "1.0.86"
