@@ -2,6 +2,7 @@
 name = "xrcf"
 description = "A compiler framework to enable the rapid development of programming language compilers"
 keywords = ["compiler", "framework"]
+categories = ["compilers"]
 version = "0.1.0"
 authors = ["xrcf contributors"]
 edition = "2021"
