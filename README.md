@@ -1,6 +1,6 @@
 # xrcf
 
-The xr compiler framework
+A compiler framework to enable the rapid development of programming language compilers
 
 ## Notes
 
