@@ -26,8 +26,8 @@ fn test_constant_func() {
     use indoc::indoc;
 
     let src = indoc! {"
-      func.func @test_ret_1() -> i64 {
-        %0 = arith.constant 1 : i64
+      func.func @main() -> i64 {
+        %0 = arith.constant 42 : i64
         return %0 : i64
       }
     "};
@@ -46,8 +46,8 @@ fn test_constant_func() {
     let repr = format!("{}", module_read);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");
-    assert_eq!(lines[1], "  llvm.func @test_ret_1() -> i64 {");
-    assert_eq!(lines[2], "    %0 = llvm.mlir.constant(1 : i64) : i64");
+    assert_eq!(lines[1], "  llvm.func @main() -> i64 {");
+    assert_eq!(lines[2], "    %0 = llvm.mlir.constant(42 : i64) : i64");
     assert_eq!(lines[3], "    llvm.return %0 : i64");
     assert_eq!(lines[4], "  }");
     assert_eq!(lines[5], "}");
@@ -71,8 +71,8 @@ fn test_constant_func() {
     assert_eq!(lines[0], "; ModuleID = 'LLVMDialectModule'");
     assert_eq!(lines[1], r#"source_filename = "LLVMDialectModule""#);
     assert_eq!(lines[2], "");
-    assert_eq!(lines[3], "define i64 @test_ret_1() {");
-    assert_eq!(lines[4], "  ret i64 1");
+    assert_eq!(lines[3], "define i64 @main() {");
+    assert_eq!(lines[4], "  ret i64 42");
     assert_eq!(lines[5], "}");
     assert_eq!(lines[6], "");
     assert_eq!(lines[7], "!llvm.module.flags = !{!0}");

@@ -1,4 +1,4 @@
-// Prints hello world when executed via `lli hello-world.ll` on LLVM 18.1.8.
+; Prints hello world when executed via `lli hello-world.ll` on LLVM 18.1.8.
 @text = private constant [15 x i8] c"hello, world!\0A\00"
 
 define i32 @main() {
