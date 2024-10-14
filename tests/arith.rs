@@ -1,9 +1,9 @@
-extern crate rrcf;
+extern crate xrcf;
 
-use rrcf::dialect::func::FuncOp;
-use rrcf::ir::Op;
-use rrcf::parser::BuiltinParse;
-use rrcf::Parser;
+use xrcf::dialect::func::FuncOp;
+use xrcf::ir::Op;
+use xrcf::parser::BuiltinParse;
+use xrcf::Parser;
 
 #[test]
 fn parse_addi() {

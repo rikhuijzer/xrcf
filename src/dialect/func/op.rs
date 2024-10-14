@@ -83,7 +83,11 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(FuncOp {
             identifier: "didnt set identifier".to_string(),
             operation: operation,
@@ -244,7 +248,11 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("return".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(ReturnOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {

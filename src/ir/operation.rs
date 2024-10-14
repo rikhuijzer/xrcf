@@ -108,6 +108,24 @@ pub struct Operation {
     parent: Option<Arc<RwLock<Block>>>,
 }
 
+pub fn display_region_inside_func(
+    f: &mut Formatter<'_>,
+    operation: &Operation,
+    indent: i32,
+) -> std::fmt::Result {
+    let region = operation.region();
+    if let Some(region) = region {
+        let region = region.read().unwrap();
+        if region.blocks().is_empty() {
+            write!(f, "\n")
+        } else {
+            region.display(f, indent)
+        }
+    } else {
+        write!(f, "\n")
+    }
+}
+
 impl Operation {
     pub fn new(
         name: OperationName,
@@ -138,6 +156,9 @@ impl Operation {
     }
     pub fn operands(&self) -> Operands {
         self.operands.clone()
+    }
+    pub fn operand(&self, index: usize) -> Arc<RwLock<OpOperand>> {
+        self.operands.read().unwrap()[index].clone()
     }
     pub fn operands_mut(&mut self) -> &mut Operands {
         &mut self.operands
@@ -193,8 +214,8 @@ impl Operation {
         }
         for result in self.results().try_read().unwrap().iter() {
             let result = result.try_read().unwrap();
-            let users = result.users();
-            match users {
+            let result_users = result.users();
+            match result_users {
                 Users::OpOperands(users) => {
                     for usage in users.iter() {
                         out.push(usage.clone());
@@ -233,18 +254,7 @@ impl Operation {
                 write!(f, " {}", result_type)?;
             }
         }
-        let region = self.region();
-        if let Some(region) = region {
-            let region = region.read().unwrap();
-            if region.blocks().is_empty() {
-                write!(f, "\n")?;
-            } else {
-                region.display(f, indent)?;
-            }
-        } else {
-            write!(f, "\n")?;
-        }
-        Ok(())
+        display_region_inside_func(f, self, indent)
     }
 }
 

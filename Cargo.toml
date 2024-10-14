@@ -1,9 +1,9 @@
 [package]
-name = "rrcf"
-description = "RRCF Compiler Framework"
-version = "1.0.0"
+name = "xrcf"
+description = "xr compiler framework"
+version = "0.1.0"
 edition = "2021"
-license = "Apache-2.0 with LLVM-exceptions"
+license = "Apache-2.0 WITH LLVM-exception"
 
 [dependencies]
 anyhow = "1.0.86"

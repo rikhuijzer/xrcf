@@ -51,6 +51,12 @@ impl APInt {
         let value = value.parse::<u64>().unwrap();
         Self::new(typ.num_bits, value, true)
     }
+    pub fn value(&self) -> u64 {
+        self.value
+    }
+    pub fn is_signed(&self) -> bool {
+        self.is_signed
+    }
 }
 
 impl Display for APInt {

@@ -1,14 +1,15 @@
 #![allow(dead_code)]
 
 mod canonicalize;
+pub mod convert;
 pub mod dialect;
 pub mod ir;
 mod opt;
 pub mod parser;
-mod pass;
-mod rewrite;
+pub mod targ3t;
 mod typ;
 
+pub use convert::Pass;
 pub use ir::attribute::Attribute;
 pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
@@ -17,7 +18,6 @@ pub use opt::opt;
 pub use opt::OptOptions;
 pub use parser::Parse;
 pub use parser::Parser;
-pub use pass::Pass;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

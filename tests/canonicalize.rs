@@ -1,13 +1,51 @@
-extern crate rrcf;
+extern crate xrcf;
 
-use rrcf::opt;
-use rrcf::parser::BuiltinParse;
-use rrcf::OptOptions;
-use rrcf::Parser;
+use indoc::indoc;
+use std::sync::Arc;
+use std::sync::RwLock;
+use xrcf::convert::RewriteResult;
+use xrcf::dialect::arith;
+use xrcf::ir;
+use xrcf::ir::Op;
+use xrcf::opt;
+use xrcf::parser::BuiltinParse;
+use xrcf::OptOptions;
+use xrcf::Parser;
+
+#[test]
+fn determine_users() {
+    let src = indoc! {"
+    func.func @test_determine_users(%arg0 : i64) -> i64 {
+        %0 = arith.constant 1 : i64
+        %1 = arith.constant 2 : i64
+        return %1 : i64
+    }
+    "};
+
+    let module = Parser::<BuiltinParse>::parse(src).unwrap();
+
+    let ops = module.ops();
+    assert_eq!(ops.len(), 1);
+    let func_op = ops[0].try_read().unwrap();
+    let ops = func_op.ops();
+    assert_eq!(ops.len(), 3);
+
+    let op0 = ops[0].try_read().unwrap();
+    let op0 = op0.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
+    let operation = op0.operation().try_read().unwrap();
+    let users = operation.users();
+    assert_eq!(users.len(), 0);
+
+    let op1 = ops[1].try_read().unwrap();
+    let op1 = op1.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
+    let operation = op1.operation().try_read().unwrap();
+    let users = operation.users();
+    assert_eq!(users.len(), 1);
+}
 
 #[test]
 fn canonicalize_addi() {
-    let src = "
+    let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
         %1 = arith.constant 2 : i64
@@ -15,13 +53,26 @@ fn canonicalize_addi() {
         %3 = arith.addi %arg0, %2 : i64
         return %3 : i64
     }
-    ";
-    let mut module = Parser::<BuiltinParse>::parse(src).unwrap();
-    println!("\nBefore canonicalize:{src}");
+    "};
+    let module = Parser::<BuiltinParse>::parse(src).unwrap();
+    let module = Arc::new(RwLock::new(module));
+    println!("\n-- Before canonicalize:\n{src}");
+
     let mut options = OptOptions::default();
     options.set_canonicalize(true);
-    opt(&mut module, options).unwrap();
-    println!("\nAfter canonicalize:\n{module}\n");
+    let result = opt(module.clone(), options).unwrap();
+    match result {
+        RewriteResult::Changed(changed) => {
+            let module = changed.0.try_read().unwrap();
+            assert!(module.as_any().downcast_ref::<ir::ModuleOp>().is_some());
+        }
+        RewriteResult::Unchanged => {
+            panic!("Expected changes");
+        }
+    }
+
+    let module = module.try_read().unwrap();
+    println!("\n-- After canonicalize:\n{module}\n");
     let repr = format!("{}", module);
     let lines = repr.lines().collect::<Vec<&str>>();
     assert_eq!(lines[0], "module {");

@@ -18,16 +18,12 @@ impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("module".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
-        if operation.read().unwrap().name() != Self::operation_name() {
-            return Err(anyhow::anyhow!(
-                "Expected module, got {}",
-                operation.read().unwrap().name()
-            ));
-        }
-        Ok(Self {
-            operation: operation,
-        })
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
+        Ok(Self { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self

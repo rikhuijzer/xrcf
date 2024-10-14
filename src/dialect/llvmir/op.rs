@@ -2,6 +2,7 @@ use crate::dialect::func;
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation;
 use crate::ir::operation::OperationName;
+use crate::ir::value::Value;
 use crate::ir::AnyAttr;
 use crate::ir::Block;
 use crate::ir::IntegerAttr;
@@ -16,6 +17,7 @@ use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
+
 pub struct GlobalOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -24,7 +26,11 @@ impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         if operation.read().unwrap().name() != Self::operation_name() {
             return Err(anyhow::anyhow!(
                 "Expected global, got {}",
@@ -126,7 +132,11 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.func".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(FuncOp {
             identifier: "didn't set identifier for llvm func".to_string(),
             operation,
@@ -148,11 +158,24 @@ pub struct ConstantOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl ConstantOp {
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        let operation = self.operation().try_read().unwrap();
+        let attributes = operation.attributes().map();
+        let attributes = attributes.try_read().unwrap();
+        attributes.get("value").unwrap().clone()
+    }
+}
+
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.constant".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(ConstantOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -168,10 +191,8 @@ impl Op for ConstantOp {
         let result = results.get(0).unwrap();
         let result = result.try_read().unwrap();
         write!(f, "{} = {}", result, Self::operation_name())?;
-        let attributes = operation.attributes().map();
-        let attributes = attributes.try_read().unwrap();
         write!(f, "(")?;
-        let value = attributes.get("value").unwrap();
+        let value = self.value();
         write!(f, "{}", value)?;
         write!(f, ")")?;
 
@@ -187,11 +208,23 @@ pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl ReturnOp {
+    pub fn value(&self) -> Arc<RwLock<Value>> {
+        let operand = self.operation.try_read().unwrap().operand(0);
+        let operand = operand.try_read().unwrap();
+        operand.value()
+    }
+}
+
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.return".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(ReturnOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {

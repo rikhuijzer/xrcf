@@ -1,12 +1,17 @@
-# rrcf
+# xrcf
 
-RRCF Compiler Framework
-
-## But you don't know much about compilers?
-
-Yet.
+The xr compiler framework
 
 ## Notes
+
+### Name
+
+"There are only two hard things in Computer Science: cache invalidation and naming things."
+
+The meaning of "xrcf" is xr compiler framework.
+What the x and r stand for is undefined.
+The r could be "rust", "rewrite", "recursive", or something else.
+The x could be anything.
 
 ### LLVM's codebase
 

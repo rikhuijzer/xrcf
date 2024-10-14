@@ -1,9 +1,9 @@
+use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Values;
-use crate::rewrite::RewriteResult;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -22,14 +22,18 @@ pub trait Op {
     fn verify(&self) -> Result<()> {
         Ok(())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self>
     where
         Self: Sized;
     fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
     where
         Self: Sized,
     {
-        let op = Self::from_operation_without_verify(operation)?;
+        let name = Self::operation_name();
+        let op = Self::from_operation_without_verify(operation, name)?;
         op.verify()?;
         Ok(op)
     }
@@ -91,9 +95,14 @@ pub trait Op {
             new_operation.set_results(results.clone());
         }
         let old_operation = self.operation().try_read().unwrap();
-        let parent = old_operation.parent().unwrap();
-        let parent = parent.try_read().unwrap();
-        parent.replace(self.operation().clone(), new.clone());
+        // Root ops do not have a parent, so we don't need to update the parent.
+        match old_operation.parent() {
+            Some(parent) => {
+                let parent = parent.try_read().unwrap();
+                parent.replace(self.operation().clone(), new.clone());
+            }
+            None => {}
+        }
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
@@ -111,6 +120,12 @@ pub trait Op {
         }
         result
     }
+    /// Display the operation with the given indentation.
+    ///
+    /// This method is usually called on a top-level op via `Display::fmt`,
+    /// which then calls `display` with `indent` 0.  Next, this method calls
+    /// `display` recursively while continuously increasing the indentation
+    /// level.
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let spaces = crate::ir::spaces(indent);

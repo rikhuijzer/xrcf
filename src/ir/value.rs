@@ -91,11 +91,21 @@ impl Default for OpResult {
         }
     }
 }
+
 pub enum Users {
     /// The operation defines no `OpResult`s.
     HasNoOpResults,
     /// The operation defines `OpResult`s (and can still have zero users).
     OpOperands(Vec<Arc<RwLock<OpOperand>>>),
+}
+
+impl Users {
+    pub fn len(&self) -> usize {
+        match self {
+            Users::HasNoOpResults => 0,
+            Users::OpOperands(users) => users.len(),
+        }
+    }
 }
 
 /// Represents an instance of an SSA value in the IR,
@@ -131,16 +141,17 @@ impl Value {
             Value::OpResult(result) => result.set_name(name),
         }
     }
-    fn users_helper(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.try_read().unwrap();
-        let operation = op.operation();
-        let operation_clone = operation.clone();
-        let operation = operation.try_read().unwrap();
-        let parent = operation.parent();
-        let parent = parent.unwrap();
+        let parent = {
+            let operation = op.operation();
+            let operation = operation.try_read().unwrap();
+            let parent = operation.parent();
+            parent.unwrap()
+        };
         let block = parent.try_read().unwrap();
-        let index = block.index_of(operation_clone);
+        let index = block.index_of(op.operation().clone());
         let index = index.unwrap();
         let ops = block.ops();
         let ops = ops.try_read().unwrap();
@@ -166,7 +177,7 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
-            Value::OpResult(op_res) => Users::OpOperands(self.users_helper(op_res)),
+            Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
         }
     }
     /// Rename the value, and all its users.

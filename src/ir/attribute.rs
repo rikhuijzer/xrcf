@@ -64,6 +64,21 @@ impl IntegerAttr {
     pub fn typ(&self) -> &IntegerType {
         &self.typ
     }
+    pub fn i64(&self) -> i64 {
+        let int = &self.value;
+        assert!(int.is_signed(), "must be signed integer");
+        int.value() as i64
+    }
+    pub fn u64(&self) -> u64 {
+        assert!(!self.value.is_signed(), "must be unsigned integer");
+        self.value.value()
+    }
+}
+
+impl Display for IntegerAttr {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        self.display(f)
+    }
 }
 
 impl Attribute for IntegerAttr {

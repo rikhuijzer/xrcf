@@ -29,6 +29,21 @@ jobs:
 
       - run: cargo test --all-features
 
+  typos:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '${{ env.RUST_TOOLCHAIN }}'
+
+      - run: cargo install typos-cli
+
+      - run: typos .
+
   fmt:
     runs-on: ubuntu-22.04
     timeout-minutes: 10
@@ -41,6 +56,8 @@ jobs:
         with:
           toolchain: '${{ env.RUST_TOOLCHAIN }}'
 
+      # Do not use the default GitHub Action.
+      # It took both Forgejo and the runner down (100% CPU).
       - run: rustup component add rustfmt
 
       - run: cargo fmt --all --check

@@ -1,3 +1,5 @@
+use crate::convert::ChangedOp;
+use crate::convert::RewriteResult;
 use crate::ir::operation::Operation;
 use crate::ir::Attribute;
 use crate::ir::Block;
@@ -11,7 +13,6 @@ use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::TokenKind;
-use crate::rewrite::RewriteResult;
 use crate::typ::APInt;
 use crate::typ::IntegerType;
 use crate::Dialect;
@@ -63,7 +64,11 @@ impl Op for ConstantOp {
         }
         Ok(())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(ConstantOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -219,15 +224,17 @@ impl AddiOp {
 
         self.replace(new_const.clone());
 
-        let new_const = new_const.try_read().unwrap();
-        let new_const = new_const.operation().try_read().unwrap();
-        let results = new_const.results();
-        let results = results.try_read().unwrap();
-        assert!(results.len() == 1);
-        let mut result = results[0].try_write().unwrap();
-        result.rename("%c3_i64");
+        {
+            let new_const = new_const.try_read().unwrap();
+            let new_const = new_const.operation().try_read().unwrap();
+            let results = new_const.results();
+            let results = results.try_read().unwrap();
+            assert!(results.len() == 1);
+            let mut result = results[0].try_write().unwrap();
+            result.rename("%c3_i64");
+        }
 
-        RewriteResult::Changed
+        RewriteResult::Changed(ChangedOp::new(new_const))
     }
 }
 
@@ -235,7 +242,11 @@ impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn from_operation_without_verify(operation: Arc<RwLock<Operation>>) -> Result<Self> {
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
         Ok(AddiOp { operation })
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -312,16 +323,6 @@ impl Parse for AddiOp {
     }
 }
 
-// In MLIR this works by taking an OpAsmParser and parsing
-// the elements of the op.
-// Parsing tries to cast the elements to the expected types.
-// If all succeeds, the elements are parsed into the struct.
-// todo!()
-// }
-// enum ArithOp {
-//    Addi(Addi),
-//}
-
 impl Dialect for Arith {
     fn name(&self) -> &'static str {
         "arith"
@@ -332,7 +333,7 @@ impl Dialect for Arith {
     }
 
     // Probably we don't want to have a global obs state but instead
-    // have some differrent implementations for common functions.
+    // have some different implementations for common functions.
     // fn ops(&self) ->
     // }
 }
