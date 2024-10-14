@@ -1,6 +1,6 @@
 # xrcf
 
-A compiler framework to enable the rapid development of programming language compilers
+A compiler framework for fast language development
 
 ## Notes
 
