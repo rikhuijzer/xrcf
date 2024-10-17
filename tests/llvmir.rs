@@ -49,16 +49,9 @@ fn test_constant_func() {
 
     let src = expected;
     let expected = indoc! {r#"
-    ; ModuleID = 'LLVMDialectModule'
-    source_filename = "LLVMDialectModule"
-
     define i64 @main() {
       ret i64 42
     }
-
-    !llvm.module.flags = !{!0}
-
-    !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
     let flags = "--convert-mlir-to-llvmir";
     Test::parse(src, src, caller);

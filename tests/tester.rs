@@ -23,30 +23,38 @@ impl Test {
             Err(_e) => (),
         }
     }
-    fn compare_lines(actual: &str, expected: &str, caller: &Location<'_>) {
-        let l = max(actual.lines().count(), expected.lines().count());
-        for i in 0..l {
-            let actual_line = actual.lines().nth(i);
-            let actual_line = match actual_line {
-                None => {
-                    panic!(
-                        "Expected line {i} not found in output: called from {}",
-                        caller
-                    );
+    fn point_missing_line(expected: &str, index: usize) -> String {
+        let mut result = String::new();
+        result.push_str("Line is missing from output:\n");
+        result.push_str("```");
+        for (i, line) in expected.lines().enumerate() {
+            if i == index {
+                let msg = format!("{line}   <== missing");
+                result.push_str(&format!("\n{msg}"));
+            } else {
+                result.push_str(&format!("\n{line}"));
+            }
+        }
+        result.push_str("\n```");
+        result
+    }
+    /// Check whether the expected lines are present in the actual output.
+    /// The expected lines are required to be present in the actual output,
+    /// but the actual output may contain additional lines that are not in the expected output.
+    fn check_lines(actual: &str, expected: &str, caller: &Location<'_>) {
+        let mut actual_index = 0;
+        'outer: for i in 0..expected.lines().count() {
+            let expected_line = expected.lines().nth(i).unwrap();
+            let start = actual_index;
+            for j in start..actual.lines().count() {
+                let actual_line = actual.lines().nth(j).unwrap();
+                if actual_line == expected_line {
+                    actual_index = j + 1;
+                    continue 'outer;
                 }
-                Some(actual_line) => actual_line,
-            };
-            let expected_line = expected.lines().nth(i);
-            let expected_line = match expected_line {
-                None => {
-                    panic!(
-                        "Expected line {i} not found in output: called from {}",
-                        caller
-                    );
-                }
-                Some(expected_line) => expected_line,
-            };
-            assert_eq!(actual_line, expected_line, "called from {}", caller);
+            }
+            let msg = Self::point_missing_line(expected, i);
+            panic!("{msg}\nwhen called from {caller}");
         }
     }
     fn print_heading(msg: &str, src: &str) {
@@ -54,12 +62,12 @@ impl Test {
     }
     pub fn parse(src: &str, expected: &str, caller: &Location<'_>) -> Arc<RwLock<dyn Op>> {
         Self::print_heading("Before parse", src);
-        let module = Parser::<BuiltinParse>::parse(src).unwrap();
+        let module = Parser::<BuiltinParse>::parse(&src).unwrap();
         let read_module = module.clone();
         let read_module = read_module.try_read().unwrap();
         let actual = format!("{}", read_module);
         Self::print_heading("After parse", &actual);
-        Self::compare_lines(&actual, expected, caller);
+        Self::check_lines(&actual, expected, caller);
         module
     }
     pub fn opt(
@@ -70,7 +78,8 @@ impl Test {
     ) -> Arc<RwLock<dyn Op>> {
         let options = OptOptions::from_str(flags).unwrap();
         let module = Parser::<BuiltinParse>::parse(src).unwrap();
-        Self::print_heading(&format!("Before (opt {flags})"), src);
+        let msg = format!("Before (opt {flags})");
+        Self::print_heading(&msg, src);
 
         let result = opt(module.clone(), options).unwrap();
         let new_root_op = match result {
@@ -80,8 +89,9 @@ impl Test {
             }
         };
         let actual = format!("{}", new_root_op.try_read().unwrap());
-        Self::print_heading(&format!("After (opt {flags})"), &actual);
-        Self::compare_lines(&actual, expected, caller);
+        let msg = format!("After (opt {flags})");
+        Self::print_heading(&msg, &actual);
+        Self::check_lines(&actual, expected, caller);
         new_root_op
     }
 }
