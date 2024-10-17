@@ -26,7 +26,19 @@ __m256 result = _mm256_add_ps(a, b);
 ```
 
 But this is not very convenient.
-The compiler should do this automatically.
+What we want is to write the code in a high-level syntax,
+
+```cpp
+float a[4] = {8.0f, 7.0f, 6.0f, 5.0f};
+float b[4] = {16.0f, 15.0f, 14.0f, 13.0f};
+float c[4] = a + b;
+```
+
+The compiler should translate this to use the AVX instructions where possible.
+To do this, it is important for the compiler to handle the full stack.
+A problem with LLVM is that it sometimes receives code that is already too low-level.
+At that point, it is not always possible to generate efficient code since some
+information was lost during the lowering.
 
 The aim of this project is to create a compiler framework that makes it easy to
 build compilers that can run on various backends.
