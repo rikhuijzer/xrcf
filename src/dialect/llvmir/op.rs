@@ -1,3 +1,4 @@
+use crate::dialect::arith::set_defining_op;
 use crate::dialect::func;
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation;
@@ -145,12 +146,27 @@ impl Op for FuncOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn is_func(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let identifier = self.identifier.clone();
         func::FuncOp::display_func(self, identifier, f, indent)
+    }
+}
+
+impl Parse for FuncOp {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let expected_name = FuncOp::operation_name();
+        let (op, identifier) = Parser::<T>::parse_func::<FuncOp>(parser, parent, expected_name)?;
+        op.write().unwrap().set_identifier(identifier);
+        Ok(op)
     }
 }
 
@@ -204,6 +220,40 @@ impl Op for ConstantOp {
     }
 }
 
+impl Parse for ConstantOp {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        let results = parser.results()?;
+        operation.set_results(results.clone());
+
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == ConstantOp::operation_name().to_string());
+        operation.set_name(ConstantOp::operation_name());
+        operation.set_parent(parent);
+
+        let _lparen = parser.expect(TokenKind::LParen)?;
+        let integer = Parser::<T>::integer(parser)?;
+        let _rparen = parser.expect(TokenKind::RParen)?;
+
+        let attributes = operation.attributes();
+        attributes.insert("value", integer);
+        let operation = Arc::new(RwLock::new(operation));
+        let op = ConstantOp {
+            operation: operation.clone(),
+        };
+        let op = Arc::new(RwLock::new(op));
+        set_defining_op(results, op.clone());
+
+        let _colon = parser.expect(TokenKind::Colon)?;
+        let _result_type = parser.expect(TokenKind::IntType)?;
+
+        Ok(op)
+    }
+}
+
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -236,5 +286,17 @@ impl Op for ReturnOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let name = Self::operation_name().to_string();
         func::ReturnOp::display_return(self, &name, f, _indent)
+    }
+}
+
+impl Parse for ReturnOp {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let expected_name = ReturnOp::operation_name();
+        let operation = Parser::<T>::return_op(parser, parent, expected_name)?;
+        let op = ReturnOp { operation };
+        Ok(Arc::new(RwLock::new(op)))
     }
 }

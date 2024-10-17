@@ -1,7 +1,9 @@
+use crate::ir::spaces;
 use crate::ir::Op;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
+use tracing::debug;
 
 mod func_to_llvm;
 mod mlir_to_llvmir;
@@ -41,6 +43,7 @@ impl RewriteResult {
 }
 
 pub trait Rewrite {
+    fn name(&self) -> &'static str;
     /// Returns true if the rewrite can be applied to the given operation.
     ///
     /// This method is not allowed to mutate the IR.
@@ -54,21 +57,31 @@ pub trait Rewrite {
 fn apply_rewrites_helper(
     root: Arc<RwLock<dyn Op>>,
     rewrites: &[&dyn Rewrite],
+    indent: i32,
 ) -> Result<RewriteResult> {
+    let ops = root.try_read().unwrap().ops();
     for rewrite in rewrites {
         // Determine ops here because `rewrite` may delete an op.
-        let ops = root.try_read().unwrap().ops();
         for nested_op in ops.iter() {
-            let result = apply_rewrites_helper(nested_op.clone(), rewrites)?;
+            let indent = indent + 1;
+            let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
             if result.is_changed() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
                 return Ok(root_passthrough);
             }
         }
+        debug!(
+            "{}Matching {} with {}",
+            spaces(indent),
+            root.clone().try_read().unwrap().name(),
+            rewrite.name()
+        );
         if rewrite.is_match(root.clone())? {
+            debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;
             if root_rewrite.is_changed() {
+                debug!("{}----> Changed", spaces(indent));
                 return Ok(root_rewrite);
             }
         }
@@ -84,7 +97,7 @@ pub fn apply_rewrites(
     let mut root = root;
     let mut has_changed = false;
     for _ in 0..max_iterations {
-        let result = apply_rewrites_helper(root.clone(), rewrites)?;
+        let result = apply_rewrites_helper(root.clone(), rewrites, 0)?;
         match result {
             RewriteResult::Changed(changed) => {
                 has_changed = true;

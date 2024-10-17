@@ -1,4 +1,3 @@
-use crate::dialect::func::FuncOp;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -56,7 +55,7 @@ impl Block {
         let op = &*op.read().unwrap();
         let operation = op.operation();
         let operation = operation.read().unwrap();
-        if operation.name() == FuncOp::operation_name() {
+        if op.is_func() {
             let arguments = operation.arguments();
             let arguments = arguments.read().unwrap();
             for argument in arguments.iter() {

@@ -12,6 +12,8 @@ homepage = "https://xrcf.org"
 
 [dependencies]
 anyhow = "1.0.86"
+tracing = "0.1"
+tracing-subscriber = "0.3"
 
 [dev-dependencies]
 indoc = "2"

@@ -28,6 +28,9 @@ impl OperationName {
 
 impl Display for OperationName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.name.is_empty() {
+            write!(f, "<unknown>")?;
+        }
         write!(f, "{}", self.name)
     }
 }

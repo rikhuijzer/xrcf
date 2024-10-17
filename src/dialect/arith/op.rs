@@ -108,6 +108,19 @@ impl<T: Parse> Parser<T> {
         let typ = Type::new(typ.lexeme.clone());
         Ok(typ)
     }
+    /// Parse a integer constant (e.g., `42 : i64`).
+    pub fn integer(parser: &mut Parser<T>) -> Result<Arc<dyn Attribute>> {
+        let integer = parser.expect(TokenKind::Integer)?;
+        let value = integer.lexeme;
+
+        let _colon = parser.expect(TokenKind::Colon)?;
+
+        let num_bits = parser.expect(TokenKind::IntType)?;
+        let typ = IntegerType::from_str(&num_bits.lexeme);
+        let value = APInt::from_str(&num_bits.lexeme, &value);
+        let integer = IntegerAttr::new(typ, value);
+        Ok(Arc::new(integer))
+    }
 }
 
 impl Parse for ConstantOp {
@@ -123,25 +136,14 @@ impl Parse for ConstantOp {
         assert!(operation_name.lexeme == "arith.constant");
         operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
-        let integer = parser.expect(TokenKind::Integer)?;
-        let value = integer.lexeme;
 
-        let _colon = parser.expect(TokenKind::Colon)?;
+        let integer = Parser::<T>::integer(parser)?;
 
-        let num_bits = parser.expect(TokenKind::IntType)?;
-        let typ = IntegerType::from_str(&num_bits.lexeme);
-        let value = APInt::from_str(&num_bits.lexeme, &value);
-        let integer = IntegerAttr::new(typ, value);
-        let integer = Arc::new(integer);
         let attributes = operation.attributes();
         attributes.insert("value", integer);
         let operation = Arc::new(RwLock::new(operation));
-        let op = ConstantOp::from_operation(operation);
-        let op = match op {
-            Ok(op) => op,
-            Err(err) => {
-                return Err(anyhow::anyhow!(err));
-            }
+        let op = ConstantOp {
+            operation: operation.clone(),
         };
         let op = Arc::new(RwLock::new(op));
         set_defining_op(results, op.clone());

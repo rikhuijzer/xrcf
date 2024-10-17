@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 #![allow(unused)]
 extern crate xrcf;
+mod tester;
 
+use crate::tester::Test;
+use std::panic::Location;
 use std::sync::Arc;
 use std::sync::RwLock;
 use xrcf::convert::RewriteResult;
@@ -31,51 +34,39 @@ fn test_constant_func() {
         return %0 : i64
       }
     "};
+    let expected = indoc! {"
+    module {
+      llvm.func @main() -> i64 {
+        %0 = llvm.mlir.constant(42 : i64) : i64
+        llvm.return %0 : i64
+      }
+    }
+    "};
+    let flags = "--convert-func-to-llvm";
+    Test::init_subscriber(tracing::Level::DEBUG);
+    let caller = Location::caller();
+    Test::opt(flags, src, expected, caller);
 
-    let module = Parser::<BuiltinParse>::parse(src).unwrap();
-    let module = Arc::new(RwLock::new(module));
-    println!("\n-- Before convert-func-to-llvm:\n{src}");
-    // mlir-opt --convert-func-to-llvm tmp.mlir
-    let mut options = OptOptions::default();
-    options.set_convert_func_to_llvm(true);
+    let src = expected;
+    let expected = indoc! {r#"
+    ; ModuleID = 'LLVMDialectModule'
+    source_filename = "LLVMDialectModule"
 
-    opt(module.clone(), options).unwrap();
-    let module_clone = module.clone();
-    let module_read = module_clone.try_read().unwrap();
-    println!("\n-- After convert-func-to-llvm:\n{module_read}\n");
-    let repr = format!("{}", module_read);
-    let lines = repr.lines().collect::<Vec<&str>>();
-    assert_eq!(lines[0], "module {");
-    assert_eq!(lines[1], "  llvm.func @main() -> i64 {");
-    assert_eq!(lines[2], "    %0 = llvm.mlir.constant(42 : i64) : i64");
-    assert_eq!(lines[3], "    llvm.return %0 : i64");
-    assert_eq!(lines[4], "  }");
-    assert_eq!(lines[5], "}");
+    define i64 @main() {
+      ret i64 42
+    }
 
-    let mut options = OptOptions::default();
-    options.set_mlir_to_llvmir(true);
-    let module = opt(module, options).unwrap();
-    let module = match module {
-        RewriteResult::Changed(changed) => changed.0,
-        RewriteResult::Unchanged => panic!("expected change"),
-    };
+    !llvm.module.flags = !{!0}
+
+    !0 = !{i32 2, !"Debug Info Version", i32 3}
+    "#};
+    let flags = "--convert-mlir-to-llvmir";
+    Test::parse(src, src, caller);
+    let module = Test::opt(flags, src, expected, caller);
     let module = module.try_read().unwrap();
     let module = module
         .as_any()
         .downcast_ref::<targ3t::llvmir::ModuleOp>()
         .unwrap();
     let repr = format!("{}", module);
-
-    println!("\n-- After convert-mlir-to-llvmir:\n{module}\n");
-    let lines = repr.lines().collect::<Vec<&str>>();
-    assert_eq!(lines[0], "; ModuleID = 'LLVMDialectModule'");
-    assert_eq!(lines[1], r#"source_filename = "LLVMDialectModule""#);
-    assert_eq!(lines[2], "");
-    assert_eq!(lines[3], "define i64 @main() {");
-    assert_eq!(lines[4], "  ret i64 42");
-    assert_eq!(lines[5], "}");
-    assert_eq!(lines[6], "");
-    assert_eq!(lines[7], "!llvm.module.flags = !{!0}");
-    assert_eq!(lines[8], "");
-    assert_eq!(lines[9], r#"!0 = !{i32 2, !"Debug Info Version", i32 3}"#);
 }

@@ -96,6 +96,9 @@ impl Op for FuncOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn is_func(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -112,7 +115,7 @@ impl Op for FuncOp {
 }
 
 impl<T: Parse> Parser<T> {
-    pub fn identifier(&mut self, kind: TokenKind) -> Result<String> {
+    fn identifier(&mut self, kind: TokenKind) -> Result<String> {
         let identifier = self.advance();
         if identifier.kind != kind {
             return Err(anyhow::anyhow!(
@@ -124,7 +127,7 @@ impl<T: Parse> Parser<T> {
         Ok(identifier.lexeme.clone())
     }
     /// %arg0 : i64,
-    pub fn function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
+    fn function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
         let typ = if self.check(TokenKind::Colon) {
@@ -142,7 +145,7 @@ impl<T: Parse> Parser<T> {
         Ok(operand)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`.
-    pub fn function_arguments(&mut self) -> Result<Values> {
+    fn function_arguments(&mut self) -> Result<Values> {
         let _lparen = self.expect(TokenKind::LParen)?;
         let mut operands = vec![];
         while self.check(TokenKind::PercentIdentifier) {
@@ -156,7 +159,7 @@ impl<T: Parse> Parser<T> {
         }
         Ok(Arc::new(RwLock::new(operands)))
     }
-    pub fn result_types(&mut self) -> Result<Vec<Type>> {
+    fn result_types(&mut self) -> Result<Vec<Type>> {
         let mut result_types = vec![];
         if !self.check(TokenKind::Arrow) {
             return Ok(vec![]);
@@ -170,13 +173,11 @@ impl<T: Parse> Parser<T> {
         }
         Ok(result_types)
     }
-}
-
-impl Parse for FuncOp {
-    fn op<T: Parse>(
+    pub fn parse_func<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        expected_name: OperationName,
+    ) -> Result<(Arc<RwLock<O>>, String)> {
         // Similar to `FuncOp::parse` in MLIR's `FuncOps.cpp`.
         let result = if parser.peek_n(1).kind == TokenKind::Equal {
             todo!("This case does not occur?");
@@ -184,10 +185,10 @@ impl Parse for FuncOp {
             None
         };
         let operation_name = parser.advance();
-        assert!(operation_name.lexeme == "func.func");
+        assert!(operation_name.lexeme == expected_name.to_string());
         let identifier = parser.identifier(TokenKind::AtIdentifier).unwrap();
         let mut operation = Operation::default();
-        operation.set_name(FuncOp::operation_name());
+        operation.set_name(expected_name.clone());
         operation.set_arguments(parser.function_arguments()?);
         operation.set_result_types(parser.result_types()?);
         operation.set_parent(parent);
@@ -197,10 +198,7 @@ impl Parse for FuncOp {
             operation.set_results(results);
         }
         let operation = Arc::new(RwLock::new(operation));
-        let op = FuncOp {
-            identifier,
-            operation: operation.clone(),
-        };
+        let op = O::from_operation_without_verify(operation.clone(), expected_name)?;
         let op = Arc::new(RwLock::new(op));
         let region = parser.region(op.clone())?;
         let mut operation = operation.write().unwrap();
@@ -209,6 +207,18 @@ impl Parse for FuncOp {
         let mut region = region.write().unwrap();
         region.set_parent(Some(op.clone()));
 
+        Ok((op, identifier))
+    }
+}
+
+impl Parse for FuncOp {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let expected_name = FuncOp::operation_name();
+        let (op, identifier) = Parser::<T>::parse_func::<FuncOp>(parser, parent, expected_name)?;
+        op.write().unwrap().set_identifier(identifier);
         Ok(op)
     }
 }
@@ -267,22 +277,36 @@ impl Op for ReturnOp {
     }
 }
 
+impl<T: Parse> Parser<T> {
+    pub fn return_op(
+        &mut self,
+        parent: Option<Arc<RwLock<Block>>>,
+        expected_name: OperationName,
+    ) -> Result<Arc<RwLock<Operation>>> {
+        tracing::debug!("Parsing return op");
+        let operation_name = self.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == expected_name.to_string());
+        let mut operation = Operation::default();
+        assert!(parent.is_some());
+        operation.set_name(expected_name);
+        operation.set_parent(parent.clone());
+        operation.set_operands(self.operands(parent.clone().unwrap())?);
+        let _colon = self.expect(TokenKind::Colon)?;
+        let return_type = self.expect(TokenKind::IntType)?;
+        let return_type = Type::new(return_type.lexeme.clone());
+        operation.set_result_types(vec![return_type]);
+        let operation = Arc::new(RwLock::new(operation));
+        Ok(operation)
+    }
+}
+
 impl Parse for ReturnOp {
     fn op<T: Parse>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        assert!(operation_name.lexeme == "return");
-        let mut operation = Operation::default();
-        assert!(parent.is_some());
-        operation.set_parent(parent.clone());
-        operation.set_operands(parser.operands(parent.clone().unwrap())?);
-        let _colon = parser.expect(TokenKind::Colon)?;
-        let return_type = parser.expect(TokenKind::IntType)?;
-        let return_type = Type::new(return_type.lexeme.clone());
-        operation.set_result_types(vec![return_type]);
-        let operation = Arc::new(RwLock::new(operation));
+        let expected_name = ReturnOp::operation_name();
+        let operation = Parser::<T>::return_op(parser, parent, expected_name)?;
         let op = ReturnOp { operation };
         Ok(Arc::new(RwLock::new(op)))
     }

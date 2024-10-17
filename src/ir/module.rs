@@ -2,6 +2,10 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
+use crate::parser::TokenKind;
+use crate::Block;
+use crate::Parse;
+use crate::Parser;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -35,7 +39,7 @@ impl Op for ModuleOp {
         let operation = self.operation().read().unwrap();
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        operation.display(f, indent + 1)
+        operation.display(f, indent)
     }
 }
 
@@ -69,5 +73,29 @@ impl ModuleOp {
             let op = op.unwrap().clone();
             Ok(op)
         }
+    }
+}
+
+impl Parse for ModuleOp {
+    fn op<T: Parse>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
+        assert!(operation_name.lexeme == "module");
+        operation.set_name(ModuleOp::operation_name());
+        let operation = Arc::new(RwLock::new(operation));
+        let op = ModuleOp {
+            operation: operation.clone(),
+        };
+        let op = Arc::new(RwLock::new(op));
+
+        let region = parser.region(op.clone());
+        let mut operation = operation.try_write().unwrap();
+        operation.set_region(Some(region?));
+        operation.set_parent(parent.clone());
+
+        Ok(op)
     }
 }

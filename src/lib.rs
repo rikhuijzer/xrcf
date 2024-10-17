@@ -14,6 +14,7 @@ pub use ir::attribute::Attribute;
 pub use ir::attribute::Attributes;
 pub use ir::operation::Operation;
 pub use ir::Block;
+pub use opt::init_subscriber;
 pub use opt::opt;
 pub use opt::OptOptions;
 pub use parser::Parse;

@@ -18,6 +18,9 @@ use std::sync::RwLock;
 struct ModuleLowering;
 
 impl Rewrite for ModuleLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::ModuleLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -39,6 +42,9 @@ impl Rewrite for ModuleLowering {
 struct FuncLowering;
 
 impl Rewrite for FuncLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::FuncLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -65,6 +71,9 @@ impl Rewrite for FuncLowering {
 struct ReturnLowering;
 
 impl ReturnLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::ReturnLowering"
+    }
     fn remove_operand_to_constant(new_op: &targ3t::llvmir::ReturnOp) {
         let operation = new_op.operation();
         let operation = operation.try_read().unwrap();
@@ -96,6 +105,9 @@ impl ReturnLowering {
 }
 
 impl Rewrite for ReturnLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::ReturnLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -123,7 +135,7 @@ pub struct ConvertMLIRToLLVMIR;
 
 impl Pass for ConvertMLIRToLLVMIR {
     fn name() -> &'static str {
-        "convert-mlir-to-llvmir"
+        "mlir_to_llvmir::ConvertMLIRToLLVMIR"
     }
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![

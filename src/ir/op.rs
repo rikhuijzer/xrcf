@@ -39,6 +39,13 @@ pub trait Op {
     }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
+    /// Returns the name of the operation.
+    /// This is a convenience method for `self.operation().name()`.
+    /// Unlike `self.operation_name()`, this method is available on a `dyn Op`.
+    fn name(&self) -> OperationName {
+        let operation = self.operation().read().unwrap();
+        operation.name()
+    }
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
         let operation = self.operation().read().unwrap();
         operation.region()
@@ -56,6 +63,9 @@ pub trait Op {
         RewriteResult::Unchanged
     }
     fn is_terminator(&self) -> bool {
+        false
+    }
+    fn is_func(&self) -> bool {
         false
     }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {

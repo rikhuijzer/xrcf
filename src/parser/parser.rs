@@ -12,7 +12,6 @@ use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
 use anyhow::Result;
-use std::any::Any;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -62,10 +61,14 @@ impl Parse for BuiltinParse {
         };
         let name = name.lexeme.clone();
         match name.as_str() {
-            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, parent),
-            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
             "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
             "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
+            "llvm.func" => <llvmir::op::FuncOp as Parse>::op(parser, parent),
+            "llvm.mlir.constant" => <llvmir::op::ConstantOp as Parse>::op(parser, parent),
+            "llvm.return" => <llvmir::op::ReturnOp as Parse>::op(parser, parent),
+            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, parent),
+            "module" => <ModuleOp as Parse>::op(parser, parent),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
     }
@@ -135,25 +138,13 @@ impl<T: Parse> Parser<T> {
         let block = Block::new(None, arguments, ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
         loop {
-            let is_ssa_def = self.peek_n(1).kind == TokenKind::Equal;
-            let is_return = self.peek().lexeme == "return";
-            if is_ssa_def || is_return {
-                let parent = Some(block.clone());
-                let op = T::op(self, parent)?;
-                let mut ops = ops.write().unwrap();
-                ops.push(op.clone());
-                if op.read().unwrap().is_terminator() {
-                    break;
-                }
-            } else {
-                let next = self.peek();
-                if next.kind == TokenKind::RBrace {
-                    break;
-                }
-                let token = self.peek();
-                let msg = self.error(&token, "Expected closing brace for block");
-                return Err(anyhow::anyhow!(msg));
+            if self.peek().kind == TokenKind::RBrace {
+                break;
             }
+            let parent = Some(block.clone());
+            let op = T::op(self, parent)?;
+            let mut ops = ops.write().unwrap();
+            ops.push(op.clone());
         }
         if ops.read().unwrap().is_empty() {
             let token = self.peek();
@@ -190,7 +181,7 @@ impl<T: Parse> Parser<T> {
         self.advance();
         Ok(region)
     }
-    pub fn parse(src: &str) -> Result<ModuleOp> {
+    pub fn parse(src: &str) -> Result<Arc<RwLock<dyn Op>>> {
         let mut parser = Parser::<T> {
             src: src.to_string(),
             tokens: Scanner::scan(src)?,
@@ -198,9 +189,11 @@ impl<T: Parse> Parser<T> {
             parse_op: std::marker::PhantomData,
         };
         let op = T::op(&mut parser, None)?;
-        let any_op: Box<dyn Any> = Box::new(op.clone());
-        let op: ModuleOp = if let Ok(module_op) = any_op.downcast::<ModuleOp>() {
-            *module_op
+        let opp = op.clone();
+        let opp = opp.read().unwrap();
+        let casted = opp.as_any().downcast_ref::<ModuleOp>();
+        let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
+            op
         } else {
             let mut region = Region::default();
             region.set_parent(Some(op.clone()));
@@ -220,7 +213,7 @@ impl<T: Parse> Parser<T> {
             module_operation.set_region(Some(region.clone()));
             let module_operation = Arc::new(RwLock::new(module_operation));
             let module_op = ModuleOp::from_operation(module_operation);
-            module_op.unwrap()
+            Arc::new(RwLock::new(module_op.unwrap()))
         };
         Ok(op)
     }
@@ -268,6 +261,8 @@ mod tests {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
         let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
+        let module_op = module_op.try_read().unwrap();
+        let module_op = module_op.as_any().downcast_ref::<ModuleOp>().unwrap();
         assert_eq!(
             module_op.operation().read().unwrap().name().to_string(),
             "module"

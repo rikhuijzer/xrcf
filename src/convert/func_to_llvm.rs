@@ -14,6 +14,9 @@ use std::sync::RwLock;
 struct FuncLowering;
 
 impl Rewrite for FuncLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::FuncLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -51,6 +54,9 @@ impl Rewrite for FuncLowering {
 struct ConstantOpLowering;
 
 impl Rewrite for ConstantOpLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::ConstantOpLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -73,6 +79,9 @@ impl Rewrite for ConstantOpLowering {
 struct ReturnLowering;
 
 impl Rewrite for ReturnLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::ReturnLowering"
+    }
     fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
         Ok(op
             .try_read()
@@ -96,7 +105,7 @@ pub struct ConvertFuncToLLVM;
 
 impl Pass for ConvertFuncToLLVM {
     fn name() -> &'static str {
-        "convert-func-to-llvm"
+        "func_to_llvm::ConvertFuncToLLVM"
     }
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ConstantOpLowering, &ReturnLowering];

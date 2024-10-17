@@ -1,15 +1,13 @@
 extern crate xrcf;
+mod tester;
 
+use crate::tester::Test;
 use indoc::indoc;
-use std::sync::Arc;
-use std::sync::RwLock;
-use xrcf::convert::RewriteResult;
+use std::panic::Location;
 use xrcf::dialect::arith;
 use xrcf::ir;
 use xrcf::ir::Op;
-use xrcf::opt;
 use xrcf::parser::BuiltinParse;
-use xrcf::OptOptions;
 use xrcf::Parser;
 
 #[test]
@@ -23,6 +21,7 @@ fn determine_users() {
     "};
 
     let module = Parser::<BuiltinParse>::parse(src).unwrap();
+    let module = module.try_read().unwrap();
 
     let ops = module.ops();
     assert_eq!(ops.len(), 1);
@@ -54,32 +53,18 @@ fn canonicalize_addi() {
         return %3 : i64
     }
     "};
-    let module = Parser::<BuiltinParse>::parse(src).unwrap();
-    let module = Arc::new(RwLock::new(module));
-    println!("\n-- Before canonicalize:\n{src}");
-
-    let mut options = OptOptions::default();
-    options.set_canonicalize(true);
-    let result = opt(module.clone(), options).unwrap();
-    match result {
-        RewriteResult::Changed(changed) => {
-            let module = changed.0.try_read().unwrap();
-            assert!(module.as_any().downcast_ref::<ir::ModuleOp>().is_some());
-        }
-        RewriteResult::Unchanged => {
-            panic!("Expected changes");
-        }
+    let expected = indoc! {"
+    module {
+      func.func @test_addi(%arg0 : i64) -> i64 {
+        %c3_i64 = arith.constant 3 : i64
+        %3 = arith.addi %arg0, %c3_i64 : i64
+        return %3 : i64
+      }
     }
-
+    "};
+    let flags = "--canonicalize";
+    let caller = Location::caller();
+    let module = Test::opt(flags, src, expected, caller);
     let module = module.try_read().unwrap();
-    println!("\n-- After canonicalize:\n{module}\n");
-    let repr = format!("{}", module);
-    let lines = repr.lines().collect::<Vec<&str>>();
-    assert_eq!(lines[0], "module {");
-    assert_eq!(lines[1], "  func.func @test_addi(%arg0 : i64) -> i64 {");
-    assert_eq!(lines[2], "    %c3_i64 = arith.constant 3 : i64");
-    assert_eq!(lines[3], "    %3 = arith.addi %arg0, %c3_i64 : i64");
-    assert_eq!(lines[4], "    return %3 : i64");
-    assert_eq!(lines[5], "  }");
-    assert_eq!(lines[6], "}");
+    assert!(module.as_any().downcast_ref::<ir::ModuleOp>().is_some());
 }
