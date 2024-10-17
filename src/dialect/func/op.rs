@@ -278,17 +278,17 @@ impl Op for ReturnOp {
 }
 
 impl<T: Parse> Parser<T> {
-    pub fn return_op(
+    pub fn return_op<O: Op>(
         &mut self,
         parent: Option<Arc<RwLock<Block>>>,
         expected_name: OperationName,
-    ) -> Result<Arc<RwLock<Operation>>> {
+    ) -> Result<Arc<RwLock<O>>> {
         tracing::debug!("Parsing return op");
         let operation_name = self.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == expected_name.to_string());
         let mut operation = Operation::default();
         assert!(parent.is_some());
-        operation.set_name(expected_name);
+        operation.set_name(expected_name.clone());
         operation.set_parent(parent.clone());
         operation.set_operands(self.operands(parent.clone().unwrap())?);
         let _colon = self.expect(TokenKind::Colon)?;
@@ -296,7 +296,9 @@ impl<T: Parse> Parser<T> {
         let return_type = Type::new(return_type.lexeme.clone());
         operation.set_result_types(vec![return_type]);
         let operation = Arc::new(RwLock::new(operation));
-        Ok(operation)
+        let op = O::from_operation_without_verify(operation.clone(), expected_name)?;
+        let op = Arc::new(RwLock::new(op));
+        Ok(op)
     }
 }
 
@@ -306,8 +308,7 @@ impl Parse for ReturnOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let expected_name = ReturnOp::operation_name();
-        let operation = Parser::<T>::return_op(parser, parent, expected_name)?;
-        let op = ReturnOp { operation };
-        Ok(Arc::new(RwLock::new(op)))
+        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent, expected_name)?;
+        Ok(op)
     }
 }

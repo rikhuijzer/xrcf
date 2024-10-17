@@ -295,8 +295,7 @@ impl Parse for ReturnOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let expected_name = ReturnOp::operation_name();
-        let operation = Parser::<T>::return_op(parser, parent, expected_name)?;
-        let op = ReturnOp { operation };
-        Ok(Arc::new(RwLock::new(op)))
+        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent, expected_name)?;
+        Ok(op)
     }
 }
