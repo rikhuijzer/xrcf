@@ -1,4 +1,3 @@
-use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
@@ -116,6 +115,6 @@ impl Pass for ConvertFuncToLLVM {
             &AddOpLowering,
             &ReturnLowering,
         ];
-        apply_rewrites(op, &rewrites)
+        crate::convert::apply_rewrites(op, &rewrites)
     }
 }

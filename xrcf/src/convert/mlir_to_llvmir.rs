@@ -1,6 +1,5 @@
 use crate::canonicalize::CanonicalizeOp;
 use crate::canonicalize::DeadCodeElimination;
-use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
 use crate::convert::Pass;
 use crate::convert::Rewrite;
@@ -170,6 +169,6 @@ impl Pass for ConvertMLIRToLLVMIR {
             &AddLowering,
             &ReturnLowering,
         ];
-        apply_rewrites(op, &rewrites)
+        crate::convert::apply_rewrites(op, &rewrites)
     }
 }
