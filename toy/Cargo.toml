@@ -1,0 +1,20 @@
+[package]
+name = "toy"
+description = "Toy language example for xrcf"
+keywords = ["compiler", "framework"]
+categories = ["compilers"]
+authors = ["xrcf contributors"]
+edition = "2021"
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://git.huijzer.xyz/xrcf/xrcf"
+homepage = "https://xrcf.org"
+publish = false
+
+[dependencies]
+anyhow = "1.0.86"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+xrcf = { path = "../xrcf" }
+
+[dev-dependencies]
+indoc = "2"

@@ -5,6 +5,7 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 
 pub struct LinkageAttr {
+    #[allow(dead_code)]
     name: String,
     value: String,
 }

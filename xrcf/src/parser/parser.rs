@@ -97,6 +97,7 @@ pub struct Parser<T: ParserDispatch> {
     parse_op: std::marker::PhantomData<T>,
 }
 
+#[allow(dead_code)]
 enum Dialects {
     Builtin,
     LLVM,

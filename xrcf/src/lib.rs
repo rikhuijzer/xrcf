@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 mod canonicalize;
 mod compile;
 pub mod convert;
@@ -11,7 +9,6 @@ mod typ;
 
 pub use compile::compile;
 pub use compile::init_subscriber;
-pub use compile::CompileOptions;
 pub use compile::CompilerDispatch;
 pub use compile::DefaultCompilerDispatch;
 pub use convert::Pass;

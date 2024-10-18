@@ -2,6 +2,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
 
+#[allow(dead_code)]
 trait Type {}
 
 /// Represents an integer type such as i32 or i64.
@@ -33,6 +34,7 @@ impl Display for IntegerType {
 
 /// Arbitrary precision integer.
 pub struct APInt {
+    #[allow(dead_code)]
     num_bits: u64,
     value: u64,
     is_signed: bool,

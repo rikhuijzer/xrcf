@@ -22,6 +22,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+#[allow(dead_code)]
 struct Arith {}
 
 pub struct ConstantOp {
@@ -87,6 +88,7 @@ impl Op for ConstantOp {
 }
 
 impl ConstantOp {
+    #[allow(dead_code)]
     fn value(&self) -> Arc<dyn Attribute> {
         let operation = self.operation.read().unwrap();
         let attributes = operation.attributes();
@@ -95,6 +97,7 @@ impl ConstantOp {
         let value = attributes.get("value").unwrap();
         value.clone()
     }
+    #[allow(dead_code)]
     fn set_value(&mut self, value: Arc<dyn Attribute>) {
         let operation = self.operation.read().unwrap();
         let attributes = operation.attributes();
@@ -106,6 +109,7 @@ impl ConstantOp {
 
 impl<T: ParserDispatch> Parser<T> {
     /// Parse a type definition (e.g., `: i64`).
+    #[allow(dead_code)]
     fn typ(&mut self) -> Result<Type> {
         let _colon = self.expect(TokenKind::Colon)?;
         let typ = self.expect(TokenKind::IntType)?;

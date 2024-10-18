@@ -23,9 +23,6 @@ impl Scanner {
             column: 0,
         }
     }
-    fn source(&self) -> &str {
-        &self.source
-    }
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -288,7 +285,7 @@ mod tests {
         assert_eq!(tokens[4].location.line(), 1);
         assert_eq!(tokens[4].location.column(), 7);
 
-        let text = scanner.source();
+        let text = scanner.source;
         assert_eq!(text, src);
 
         let text = Scanner::error(src, &tokens[4].location, "test");

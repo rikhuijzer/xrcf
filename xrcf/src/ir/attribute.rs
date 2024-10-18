@@ -35,7 +35,7 @@ pub struct Attributes {
 }
 
 impl Attributes {
-    fn new(attrs: Vec<Box<dyn Attribute>>) -> Self {
+    pub fn new(attrs: Vec<Box<dyn Attribute>>) -> Self {
         Self { attrs }
     }
 }
@@ -113,6 +113,7 @@ impl IntegerAttr {
 }
 
 pub struct StrAttr {
+    #[allow(dead_code)]
     name: String,
     value: String,
 }
@@ -143,12 +144,14 @@ impl Attribute for StrAttr {
 }
 
 impl StrAttr {
+    #[allow(dead_code)]
     fn symbol_name(&self) -> String {
         self.value.clone()
     }
 }
 
 pub struct AnyAttr {
+    #[allow(dead_code)]
     name: String,
     value: String,
 }

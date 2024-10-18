@@ -134,12 +134,6 @@ impl Rewrite for AddLowering {
 
 struct ReturnLowering;
 
-impl ReturnLowering {
-    fn name(&self) -> &'static str {
-        "mlir_to_llvmir::ReturnLowering"
-    }
-}
-
 impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ReturnLowering"
