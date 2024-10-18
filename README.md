@@ -1,7 +1,9 @@
 # xrcf
 
-The problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) with a single language.
-It should be possible for developers to write code in a high-level syntax,
+This project helps compiler developers to create custom compilers.
+
+One problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) with a single language.
+It should be possible to write code in a high-level syntax,
 and for this code to automatically run on various modern backends.
 
 For example, in C++, the code
