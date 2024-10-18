@@ -49,13 +49,6 @@ combine multiple projects into one.
 
 ## Notes
 
-### Name
-
-The meaning of "xrcf" is "xr compiler framework".
-What the x and r mean is undefined.
-The r could be "rust", "rewrite", "recursive", or something else.
-The x could be anything.
-
 ### LLVM's codebase
 
 This project does not include any LLVM code.
