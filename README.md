@@ -1,6 +1,6 @@
 # xrcf
 
-This project helps compiler developers to create custom compilers.
+Building blocks for creating a custom compiler.
 
 One problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) with a single language.
 Like MLIR, it should be easy to write compilers than can take high-level code,
