@@ -37,6 +37,9 @@ impl BlockArgument {
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
+    pub fn typ(&self) -> &Type {
+        &self.typ
+    }
 }
 
 impl Display for BlockArgument {
@@ -47,23 +50,30 @@ impl Display for BlockArgument {
 
 pub struct OpResult {
     name: String,
-    typ: Type,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
-    pub fn new(name: String, typ: Type, defining_op: Option<Arc<RwLock<dyn Op>>>) -> Self {
-        OpResult {
-            name,
-            typ,
-            defining_op,
-        }
+    pub fn new(name: String, defining_op: Option<Arc<RwLock<dyn Op>>>) -> Self {
+        OpResult { name, defining_op }
     }
     pub fn name(&self) -> &str {
         &self.name
     }
+    /// Return the type via the defining op.
     pub fn typ(&self) -> Type {
-        self.typ.clone()
+        let defining_op = self.defining_op();
+        let defining_op = defining_op.try_read().unwrap();
+        let operation = defining_op.operation();
+        let operation = operation.try_read().unwrap();
+        let result_types = operation.result_types();
+        let result_types = result_types.try_read().unwrap();
+        assert!(
+            result_types.len() == 1,
+            "Not implemented for multiple results"
+        );
+        let typ = result_types[0].read().unwrap().clone();
+        typ
     }
     pub fn defining_op(&self) -> Arc<RwLock<dyn Op>> {
         if self.defining_op.is_none() {
@@ -74,9 +84,6 @@ impl OpResult {
     pub fn set_name(&mut self, name: &str) {
         self.name = name.to_string();
     }
-    pub fn set_typ(&mut self, typ: Type) {
-        self.typ = typ;
-    }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
     }
@@ -85,8 +92,7 @@ impl OpResult {
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: "Undefined name".to_string(),
-            typ: Type::new("Unset type".to_string()),
+            name: "<unset name>".to_string(),
             defining_op: None,
         }
     }
@@ -127,6 +133,12 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => &arg.name,
             Value::OpResult(result) => &result.name,
+        }
+    }
+    pub fn typ(&self) -> Type {
+        match self {
+            Value::BlockArgument(arg) => arg.typ.clone(),
+            Value::OpResult(result) => result.typ(),
         }
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {

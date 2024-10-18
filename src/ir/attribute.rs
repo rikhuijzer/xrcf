@@ -1,7 +1,7 @@
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
 use crate::typ::APInt;
 use crate::typ::IntegerType;
-use crate::Parse;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::fmt::Result;
@@ -13,7 +13,7 @@ pub trait Attribute {
     fn new(name: &str, value: &str) -> Self
     where
         Self: Sized;
-    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self>
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>, name: &str) -> Option<Self>
     where
         Self: Sized;
 
@@ -88,7 +88,7 @@ impl Attribute for IntegerAttr {
             value: APInt::new(64, value.parse::<u64>().unwrap(), true),
         }
     }
-    fn parse<T: Parse>(_parser: &mut Parser<T>, _name: &str) -> Option<Self> {
+    fn parse<T: ParserDispatch>(_parser: &mut Parser<T>, _name: &str) -> Option<Self> {
         todo!()
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -124,7 +124,7 @@ impl Attribute for StrAttr {
             value: value.to_string(),
         }
     }
-    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
         let value = parser.advance();
         Some(Self {
             name: name.to_string(),
@@ -160,7 +160,7 @@ impl Attribute for AnyAttr {
             value: value.to_string(),
         }
     }
-    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
         let value = parser.advance();
         Some(Self {
             name: name.to_string(),

@@ -37,6 +37,7 @@ impl Display for OperationName {
 
 pub type Values = Arc<RwLock<Vec<Arc<RwLock<Value>>>>>;
 pub type Operands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
+pub type Types = Arc<RwLock<Vec<Arc<RwLock<Type>>>>>;
 
 #[derive(Clone)]
 pub struct Attributes {
@@ -97,13 +98,13 @@ impl Display for Attributes {
 #[derive(Clone)]
 pub struct Operation {
     name: OperationName,
-    /// Used by `FuncOp` to store its arguments.
+    /// Used by the `Func` trait implementers to store arguments.
     arguments: Values,
     operands: Operands,
     attributes: Attributes,
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Values,
-    result_types: Vec<Type>,
+    result_types: Types,
     region: Option<Arc<RwLock<Region>>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
@@ -136,7 +137,7 @@ impl Operation {
         operands: Operands,
         attributes: Attributes,
         results: Values,
-        result_types: Vec<Type>,
+        result_types: Types,
         region: Option<Arc<RwLock<Region>>>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Self {
@@ -172,8 +173,8 @@ impl Operation {
     pub fn results(&self) -> Values {
         self.results.clone()
     }
-    pub fn result_types(&self) -> &Vec<Type> {
-        &self.result_types
+    pub fn result_types(&self) -> Types {
+        self.result_types.clone()
     }
     pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
@@ -197,7 +198,7 @@ impl Operation {
     pub fn set_results(&mut self, results: Values) {
         self.results = results;
     }
-    pub fn set_result_types(&mut self, result_types: Vec<Type>) {
+    pub fn set_result_types(&mut self, result_types: Types) {
         self.result_types = result_types;
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
@@ -251,10 +252,12 @@ impl Operation {
             write!(f, " {}", joined)?;
         }
         write!(f, "{}", self.attributes())?;
-        if !self.result_types.is_empty() {
+        let result_types = self.result_types();
+        let result_types = result_types.read().unwrap();
+        if !result_types.is_empty() {
             write!(f, " :")?;
-            for result_type in self.result_types.iter() {
-                write!(f, " {}", result_type)?;
+            for result_type in result_types.iter() {
+                write!(f, " {}", result_type.read().unwrap())?;
             }
         }
         display_region_inside_func(f, self, indent)
@@ -269,7 +272,7 @@ impl Default for Operation {
             operands: Arc::new(RwLock::new(vec![])),
             attributes: Attributes::new(),
             results: Arc::new(RwLock::new(vec![])),
-            result_types: vec![],
+            result_types: Arc::new(RwLock::new(vec![])),
             region: None,
             parent: None,
         }

@@ -16,10 +16,10 @@ fn parse_module() {
         return %0 : i64
       }
     }
-  "};
-    Test::init_subscriber(tracing::Level::DEBUG);
-    let caller = Location::caller();
-    Test::parse(src, src, caller);
+    "};
+    Test::init_subscriber();
+    let (_module, actual) = Test::parse(src);
+    Test::check_lines_contain(&actual, &src, Location::caller());
 }
 
 #[test]
@@ -45,8 +45,8 @@ fn parse_addi() {
     }
     "};
     let caller = Location::caller();
-    Test::init_subscriber(tracing::Level::DEBUG);
-    let module = Test::parse(src, expected, caller);
+    Test::init_subscriber();
+    let (module, actual) = Test::parse(src);
 
     let module = module.try_read().unwrap();
     let module_operation = module.operation().try_read().unwrap();
@@ -59,4 +59,6 @@ fn parse_addi() {
     let func_operation = func_op.operation().try_read().unwrap();
     assert_eq!(func_operation.name(), FuncOp::operation_name());
     assert!(func_operation.parent().is_some());
+
+    Test::check_lines_contain(&actual, expected, caller);
 }

@@ -68,6 +68,9 @@ pub trait Op {
     fn is_func(&self) -> bool {
         false
     }
+    fn is_const(&self) -> bool {
+        false
+    }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
         let operation = self.operation().read().unwrap();
         let attributes = operation.attributes();

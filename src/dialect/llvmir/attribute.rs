@@ -1,6 +1,6 @@
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
 use crate::Attribute;
-use crate::Parse;
 use std::fmt::Formatter;
 use std::fmt::Result;
 
@@ -16,7 +16,7 @@ impl Attribute for LinkageAttr {
             value: value.to_string(),
         }
     }
-    fn parse<T: Parse>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
         let next = parser.peek();
         if next.lexeme == "internal" {
             parser.advance();

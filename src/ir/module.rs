@@ -2,6 +2,7 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
+use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use crate::Block;
 use crate::Parse;
@@ -77,7 +78,7 @@ impl ModuleOp {
 }
 
 impl Parse for ModuleOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {

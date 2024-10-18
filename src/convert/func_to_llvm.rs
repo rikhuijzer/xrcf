@@ -4,6 +4,7 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect::arith;
 use crate::dialect::func;
+use crate::dialect::func::Func;
 use crate::dialect::llvmir;
 use crate::ir::Op;
 use crate::Pass;
@@ -17,13 +18,8 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::FuncLowering"
     }
-    fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
-        Ok(op
-            .try_read()
-            .unwrap()
-            .as_any()
-            .downcast_ref::<func::FuncOp>()
-            .is_some())
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<func::FuncOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
@@ -57,18 +53,31 @@ impl Rewrite for ConstantOpLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ConstantOpLowering"
     }
-    fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
-        Ok(op
-            .try_read()
-            .unwrap()
-            .as_any()
-            .downcast_ref::<arith::ConstantOp>()
-            .is_some())
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arith::ConstantOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
         let lowered = llvmir::ConstantOp::from_operation(op.operation().clone())?;
+        let new_op = Arc::new(RwLock::new(lowered));
+        op.replace(new_op.clone());
+
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+struct AddOpLowering;
+
+impl Rewrite for AddOpLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::AddOpLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arith::AddiOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let lowered = llvmir::AddOp::from_operation(op.operation().clone())?;
         let new_op = Arc::new(RwLock::new(lowered));
         op.replace(new_op.clone());
 
@@ -82,13 +91,8 @@ impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ReturnLowering"
     }
-    fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool> {
-        Ok(op
-            .try_read()
-            .unwrap()
-            .as_any()
-            .downcast_ref::<func::ReturnOp>()
-            .is_some())
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<func::ReturnOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
@@ -108,7 +112,12 @@ impl Pass for ConvertFuncToLLVM {
         "func_to_llvm::ConvertFuncToLLVM"
     }
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ConstantOpLowering, &ReturnLowering];
+        let rewrites: Vec<&dyn Rewrite> = vec![
+            &FuncLowering,
+            &ConstantOpLowering,
+            &AddOpLowering,
+            &ReturnLowering,
+        ];
         apply_rewrites(op, &rewrites)
     }
 }

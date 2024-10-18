@@ -4,8 +4,10 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
+use crate::ir::Types;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use crate::Parse;
 use crate::Parser;
@@ -14,6 +16,31 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+pub trait Func: Op {
+    fn identifier(&self) -> &str;
+    fn set_identifier(&mut self, identifier: String);
+    fn arguments(&self) -> Result<Values> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        Ok(arguments.clone())
+    }
+    fn return_types(&self) -> Types {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let return_types = operation.result_types();
+        return_types.clone()
+    }
+    fn return_type(&self) -> Result<Type> {
+        let return_types = self.return_types();
+        let return_types = return_types.read().unwrap();
+        assert!(!return_types.is_empty(), "Expected result types to be set");
+        assert!(return_types.len() == 1, "Expected single result type");
+        let typ = return_types[0].read().unwrap().clone();
+        Ok(typ)
+    }
+}
+
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
@@ -21,11 +48,11 @@ pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
 }
 
-impl FuncOp {
-    pub fn identifier(&self) -> &str {
+impl Func for FuncOp {
+    fn identifier(&self) -> &str {
         &self.identifier
     }
-    pub fn set_identifier(&mut self, identifier: String) {
+    fn set_identifier(&mut self, identifier: String) {
         self.identifier = identifier;
     }
 }
@@ -53,18 +80,22 @@ impl FuncOp {
         write!(f, "{}", arguments)?;
         write!(f, ")")?;
         let operation = op.operation();
-        if !operation.try_read().unwrap().result_types().is_empty() {
-            let operation = operation.read().unwrap();
-            let result_types = operation.result_types();
+        let result_types = operation.try_read().unwrap().result_types();
+        let result_types = result_types.try_read().unwrap();
+        if !result_types.is_empty() {
             if result_types.len() == 1 {
-                write!(f, " -> {}", result_types.get(0).unwrap())?;
+                write!(
+                    f,
+                    " -> {}",
+                    result_types.get(0).unwrap().try_read().unwrap()
+                )?;
             } else {
                 write!(
                     f,
                     " -> ({})",
                     result_types
                         .iter()
-                        .map(|t| t.to_string())
+                        .map(|t| t.try_read().unwrap().to_string())
                         .collect::<Vec<String>>()
                         .join(", ")
                 )?;
@@ -114,7 +145,7 @@ impl Op for FuncOp {
     }
 }
 
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     fn identifier(&mut self, kind: TokenKind) -> Result<String> {
         let identifier = self.advance();
         if identifier.kind != kind {
@@ -159,19 +190,20 @@ impl<T: Parse> Parser<T> {
         }
         Ok(Arc::new(RwLock::new(operands)))
     }
-    fn result_types(&mut self) -> Result<Vec<Type>> {
+    fn result_types(&mut self) -> Result<Types> {
         let mut result_types = vec![];
         if !self.check(TokenKind::Arrow) {
-            return Ok(vec![]);
+            return Ok(Arc::new(RwLock::new(vec![])));
         } else {
             let _arrow = self.advance();
             while self.check(TokenKind::IntType) {
                 let typ = self.advance();
                 let typ = Type::new(typ.lexeme.clone());
+                let typ = Arc::new(RwLock::new(typ));
                 result_types.push(typ);
             }
         }
-        Ok(result_types)
+        Ok(Arc::new(RwLock::new(result_types)))
     }
     pub fn parse_func<O: Op + 'static>(
         parser: &mut Parser<T>,
@@ -212,7 +244,7 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for FuncOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
@@ -243,10 +275,11 @@ impl ReturnOp {
             write!(f, " {}", operand.read().unwrap())?;
         }
         let result_types = operation.result_types();
+        let result_types = result_types.read().unwrap();
         assert!(!result_types.is_empty(), "Expected result types to be set");
         let result_types = result_types
             .iter()
-            .map(|t| t.to_string())
+            .map(|t| t.read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, " : {}", result_types)?;
@@ -277,7 +310,7 @@ impl Op for ReturnOp {
     }
 }
 
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     pub fn return_op<O: Op>(
         &mut self,
         parent: Option<Arc<RwLock<Block>>>,
@@ -294,7 +327,9 @@ impl<T: Parse> Parser<T> {
         let _colon = self.expect(TokenKind::Colon)?;
         let return_type = self.expect(TokenKind::IntType)?;
         let return_type = Type::new(return_type.lexeme.clone());
-        operation.set_result_types(vec![return_type]);
+        let result_type = Arc::new(RwLock::new(return_type));
+        let result_types = Arc::new(RwLock::new(vec![result_type]));
+        operation.set_result_types(result_types);
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation_without_verify(operation.clone(), expected_name)?;
         let op = Arc::new(RwLock::new(op));
@@ -303,7 +338,7 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for ReturnOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {

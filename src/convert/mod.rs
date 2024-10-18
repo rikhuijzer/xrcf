@@ -47,7 +47,7 @@ pub trait Rewrite {
     /// Returns true if the rewrite can be applied to the given operation.
     ///
     /// This method is not allowed to mutate the IR.
-    fn is_match(&self, op: Arc<RwLock<dyn Op>>) -> Result<bool>;
+    fn is_match(&self, op: &dyn Op) -> Result<bool>;
     /// Applies the rewrite to the given operation.
     ///
     /// This method is allowed to mutate the IR.
@@ -77,7 +77,9 @@ fn apply_rewrites_helper(
             root.clone().try_read().unwrap().name(),
             rewrite.name()
         );
-        if rewrite.is_match(root.clone())? {
+        let root_read = root.clone();
+        let root_read = root_read.try_read().unwrap();
+        if rewrite.is_match(&*root_read)? {
             debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;
             if root_rewrite.is_changed() {

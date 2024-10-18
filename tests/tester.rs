@@ -10,14 +10,18 @@ use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::ir::Op;
 use xrcf::opt;
-use xrcf::parser::BuiltinParse;
+use xrcf::parser::DefaultParserDispatch;
 use xrcf::OptOptions;
 use xrcf::Parser;
 
 pub struct Test;
 
 impl Test {
-    pub fn init_subscriber(level: tracing::Level) {
+    /// Initialize the subscriber for the tests.
+    ///
+    /// Cannot pass options, since the tests run concurrently.
+    pub fn init_subscriber() {
+        let level = tracing::Level::INFO;
         match init_subscriber(level) {
             Ok(_) => (),
             Err(_e) => (),
@@ -25,7 +29,7 @@ impl Test {
     }
     fn point_missing_line(expected: &str, index: usize) -> String {
         let mut result = String::new();
-        result.push_str("Line is missing from output:\n");
+        result.push_str("A line is missing from the output:\n");
         result.push_str("```");
         for (i, line) in expected.lines().enumerate() {
             if i == index {
@@ -38,17 +42,46 @@ impl Test {
         result.push_str("\n```");
         result
     }
+    pub fn check_lines_exact(actual: &str, expected: &str, caller: &Location<'_>) {
+        let actual = actual.trim();
+        let expected = expected.trim();
+        let l = max(actual.lines().count(), expected.lines().count());
+        for i in 0..l {
+            let actual_line = actual.lines().nth(i);
+            let actual_line = match actual_line {
+                None => {
+                    panic!(
+                        "Expected line {i} not found in output: called from {}",
+                        caller
+                    );
+                }
+                Some(actual_line) => actual_line,
+            };
+            let expected_line = expected.lines().nth(i);
+            let expected_line = match expected_line {
+                None => {
+                    panic!(
+                        "Expected line {i} not found in output: called from {}",
+                        caller
+                    );
+                }
+                Some(expected_line) => expected_line,
+            };
+            assert_eq!(actual_line, expected_line, "called from {}", caller);
+        }
+    }
     /// Check whether the expected lines are present in the actual output.
-    /// The expected lines are required to be present in the actual output,
-    /// but the actual output may contain additional lines that are not in the expected output.
-    fn check_lines(actual: &str, expected: &str, caller: &Location<'_>) {
+    /// The actual output may contain additional lines that are not in the expected output.
+    pub fn check_lines_contain(actual: &str, expected: &str, caller: &Location<'_>) {
+        let actual = actual.trim();
+        let expected = expected.trim();
         let mut actual_index = 0;
         'outer: for i in 0..expected.lines().count() {
-            let expected_line = expected.lines().nth(i).unwrap();
+            let expected_line = expected.lines().nth(i).unwrap().trim();
             let start = actual_index;
             for j in start..actual.lines().count() {
                 let actual_line = actual.lines().nth(j).unwrap();
-                if actual_line == expected_line {
+                if actual_line.contains(expected_line) {
                     actual_index = j + 1;
                     continue 'outer;
                 }
@@ -60,24 +93,20 @@ impl Test {
     fn print_heading(msg: &str, src: &str) {
         info!("{msg}:\n```\n{src}\n```\n");
     }
-    pub fn parse(src: &str, expected: &str, caller: &Location<'_>) -> Arc<RwLock<dyn Op>> {
+    pub fn parse(src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+        let src = src.trim();
         Self::print_heading("Before parse", src);
-        let module = Parser::<BuiltinParse>::parse(&src).unwrap();
+        let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
         let read_module = module.clone();
         let read_module = read_module.try_read().unwrap();
         let actual = format!("{}", read_module);
         Self::print_heading("After parse", &actual);
-        Self::check_lines(&actual, expected, caller);
-        module
+        (module, actual)
     }
-    pub fn opt(
-        flags: &str,
-        src: &str,
-        expected: &str,
-        caller: &Location<'_>,
-    ) -> Arc<RwLock<dyn Op>> {
+    pub fn opt(flags: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+        let src = src.trim();
         let options = OptOptions::from_str(flags).unwrap();
-        let module = Parser::<BuiltinParse>::parse(src).unwrap();
+        let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
         let msg = format!("Before (opt {flags})");
         Self::print_heading(&msg, src);
 
@@ -91,7 +120,6 @@ impl Test {
         let actual = format!("{}", new_root_op.try_read().unwrap());
         let msg = format!("After (opt {flags})");
         Self::print_heading(&msg, &actual);
-        Self::check_lines(&actual, expected, caller);
-        new_root_op
+        (new_root_op, actual)
     }
 }

@@ -10,7 +10,6 @@ use crate::Pass;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
-use tracing::info;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
@@ -72,7 +71,6 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
 }
 
 pub fn opt(op: Arc<RwLock<dyn Op>>, options: OptOptions) -> Result<RewriteResult> {
-    info!("Starting optimization pass");
     if options.canonicalize {
         let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
         return Ok(apply_rewrites(op, &rewrites)?);

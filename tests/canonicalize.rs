@@ -7,7 +7,7 @@ use std::panic::Location;
 use xrcf::dialect::arith;
 use xrcf::ir;
 use xrcf::ir::Op;
-use xrcf::parser::BuiltinParse;
+use xrcf::parser::DefaultParserDispatch;
 use xrcf::Parser;
 
 #[test]
@@ -20,7 +20,7 @@ fn determine_users() {
     }
     "};
 
-    let module = Parser::<BuiltinParse>::parse(src).unwrap();
+    let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
     let module = module.try_read().unwrap();
 
     let ops = module.ops();
@@ -63,8 +63,8 @@ fn canonicalize_addi() {
     }
     "};
     let flags = "--canonicalize";
-    let caller = Location::caller();
-    let module = Test::opt(flags, src, expected, caller);
+    let (module, actual) = Test::opt(flags, src);
     let module = module.try_read().unwrap();
-    assert!(module.as_any().downcast_ref::<ir::ModuleOp>().is_some());
+    assert!(module.as_any().is::<ir::ModuleOp>());
+    Test::check_lines_exact(&actual, expected, Location::caller());
 }

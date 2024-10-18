@@ -58,12 +58,14 @@ The x could be anything.
 
 ### LLVM's codebase
 
-Let's not include any LLVM code.
-LLVM is great, but it's also big.
+This project does not include any LLVM code.
+The LLVM codebase is great, but also big.
 Including the C files would require lots of compilation.
 Calling out to an installed LLVM version is better but is hard with package versions and such.
 Let's for now just generate LLVM IR and let the client compile it themselves.
-At a later point, the plan is to move the LLVM backend to a separate crate.
+For now, this project aims to generate valid LLVM IR.
+Then this code can be compiled client-side.
+At a later point, the plan is to include the LLVM backend in a separate crate.
 
 ### `Operation`
 

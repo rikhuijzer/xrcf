@@ -1,5 +1,6 @@
 use crate::dialect::arith::set_defining_op;
 use crate::dialect::func;
+use crate::dialect::func::Func;
 use crate::dialect::llvmir::attribute::LinkageAttr;
 use crate::ir::operation;
 use crate::ir::operation::OperationName;
@@ -11,6 +12,7 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::StrAttr;
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use crate::Attribute;
 use crate::Parse;
@@ -66,7 +68,7 @@ impl Op for GlobalOp {
 }
 
 impl Parse for GlobalOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
@@ -158,8 +160,17 @@ impl Op for FuncOp {
     }
 }
 
+impl Func for FuncOp {
+    fn identifier(&self) -> &str {
+        &self.identifier
+    }
+    fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
+    }
+}
+
 impl Parse for FuncOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
@@ -197,6 +208,9 @@ impl Op for ConstantOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn is_const(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -221,7 +235,7 @@ impl Op for ConstantOp {
 }
 
 impl Parse for ConstantOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
@@ -250,6 +264,43 @@ impl Parse for ConstantOp {
         let _colon = parser.expect(TokenKind::Colon)?;
         let _result_type = parser.expect(TokenKind::IntType)?;
 
+        Ok(op)
+    }
+}
+
+pub struct AddOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for AddOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("llvm.add".to_string())
+    }
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
+        Ok(AddOp { operation })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{}", self.operation().read().unwrap())
+    }
+}
+
+impl Parse for AddOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let expected_name = AddOp::operation_name();
+        let op = Parser::<T>::parse_add::<AddOp>(parser, parent, expected_name)?;
         Ok(op)
     }
 }
@@ -290,7 +341,7 @@ impl Op for ReturnOp {
 }
 
 impl Parse for ReturnOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {

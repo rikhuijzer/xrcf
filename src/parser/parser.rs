@@ -15,19 +15,74 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-pub struct Parser<T: Parse> {
-    src: String,
-    tokens: Vec<Token>,
-    current: usize,
-    parse_op: std::marker::PhantomData<T>,
+/// Interface to add custom operations to the parser.
+///
+/// Downstream crates can implement this trait to support custom parsing.  The
+/// default implementation can only know about operations defined in this crate.
+/// This gives the Rust compiler more insight into the dispatches compared to to
+/// using a hashmap registry.
+pub trait ParserDispatch {
+    fn dispatch_parse(
+        name: String,
+        parser: &mut Parser<Self>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>>
+    where
+        Self: Sized;
+    fn parse_op(
+        parser: &mut Parser<Self>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>>
+    where
+        Self: Sized,
+    {
+        let name = if parser.peek_n(1).kind == TokenKind::Equal {
+            // Ignore result name and '=' (e.g., `%0 = <op name>`).
+            parser.peek_n(2)
+        } else {
+            // Ignore nothing (e.g., `<op name> %0, %1`).
+            parser.peek()
+        };
+        let name = name.lexeme.clone();
+        Self::dispatch_parse(name, parser, parent)
+    }
 }
 
-/// Downstream crates can implement this trait to support custom parsing.
-/// The default implementation can only know about operations defined in
-/// this crate.
-/// This avoids having some global hashmap registry of all possible operations.
+/// Default operation parser.
+///
+/// This parser knows about all operations defined in this crate.  For
+/// operations in external dialects, define another parser dispatcher and use
+/// it.
+pub struct DefaultParserDispatch;
+
+impl ParserDispatch for DefaultParserDispatch {
+    fn dispatch_parse(
+        name: String,
+        parser: &mut Parser<Self>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        match name.as_str() {
+            "return" => <func::ReturnOp as Parse>::op(parser, parent),
+            "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
+            "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
+            "llvm.func" => <llvmir::FuncOp as Parse>::op(parser, parent),
+            "llvm.mlir.constant" => <llvmir::ConstantOp as Parse>::op(parser, parent),
+            "llvm.return" => <llvmir::ReturnOp as Parse>::op(parser, parent),
+            "llvm.add" => <llvmir::AddOp as Parse>::op(parser, parent),
+            "llvm.mlir.global" => <llvmir::GlobalOp as Parse>::op(parser, parent),
+            "module" => <ModuleOp as Parse>::op(parser, parent),
+            _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
+        }
+    }
+}
+
+/// Interface to define parsing of operations.
+///
+/// Downstream crates can implement this trait to support parsing of custom
+/// operations.
 pub trait Parse {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>>
@@ -35,46 +90,19 @@ pub trait Parse {
         Self: Sized;
 }
 
-/// Default operation parser.
-/// This parser knows about all operations defined in this crate.
-/// For operations in external dialects, define another parser and use it.
-pub struct BuiltinParse;
+pub struct Parser<T: ParserDispatch> {
+    src: String,
+    tokens: Vec<Token>,
+    current: usize,
+    parse_op: std::marker::PhantomData<T>,
+}
 
 enum Dialects {
     Builtin,
     LLVM,
 }
 
-impl Parse for BuiltinParse {
-    fn op<T: Parse>(
-        parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
-        if parser.peek().lexeme == "return" {
-            return <func::ReturnOp as Parse>::op(parser, parent);
-        }
-        let name = if parser.peek_n(1).kind == TokenKind::Equal {
-            // Ignore result name and '='.
-            parser.peek_n(2)
-        } else {
-            parser.peek()
-        };
-        let name = name.lexeme.clone();
-        match name.as_str() {
-            "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
-            "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
-            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
-            "llvm.func" => <llvmir::op::FuncOp as Parse>::op(parser, parent),
-            "llvm.mlir.constant" => <llvmir::op::ConstantOp as Parse>::op(parser, parent),
-            "llvm.return" => <llvmir::op::ReturnOp as Parse>::op(parser, parent),
-            "llvm.mlir.global" => <llvmir::op::GlobalOp as Parse>::op(parser, parent),
-            "module" => <ModuleOp as Parse>::op(parser, parent),
-            _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
-        }
-    }
-}
-
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     pub fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
     }
@@ -142,7 +170,7 @@ impl<T: Parse> Parser<T> {
                 break;
             }
             let parent = Some(block.clone());
-            let op = T::op(self, parent)?;
+            let op = T::parse_op(self, parent)?;
             let mut ops = ops.write().unwrap();
             ops.push(op.clone());
         }
@@ -188,7 +216,7 @@ impl<T: Parse> Parser<T> {
             current: 0,
             parse_op: std::marker::PhantomData,
         };
-        let op = T::op(&mut parser, None)?;
+        let op = T::parse_op(&mut parser, None)?;
         let opp = op.clone();
         let opp = opp.read().unwrap();
         let casted = opp.as_any().downcast_ref::<ModuleOp>();
@@ -219,7 +247,7 @@ impl<T: Parse> Parser<T> {
     }
 }
 
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     // Parse %0.
     fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<OpOperand>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
@@ -260,7 +288,7 @@ mod tests {
     fn parse_global() {
         // From test/Target/LLVMIR/llvmir.mlir
         let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let module_op = Parser::<BuiltinParse>::parse(src).unwrap();
+        let module_op = Parser::<DefaultParserDispatch>::parse(src).unwrap();
         let module_op = module_op.try_read().unwrap();
         let module_op = module_op.as_any().downcast_ref::<ModuleOp>().unwrap();
         assert_eq!(

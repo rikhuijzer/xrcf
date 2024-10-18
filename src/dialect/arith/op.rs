@@ -12,6 +12,7 @@ use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use crate::typ::APInt;
 use crate::typ::IntegerType;
@@ -74,6 +75,9 @@ impl Op for ConstantOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn is_const(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -100,7 +104,7 @@ impl ConstantOp {
     }
 }
 
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     /// Parse a type definition (e.g., `: i64`).
     fn typ(&mut self) -> Result<Type> {
         let _colon = self.expect(TokenKind::Colon)?;
@@ -124,7 +128,7 @@ impl<T: Parse> Parser<T> {
 }
 
 impl Parse for ConstantOp {
-    fn op<T: Parse>(
+    fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
@@ -265,7 +269,7 @@ impl Op for AddiOp {
     }
 }
 
-impl<T: Parse> Parser<T> {
+impl<T: ParserDispatch> Parser<T> {
     pub fn results(&mut self) -> Result<Values> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
@@ -297,30 +301,44 @@ pub fn set_defining_op(results: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>, op: Arc<Rw
     }
 }
 
-impl Parse for AddiOp {
-    fn op<T: Parse>(
+impl<T: ParserDispatch> Parser<T> {
+    pub fn parse_add<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        expected_name: OperationName,
+    ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         let results = parser.results()?;
         operation.set_results(results.clone());
 
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        assert!(operation_name.lexeme == "arith.addi");
-        operation.set_name(AddiOp::operation_name());
+        assert!(operation_name.lexeme == expected_name.name());
+        operation.set_name(expected_name.clone());
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
         operation.set_operands(parser.operands(parent.unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = Type::new(result_type.lexeme.clone());
-        operation.set_result_types(vec![result_type]);
+        let result_type = Arc::new(RwLock::new(result_type));
+        let result_types = Arc::new(RwLock::new(vec![result_type]));
+        operation.set_result_types(result_types);
 
         let operation = Arc::new(RwLock::new(operation));
-        let op = AddiOp { operation };
+        let op = O::from_operation_without_verify(operation, expected_name)?;
         let op = Arc::new(RwLock::new(op));
         set_defining_op(results, op.clone());
+        Ok(op)
+    }
+}
+
+impl Parse for AddiOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let expected_name = AddiOp::operation_name();
+        let op = Parser::<T>::parse_add::<AddiOp>(parser, parent, expected_name)?;
         Ok(op)
     }
 }

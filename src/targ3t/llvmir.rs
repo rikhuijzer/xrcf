@@ -1,12 +1,25 @@
+use crate::dialect::func::Func;
 use crate::ir::operation::display_region_inside_func;
 use crate::ir::operation::OperationName;
 use crate::ir::Op;
 use crate::ir::Operation;
+use crate::ir::Value;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
+
+/// Interface for LLVM IR operations that have a constant value.
+///
+/// Unlike MLIR, LLVM IR does not have a separate constant operation.  So when
+/// lowering from MLIR to LLVM IR, we store the constant value in the operation
+/// itself. Next, we unset the link to the outdated constant operation, which
+/// then is cleaned up by the dead code elimination.
+pub trait OneConst: Op {
+    fn const_value(&self) -> String;
+    fn set_const_value(&mut self, const_value: String);
+}
 
 pub struct ModuleOp {
     operation: Arc<RwLock<Operation>>,
@@ -69,12 +82,6 @@ pub struct FuncOp {
     identifier: String,
 }
 
-impl FuncOp {
-    pub fn set_identifier(&mut self, identifier: String) {
-        self.identifier = identifier;
-    }
-}
-
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::func".to_string())
@@ -95,19 +102,36 @@ impl Op for FuncOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn is_func(&self) -> bool {
+        true
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        write!(f, "define i64 {}(", self.identifier)?;
-        let operation = self.operation();
-        let operation = operation.try_read().unwrap();
-        let operands = operation.operands();
-        let operands = operands.try_read().unwrap();
-        for operand in operands.iter() {
-            let operand = operand.try_read().unwrap();
-            write!(f, "{}", operand)?;
+        let return_type = self.return_type().unwrap();
+        write!(f, "define {return_type} {}(", self.identifier)?;
+        let arguments = self.arguments().unwrap();
+        let arguments = arguments.try_read().unwrap();
+        for argument in arguments.iter() {
+            let argument = argument.try_read().unwrap();
+            if let Value::BlockArgument(arg) = &*argument {
+                let typ = arg.typ();
+                write!(f, "{} {}", typ, arg.name())?;
+            } else {
+                panic!("Expected BlockArgument");
+            }
         }
         write!(f, ")")?;
 
+        let operation = self.operation().try_read().unwrap();
         display_region_inside_func(f, &*operation, indent)
+    }
+}
+
+impl Func for FuncOp {
+    fn identifier(&self) -> &str {
+        &self.identifier
+    }
+    fn set_identifier(&mut self, identifier: String) {
+        self.identifier = identifier;
     }
 }
 
@@ -117,18 +141,76 @@ impl Display for FuncOp {
     }
 }
 
-pub struct ReturnOp {
+pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
-    /// The constant value if the return value is a constant.
-    ///
-    /// LLVM does not supports constants as a separate operation.  So we use
-    /// this field store the value if it is a constant to that dead code
-    /// elimination can remove it.
     const_value: Option<String>,
 }
 
-impl ReturnOp {
-    pub fn set_const_value(&mut self, const_value: String) {
+impl Op for AddOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("target::llvmir::add".to_string())
+    }
+    fn from_operation_without_verify(
+        operation: Arc<RwLock<Operation>>,
+        name: OperationName,
+    ) -> Result<Self> {
+        operation.try_write().unwrap().set_name(name);
+        Ok(AddOp {
+            operation,
+            const_value: None,
+        })
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let operation = self.operation().try_read().unwrap();
+        let results = operation.results();
+        let results = results.try_read().unwrap();
+        let result = results[0].try_read().unwrap();
+        write!(f, "{result} = add")?;
+        let result_types = operation.result_types();
+        let result_types = result_types.try_read().unwrap();
+        let result_type = result_types[0].try_read().unwrap().clone();
+        write!(f, " {result_type}")?;
+        let operands = operation.operands();
+        let operands = operands.try_read().unwrap();
+        let operand = operands[0].try_read().unwrap();
+        write!(f, " {operand}, ")?;
+        let const_value = self.const_value();
+        write!(f, "{const_value}")?;
+        write!(f, "\n")
+    }
+}
+
+impl OneConst for AddOp {
+    fn const_value(&self) -> String {
+        self.const_value.clone().unwrap()
+    }
+    fn set_const_value(&mut self, const_value: String) {
+        self.const_value = Some(const_value);
+    }
+}
+
+impl Display for AddOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+pub struct ReturnOp {
+    operation: Arc<RwLock<Operation>>,
+    const_value: Option<String>,
+}
+
+impl OneConst for ReturnOp {
+    fn const_value(&self) -> String {
+        self.const_value.clone().unwrap()
+    }
+    fn set_const_value(&mut self, const_value: String) {
         self.const_value = Some(const_value);
     }
 }
@@ -157,7 +239,13 @@ impl Op for ReturnOp {
         if let Some(const_value) = &self.const_value {
             write!(f, "ret i64 {const_value}")
         } else {
-            todo!("return without a constant value")
+            let operation = self.operation().try_read().unwrap();
+            let operand = operation.operand(0);
+            let operand = operand.try_read().unwrap();
+            let value = operand.value();
+            let value = value.try_read().unwrap();
+            let typ = value.typ();
+            write!(f, "ret {typ} {value}")
         }
     }
 }

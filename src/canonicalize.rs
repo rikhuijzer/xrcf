@@ -13,7 +13,7 @@ impl Rewrite for CanonicalizeOp {
     fn name(&self) -> &'static str {
         "canonicalize::CanonicalizeOp"
     }
-    fn is_match(&self, _op: Arc<RwLock<dyn Op>>) -> Result<bool> {
+    fn is_match(&self, _op: &dyn Op) -> Result<bool> {
         Ok(true)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
@@ -29,7 +29,7 @@ impl Rewrite for DeadCodeElimination {
     fn name(&self) -> &'static str {
         "canonicalize::DeadCodeElimination"
     }
-    fn is_match(&self, _op: Arc<RwLock<dyn Op>>) -> Result<bool> {
+    fn is_match(&self, _op: &dyn Op) -> Result<bool> {
         Ok(true)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
