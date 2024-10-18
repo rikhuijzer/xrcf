@@ -27,7 +27,7 @@ pub struct GlobalOp {
 
 impl Op for GlobalOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.mlir.global".to_string())
+        OperationName::new("llvm.mlir.global")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -133,7 +133,7 @@ impl FuncOp {
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.func".to_string())
+        OperationName::new("llvm.func")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -196,7 +196,7 @@ impl ConstantOp {
 
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.mlir.constant".to_string())
+        OperationName::new("llvm.mlir.constant")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -274,7 +274,7 @@ pub struct AddOp {
 
 impl Op for AddOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.add".to_string())
+        OperationName::new("llvm.add")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -319,7 +319,7 @@ impl ReturnOp {
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.return".to_string())
+        OperationName::new("llvm.return")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,

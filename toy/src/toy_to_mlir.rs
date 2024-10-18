@@ -21,12 +21,13 @@ impl Rewrite for FuncLowering {
     }
 }
 
+#[allow(dead_code)]
 pub struct ConvertToyToMLIR;
 
 impl Pass for ConvertToyToMLIR {
-    const NAME: &'static str = "toy-to-mlir";
+    const NAME: &'static str = "convert-toy-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let rewrites: Vec<&dyn Rewrite> = vec![];
+        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering];
         xrcf::convert::apply_rewrites(op, &rewrites)
     }
 }

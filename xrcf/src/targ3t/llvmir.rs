@@ -31,7 +31,7 @@ pub struct ModuleOp {
 
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
-        OperationName::new("llvm.mlir.module".to_string())
+        OperationName::new("llvm.mlir.module")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -84,7 +84,7 @@ pub struct FuncOp {
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::llvmir::func".to_string())
+        OperationName::new("target::llvmir::func")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -148,7 +148,7 @@ pub struct AddOp {
 
 impl Op for AddOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::llvmir::add".to_string())
+        OperationName::new("target::llvmir::add")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -217,7 +217,7 @@ impl OneConst for ReturnOp {
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::llvmir::return".to_string())
+        OperationName::new("target::llvmir::return")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,

@@ -112,7 +112,7 @@ impl FuncOp {
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
-        OperationName::new("func.func".to_string())
+        OperationName::new("func.func")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
@@ -289,7 +289,7 @@ impl ReturnOp {
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
-        OperationName::new("return".to_string())
+        OperationName::new("return")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,

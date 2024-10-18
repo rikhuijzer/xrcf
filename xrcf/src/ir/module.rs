@@ -21,7 +21,7 @@ pub struct ModuleOp {
 
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
-        OperationName::new("module".to_string())
+        OperationName::new("module")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,

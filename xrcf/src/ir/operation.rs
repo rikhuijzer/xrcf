@@ -18,8 +18,10 @@ pub struct OperationName {
 }
 
 impl OperationName {
-    pub fn new(name: String) -> Self {
-        Self { name }
+    pub fn new(name: &str) -> Self {
+        Self {
+            name: name.to_string(),
+        }
     }
     pub fn name(&self) -> String {
         self.name.clone()
@@ -207,7 +209,7 @@ impl Operation {
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;
     }
-    pub fn rename(&mut self, name: String) {
+    pub fn rename(&mut self, name: &str) {
         self.name = OperationName::new(name);
     }
     pub fn users(&self) -> Users {
@@ -267,7 +269,7 @@ impl Operation {
 impl Default for Operation {
     fn default() -> Self {
         Self {
-            name: OperationName::new("".to_string()),
+            name: OperationName::new(""),
             arguments: Arc::new(RwLock::new(vec![])),
             operands: Arc::new(RwLock::new(vec![])),
             attributes: Attributes::new(),

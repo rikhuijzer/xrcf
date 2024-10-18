@@ -31,7 +31,7 @@ pub struct ConstantOp {
 
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
-        OperationName::new("arith.constant".to_string())
+        OperationName::new("arith.constant")
     }
     fn verify(&self) -> Result<()> {
         let read_only = self.operation().read().unwrap();
@@ -250,7 +250,7 @@ impl AddiOp {
 
 impl Op for AddiOp {
     fn operation_name() -> OperationName {
-        OperationName::new("arith.addi".to_string())
+        OperationName::new("arith.addi")
     }
     fn from_operation_without_verify(
         operation: Arc<RwLock<Operation>>,
