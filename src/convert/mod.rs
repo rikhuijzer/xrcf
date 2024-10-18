@@ -123,6 +123,6 @@ pub fn apply_rewrites(
 /// within MLIr whereas a "translation" can be used to go from MLIR to an
 /// external representation. Here, we don't make this distinction.
 pub trait Pass {
-    fn name() -> &'static str;
+    const NAME: &'static str;
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult>;
 }

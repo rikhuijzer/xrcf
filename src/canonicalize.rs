@@ -1,4 +1,6 @@
+use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
+use crate::convert::Pass;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
@@ -51,5 +53,15 @@ impl Rewrite for DeadCodeElimination {
                 }
             }
         }
+    }
+}
+
+pub struct Canonicalize;
+
+impl Pass for Canonicalize {
+    const NAME: &'static str = "canonicalize";
+    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
+        apply_rewrites(op, &rewrites)
     }
 }

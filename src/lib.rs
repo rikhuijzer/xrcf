@@ -12,6 +12,8 @@ mod typ;
 pub use compile::compile;
 pub use compile::init_subscriber;
 pub use compile::CompileOptions;
+pub use compile::CompilerDispatch;
+pub use compile::DefaultCompilerDispatch;
 pub use convert::Pass;
 pub use ir::attribute::Attribute;
 pub use ir::attribute::Attributes;

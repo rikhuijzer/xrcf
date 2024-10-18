@@ -108,9 +108,7 @@ impl Rewrite for ReturnLowering {
 pub struct ConvertFuncToLLVM;
 
 impl Pass for ConvertFuncToLLVM {
-    fn name() -> &'static str {
-        "func_to_llvm::ConvertFuncToLLVM"
-    }
+    const NAME: &'static str = "convert-func-to-llvm";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &FuncLowering,

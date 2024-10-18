@@ -1,9 +1,6 @@
-use crate::canonicalize::CanonicalizeOp;
-use crate::canonicalize::DeadCodeElimination;
-use crate::convert::apply_rewrites;
+use crate::canonicalize::Canonicalize;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
-use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
 use crate::Pass;
@@ -13,6 +10,19 @@ use std::sync::RwLock;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
+
+/// Interface to add custom passes to the compiler.
+///
+/// Downstream crates can implement this trait to add custom passes to their
+/// compiler.  This is simlar to `ParserDispatch`.
+pub trait CompilerDispatch {
+    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult>;
+}
+
+/// Default implementation of `CompilerDispatch`.
+///
+/// This implementation knows only passes that are implemented in xrcf.
+pub struct DefaultCompilerDispatch;
 
 pub struct CompileOptions {
     canonicalize: bool,
@@ -70,18 +80,34 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
     tracing::subscriber::set_global_default(subscriber)
 }
 
-pub fn compile(op: Arc<RwLock<dyn Op>>, options: CompileOptions) -> Result<RewriteResult> {
-    if options.canonicalize {
-        let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
-        return Ok(apply_rewrites(op, &rewrites)?);
+impl CompilerDispatch for DefaultCompilerDispatch {
+    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult> {
+        for pass in passes {
+            let pass = pass.trim_start_matches("--");
+            return match pass {
+                Canonicalize::NAME => Canonicalize::convert(op),
+                ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op),
+                ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op),
+                _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
+            };
+        }
+        Ok(RewriteResult::Unchanged)
     }
-    if options.convert_func_to_llvm {
-        assert!(ConvertFuncToLLVM::name() == "func_to_llvm::ConvertFuncToLLVM");
-        return ConvertFuncToLLVM::convert(op);
+}
+
+fn parse_passes(arguments: &str) -> Result<Vec<&str>> {
+    let mut passes = vec![];
+    let arguments = arguments.split(' ').collect::<Vec<&str>>();
+    for argument in arguments {
+        passes.push(argument);
     }
-    if options.mlir_to_llvmir {
-        assert!(ConvertMLIRToLLVMIR::name() == "mlir_to_llvmir::ConvertMLIRToLLVMIR");
-        return ConvertMLIRToLLVMIR::convert(op);
-    }
-    Ok(RewriteResult::Unchanged)
+    Ok(passes)
+}
+
+pub fn compile<T: CompilerDispatch>(
+    op: Arc<RwLock<dyn Op>>,
+    arguments: &str,
+) -> Result<RewriteResult> {
+    let passes = parse_passes(arguments)?;
+    T::dispatch(op, passes)
 }

@@ -11,7 +11,7 @@ use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
-use xrcf::CompileOptions;
+use xrcf::DefaultCompilerDispatch;
 use xrcf::Parser;
 
 pub struct Test;
@@ -103,14 +103,13 @@ impl Test {
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
-    pub fn compile(flags: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn compile(arguments: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
         let src = src.trim();
-        let options = CompileOptions::from_str(flags).unwrap();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
-        let msg = format!("Before (opt {flags})");
+        let msg = format!("Before (opt {arguments})");
         Self::print_heading(&msg, src);
 
-        let result = compile(module.clone(), options).unwrap();
+        let result = compile::<DefaultCompilerDispatch>(module.clone(), arguments).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
@@ -118,7 +117,7 @@ impl Test {
             }
         };
         let actual = format!("{}", new_root_op.try_read().unwrap());
-        let msg = format!("After (opt {flags})");
+        let msg = format!("After (opt {arguments})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }

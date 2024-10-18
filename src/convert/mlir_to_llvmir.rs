@@ -166,9 +166,7 @@ impl Rewrite for ReturnLowering {
 pub struct ConvertMLIRToLLVMIR;
 
 impl Pass for ConvertMLIRToLLVMIR {
-    fn name() -> &'static str {
-        "mlir_to_llvmir::ConvertMLIRToLLVMIR"
-    }
+    const NAME: &'static str = "convert-mlir-to-llvmir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CanonicalizeOp,
