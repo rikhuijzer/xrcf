@@ -6,6 +6,8 @@ One problem that this project aims to solve is that it should be easy to target 
 Like MLIR, it should be easy to write compilers than can take high-level code,
 optimize it during multiple lowering stages, and generate efficient code for
 different backends.
+These backends should be easy to add and compose, like a plugin system.
+The long-term goal is to have these backends available as separate crates.
 
 For example, in C++, the code
 
@@ -42,13 +44,6 @@ To do this, it is important for the compiler to handle the full stack.
 A problem with LLVM is that it sometimes receives code that is already too low-level.
 At that point, it is not always possible to generate efficient code since some
 information was lost during the lowering.
-
-The aim of this project is to create a compiler framework that makes it easy to
-build compilers that can run on various backends.
-For example, a GPU, TPU, or CPU backend.
-The long-term aim is to have these backends available as separate crates.
-Compared to MLIR, this project is written in Rust which makes it easier to
-combine multiple projects into one.
 
 ## Notes
 
