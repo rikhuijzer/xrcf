@@ -14,7 +14,7 @@ use tracing_subscriber;
 /// Interface to add custom passes to the compiler.
 ///
 /// Downstream crates can implement this trait to add custom passes to their
-/// compiler.  This is simlar to `ParserDispatch`.
+/// compiler.  This is similar to `ParserDispatch`.
 pub trait CompilerDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult>;
 }
