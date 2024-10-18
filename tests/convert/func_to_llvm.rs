@@ -23,7 +23,7 @@ fn test_constant() {
     }
     "};
     Test::init_subscriber();
-    let (_module, actual) = Test::opt(FLAGS, src);
+    let (_module, actual) = Test::compile(FLAGS, src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
 
@@ -44,6 +44,6 @@ fn test_add_one() {
     }
     "};
     Test::init_subscriber();
-    let (_module, actual) = Test::opt(FLAGS, src);
+    let (_module, actual) = Test::compile(FLAGS, src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }

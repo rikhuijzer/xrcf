@@ -14,15 +14,15 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
 
-pub struct OptOptions {
+pub struct CompileOptions {
     canonicalize: bool,
     convert_func_to_llvm: bool,
     mlir_to_llvmir: bool,
 }
 
-impl OptOptions {
-    pub fn from_str(flags: &str) -> Result<OptOptions> {
-        let mut options = OptOptions::default();
+impl CompileOptions {
+    pub fn from_str(flags: &str) -> Result<CompileOptions> {
+        let mut options = CompileOptions::default();
         let flags = flags.split(' ').collect::<Vec<&str>>();
         if flags.len() == 0 {
             return Ok(options);
@@ -50,9 +50,9 @@ impl OptOptions {
     }
 }
 
-impl Default for OptOptions {
+impl Default for CompileOptions {
     fn default() -> Self {
-        OptOptions {
+        CompileOptions {
             canonicalize: false,
             convert_func_to_llvm: false,
             mlir_to_llvmir: false,
@@ -70,7 +70,7 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
     tracing::subscriber::set_global_default(subscriber)
 }
 
-pub fn opt(op: Arc<RwLock<dyn Op>>, options: OptOptions) -> Result<RewriteResult> {
+pub fn compile(op: Arc<RwLock<dyn Op>>, options: CompileOptions) -> Result<RewriteResult> {
     if options.canonicalize {
         let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
         return Ok(apply_rewrites(op, &rewrites)?);

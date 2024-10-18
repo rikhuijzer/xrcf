@@ -32,7 +32,7 @@ fn test_constant() {
     "#};
     Test::init_subscriber();
     let caller = Location::caller();
-    let (module, actual) = Test::opt(FLAGS, src);
+    let (module, actual) = Test::compile(FLAGS, src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
     Test::check_lines_contain(&actual, expected, caller);
@@ -56,6 +56,6 @@ fn test_add_one() {
     Test::init_subscriber();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Test::opt(FLAGS, src);
+    let (_module, actual) = Test::compile(FLAGS, src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }

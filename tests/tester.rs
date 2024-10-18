@@ -6,12 +6,12 @@ use std::panic::Location;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::info;
+use xrcf::compile;
 use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::ir::Op;
-use xrcf::opt;
 use xrcf::parser::DefaultParserDispatch;
-use xrcf::OptOptions;
+use xrcf::CompileOptions;
 use xrcf::Parser;
 
 pub struct Test;
@@ -103,14 +103,14 @@ impl Test {
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
-    pub fn opt(flags: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn compile(flags: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
         let src = src.trim();
-        let options = OptOptions::from_str(flags).unwrap();
+        let options = CompileOptions::from_str(flags).unwrap();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
         let msg = format!("Before (opt {flags})");
         Self::print_heading(&msg, src);
 
-        let result = opt(module.clone(), options).unwrap();
+        let result = compile(module.clone(), options).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {

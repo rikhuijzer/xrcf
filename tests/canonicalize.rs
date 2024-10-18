@@ -63,7 +63,7 @@ fn canonicalize_addi() {
     }
     "};
     let flags = "--canonicalize";
-    let (module, actual) = Test::opt(flags, src);
+    let (module, actual) = Test::compile(flags, src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<ir::ModuleOp>());
     Test::check_lines_exact(&actual, expected, Location::caller());
