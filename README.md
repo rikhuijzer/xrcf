@@ -2,12 +2,12 @@
 
 Building blocks for creating a custom compiler.
 
-One problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) with a single language.
-Like MLIR, it should be easy to write compilers than can take high-level code,
+The problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) from a single programming language.
+Like MLIR, it should be easy to write compilers that can take high-level code,
 optimize it during multiple lowering stages, and generate efficient code for
 different backends.
-These backends should be easy to add and compose, like a plugin system.
-The long-term goal is to have these backends available as separate crates.
+These backends should be easy to add and combine.
+In the long-term, these backends will probably be available as separate crates (like a plugin system).
 
 For example, in C++, the code
 
@@ -41,9 +41,10 @@ float c[4] = a + b;
 
 The compiler should translate this to use the AVX instructions where possible.
 To do this, it is important for the compiler to handle the full stack.
-A problem with LLVM is that it sometimes receives code that is already too low-level.
+A problem that the creators of MLIR set out to solve is that LLVM can receive
+code that is too low-level.
 At that point, it is not always possible to generate efficient code since some
-information was lost during the lowering.
+information was lost during lowering.
 
 ## Notes
 
