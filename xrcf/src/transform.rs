@@ -3,7 +3,7 @@ use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
-use crate::Pass;
+use crate::convert::Pass;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -19,7 +19,7 @@ pub trait TransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult>;
 }
 
-/// Default implementation of `CompilerDispatch`.
+/// Default implementation of [TransformDispatch].
 ///
 /// This implementation knows only passes that are implemented in xrcf.
 pub struct DefaultTransformDispatch;

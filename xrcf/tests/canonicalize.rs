@@ -8,7 +8,7 @@ use xrcf::dialect::arith;
 use xrcf::ir;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
-use xrcf::Parser;
+use xrcf::parser::Parser;
 
 const FLAGS: &str = "--canonicalize";
 

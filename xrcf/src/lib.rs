@@ -6,12 +6,6 @@ pub mod parser;
 pub mod targ3t;
 mod transform;
 
-pub use convert::Pass;
-pub use ir::Attribute;
-pub use ir::Block;
-pub use ir::Operation;
-pub use parser::Parse;
-pub use parser::Parser;
 pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;

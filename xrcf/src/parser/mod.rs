@@ -1,3 +1,5 @@
+//! Parsing logic for the compiler including a scanner (tokenizer).
+
 mod parser;
 mod scanner;
 mod token;

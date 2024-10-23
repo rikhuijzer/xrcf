@@ -12,7 +12,7 @@ use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
-use xrcf::Parser;
+use xrcf::parser::Parser;
 
 pub struct Test;
 

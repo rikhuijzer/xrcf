@@ -8,7 +8,7 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm;
 use crate::ir::Op;
-use crate::Pass;
+use crate::convert::Pass;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;

@@ -1,3 +1,10 @@
+//! Conversion logic for the compiler.
+//!
+//! This module contains conversion passes that can be applied to an IR. By
+//! default, this project only implements lowering passes for compilers, but
+//! this module can be extended to support other conversions such as "uppering"
+//! passes such as used by decompilers.
+
 use crate::ir::spaces;
 use crate::ir::Op;
 use anyhow::Result;
