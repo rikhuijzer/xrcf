@@ -23,9 +23,6 @@ impl Scanner {
             column: 0,
         }
     }
-    fn source(&self) -> &str {
-        &self.source
-    }
     fn is_at_end(&self) -> bool {
         self.current >= self.source.len()
     }
@@ -156,6 +153,19 @@ impl Scanner {
         let word = self.peek_word(Some(c));
         Scanner::is_int_type(&word)
     }
+    fn string(&mut self) -> Result<()> {
+        while self.peek() != '"' && !self.is_at_end() {
+            self.advance();
+        }
+        if self.is_at_end() {
+            return Err(anyhow::anyhow!("Unterminated string"));
+        } else {
+            // self.peek() == '"'
+            self.advance();
+            self.add_token(TokenKind::String);
+        }
+        Ok(())
+    }
     fn scan_token(&mut self) -> Result<()> {
         let c = self.advance();
         match c {
@@ -166,20 +176,31 @@ impl Scanner {
             ':' => self.add_token(TokenKind::Colon),
             ',' => self.add_token(TokenKind::Comma),
             '=' => self.add_token(TokenKind::Equal),
+            '!' => self.add_token(TokenKind::Exclamation),
+            '>' => self.add_token(TokenKind::Greater),
+            '<' => self.add_token(TokenKind::Less),
             ' ' | '\r' | '\t' => (),
             '\n' => {
                 self.line += 1;
                 self.column = 0;
             }
             '-' => self.arrow_or_minus()?,
+            '"' => self.string()?,
             s if self.is_int_type_start(s) => self.int_type(s)?,
             s if s.is_digit(10) => self.number()?,
             s if Scanner::is_identifier_start(s) => self.identifier()?,
-            _ => panic!("Unexpected character: {}", c),
+            _ => {
+                let column = if self.column == 0 { 0 } else { self.column - 1 };
+                let location = Location::new(self.line, column, self.start);
+                return Err(anyhow::anyhow!(Self::error(
+                    &self.source,
+                    &location,
+                    &format!("Scanning failed starting at: {}", c)
+                )));
+            }
         }
         Ok(())
     }
-
     fn scan_tokens(&mut self) -> Result<()> {
         while !self.is_at_end() {
             self.start = self.current;
@@ -196,17 +217,17 @@ impl Scanner {
     pub fn error(src: &str, loc: &Location, msg: &str) -> String {
         let lines = src.split('\n').collect::<Vec<&str>>();
         let n = loc.line();
-        let prev_n = n - 1;
-        let prev = if n > 0 { lines[prev_n] } else { "" };
         let prev_line = if n > 0 {
-            format!("{prev_n}  | {prev}")
+            let prev_n = n - 1;
+            let prev = lines[prev_n];
+            format!("\n{prev_n}  | {prev}")
         } else {
             "".to_string()
         };
         let line = lines[n];
         let line_num_width = 4 + n.to_string().len();
         let err_indent = " ".repeat(loc.column() + line_num_width);
-        format!("{prev_line}\n{n}  | {line}\n{err_indent}^ {msg}")
+        format!("```{prev_line}\n{n}  | {line}\n{err_indent}^ {msg}\n```")
     }
 }
 
@@ -288,13 +309,30 @@ mod tests {
         assert_eq!(tokens[4].location.line(), 1);
         assert_eq!(tokens[4].location.column(), 7);
 
-        let text = scanner.source();
+        let text = scanner.source;
         assert_eq!(text, src);
 
         let text = Scanner::error(src, &tokens[4].location, "test");
+        println!("text:\n{}", text);
         let lines = text.split('\n').collect::<Vec<&str>>();
-        assert_eq!(lines[0], "0  | module {");
-        assert_eq!(lines[1], "1  |   %1 = arith.addi %0, %0 : i32");
-        assert_eq!(lines[2], "            ^ test");
+        assert_eq!(lines[0], "```");
+        assert_eq!(lines[1], "0  | module {");
+        assert_eq!(lines[2], "1  |   %1 = arith.addi %0, %0 : i32");
+        assert_eq!(lines[3], "            ^ test");
+        assert_eq!(lines[4], "```");
+
+        let tokens = Scanner::scan(r#"foo = "hello""#).unwrap();
+        assert_eq!(tokens[0].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[0].lexeme, "foo");
+        assert_eq!(tokens[1].kind, TokenKind::Equal);
+        assert_eq!(tokens[2].kind, TokenKind::String);
+        assert_eq!(tokens[2].lexeme, r#""hello""#);
+        assert_eq!(tokens[3].kind, TokenKind::Eof);
+        assert_eq!(tokens.len(), 4);
+
+        let tokens = Scanner::scan(r#"!llvm.array<14 x i8>"#).unwrap();
+        assert_eq!(tokens[0].kind, TokenKind::Exclamation);
+        assert_eq!(tokens[1].kind, TokenKind::BareIdentifier);
+        assert_eq!(tokens[1].lexeme, "llvm.array");
     }
 }

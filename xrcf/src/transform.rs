@@ -15,24 +15,24 @@ use tracing_subscriber;
 ///
 /// Downstream crates can implement this trait to add custom passes to their
 /// compiler.  This is similar to `ParserDispatch`.
-pub trait CompilerDispatch {
+pub trait TransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult>;
 }
 
 /// Default implementation of `CompilerDispatch`.
 ///
 /// This implementation knows only passes that are implemented in xrcf.
-pub struct DefaultCompilerDispatch;
+pub struct DefaultTransformDispatch;
 
-pub struct CompileOptions {
+pub struct TransformOptions {
     canonicalize: bool,
     convert_func_to_llvm: bool,
     mlir_to_llvmir: bool,
 }
 
-impl CompileOptions {
-    pub fn from_str(flags: &str) -> Result<CompileOptions> {
-        let mut options = CompileOptions::default();
+impl TransformOptions {
+    pub fn from_str(flags: &str) -> Result<TransformOptions> {
+        let mut options = TransformOptions::default();
         let flags = flags.split(' ').collect::<Vec<&str>>();
         if flags.len() == 0 {
             return Ok(options);
@@ -60,9 +60,9 @@ impl CompileOptions {
     }
 }
 
-impl Default for CompileOptions {
+impl Default for TransformOptions {
     fn default() -> Self {
-        CompileOptions {
+        TransformOptions {
             canonicalize: false,
             convert_func_to_llvm: false,
             mlir_to_llvmir: false,
@@ -80,7 +80,7 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
     tracing::subscriber::set_global_default(subscriber)
 }
 
-impl CompilerDispatch for DefaultCompilerDispatch {
+impl TransformDispatch for DefaultTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult> {
         for pass in passes {
             let pass = pass.trim_start_matches("--");
@@ -104,7 +104,16 @@ fn parse_passes(arguments: &str) -> Result<Vec<&str>> {
     Ok(passes)
 }
 
-pub fn compile<T: CompilerDispatch>(
+/// Transform the given operation via given passen.
+///
+/// This is the main function that most users will interact with. The name
+/// `transform` is used instead of `compile` because the infrastructure is not
+/// limited to compiling. For example, it could also be used to build
+/// decompilers (i.e., for security research where the assembly is decompiled to
+/// a more readable form.). In MLIR, this function is called `opt`, but clearly
+/// that is too restrictive too since a set of passes don't have to optimize the
+/// code.
+pub fn transform<T: TransformDispatch>(
     op: Arc<RwLock<dyn Op>>,
     arguments: &str,
 ) -> Result<RewriteResult> {

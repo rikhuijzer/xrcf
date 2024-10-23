@@ -1,13 +1,15 @@
 use crate::dialect::arith;
 use crate::dialect::func;
-use crate::dialect::llvmir;
-use crate::ir::operation;
+use crate::dialect::llvm;
+use crate::dialect::llvm::LLVM;
 use crate::ir::Block;
+use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
-use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Region;
+use crate::ir::Type;
+use crate::ir::TypeParse;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
@@ -17,35 +19,22 @@ use std::sync::RwLock;
 
 /// Interface to add custom operations to the parser.
 ///
-/// Downstream crates can implement this trait to support custom parsing.  The
+/// Downstream crates can implement this trait to support custom parsing. The
 /// default implementation can only know about operations defined in this crate.
-/// This gives the Rust compiler more insight into the dispatches compared to to
-/// using a hashmap registry.
+/// To support custom operations, implement this trait with custom logic, see
+/// `DefaultParserDispatch` for an example.
 pub trait ParserDispatch {
-    fn dispatch_parse(
-        name: String,
-        parser: &mut Parser<Self>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>>
-    where
-        Self: Sized;
+    /// Parse an operation.
     fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>>
     where
-        Self: Sized,
-    {
-        let name = if parser.peek_n(1).kind == TokenKind::Equal {
-            // Ignore result name and '=' (e.g., `%0 = <op name>`).
-            parser.peek_n(2)
-        } else {
-            // Ignore nothing (e.g., `<op name> %0, %1`).
-            parser.peek()
-        };
-        let name = name.lexeme.clone();
-        Self::dispatch_parse(name, parser, parent)
-    }
+        Self: Sized;
+    /// Parse a type.
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>>
+    where
+        Self: Sized;
 }
 
 /// Default operation parser.
@@ -56,24 +45,47 @@ pub trait ParserDispatch {
 pub struct DefaultParserDispatch;
 
 impl ParserDispatch for DefaultParserDispatch {
-    fn dispatch_parse(
-        name: String,
+    fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
+        let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
+            // Ignore result name and '=' (e.g., `%0 = <op name>`).
+            parser.peek_n(2).unwrap()
+        } else {
+            // Ignore nothing (e.g., `<op name> %0, %1`).
+            parser.peek()
+        };
+        let name = name.lexeme.clone();
         match name.as_str() {
-            "return" => <func::ReturnOp as Parse>::op(parser, parent),
             "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
             "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+            "func.call" => <func::CallOp as Parse>::op(parser, parent),
             "func.func" => <func::FuncOp as Parse>::op(parser, parent),
-            "llvm.func" => <llvmir::FuncOp as Parse>::op(parser, parent),
-            "llvm.mlir.constant" => <llvmir::ConstantOp as Parse>::op(parser, parent),
-            "llvm.return" => <llvmir::ReturnOp as Parse>::op(parser, parent),
-            "llvm.add" => <llvmir::AddOp as Parse>::op(parser, parent),
-            "llvm.mlir.global" => <llvmir::GlobalOp as Parse>::op(parser, parent),
+            "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
+            "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
+            "llvm.alloca" => <llvm::AllocaOp as Parse>::op(parser, parent),
+            "llvm.func" => <llvm::FuncOp as Parse>::op(parser, parent),
+            "llvm.mlir.constant" => <llvm::ConstantOp as Parse>::op(parser, parent),
+            "llvm.mlir.global" => <llvm::GlobalOp as Parse>::op(parser, parent),
+            "llvm.return" => <llvm::ReturnOp as Parse>::op(parser, parent),
+            "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
             "module" => <ModuleOp as Parse>::op(parser, parent),
+            "return" => <func::ReturnOp as Parse>::op(parser, parent),
             _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
         }
+    }
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
+        if parser.check(TokenKind::IntType) {
+            let typ = parser.advance();
+            let typ = IntegerType::from_str(&typ.lexeme);
+            return Ok(Arc::new(RwLock::new(typ)));
+        }
+        let text = parser.parse_type_text()?;
+        if text.starts_with("!llvm") {
+            return LLVM::parse_type(&text);
+        }
+        todo!("Not yet implemented for {}", text)
     }
 }
 
@@ -97,6 +109,7 @@ pub struct Parser<T: ParserDispatch> {
     parse_op: std::marker::PhantomData<T>,
 }
 
+#[allow(dead_code)]
 enum Dialects {
     Builtin,
     LLVM,
@@ -118,8 +131,8 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn peek(&self) -> &Token {
         self.tokens.get(self.current).unwrap()
     }
-    pub fn peek_n(&self, n: usize) -> &Token {
-        self.tokens.get(self.current + n).unwrap()
+    pub fn peek_n(&self, n: usize) -> Option<&Token> {
+        self.tokens.get(self.current + n)
     }
     fn is_at_end(&self) -> bool {
         self.peek().kind == TokenKind::Eof
@@ -136,7 +149,7 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn report_token_error(&self, token: &Token, expected: TokenKind) -> Result<Token> {
         let msg = format!(
-            "Expected {:?}, but got \"{}\" of kind {:?}",
+            "Expected {:?}, but got `{}` of kind {:?}",
             expected, token.lexeme, token.kind
         );
         let msg = Scanner::error(&self.src, &token.location, &msg);
@@ -202,12 +215,23 @@ impl<T: ParserDispatch> Parser<T> {
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
-        let mut blocks = vec![];
         let block = self.block(Some(region.clone()))?;
-        blocks.push(block);
+        let blocks = vec![block];
         region.write().unwrap().set_blocks(blocks);
         self.advance();
         Ok(region)
+    }
+    /// Return true if the next token could be the start of an operation.
+    fn peek_op(&self) -> bool {
+        self.check(TokenKind::BareIdentifier)
+    }
+    pub fn parse_keyword(&mut self, keyword: &str) -> Result<()> {
+        let token = self.expect(TokenKind::BareIdentifier)?;
+        if token.lexeme != keyword {
+            let msg = self.error(&token, &format!("Expected keyword: {}", keyword));
+            return Err(anyhow::anyhow!(msg));
+        }
+        Ok(())
     }
     pub fn parse(src: &str) -> Result<Arc<RwLock<dyn Op>>> {
         let mut parser = Parser::<T> {
@@ -226,14 +250,25 @@ impl<T: ParserDispatch> Parser<T> {
             let mut region = Region::default();
             region.set_parent(Some(op.clone()));
             let region = Arc::new(RwLock::new(region));
-            let ops = Arc::new(RwLock::new(vec![op.clone()]));
+            let mut ops = vec![op.clone()];
+
+            if parser.peek_op() {
+                while parser.peek_op() {
+                    let op = T::parse_op(&mut parser, None)?;
+                    ops.push(op.clone());
+                }
+            }
+            let ops = Arc::new(RwLock::new(ops));
             let arguments = Arc::new(vec![]);
-            let block = Block::new(None, arguments, ops, Some(region.clone()));
+            let block = Block::new(None, arguments, ops.clone(), Some(region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
-                let func_op = op.try_read().unwrap();
-                let mut func_operation = func_op.operation().try_write().unwrap();
-                func_operation.set_parent(Some(block.clone()));
+                let ops = ops.read().unwrap();
+                for child_op in ops.iter() {
+                    let child_op = child_op.try_read().unwrap();
+                    let mut child_operation = child_op.operation().try_write().unwrap();
+                    child_operation.set_parent(Some(block.clone()));
+                }
             }
             region.write().unwrap().blocks_mut().push(block.clone());
             let mut module_operation = Operation::default();
@@ -245,66 +280,25 @@ impl<T: ParserDispatch> Parser<T> {
         };
         Ok(op)
     }
-}
-
-impl<T: ParserDispatch> Parser<T> {
-    // Parse %0.
-    fn operand(&mut self, parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<OpOperand>>> {
-        let identifier = self.expect(TokenKind::PercentIdentifier)?;
-        let name = identifier.lexeme.clone();
-        let block = parent.read().unwrap();
-        let assignment = block.assignment(&name);
-        let assignment = match assignment {
-            Some(assignment) => assignment,
-            None => {
-                let msg = "Expected assignment before use.";
-                let msg = self.error(&identifier, msg);
-                return Err(anyhow::anyhow!(msg));
-            }
-        };
-        let operand = OpOperand::new(assignment);
-        Ok(Arc::new(RwLock::new(operand)))
-    }
-    /// Parse %0, %1.
-    pub fn operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<operation::Operands> {
-        let mut arguments = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
-            let operand = self.operand(parent.clone())?;
-            arguments.push(operand);
-            if self.check(TokenKind::Comma) {
-                let _comma = self.advance();
-            }
+    /// Parse a type to a string (for example, `!llvm.array<i32>`).
+    fn parse_type_text(&mut self) -> Result<String> {
+        let mut typ = String::new();
+        if self.check(TokenKind::Exclamation) {
+            let _exclamation = self.advance();
+            typ.push('!');
         }
-        Ok(Arc::new(RwLock::new(arguments)))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ir::Op;
-
-    #[test]
-    fn parse_global() {
-        // From test/Target/LLVMIR/llvmir.mlir
-        let src = "llvm.mlir.global internal @i32_global(42 : i32) : i32";
-        let module_op = Parser::<DefaultParserDispatch>::parse(src).unwrap();
-        let module_op = module_op.try_read().unwrap();
-        let module_op = module_op.as_any().downcast_ref::<ModuleOp>().unwrap();
-        assert_eq!(
-            module_op.operation().read().unwrap().name().to_string(),
-            "module"
-        );
-        // let body = module_op.operation().get_body_region();
-        // assert_eq!(body.blocks().len(), 1);
-        module_op.first_op().unwrap();
-
-        let repr = format!("{:#}", module_op);
-        let lines: Vec<&str> = repr.split('\n').collect();
-        println!("-- After:\n{}\n", repr);
-        assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "module {");
-        assert_eq!(lines[1], "  llvm.mlir.global internal @i32_global(42)");
-        assert_eq!(lines[2], "}");
+        if self.check(TokenKind::BareIdentifier) {
+            let text = self.advance();
+            typ.push_str(&text.lexeme);
+        }
+        if self.check(TokenKind::Less) {
+            while !self.check(TokenKind::Greater) {
+                let vector_element_typ = self.advance();
+                typ.push_str(&vector_element_typ.lexeme);
+            }
+            let _greater = self.advance();
+            typ.push('>');
+        }
+        Ok(typ)
     }
 }

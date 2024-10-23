@@ -5,24 +5,22 @@ use std::fmt::Formatter;
 use std::fmt::Result;
 
 pub struct LinkageAttr {
-    name: String,
     value: String,
 }
 
 impl Attribute for LinkageAttr {
-    fn new(name: &str, value: &str) -> Self {
+    fn new(value: &str) -> Self {
         Self {
-            name: name.to_string(),
             value: value.to_string(),
         }
     }
-    fn parse<T: ParserDispatch>(parser: &mut Parser<T>, name: &str) -> Option<Self> {
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let next = parser.peek();
         if next.lexeme == "internal" {
             parser.advance();
-            Some(Self::new(name, "internal"))
+            Some(Self::new("internal"))
         } else {
-            Some(Self::new(name, "external"))
+            Some(Self::new("external"))
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {

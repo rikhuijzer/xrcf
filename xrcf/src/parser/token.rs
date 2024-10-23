@@ -9,26 +9,48 @@ pub enum TokenKind {
     CodeComplete,
 
     // Identifiers
-    BareIdentifier,    // foo
-    AtIdentifier,      // @foo
-    PercentIdentifier, // %foo
+    /// foo
+    BareIdentifier,
+    /// @foo
+    AtIdentifier,
+    /// %foo
+    PercentIdentifier,
 
     // Literals
-    FloatLiteral, // 1.0
-    Integer,      // 42
-    String,       // "foo"
-    IntType,      // i4, si8, ui16
+    /// 1.0
+    FloatLiteral,
+    /// 42
+    Integer,
+    /// "foo"
+    String,
+    /// i4, si8, ui16
+    IntType,
 
     // Punctuation
-    Arrow,  // ->
-    Colon,  // :
-    Comma,  // ,
-    Equal,  // =
-    LParen, // (
-    RParen, // )
-    LBrace, // {
-    RBrace, // }
-    Minus,  // -
+    /// ->
+    Arrow,
+    /// :
+    Colon,
+    /// ,
+    Comma,
+    /// =
+    Equal,
+    /// (
+    LParen,
+    /// )
+    RParen,
+    /// {
+    LBrace,
+    /// }
+    RBrace,
+    /// -
+    Minus,
+    /// !
+    Exclamation,
+    /// >
+    Greater,
+    /// <
+    Less,
 
     // Keywords
     KwF16,

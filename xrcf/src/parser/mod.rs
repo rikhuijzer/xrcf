@@ -1,4 +1,4 @@
-pub mod parser;
+mod parser;
 mod scanner;
 mod token;
 
@@ -7,5 +7,3 @@ pub use parser::Parse;
 pub use parser::Parser;
 pub use parser::ParserDispatch;
 pub use token::TokenKind;
-
-trait NodeWithParent {}

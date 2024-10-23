@@ -4,8 +4,9 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect::arith;
 use crate::dialect::func;
+use crate::dialect::func::Call;
 use crate::dialect::func::Func;
-use crate::dialect::llvmir;
+use crate::dialect::llvm;
 use crate::ir::Op;
 use crate::Pass;
 use anyhow::Result;
@@ -29,7 +30,7 @@ impl Rewrite for FuncLowering {
             let mut operation = operation.try_write().unwrap();
             let name = operation.name();
             assert!(name == func::FuncOp::operation_name());
-            operation.set_name(llvmir::FuncOp::operation_name());
+            operation.set_name(llvm::FuncOp::operation_name());
 
             let parent = operation.parent();
             assert!(
@@ -38,9 +39,10 @@ impl Rewrite for FuncLowering {
             );
         }
 
-        let mut lowered = llvmir::FuncOp::from_operation(op.operation().clone())?;
-        lowered.set_identifier(op.identifier().to_string());
-        let new_op = Arc::new(RwLock::new(lowered));
+        let mut new_op = llvm::FuncOp::from_operation(op.operation().clone())?;
+        new_op.set_identifier(op.identifier().unwrap());
+        new_op.set_sym_visibility(op.sym_visibility().clone());
+        let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -58,7 +60,7 @@ impl Rewrite for ConstantOpLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let lowered = llvmir::ConstantOp::from_operation(op.operation().clone())?;
+        let lowered = llvm::ConstantOp::from_operation(op.operation().clone())?;
         let new_op = Arc::new(RwLock::new(lowered));
         op.replace(new_op.clone());
 
@@ -66,9 +68,9 @@ impl Rewrite for ConstantOpLowering {
     }
 }
 
-struct AddOpLowering;
+struct AddLowering;
 
-impl Rewrite for AddOpLowering {
+impl Rewrite for AddLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::AddOpLowering"
     }
@@ -77,8 +79,29 @@ impl Rewrite for AddOpLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let lowered = llvmir::AddOp::from_operation(op.operation().clone())?;
+        let lowered = llvm::AddOp::from_operation(op.operation().clone())?;
         let new_op = Arc::new(RwLock::new(lowered));
+        op.replace(new_op.clone());
+
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+struct CallLowering;
+
+impl Rewrite for CallLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::CallLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<func::CallOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<func::CallOp>().unwrap();
+        let mut new_op = llvm::CallOp::from_operation(op.operation().clone())?;
+        new_op.set_identifier(op.identifier().unwrap());
+        let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -97,7 +120,7 @@ impl Rewrite for ReturnLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
-        let lowered = llvmir::ReturnOp::from_operation(op.operation().clone())?;
+        let lowered = llvm::ReturnOp::from_operation(op.operation().clone())?;
         let new_op = Arc::new(RwLock::new(lowered));
         op.replace(new_op.clone());
 
@@ -113,7 +136,8 @@ impl Pass for ConvertFuncToLLVM {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &FuncLowering,
             &ConstantOpLowering,
-            &AddOpLowering,
+            &AddLowering,
+            &CallLowering,
             &ReturnLowering,
         ];
         apply_rewrites(op, &rewrites)

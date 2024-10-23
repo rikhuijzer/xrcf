@@ -1,26 +1,22 @@
-#![allow(dead_code)]
-
 mod canonicalize;
-mod compile;
 pub mod convert;
 pub mod dialect;
 pub mod ir;
 pub mod parser;
 pub mod targ3t;
-mod typ;
+mod transform;
 
-pub use compile::compile;
-pub use compile::init_subscriber;
-pub use compile::CompileOptions;
-pub use compile::CompilerDispatch;
-pub use compile::DefaultCompilerDispatch;
 pub use convert::Pass;
-pub use ir::attribute::Attribute;
-pub use ir::attribute::Attributes;
-pub use ir::operation::Operation;
+pub use ir::Attribute;
 pub use ir::Block;
+pub use ir::Operation;
 pub use parser::Parse;
 pub use parser::Parser;
+pub use transform::init_subscriber;
+pub use transform::transform;
+pub use transform::DefaultTransformDispatch;
+pub use transform::TransformDispatch;
+pub use transform::TransformOptions;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

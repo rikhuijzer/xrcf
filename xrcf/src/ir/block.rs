@@ -57,11 +57,12 @@ impl Block {
         let operation = operation.read().unwrap();
         if op.is_func() {
             let arguments = operation.arguments();
-            let arguments = arguments.read().unwrap();
+            let arguments = arguments.vec();
+            let arguments = arguments.try_read().unwrap();
             for argument in arguments.iter() {
-                match &*argument.read().unwrap() {
+                match &*argument.try_read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == name {
+                        if block_argument.name() == Some(name.to_string()) {
                             return Some(argument.clone());
                         }
                     }
@@ -84,13 +85,14 @@ impl Block {
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
-            let values = values.read().unwrap();
+            let values = values.vec();
+            let values = values.try_read().unwrap();
             for value in values.iter() {
-                match &*value.read().unwrap() {
-                    Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == name {
-                            return Some(value.clone());
-                        }
+                match &*value.try_read().unwrap() {
+                    Value::BlockArgument(_block_argument) => {
+                        // Ignore this case because we are looking for
+                        // assignment in ops.
+                        return None;
                     }
                     Value::OpResult(op_result) => {
                         if op_result.name() == name {
@@ -169,6 +171,7 @@ impl Block {
             write!(f, "{spaces}")?;
             let op = op.read().unwrap();
             op.display(f, indent)?;
+            write!(f, "\n")?;
         }
         Ok(())
     }

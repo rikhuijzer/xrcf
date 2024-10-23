@@ -10,6 +10,8 @@ use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::Parser;
 
+const FLAGS: &str = "--canonicalize";
+
 #[test]
 fn determine_users() {
     let src = indoc! {"
@@ -62,9 +64,9 @@ fn canonicalize_addi() {
       }
     }
     "};
-    let flags = "--canonicalize";
-    let (module, actual) = Test::compile(flags, src);
+    Test::init_subscriber();
+    let (module, actual) = Test::transform(FLAGS, src);
     let module = module.try_read().unwrap();
-    assert!(module.as_any().is::<ir::ModuleOp>());
     Test::check_lines_exact(&actual, expected, Location::caller());
+    assert!(module.as_any().is::<ir::ModuleOp>());
 }

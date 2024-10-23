@@ -1,11 +1,17 @@
+use crate::ir::Attributes;
 use crate::ir::Block;
+use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Region;
 use crate::ir::Type;
+use crate::ir::Types;
 use crate::ir::Users;
-use crate::ir::Value;
-use crate::Attribute;
-use std::collections::HashMap;
+use crate::ir::Values;
+use crate::parser::Parser;
+use crate::parser::ParserDispatch;
+use crate::parser::TokenKind;
+use anyhow::Result;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -35,52 +41,20 @@ impl Display for OperationName {
     }
 }
 
-pub type Values = Arc<RwLock<Vec<Arc<RwLock<Value>>>>>;
-pub type Operands = Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>;
-pub type Types = Arc<RwLock<Vec<Arc<RwLock<Type>>>>>;
-
-#[derive(Clone)]
-pub struct Attributes {
-    map: Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>,
-}
-
-impl Attributes {
-    pub fn new() -> Self {
-        Self {
-            map: Arc::new(RwLock::new(HashMap::new())),
-        }
+impl<T: ParserDispatch> Parser<T> {
+    fn parse_operation_name(&mut self) -> Result<OperationName> {
+        let identifier = self.expect(TokenKind::BareIdentifier)?;
+        let name = OperationName::new(identifier.lexeme);
+        Ok(name)
     }
-    pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
-        self.map.clone()
-    }
-    pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
-        self.map
-            .write()
-            .unwrap()
-            .insert(name.to_string(), attribute);
-    }
-    pub fn deep_clone(&self) -> Self {
-        let map = self.map.read().unwrap();
-        let mut out = HashMap::new();
-        for (name, attribute) in map.iter() {
-            let attribute = attribute.clone();
-            out.insert(name.to_string(), attribute);
-        }
-        let map = Arc::new(RwLock::new(out));
-        Self { map }
-    }
-}
-
-impl Display for Attributes {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        for (name, attribute) in self.map.read().unwrap().iter() {
-            if name == "value" {
-                write!(f, " {attribute}")?;
-            } else {
-                write!(f, " {name} = {attribute}")?;
-            }
-        }
-        Ok(())
+    pub fn parse_operation_name_into<O: Op>(
+        &mut self,
+        operation: &mut Operation,
+    ) -> Result<OperationName> {
+        let name = self.parse_operation_name()?;
+        assert!(name == O::operation_name());
+        operation.set_name(name.clone());
+        Ok(name)
     }
 }
 
@@ -100,7 +74,7 @@ pub struct Operation {
     name: OperationName,
     /// Used by the `Func` trait implementers to store arguments.
     arguments: Values,
-    operands: Operands,
+    operands: OpOperands,
     attributes: Attributes,
     /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
     results: Values,
@@ -126,7 +100,7 @@ pub fn display_region_inside_func(
             region.display(f, indent)
         }
     } else {
-        write!(f, "\n")
+        Ok(())
     }
 }
 
@@ -134,7 +108,7 @@ impl Operation {
     pub fn new(
         name: OperationName,
         arguments: Values,
-        operands: Operands,
+        operands: OpOperands,
         attributes: Attributes,
         results: Values,
         result_types: Types,
@@ -158,13 +132,24 @@ impl Operation {
     pub fn arguments(&self) -> Values {
         self.arguments.clone()
     }
-    pub fn operands(&self) -> Operands {
+    pub fn operands(&self) -> OpOperands {
         self.operands.clone()
     }
-    pub fn operand(&self, index: usize) -> Arc<RwLock<OpOperand>> {
-        self.operands.read().unwrap()[index].clone()
+    pub fn operand_types(&self) -> Types {
+        let operands = self.operands.vec();
+        let operands = operands.try_read().unwrap();
+        let operand_types = operands
+            .iter()
+            .map(|o| o.try_read().unwrap().typ())
+            .collect();
+        Types::new(operand_types)
     }
-    pub fn operands_mut(&mut self) -> &mut Operands {
+    pub fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
+        let operands = self.operands.vec();
+        let operands = operands.try_read().unwrap();
+        operands.get(index).cloned()
+    }
+    pub fn operands_mut(&mut self) -> &mut OpOperands {
         &mut self.operands
     }
     pub fn attributes(&self) -> Attributes {
@@ -175,6 +160,19 @@ impl Operation {
     }
     pub fn result_types(&self) -> Types {
         self.result_types.clone()
+    }
+    /// Get the single result type of the operation.
+    ///
+    /// Return `None` if the operation has fewer or more than 1 result.
+    pub fn result_type(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        let result_types = self.result_types();
+        let result_types = result_types.vec();
+        let result_types = result_types.try_read().unwrap();
+        if result_types.len() != 1 {
+            return None;
+        }
+        let result_type = result_types.get(0).unwrap();
+        Some(result_type.clone())
     }
     pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
@@ -189,7 +187,14 @@ impl Operation {
     pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn set_operands(&mut self, operands: Operands) {
+    /// Set the operand of the operation.
+    ///
+    /// This overrides any previously set operands.
+    pub fn set_operand(&mut self, operand: Arc<RwLock<OpOperand>>) {
+        let operands = vec![operand];
+        self.operands = OpOperands::from_vec(operands);
+    }
+    pub fn set_operands(&mut self, operands: OpOperands) {
         self.operands = operands;
     }
     pub fn set_attributes(&mut self, attributes: Attributes) {
@@ -198,6 +203,18 @@ impl Operation {
     pub fn set_results(&mut self, results: Values) {
         self.results = results;
     }
+    /// Set the result type of the operation.
+    ///
+    /// This overrides any previously set result types.
+    pub fn set_result_type(&mut self, result_type: Arc<RwLock<dyn Type>>) {
+        let result_types = vec![result_type];
+        let result_types = Types::new(result_types);
+        self.result_types = result_types;
+    }
+    /// Set the result types of the operation.
+    ///
+    /// This overrides any previously set result types. For overriding a single
+    /// result type, use `set_result_type`.
     pub fn set_result_types(&mut self, result_types: Types) {
         self.result_types = result_types;
     }
@@ -212,11 +229,13 @@ impl Operation {
     }
     pub fn users(&self) -> Users {
         let mut out = Vec::new();
-        let defines_result = self.results().try_read().unwrap().len() > 0;
+        let results = self.results().vec();
+        let results = results.try_read().unwrap();
+        let defines_result = results.len() > 0;
         if !defines_result {
             return Users::HasNoOpResults;
         }
-        for result in self.results().try_read().unwrap().iter() {
+        for result in results.iter() {
             let result = result.try_read().unwrap();
             let result_users = result.users();
             match result_users {
@@ -230,34 +249,32 @@ impl Operation {
         }
         Users::OpOperands(out)
     }
+    /// Display the results of the operation (e.g., `%0 = `).
+    pub fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let results = self.results().vec();
+        let results = results.try_read().unwrap();
+        if !results.is_empty() {
+            write!(f, "{} = ", self.results())?;
+        }
+        Ok(())
+    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        if !self.results().read().unwrap().is_empty() {
-            for result in self.results().read().unwrap().iter() {
-                write!(f, "{}", result.read().unwrap())?;
-            }
-            write!(f, " = ")?;
-        }
+        self.display_results(f)?;
         write!(f, "{}", self.name())?;
-        if !self.operands().read().unwrap().is_empty() {
-            let joined = self
-                .operands()
-                .read()
-                .unwrap()
-                .iter()
-                .map(|o| o.read().unwrap().name())
-                .collect::<Vec<String>>()
-                .join(", ");
-            write!(f, " {}", joined)?;
+        let operands = self.operands();
+        if !operands.vec().try_read().unwrap().is_empty() {
+            write!(f, " {}", operands)?;
         }
         write!(f, "{}", self.attributes())?;
         let result_types = self.result_types();
-        let result_types = result_types.read().unwrap();
+        let result_types = result_types.vec();
+        let result_types = result_types.try_read().unwrap();
         if !result_types.is_empty() {
             write!(f, " :")?;
             for result_type in result_types.iter() {
-                write!(f, " {}", result_type.read().unwrap())?;
+                write!(f, " {}", result_type.try_read().unwrap())?;
             }
         }
         display_region_inside_func(f, self, indent)
@@ -268,11 +285,11 @@ impl Default for Operation {
     fn default() -> Self {
         Self {
             name: OperationName::new("".to_string()),
-            arguments: Arc::new(RwLock::new(vec![])),
-            operands: Arc::new(RwLock::new(vec![])),
+            arguments: Values::default(),
+            operands: OpOperands::default(),
             attributes: Attributes::new(),
-            results: Arc::new(RwLock::new(vec![])),
-            result_types: Arc::new(RwLock::new(vec![])),
+            results: Values::default(),
+            result_types: Types::default(),
             region: None,
             parent: None,
         }

@@ -1,28 +1,23 @@
 use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
-use crate::ir::operation::Operation;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpResult;
+use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::Type;
+use crate::ir::PlaceholderType;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
-use crate::typ::APInt;
-use crate::typ::IntegerType;
-use crate::Dialect;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
-
-struct Arith {}
 
 pub struct ConstantOp {
     operation: Arc<RwLock<Operation>>,
@@ -56,7 +51,8 @@ impl Op for ConstantOp {
             ));
         }
         let results = read_only.results();
-        let results = results.read().unwrap();
+        let results = results.vec();
+        let results = results.try_read().unwrap();
         if results.len() != 1 {
             return Err(anyhow::anyhow!(
                 "Results length for ConstantOp is not 1:\n  {}",
@@ -78,15 +74,26 @@ impl Op for ConstantOp {
     fn is_const(&self) -> bool {
         true
     }
+    fn is_pure(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        let operation = self.operation.try_read().unwrap();
+        operation.display_results(f)?;
+        write!(f, "{}", operation.name())?;
+        let attributes = operation.attributes();
+        let attributes = attributes.get("value").unwrap();
+        let attribute = attributes.as_any().downcast_ref::<IntegerAttr>().unwrap();
+        write!(f, " {attribute}")?;
+        Ok(())
     }
 }
 
 impl ConstantOp {
+    #[allow(dead_code)]
     fn value(&self) -> Arc<dyn Attribute> {
         let operation = self.operation.read().unwrap();
         let attributes = operation.attributes();
@@ -95,6 +102,7 @@ impl ConstantOp {
         let value = attributes.get("value").unwrap();
         value.clone()
     }
+    #[allow(dead_code)]
     fn set_value(&mut self, value: Arc<dyn Attribute>) {
         let operation = self.operation.read().unwrap();
         let attributes = operation.attributes();
@@ -104,53 +112,36 @@ impl ConstantOp {
     }
 }
 
-impl<T: ParserDispatch> Parser<T> {
-    /// Parse a type definition (e.g., `: i64`).
-    fn typ(&mut self) -> Result<Type> {
-        let _colon = self.expect(TokenKind::Colon)?;
-        let typ = self.expect(TokenKind::IntType)?;
-        let typ = Type::new(typ.lexeme.clone());
-        Ok(typ)
-    }
-    /// Parse a integer constant (e.g., `42 : i64`).
-    pub fn integer(parser: &mut Parser<T>) -> Result<Arc<dyn Attribute>> {
-        let integer = parser.expect(TokenKind::Integer)?;
-        let value = integer.lexeme;
-
-        let _colon = parser.expect(TokenKind::Colon)?;
-
-        let num_bits = parser.expect(TokenKind::IntType)?;
-        let typ = IntegerType::from_str(&num_bits.lexeme);
-        let value = APInt::from_str(&num_bits.lexeme, &value);
-        let integer = IntegerAttr::new(typ, value);
-        Ok(Arc::new(integer))
-    }
-}
-
 impl Parse for ConstantOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
-        let results = parser.results()?;
-        operation.set_results(results.clone());
-
-        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        assert!(operation_name.lexeme == "arith.constant");
-        operation.set_name(ConstantOp::operation_name());
         operation.set_parent(parent.clone());
+        let results = parser.parse_op_results_into(&mut operation)?;
 
-        let integer = Parser::<T>::integer(parser)?;
+        parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
+
+        let integer = parser.parse_integer()?;
+        let typ = integer
+            .as_any()
+            .downcast_ref::<IntegerAttr>()
+            .unwrap()
+            .typ();
+        let hack = typ.to_string();
+        let typ = PlaceholderType::new(&hack);
+        let typ = Arc::new(RwLock::new(typ));
+        operation.set_result_type(typ);
 
         let attributes = operation.attributes();
-        attributes.insert("value", integer);
+        attributes.insert("value", Arc::new(integer));
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp {
             operation: operation.clone(),
         };
         let op = Arc::new(RwLock::new(op));
-        set_defining_op(results, op.clone());
+        results.set_defining_op(op.clone());
         Ok(op)
     }
 }
@@ -164,10 +155,11 @@ impl AddiOp {
     fn addi_add_constant(&self) -> RewriteResult {
         let operation = self.operation.read().unwrap();
         let operands = operation.operands();
-        let operands = operands.read().unwrap();
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
         assert!(operands.len() == 2);
 
-        let lhs = operands[0].clone();
+        let lhs = operands.get(0).unwrap();
         let lhs = lhs.read().unwrap();
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
@@ -181,9 +173,9 @@ impl AddiOp {
             None => return RewriteResult::Unchanged,
         };
 
-        let rhs = operands[1].clone();
-        let rhs = rhs.read().unwrap().defining_op();
-        let rhs = match rhs {
+        let rhs = operands.get(1).unwrap();
+        let rhs = rhs.read().unwrap();
+        let rhs = match rhs.defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
         };
@@ -207,12 +199,12 @@ impl AddiOp {
         attributes.insert("value", Arc::new(new_value));
         new_operation.set_attributes(attributes);
 
-        let results: Values = Arc::new(RwLock::new(vec![]));
+        let results = Values::default();
         let mut result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
         let result = Arc::new(RwLock::new(result));
-        results.write().unwrap().push(result.clone());
+        results.vec().try_write().unwrap().push(result.clone());
         new_operation.set_results(results);
 
         let new_const = Arc::new(RwLock::new(new_operation));
@@ -234,6 +226,7 @@ impl AddiOp {
             let new_const = new_const.try_read().unwrap();
             let new_const = new_const.operation().try_read().unwrap();
             let results = new_const.results();
+            let results = results.vec();
             let results = results.try_read().unwrap();
             assert!(results.len() == 1);
             let mut result = results[0].try_write().unwrap();
@@ -258,6 +251,9 @@ impl Op for AddiOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
+    fn is_pure(&self) -> bool {
+        true
+    }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
@@ -270,64 +266,27 @@ impl Op for AddiOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    pub fn results(&mut self) -> Result<Values> {
-        let mut results = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
-            let identifier = self.expect(TokenKind::PercentIdentifier)?;
-            let name = identifier.lexeme.clone();
-            let mut op_result = OpResult::default();
-            op_result.set_name(&name);
-            let result = Value::OpResult(op_result);
-            results.push(Arc::new(RwLock::new(result)));
-            if self.check(TokenKind::Equal) {
-                let _equal = self.advance();
-            }
-        }
-        let results = Arc::new(RwLock::new(results));
-        Ok(results)
-    }
-}
-
-pub fn set_defining_op(results: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>, op: Arc<RwLock<dyn Op>>) {
-    let results = results.read().unwrap();
-    for result in results.iter() {
-        let mut mut_result = result.write().unwrap();
-        match &mut *mut_result {
-            Value::BlockArgument(_) => {
-                panic!("This case should not occur")
-            }
-            Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
-        }
-    }
-}
-
-impl<T: ParserDispatch> Parser<T> {
     pub fn parse_add<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
         expected_name: OperationName,
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
-        let results = parser.results()?;
-        operation.set_results(results.clone());
-
-        let operation_name = parser.expect(TokenKind::BareIdentifier)?;
-        assert!(operation_name.lexeme == expected_name.name());
-        operation.set_name(expected_name.clone());
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        operation.set_operands(parser.operands(parent.unwrap())?);
+        let results = parser.parse_op_results_into(&mut operation)?;
+
+        parser.parse_operation_name_into::<O>(&mut operation)?;
+        operation.set_operands(parser.parse_op_operands(parent.unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
-        let result_type = Type::new(result_type.lexeme.clone());
-        let result_type = Arc::new(RwLock::new(result_type));
-        let result_types = Arc::new(RwLock::new(vec![result_type]));
-        operation.set_result_types(result_types);
+        let result_type = PlaceholderType::new(&result_type.lexeme);
+        operation.set_result_type(Arc::new(RwLock::new(result_type)));
 
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation_without_verify(operation, expected_name)?;
         let op = Arc::new(RwLock::new(op));
-        set_defining_op(results, op.clone());
+        results.set_defining_op(op.clone());
         Ok(op)
     }
 }
@@ -341,19 +300,4 @@ impl Parse for AddiOp {
         let op = Parser::<T>::parse_add::<AddiOp>(parser, parent, expected_name)?;
         Ok(op)
     }
-}
-
-impl Dialect for Arith {
-    fn name(&self) -> &'static str {
-        "arith"
-    }
-
-    fn description(&self) -> &'static str {
-        "Arithmetic operations."
-    }
-
-    // Probably we don't want to have a global obs state but instead
-    // have some different implementations for common functions.
-    // fn ops(&self) ->
-    // }
 }

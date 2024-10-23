@@ -71,6 +71,9 @@ pub trait Op {
     fn is_const(&self) -> bool {
         false
     }
+    fn is_pure(&self) -> bool {
+        false
+    }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
         let operation = self.operation().read().unwrap();
         let attributes = operation.attributes();
@@ -99,10 +102,7 @@ pub trait Op {
             old_operation.results()
         };
         {
-            for result in results.try_read().unwrap().iter() {
-                let mut result = result.try_write().unwrap();
-                result.set_defining_op(Some(new.clone()));
-            }
+            results.set_defining_op(new.clone());
             let new_read = new.try_read().unwrap();
             let mut new_operation = new_read.operation().try_write().unwrap();
             new_operation.set_results(results.clone());

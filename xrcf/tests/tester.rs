@@ -6,12 +6,12 @@ use std::panic::Location;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::info;
-use xrcf::compile;
 use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
-use xrcf::DefaultCompilerDispatch;
+use xrcf::transform;
+use xrcf::DefaultTransformDispatch;
 use xrcf::Parser;
 
 pub struct Test;
@@ -27,7 +27,7 @@ impl Test {
             Err(_e) => (),
         }
     }
-    fn point_missing_line(expected: &str, index: usize) -> String {
+    fn point_to_missing_line(expected: &str, index: usize) -> String {
         let mut result = String::new();
         result.push_str("A line is missing from the output:\n");
         result.push_str("```");
@@ -71,6 +71,7 @@ impl Test {
         }
     }
     /// Check whether the expected lines are present in the actual output.
+    ///
     /// The actual output may contain additional lines that are not in the expected output.
     pub fn check_lines_contain(actual: &str, expected: &str, caller: &Location<'_>) {
         let actual = actual.trim();
@@ -78,6 +79,11 @@ impl Test {
         let mut actual_index = 0;
         'outer: for i in 0..expected.lines().count() {
             let expected_line = expected.lines().nth(i).unwrap().trim();
+            // If not skipping these, an empty line will match any line (which
+            // can then cause the next expected line to be reported as missing).
+            if expected_line.is_empty() {
+                continue;
+            }
             let start = actual_index;
             for j in start..actual.lines().count() {
                 let actual_line = actual.lines().nth(j).unwrap();
@@ -86,7 +92,7 @@ impl Test {
                     continue 'outer;
                 }
             }
-            let msg = Self::point_missing_line(expected, i);
+            let msg = Self::point_to_missing_line(expected, i);
             panic!("{msg}\nwhen called from {caller}");
         }
     }
@@ -103,13 +109,13 @@ impl Test {
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
-    pub fn compile(arguments: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn transform(arguments: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
         let src = src.trim();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
-        let msg = format!("Before (opt {arguments})");
+        let msg = format!("Before (transform {arguments})");
         Self::print_heading(&msg, src);
 
-        let result = compile::<DefaultCompilerDispatch>(module.clone(), arguments).unwrap();
+        let result = transform::<DefaultTransformDispatch>(module.clone(), arguments).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
@@ -117,7 +123,7 @@ impl Test {
             }
         };
         let actual = format!("{}", new_root_op.try_read().unwrap());
-        let msg = format!("After (opt {arguments})");
+        let msg = format!("After (transform {arguments})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }

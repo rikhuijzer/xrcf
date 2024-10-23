@@ -37,6 +37,9 @@ impl Rewrite for DeadCodeElimination {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let readonly = op.clone();
         let readonly = readonly.try_read().unwrap();
+        if !readonly.is_pure() {
+            return Ok(RewriteResult::Unchanged);
+        }
         let operation = readonly.operation().try_read().unwrap();
         let users = operation.users();
         match users {
