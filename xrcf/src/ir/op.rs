@@ -19,23 +19,30 @@ pub trait Op {
     fn operation_name() -> OperationName
     where
         Self: Sized;
-    fn verify(&self) -> Result<()> {
-        Ok(())
-    }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self>
+    /// Create an new [Op] from an [Operation].
+    ///
+    /// This method has to be implemented by all ops and is just used to
+    /// create a new [Op]. Do not call this method directly, but rather use
+    /// [Self::from_operation].
+    fn new(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized;
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Result<Self>
+    /// Create an [Op] from an [Operation].
+    ///
+    /// The default implementation for this method automatically sets the name
+    /// of the operation to the name of the op. This duplication of the name is
+    /// unfortunate, but necessary because it allows showing the operation name
+    /// even when the [Operation] is not wrapped inside an [Op].
+    fn from_operation(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized,
     {
         let name = Self::operation_name();
-        let op = Self::from_operation_without_verify(operation, name)?;
-        op.verify()?;
-        Ok(op)
+        let operation_write = operation.clone();
+        let mut operation_write = operation_write.try_write().unwrap();
+        operation_write.set_name(name);
+        let op = Self::new(operation);
+        op
     }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;

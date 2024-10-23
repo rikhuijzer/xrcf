@@ -9,7 +9,6 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StrAttr;
 use crate::ir::Value;
-use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -35,15 +34,11 @@ impl Op for AddOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::add".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(AddOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        AddOp {
             operation,
             const_value: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -109,16 +104,12 @@ impl Op for AllocaOp {
     fn operation_name() -> OperationName {
         OperationName::new("alloca".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(AllocaOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        AllocaOp {
             operation,
             const_value: None,
             element_type: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -173,15 +164,11 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("call".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(CallOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        CallOp {
             operation,
             identifier: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -225,15 +212,11 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::func".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(FuncOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        FuncOp {
             operation,
             identifier: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -307,18 +290,14 @@ impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.module".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ModuleOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ModuleOp {
             operation,
             module_id: "LLVMDialectModule".to_string(),
             source_filename: "LLVMDialectModule".to_string(),
             module_flags: "!{!0}".to_string(),
             debug_info: r#"!0 = !{i32 2, !"Debug Info Version", i32 3}"#.to_string(),
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -369,15 +348,11 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::return".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ReturnOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ReturnOp {
             operation,
             const_value: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -444,16 +419,12 @@ impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("store".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(StoreOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        StoreOp {
             operation,
             const_value: None,
             len: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self

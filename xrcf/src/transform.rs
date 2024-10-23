@@ -1,9 +1,9 @@
 use crate::canonicalize::Canonicalize;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
+use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
-use crate::convert::Pass;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;

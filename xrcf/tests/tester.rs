@@ -10,9 +10,9 @@ use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
+use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
-use xrcf::parser::Parser;
 
 pub struct Test;
 

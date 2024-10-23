@@ -27,46 +27,8 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
     }
-    fn verify(&self) -> Result<()> {
-        let read_only = self.operation().read().unwrap();
-        if read_only.name() != ConstantOp::operation_name() {
-            return Err(anyhow::anyhow!(
-                "Invalid operation name for ConstantOp:\n  {}",
-                read_only
-            ));
-        }
-        if read_only.parent().is_none() {
-            return Err(anyhow::anyhow!(
-                "Parent is none for ConstantOp:\n  {}",
-                read_only
-            ));
-        }
-        let attributes = read_only.attributes();
-        let attributes = attributes.map();
-        let attributes = attributes.read().unwrap();
-        if attributes.get("value").is_none() {
-            return Err(anyhow::anyhow!(
-                "Value is none for ConstantOp:\n  {}",
-                read_only
-            ));
-        }
-        let results = read_only.results();
-        let results = results.vec();
-        let results = results.try_read().unwrap();
-        if results.len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Results length for ConstantOp is not 1:\n  {}",
-                read_only
-            ));
-        }
-        Ok(())
-    }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ConstantOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ConstantOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -208,12 +170,7 @@ impl AddiOp {
         new_operation.set_results(results);
 
         let new_const = Arc::new(RwLock::new(new_operation));
-        let new_const = match ConstantOp::from_operation(new_const) {
-            Ok(new_const) => new_const,
-            Err(err) => {
-                panic!("{}", err);
-            }
-        };
+        let new_const = ConstantOp::from_operation(new_const);
         let new_const = Arc::new(RwLock::new(new_const));
         let mut result = result.try_write().unwrap();
         if let Value::OpResult(result) = &mut *result {
@@ -241,12 +198,8 @@ impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(AddiOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        AddiOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -269,7 +222,6 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_add<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-        expected_name: OperationName,
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
@@ -284,7 +236,7 @@ impl<T: ParserDispatch> Parser<T> {
         operation.set_result_type(Arc::new(RwLock::new(result_type)));
 
         let operation = Arc::new(RwLock::new(operation));
-        let op = O::from_operation_without_verify(operation, expected_name)?;
+        let op = O::from_operation(operation);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
@@ -296,8 +248,7 @@ impl Parse for AddiOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = AddiOp::operation_name();
-        let op = Parser::<T>::parse_add::<AddiOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::parse_add::<AddiOp>(parser, parent)?;
         Ok(op)
     }
 }

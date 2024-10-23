@@ -1,6 +1,6 @@
+use crate::ir::Attribute;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
-use crate::ir::Attribute;
 use std::fmt::Formatter;
 use std::fmt::Result;
 

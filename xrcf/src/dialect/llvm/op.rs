@@ -3,6 +3,7 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm::attribute::LinkageAttr;
 use crate::ir::AnyAttr;
+use crate::ir::Attribute;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::Op;
@@ -12,11 +13,10 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StrAttr;
 use crate::ir::Value;
+use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
-use crate::ir::Attribute;
-use crate::parser::Parse;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -30,18 +30,8 @@ impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        if operation.read().unwrap().name() != Self::operation_name() {
-            return Err(anyhow::anyhow!(
-                "Expected global, got {}",
-                operation.read().unwrap().name()
-            ));
-        }
-        Ok(Self { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        GlobalOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -114,7 +104,7 @@ impl Parse for GlobalOp {
         operation.set_parent(parent);
         let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
-        Ok(Arc::new(RwLock::new(op.unwrap())))
+        Ok(Arc::new(RwLock::new(op)))
     }
 }
 
@@ -136,15 +126,11 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.func".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(FuncOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        FuncOp {
             identifier: None,
             operation,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -210,12 +196,8 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.constant".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ConstantOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ConstantOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -295,12 +277,8 @@ impl Op for AddOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.add".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(AddOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        AddOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -318,8 +296,7 @@ impl Parse for AddOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = AddOp::operation_name();
-        let op = Parser::<T>::parse_add::<AddOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::parse_add::<AddOp>(parser, parent)?;
         Ok(op)
     }
 }
@@ -349,15 +326,11 @@ impl Op for AllocaOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.alloca".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(AllocaOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        AllocaOp {
             operation,
             element_type: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -444,15 +417,11 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.call".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(CallOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        CallOp {
             operation,
             identifier: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -509,12 +478,8 @@ impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.store".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(StoreOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        StoreOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -588,12 +553,8 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.return".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ReturnOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -612,8 +573,7 @@ impl Parse for ReturnOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = ReturnOp::operation_name();
-        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent)?;
         Ok(op)
     }
 }

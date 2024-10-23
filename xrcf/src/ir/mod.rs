@@ -1,5 +1,5 @@
 //! Intermediate representation (IR) for the compiler.
-//! 
+//!
 //! These data structures are used as the basis for the compiler.
 //! For example, this module some core types such as [Operation] and [Op].
 

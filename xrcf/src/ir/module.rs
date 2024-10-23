@@ -1,12 +1,12 @@
+use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
-use crate::ir::Block;
 use crate::parser::Parse;
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
+use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -23,12 +23,8 @@ impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("module".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(Self { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        Self { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self

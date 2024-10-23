@@ -276,7 +276,7 @@ impl<T: ParserDispatch> Parser<T> {
             module_operation.set_region(Some(region.clone()));
             let module_operation = Arc::new(RwLock::new(module_operation));
             let module_op = ModuleOp::from_operation(module_operation);
-            Arc::new(RwLock::new(module_op.unwrap()))
+            Arc::new(RwLock::new(module_op))
         };
         Ok(op)
     }

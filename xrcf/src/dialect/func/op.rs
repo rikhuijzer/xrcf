@@ -8,10 +8,10 @@ use crate::ir::StrAttr;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Values;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::parser::Parse;
 use crate::parser::Parser;
+use crate::parser::ParserDispatch;
+use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -121,7 +121,7 @@ pub trait Call: Op {
         operation.set_result_type(result_type);
 
         let operation = Arc::new(RwLock::new(operation));
-        let mut op = O::from_operation_without_verify(operation.clone(), O::operation_name())?;
+        let mut op = O::from_operation(operation.clone());
         op.set_identifier(identifier);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
@@ -142,15 +142,11 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.call".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(CallOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        CallOp {
             operation,
             identifier: None,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -281,16 +277,12 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(FuncOp {
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        FuncOp {
             identifier: None,
             sym_visibility: None,
             operation,
-        })
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -344,7 +336,7 @@ impl<T: ParserDispatch> Parser<T> {
         operation.set_arguments(parser.parse_function_arguments()?);
         operation.set_result_types(parser.result_types()?);
         let operation = Arc::new(RwLock::new(operation));
-        let mut op = F::from_operation_without_verify(operation.clone(), expected_name)?;
+        let mut op = F::from_operation(operation.clone());
         op.set_identifier(identifier);
         op.set_sym_visibility(visibility);
         let op = Arc::new(RwLock::new(op));
@@ -410,12 +402,8 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("return".to_string())
     }
-    fn from_operation_without_verify(
-        operation: Arc<RwLock<Operation>>,
-        name: OperationName,
-    ) -> Result<Self> {
-        operation.try_write().unwrap().set_name(name);
-        Ok(ReturnOp { operation })
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -433,7 +421,6 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn return_op<O: Op>(
         &mut self,
         parent: Option<Arc<RwLock<Block>>>,
-        expected_name: OperationName,
     ) -> Result<Arc<RwLock<O>>> {
         tracing::debug!("Parsing return op");
         let mut operation = Operation::default();
@@ -447,7 +434,7 @@ impl<T: ParserDispatch> Parser<T> {
         let result_type = Arc::new(RwLock::new(return_type));
         operation.set_result_type(result_type);
         let operation = Arc::new(RwLock::new(operation));
-        let op = O::from_operation_without_verify(operation.clone(), expected_name)?;
+        let op = O::from_operation(operation.clone());
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }
@@ -458,8 +445,7 @@ impl Parse for ReturnOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = ReturnOp::operation_name();
-        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::return_op::<ReturnOp>(parser, parent)?;
         Ok(op)
     }
 }
