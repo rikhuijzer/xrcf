@@ -11,7 +11,7 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::StrAttr;
+use crate::ir::StringAttr;
 use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
@@ -81,7 +81,7 @@ impl Parse for GlobalOp {
                 symbol_name
             ));
         }
-        if let Some(attribute) = StrAttr::parse(parser) {
+        if let Some(attribute) = StringAttr::parse(parser) {
             attributes
                 .map()
                 .write()

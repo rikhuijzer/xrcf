@@ -97,11 +97,11 @@ impl IntegerAttr {
     }
 }
 
-pub struct StrAttr {
+pub struct StringAttr {
     value: String,
 }
 
-impl Attribute for StrAttr {
+impl Attribute for StringAttr {
     fn new(value: &str) -> Self {
         Self {
             value: value.to_string(),
@@ -124,7 +124,7 @@ impl Attribute for StrAttr {
     }
 }
 
-impl Display for StrAttr {
+impl Display for StringAttr {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
     }
@@ -228,11 +228,11 @@ impl<T: ParserDispatch> Parser<T> {
         Ok(integer)
     }
     /// Parse a string constant (e.g., `"hello"`).
-    pub fn parse_string(&mut self) -> Result<StrAttr> {
+    pub fn parse_string(&mut self) -> Result<StringAttr> {
         let string = self.expect(TokenKind::String)?;
         let value = string.lexeme.as_str();
         let value = value.trim_matches('"');
-        Ok(StrAttr::new(value))
+        Ok(StringAttr::new(value))
     }
     pub fn parse_attribute(&mut self) -> Result<Arc<dyn Attribute>> {
         let attribute = self.advance();

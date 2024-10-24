@@ -7,7 +7,7 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::StrAttr;
+use crate::ir::StringAttr;
 use crate::ir::Value;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -435,7 +435,7 @@ impl Op for StoreOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "store ")?;
         let const_value = self.const_value();
-        let const_value = const_value.as_any().downcast_ref::<StrAttr>().unwrap();
+        let const_value = const_value.as_any().downcast_ref::<StringAttr>().unwrap();
         let len = self.len().expect("len not set during lowering");
         write!(f, "[{len} x i8] ")?;
         write!(f, "c{const_value}, ")?;

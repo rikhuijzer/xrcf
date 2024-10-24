@@ -4,7 +4,7 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::PlaceholderType;
-use crate::ir::StrAttr;
+use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Values;
@@ -39,7 +39,7 @@ pub trait Func: Op {
             let operation = self.operation();
             let operation = operation.try_write().unwrap();
             let attributes = operation.attributes();
-            let attribute = StrAttr::new(&visibility);
+            let attribute = StringAttr::new(&visibility);
             let attribute = Arc::new(attribute);
             attributes.insert("sym_visibility", attribute);
         }

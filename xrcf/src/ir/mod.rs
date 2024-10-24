@@ -17,7 +17,7 @@ pub use attribute::AnyAttr;
 pub use attribute::Attribute;
 pub use attribute::Attributes;
 pub use attribute::IntegerAttr;
-pub use attribute::StrAttr;
+pub use attribute::StringAttr;
 pub use block::Block;
 pub use module::ModuleOp;
 pub use op::Op;
