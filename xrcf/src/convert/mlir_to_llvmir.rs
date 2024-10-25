@@ -35,8 +35,10 @@ fn remove_operand_to_constant(new_op: &dyn OneConst) {
 fn set_constant_value(new_op: &mut dyn OneConst, value: &Value) {
     match &*value {
         Value::BlockArgument(_) => todo!(),
+        Value::FuncResult(_) => todo!(),
         Value::OpResult(op_res) => {
             let op = op_res.defining_op();
+            let op = op.expect("Defining op not set for OpResult");
             let op = op.try_read().unwrap();
             let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
             if let Some(op) = op {
@@ -111,11 +113,7 @@ impl Rewrite for AllocaLowering {
         let mut new_op = targ3t::llvmir::AllocaOp::from_operation(operation.clone());
         {
             let operation = operation.try_read().unwrap();
-            let types = operation.operand_types();
-            println!("types: {}", types);
-            operation.result_types().convert::<ConvertMLIRToLLVMIR>()?;
-            let types = operation.operand_types();
-            println!("types: {}", types);
+            operation.results().convert_types::<ConvertMLIRToLLVMIR>()?;
         }
         new_op.set_element_type(op.element_type().unwrap());
         let value = find_constant_operand(op).unwrap();

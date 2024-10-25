@@ -1,6 +1,7 @@
 use crate::canonicalize::Canonicalize;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
+use crate::convert::ConvertUnstableToMLIR;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
@@ -24,52 +25,6 @@ pub trait TransformDispatch {
 /// This implementation knows only passes that are implemented in xrcf.
 pub struct DefaultTransformDispatch;
 
-pub struct TransformOptions {
-    canonicalize: bool,
-    convert_func_to_llvm: bool,
-    mlir_to_llvmir: bool,
-}
-
-impl TransformOptions {
-    pub fn from_str(flags: &str) -> Result<TransformOptions> {
-        let mut options = TransformOptions::default();
-        let flags = flags.split(' ').collect::<Vec<&str>>();
-        if flags.len() == 0 {
-            return Ok(options);
-        } else if 1 < flags.len() {
-            panic!("Multiple flags not yet supported");
-        }
-        for flag in flags {
-            match flag {
-                "--canonicalize" => options.canonicalize = true,
-                "--convert-func-to-llvm" => options.convert_func_to_llvm = true,
-                "--convert-mlir-to-llvmir" => options.mlir_to_llvmir = true,
-                _ => return Err(anyhow::anyhow!("Invalid flag: {}", flag)),
-            }
-        }
-        Ok(options)
-    }
-    pub fn set_canonicalize(&mut self, canonicalize: bool) {
-        self.canonicalize = canonicalize;
-    }
-    pub fn set_convert_func_to_llvm(&mut self, convert_func_to_llvm: bool) {
-        self.convert_func_to_llvm = convert_func_to_llvm;
-    }
-    pub fn set_mlir_to_llvmir(&mut self, mlir_to_llvmir: bool) {
-        self.mlir_to_llvmir = mlir_to_llvmir;
-    }
-}
-
-impl Default for TransformOptions {
-    fn default() -> Self {
-        TransformOptions {
-            canonicalize: false,
-            convert_func_to_llvm: false,
-            mlir_to_llvmir: false,
-        }
-    }
-}
-
 pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(level)
@@ -88,6 +43,7 @@ impl TransformDispatch for DefaultTransformDispatch {
                 Canonicalize::NAME => Canonicalize::convert(op),
                 ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op),
                 ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op),
+                ConvertUnstableToMLIR::NAME => ConvertUnstableToMLIR::convert(op),
                 _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
             };
         }

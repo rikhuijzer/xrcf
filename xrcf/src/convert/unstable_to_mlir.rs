@@ -1,0 +1,203 @@
+use crate::convert::apply_rewrites;
+use crate::convert::ChangedOp;
+use crate::convert::Pass;
+use crate::convert::Rewrite;
+use crate::convert::RewriteResult;
+use crate::dialect;
+use crate::dialect::arith;
+use crate::dialect::func;
+use crate::dialect::func::Call;
+use crate::dialect::func::Func;
+use crate::dialect::llvm;
+use crate::dialect::llvm::PointerType;
+use crate::ir::APInt;
+use crate::ir::Block;
+use crate::ir::IntegerAttr;
+use crate::ir::IntegerType;
+use crate::ir::Op;
+use crate::ir::OpOperand;
+use crate::ir::Operation;
+use crate::ir::StringAttr;
+use anyhow::Result;
+use dialect::unstable::PrintfOp;
+use std::sync::Arc;
+use std::sync::RwLock;
+
+struct PrintLowering;
+
+impl PrintLowering {
+    /// Return a constant operation containing the [PrintOp]'s text.
+    fn text_constant(parent: &Arc<RwLock<Block>>, op: &PrintfOp) -> (Arc<RwLock<dyn Op>>, usize) {
+        let mut const_operation = Operation::default();
+        const_operation.set_parent(Some(parent.clone()));
+        let text = op.text().clone().unwrap();
+        let text = text.c_string();
+        let len = text.len();
+        let typ = llvm::ArrayType::for_bytes(&text);
+        let name = parent.try_read().unwrap().unique_value_name();
+        const_operation.add_new_op_result(&name, Arc::new(RwLock::new(typ)));
+
+        let const_operation = Arc::new(RwLock::new(const_operation));
+        let const_op = llvm::ConstantOp::from_operation(const_operation);
+        const_op.set_value(Arc::new(StringAttr::new(text)));
+        let const_op = Arc::new(RwLock::new(const_op));
+        (const_op, len)
+    }
+    /// Return an [Op] which defines the length for the text `alloca`.
+    fn len_specifier(parent: &Arc<RwLock<Block>>, len: usize) -> Arc<RwLock<dyn Op>> {
+        let operation = Operation::default();
+        let typ = IntegerType::from_str("i16");
+        let result_typ = Arc::new(RwLock::new(typ));
+        let name = parent.try_read().unwrap().unique_value_name();
+        operation.add_new_op_result(&name, result_typ);
+        let operation = Arc::new(RwLock::new(operation));
+        let op = arith::ConstantOp::from_operation(operation);
+        let len = APInt::from_str("i16", &len.to_string());
+        op.set_value(Arc::new(IntegerAttr::new(typ, len)));
+        Arc::new(RwLock::new(op))
+    }
+    fn alloca_op(parent: &Arc<RwLock<Block>>, len: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+        let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
+        let typ = llvm::PointerType::new();
+        let name = parent.try_read().unwrap().unique_value_name();
+        operation.add_new_op_result(&name, Arc::new(RwLock::new(typ)));
+
+        let array_size = len.try_read().unwrap().result(0);
+        let array_size = OpOperand::new(array_size);
+        operation.set_operand(Arc::new(RwLock::new(array_size)));
+
+        let operation = Arc::new(RwLock::new(operation));
+        let mut op = llvm::AllocaOp::from_operation(operation);
+        op.set_element_type("i8".to_string());
+        Arc::new(RwLock::new(op))
+    }
+    fn store_op(
+        parent: &Arc<RwLock<Block>>,
+        text: Arc<RwLock<dyn Op>>,
+        alloca: Arc<RwLock<dyn Op>>,
+    ) -> Arc<RwLock<dyn Op>> {
+        let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
+
+        let operation = Arc::new(RwLock::new(operation));
+        let mut op = llvm::StoreOp::from_operation(operation);
+
+        let value = text.try_read().unwrap().result(0);
+        let value = OpOperand::new(value);
+        op.set_value(Arc::new(RwLock::new(value)));
+
+        let addr = alloca.try_read().unwrap().result(0);
+        let addr = OpOperand::new(addr);
+        op.set_addr(Arc::new(RwLock::new(addr)));
+        Arc::new(RwLock::new(op))
+    }
+    fn call_op(parent: &Arc<RwLock<Block>>, alloca: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+        let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
+        let addr = alloca.try_read().unwrap().result(0);
+        let addr = OpOperand::new(addr);
+        operation.set_operand(Arc::new(RwLock::new(addr)));
+
+        let typ = IntegerType::from_str("i32");
+        let name = parent.try_read().unwrap().unique_value_name();
+        operation.add_new_op_result(&name, Arc::new(RwLock::new(typ)));
+
+        let operation = Arc::new(RwLock::new(operation));
+        let mut op = func::CallOp::from_operation(operation);
+        op.set_identifier("@printf".to_string());
+        Arc::new(RwLock::new(op))
+    }
+    /// Whether the parent operation of `op` contains a `printf` function.
+    fn contains_printf(op: &dyn Op) -> bool {
+        let operation = op.operation().try_read().unwrap();
+        let parent_op = operation.parent_op();
+        let parent_op = parent_op.try_read().unwrap();
+        let ops = parent_op.ops();
+        for op in ops {
+            let op = op.try_read().unwrap();
+            if op.is_func() {
+                let func = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+                if func.identifier() == Some("@printf".to_string()) {
+                    return true;
+                }
+            }
+        }
+        false
+    }
+    /// Return an [Op] which defines (declares) the `printf` function.
+    fn printf_func_def() -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        let result_type = crate::ir::IntegerType::from_str("i32");
+        let result_type = Arc::new(RwLock::new(result_type));
+        operation.set_anonymous_result(result_type)?;
+
+        let operation = Arc::new(RwLock::new(operation));
+        let mut op = func::FuncOp::from_operation(operation);
+        op.set_identifier("@printf".to_string());
+        op.set_sym_visibility(Some("private".to_string()));
+        {
+            let arg_type = PointerType::new();
+            let arg_type = Arc::new(RwLock::new(arg_type));
+            op.set_argument_from_type(arg_type)?;
+        }
+        let op = Arc::new(RwLock::new(op));
+        Ok(op)
+    }
+    /// Define the printf function if it is not already defined.
+    fn define_printf(op: &dyn Op) -> Result<()> {
+        let operation = op.operation().try_read().unwrap();
+        let parent_op = operation.parent_op();
+        let parent_op = parent_op.try_read().unwrap();
+        assert!(
+            parent_op.is_func(),
+            "did not yet implement arbitrary nesting"
+        );
+        if !Self::contains_printf(&*parent_op) {
+            parent_op.insert_before(Self::printf_func_def()?);
+        }
+        Ok(())
+    }
+}
+
+impl Rewrite for PrintLowering {
+    fn name(&self) -> &'static str {
+        "unstable_to_mlir::PrintLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<dialect::unstable::PrintfOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op
+            .as_any()
+            .downcast_ref::<dialect::unstable::PrintfOp>()
+            .unwrap();
+        let parent = op.operation().try_read().unwrap().parent();
+        let parent = parent.expect("no parent");
+        let (text, len) = PrintLowering::text_constant(&parent, op);
+        op.insert_before(text.clone());
+        let len = PrintLowering::len_specifier(&parent, len);
+        op.insert_before(len.clone());
+        let alloca = PrintLowering::alloca_op(&parent, len);
+        op.insert_before(alloca.clone());
+        let store = PrintLowering::store_op(&parent, text.clone(), alloca.clone());
+        op.insert_before(store);
+        PrintLowering::define_printf(op)?;
+        let call = PrintLowering::call_op(&parent, alloca);
+        op.insert_before(call.clone());
+        op.remove();
+
+        Ok(RewriteResult::Changed(ChangedOp::new(text)))
+    }
+}
+
+pub struct ConvertUnstableToMLIR;
+
+impl Pass for ConvertUnstableToMLIR {
+    const NAME: &'static str = "convert-unstable-to-mlir";
+    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let rewrites: Vec<&dyn Rewrite> = vec![&PrintLowering];
+        apply_rewrites(op, &rewrites)
+    }
+}

@@ -33,7 +33,8 @@ impl OpOperand {
         let value = &*value.read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
-            Value::OpResult(op_res) => Some(op_res.defining_op()),
+            Value::FuncResult(_) => todo!(),
+            Value::OpResult(op_res) => op_res.defining_op(),
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
@@ -60,6 +61,14 @@ impl OpOperands {
     pub fn from_vec(operands: Vec<Arc<RwLock<OpOperand>>>) -> Self {
         OpOperands {
             operands: Arc::new(RwLock::new(operands)),
+        }
+    }
+    pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
+        let mut operands = self.operands.try_write().unwrap();
+        if operands.len() == index {
+            operands.push(operand);
+        } else {
+            operands[index] = operand;
         }
     }
 }

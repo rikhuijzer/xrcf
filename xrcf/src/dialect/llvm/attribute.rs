@@ -9,7 +9,7 @@ pub struct LinkageAttr {
 }
 
 impl Attribute for LinkageAttr {
-    fn new(value: &str) -> Self {
+    fn from_str(value: &str) -> Self {
         Self {
             value: value.to_string(),
         }
@@ -18,9 +18,9 @@ impl Attribute for LinkageAttr {
         let next = parser.peek();
         if next.lexeme == "internal" {
             parser.advance();
-            Some(Self::new("internal"))
+            Some(Self::from_str("internal"))
         } else {
-            Some(Self::new("external"))
+            Some(Self::from_str("external"))
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {

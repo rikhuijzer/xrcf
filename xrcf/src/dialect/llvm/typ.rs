@@ -19,7 +19,7 @@ pub struct ArrayType {
 }
 
 impl ArrayType {
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_str(s: &str) -> Self {
         assert!(s.starts_with("!llvm.array"));
         let s = s.strip_prefix("!llvm.array<").unwrap();
         let s = match s.strip_suffix(">") {
@@ -31,6 +31,27 @@ impl ArrayType {
         let (num_elements, element_type) = s.split_once('x').unwrap();
         let num_elements = num_elements.parse::<u32>().unwrap();
         let element_type = IntegerType::from_str(element_type);
+        let element_type = Arc::new(RwLock::new(element_type));
+        Self {
+            num_elements,
+            element_type,
+        }
+    }
+    /// Create an array type that can hold the given text.
+    pub fn for_str(s: &str) -> Self {
+        let text = s.to_string();
+        let text = text.trim_matches('"');
+        let num_elements = text.as_bytes().len() as u32;
+        let element_type = IntegerType::from_str("i8");
+        let element_type = Arc::new(RwLock::new(element_type));
+        Self {
+            num_elements,
+            element_type,
+        }
+    }
+    pub fn for_bytes(bytes: &Vec<u8>) -> Self {
+        let num_elements = bytes.len() as u32;
+        let element_type = IntegerType::from_str("i8");
         let element_type = Arc::new(RwLock::new(element_type));
         Self {
             num_elements,
@@ -82,7 +103,7 @@ impl Type for PointerType {
 impl TypeParse for LLVM {
     fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
         if src.starts_with("!llvm.array") {
-            return Ok(Arc::new(RwLock::new(ArrayType::from_str(src))));
+            return Ok(Arc::new(RwLock::new(ArrayType::parse_str(src))));
         }
         if src.starts_with("!llvm.ptr") {
             return Ok(Arc::new(RwLock::new(PointerType::from_str(src))));

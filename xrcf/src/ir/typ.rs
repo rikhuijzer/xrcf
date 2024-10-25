@@ -89,7 +89,7 @@ impl IntegerType {
         Self { num_bits }
     }
     pub fn from_str(s: &str) -> Self {
-        let s = s.strip_prefix("i").unwrap();
+        let s = s.strip_prefix("i").expect("no i prefix");
         let num_bits = s.parse::<u64>().unwrap();
         Self { num_bits }
     }
@@ -154,49 +154,33 @@ impl Display for APInt {
     }
 }
 
+/// A collection of `Type`s; typically from [Value]s.
+///
+/// Provides some convenience methods around [Type]s.
 #[derive(Clone)]
 pub struct Types {
-    types: Arc<RwLock<Vec<Arc<RwLock<dyn Type>>>>>,
+    types: Vec<Arc<RwLock<dyn Type>>>,
 }
 
 impl Types {
-    pub fn new(types: Vec<Arc<RwLock<dyn Type>>>) -> Self {
-        Self {
-            types: Arc::new(RwLock::new(types)),
-        }
+    pub fn from_vec(types: Vec<Arc<RwLock<dyn Type>>>) -> Self {
+        Self { types }
     }
-    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Type>>>>> {
+    pub fn vec(&self) -> Vec<Arc<RwLock<dyn Type>>> {
         self.types.clone()
-    }
-    /// Convert all types in-place via the given type converter.
-    ///
-    /// This is commonly used to convert types from one dialect to another.
-    /// Note that it should only be called to convert `operation.result_types()`.
-    /// To modify `operation.operand_types()`, call this method on the
-    /// `operation`s that define the operands.
-    pub fn convert<T: TypeConvert>(&self) -> Result<()> {
-        let mut types = self.types.try_write().unwrap();
-        for i in 0..types.len() {
-            let typ = types.get(i).unwrap();
-            let typ = T::convert(typ)?;
-            types[i] = typ;
-        }
-        Ok(())
     }
 }
 
 impl Default for Types {
     fn default() -> Self {
-        Self {
-            types: Arc::new(RwLock::new(vec![])),
-        }
+        Self { types: vec![] }
     }
 }
 
 impl Display for Types {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let types = self.types.try_read().unwrap();
-        let joined = types
+        let joined = self
+            .types
             .iter()
             .map(|t| t.try_read().unwrap().to_string())
             .collect::<Vec<String>>()

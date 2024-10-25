@@ -3,6 +3,7 @@ use crate::ir::Attribute;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
+use crate::ir::Value;
 use crate::ir::Values;
 use anyhow::Result;
 use std::fmt::Display;
@@ -37,10 +38,12 @@ pub trait Op {
     where
         Self: Sized,
     {
-        let name = Self::operation_name();
-        let operation_write = operation.clone();
-        let mut operation_write = operation_write.try_write().unwrap();
-        operation_write.set_name(name);
+        {
+            let name = Self::operation_name();
+            let operation_write = operation.clone();
+            let mut operation_write = operation_write.try_write().unwrap();
+            operation_write.set_name(name);
+        }
         let op = Self::new(operation);
         op
     }
@@ -96,6 +99,13 @@ pub trait Op {
         let later = self.operation().clone();
         block.insert_before(earlier, later);
     }
+    /// Remove the operation from its parent block.
+    fn remove(&self) {
+        let operation = self.operation().read().unwrap();
+        let block = operation.parent().unwrap();
+        let block = block.read().unwrap();
+        block.remove(self.operation().clone());
+    }
     /// Replace self with `new` by moving the results of the old operation to
     /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
     /// In effect, this makes all the uses of the old op refer to the new op instead.
@@ -109,7 +119,12 @@ pub trait Op {
             old_operation.results()
         };
         {
-            results.set_defining_op(new.clone());
+            for result in results.vec().try_read().unwrap().iter() {
+                let mut result = result.try_write().unwrap();
+                if let Value::OpResult(res) = &mut *result {
+                    res.set_defining_op(Some(new.clone()));
+                }
+            }
             let new_read = new.try_read().unwrap();
             let mut new_operation = new_read.operation().try_write().unwrap();
             new_operation.set_results(results.clone());
@@ -139,6 +154,19 @@ pub trait Op {
             }
         }
         result
+    }
+    fn parent_op(&self) -> Arc<RwLock<dyn Op>> {
+        let operation = self.operation().try_read().unwrap();
+        operation.parent_op()
+    }
+    /// Return the result at the given index.
+    ///
+    /// Convenience function which makes it easier to set an operand to the
+    /// result of an operation.
+    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
+        let operation = self.operation().try_read().unwrap();
+        let value = operation.result(index).unwrap();
+        value
     }
     /// Display the operation with the given indentation.
     ///

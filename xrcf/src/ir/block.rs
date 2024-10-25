@@ -94,8 +94,9 @@ impl Block {
                         // assignment in ops.
                         return None;
                     }
+                    Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        if op_result.name() == name {
+                        if op_result.name().expect("OpResult has no name") == name {
                             return Some(value.clone());
                         }
                     }
@@ -159,6 +160,35 @@ impl Block {
                 panic!("Remove could not find op in block");
             }
         };
+    }
+    /// Find a unique name for a value (for example, `%4 = ...`).
+    pub fn unique_value_name(&self) -> String {
+        let mut new_name: i32 = 0;
+        let ops = self.ops();
+        let ops = ops.try_read().unwrap();
+        for op in ops.iter() {
+            let op = op.try_read().unwrap();
+            let operation = op.operation();
+            let operation = operation.try_read().unwrap();
+            let results = operation.results();
+            let results = results.vec();
+            let results = results.try_read().unwrap();
+            for result in results.iter() {
+                let result = result.try_read().unwrap();
+                let name = match &*result {
+                    Value::OpResult(res) => res.name().expect("failed to get name"),
+                    Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
+                    Value::FuncResult(_) => continue,
+                };
+                let possible_name = format!("%{new_name}");
+                if name == possible_name {
+                    new_name += 1;
+                } else {
+                    return possible_name;
+                }
+            }
+        }
+        format!("%{new_name}")
     }
     pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {

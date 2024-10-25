@@ -2,6 +2,8 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Type;
+use crate::ir::TypeConvert;
+use crate::ir::Types;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
@@ -10,6 +12,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// An argument in a block or function.
 pub struct BlockArgument {
     /// The name of the block argument. Does not have to be set because
     /// anonymous arguments are allowed for functions without an implementation.
@@ -30,6 +33,9 @@ impl BlockArgument {
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         self.typ.clone()
     }
+    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+        self.typ = typ;
+    }
 }
 
 impl Display for BlockArgument {
@@ -42,45 +48,75 @@ impl Display for BlockArgument {
     }
 }
 
+/// An unnamed result of an operation, such as a function.
+///
+/// This result does not specify a name since, for example, the following is
+/// invalid:
+///
+/// ```mlir
+/// %0 = func.func @foo() -> %0 : i64
+/// ```
+///
+/// The reason that this is a [Value] is that it provides a way to set a type
+/// for a function result. The alternative would be to move the [Type]s to a
+/// separate [Operation] `return_types` field, but that is more error prone
+/// since the field then has to be set manually each time an operation is
+/// created.  This makes it more error prone than having it included in the
+/// `results` field.
+pub struct AnonymousResult {
+    typ: Arc<RwLock<dyn Type>>,
+}
+
+impl AnonymousResult {
+    pub fn new(typ: Arc<RwLock<dyn Type>>) -> Self {
+        AnonymousResult { typ }
+    }
+    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        self.typ.clone()
+    }
+    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+        self.typ = typ;
+    }
+}
+
+impl Display for AnonymousResult {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.typ.try_read().unwrap())
+    }
+}
+
 pub struct OpResult {
-    name: String,
+    name: Option<String>,
+    typ: Option<Arc<RwLock<dyn Type>>>,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
-    pub fn new(name: String, defining_op: Option<Arc<RwLock<dyn Op>>>) -> Self {
-        OpResult { name, defining_op }
-    }
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-    /// Return the type of the op result via the defining op.
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        let defining_op = self.defining_op();
-        let defining_op = defining_op.try_read().unwrap();
-        let operation = defining_op.operation();
-        let operation = operation.try_read().unwrap();
-        let result_types = operation.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        assert!(
-            result_types.len() == 1,
-            "Expected one result type for {} from {}, but got {}",
-            self.name,
-            operation.name(),
-            result_types.len(),
-        );
-        let typ = result_types[0].clone();
-        typ
-    }
-    pub fn defining_op(&self) -> Arc<RwLock<dyn Op>> {
-        if self.defining_op.is_none() {
-            panic!("Defining op not set for {}", self.name);
+    pub fn new(
+        name: Option<String>,
+        typ: Option<Arc<RwLock<dyn Type>>>,
+        defining_op: Option<Arc<RwLock<dyn Op>>>,
+    ) -> Self {
+        OpResult {
+            name,
+            typ,
+            defining_op,
         }
-        self.defining_op.clone().unwrap()
+    }
+    pub fn name(&self) -> Option<String> {
+        self.name.clone()
+    }
+    pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.typ.clone()
+    }
+    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+        self.defining_op.clone()
     }
     pub fn set_name(&mut self, name: &str) {
-        self.name = name.to_string();
+        self.name = Some(name.to_string());
+    }
+    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+        self.typ = Some(typ);
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
@@ -90,7 +126,8 @@ impl OpResult {
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: "<unset name>".to_string(),
+            name: None,
+            typ: None,
             defining_op: None,
         }
     }
@@ -98,7 +135,8 @@ impl Default for OpResult {
 
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
+        let name = self.name.as_ref().expect("OpResult has no name");
+        write!(f, "{}", name)
     }
 }
 
@@ -129,39 +167,55 @@ impl Users {
 /// marked `const` (include modifying the Value use-list).
 pub enum Value {
     BlockArgument(BlockArgument),
+    FuncResult(AnonymousResult),
     OpResult(OpResult),
 }
 
 impl Value {
     /// The name of the value.
     ///
-    /// Returns `None` for block arguments that do not have a name.
+    /// Returns `None` for block arguments or func results that do not have a
+    /// name.
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => arg.name.clone(),
-            Value::OpResult(result) => Some(result.name.clone()),
+            Value::FuncResult(_) => None,
+            Value::OpResult(result) => result.name.clone(),
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         match self {
             Value::BlockArgument(arg) => arg.typ.clone(),
-            Value::OpResult(result) => result.typ(),
+            Value::FuncResult(result) => result.typ.clone(),
+            Value::OpResult(result) => result
+                .typ()
+                .expect(&format!("Type was not set for OpResult {}", self)),
+        }
+    }
+    pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
+        match self {
+            Value::BlockArgument(arg) => arg.set_typ(typ),
+            Value::FuncResult(result) => result.set_typ(typ),
+            Value::OpResult(result) => result.set_typ(typ),
         }
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
+            Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
         }
     }
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
         }
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
+        let op = op.expect("Defining op not set for OpResult");
         let op = op.try_read().unwrap();
         let parent = {
             let operation = op.operation();
@@ -196,6 +250,7 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
         }
     }
@@ -209,6 +264,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
+            Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
         }
     }
@@ -233,6 +289,37 @@ impl Values {
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Value>>>>> {
         self.values.clone()
     }
+    pub fn names(&self) -> Vec<String> {
+        self.values
+            .try_read()
+            .unwrap()
+            .iter()
+            .map(|value| value.try_read().unwrap().name().unwrap())
+            .collect()
+    }
+    pub fn types(&self) -> Types {
+        let values = self.values.try_read().unwrap();
+        let types = values
+            .iter()
+            .map(|value| value.try_read().unwrap().typ())
+            .collect::<Vec<Arc<RwLock<dyn Type>>>>();
+        Types::from_vec(types)
+    }
+    pub fn update_types(&mut self, types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+        let values = self.values.try_read().unwrap();
+        if values.len() != types.len() {
+            return Err(anyhow::anyhow!(
+                "Expected {} types, but got {}",
+                values.len(),
+                types.len()
+            ));
+        }
+        for (i, value) in values.iter().enumerate() {
+            let mut container = value.try_write().unwrap();
+            container.set_type(types[i].clone());
+        }
+        Ok(())
+    }
     /// Set the defining op for op results.
     ///
     /// This can be used when replacing an operation with another operation to
@@ -246,11 +333,30 @@ impl Values {
             let mut mut_result = result.try_write().unwrap();
             match &mut *mut_result {
                 Value::BlockArgument(_) => {
-                    panic!("This case should not occur")
+                    panic!("Trying to set defining op for block argument")
+                }
+                Value::FuncResult(_) => {
+                    panic!("Trying to set defining op for func result")
                 }
                 Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
             }
         }
+    }
+    /// Convert all types in-place via the given type converter.
+    ///
+    /// This is commonly used to convert types from one dialect to another.
+    /// Note that it should only be called to convert `operation.result_types()`.
+    /// To modify `operation.operand_types()`, call this method on the
+    /// `operation`s that define the operands.
+    pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
+        let values = self.values.try_read().unwrap();
+        for value in values.iter() {
+            let mut value = value.try_write().unwrap();
+            let typ = value.typ();
+            let typ = T::convert(&typ)?;
+            value.set_type(typ);
+        }
+        Ok(())
     }
 }
 

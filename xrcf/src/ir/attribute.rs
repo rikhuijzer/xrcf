@@ -1,3 +1,7 @@
+use crate::ir::bytes_to_llvm_string;
+use crate::ir::escape;
+use crate::ir::llvm_string_to_bytes;
+use crate::ir::unescape;
 use crate::ir::APInt;
 use crate::ir::IntegerType;
 use crate::parser::Parser;
@@ -14,7 +18,7 @@ use std::sync::RwLock;
 /// Attributes belong to operations and can be used to, for example, specify
 /// a SSA value.
 pub trait Attribute {
-    fn new(value: &str) -> Self
+    fn from_str(value: &str) -> Self
     where
         Self: Sized;
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self>
@@ -67,7 +71,7 @@ impl Display for IntegerAttr {
 }
 
 impl Attribute for IntegerAttr {
-    fn new(value: &str) -> Self {
+    fn from_str(value: &str) -> Self {
         Self {
             typ: IntegerType::new(64),
             value: APInt::new(64, value.parse::<u64>().unwrap(), true),
@@ -97,30 +101,47 @@ impl IntegerAttr {
     }
 }
 
+/// UTF-8 encoded string.
+#[derive(Clone)]
 pub struct StringAttr {
-    value: String,
+    value: Vec<u8>,
+}
+
+impl StringAttr {
+    pub fn new(value: Vec<u8>) -> Self {
+        Self { value }
+    }
+    pub fn c_string(&self) -> Vec<u8> {
+        let mut value = self.value.clone();
+        let null_byte = 0;
+        if let Some(last) = value.last() {
+            if *last != null_byte {
+                value.push(null_byte);
+            }
+        }
+        value
+    }
 }
 
 impl Attribute for StringAttr {
-    fn new(value: &str) -> Self {
-        Self {
-            value: value.to_string(),
-        }
+    fn from_str(src: &str) -> Self {
+        let text = unescape(src);
+        let value = llvm_string_to_bytes(&text);
+        Self { value }
     }
-    fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
-        let value = parser.advance();
-        Some(Self {
-            value: value.lexeme.to_string(),
-        })
+    fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
+        todo!()
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
     fn value(&self) -> String {
-        self.value.clone()
+        String::from_utf8(self.value.clone()).unwrap()
     }
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "\"{}\"", self.value)
+        let text = bytes_to_llvm_string(&self.value);
+        let text = escape(&text);
+        write!(f, "\"{}\"", text)
     }
 }
 
@@ -135,7 +156,7 @@ pub struct AnyAttr {
 }
 
 impl Attribute for AnyAttr {
-    fn new(value: &str) -> Self {
+    fn from_str(value: &str) -> Self {
         Self {
             value: value.to_string(),
         }
@@ -230,14 +251,14 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse a string constant (e.g., `"hello"`).
     pub fn parse_string(&mut self) -> Result<StringAttr> {
         let string = self.expect(TokenKind::String)?;
-        let value = string.lexeme.as_str();
-        let value = value.trim_matches('"');
-        Ok(StringAttr::new(value))
+        let text = string.lexeme.as_str();
+        let text = text.trim_matches('"');
+        Ok(StringAttr::from_str(text))
     }
     pub fn parse_attribute(&mut self) -> Result<Arc<dyn Attribute>> {
         let attribute = self.advance();
         let src = attribute.lexeme.clone();
-        Ok(Arc::new(AnyAttr::new(&src)))
+        Ok(Arc::new(AnyAttr::from_str(&src)))
     }
     pub fn parse_attributes(&mut self) -> Result<Attributes> {
         let attributes = Attributes::new();

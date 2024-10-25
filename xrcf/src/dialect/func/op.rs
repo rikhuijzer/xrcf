@@ -6,7 +6,7 @@ use crate::ir::OperationName;
 use crate::ir::PlaceholderType;
 use crate::ir::StringAttr;
 use crate::ir::Type;
-use crate::ir::Types;
+use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
@@ -20,6 +20,15 @@ use std::sync::RwLock;
 pub trait Func: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
+    fn set_argument_from_type(&mut self, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
+        let argument = crate::ir::BlockArgument::new(None, typ);
+        let value = Value::BlockArgument(argument);
+        let value = Arc::new(RwLock::new(value));
+        let operation = self.operation();
+        let mut operation = operation.write().unwrap();
+        operation.set_argument(value);
+        Ok(())
+    }
     fn sym_visibility(&self) -> Option<String> {
         let operation = self.operation();
         let operation = operation.read().unwrap();
@@ -39,7 +48,7 @@ pub trait Func: Op {
             let operation = self.operation();
             let operation = operation.try_write().unwrap();
             let attributes = operation.attributes();
-            let attribute = StringAttr::new(&visibility);
+            let attribute = StringAttr::from_str(&visibility);
             let attribute = Arc::new(attribute);
             attributes.insert("sym_visibility", attribute);
         }
@@ -50,16 +59,14 @@ pub trait Func: Op {
         let arguments = operation.arguments();
         Ok(arguments.clone())
     }
-    fn return_types(&self) -> Types {
+    fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
         let operation = self.operation();
         let operation = operation.read().unwrap();
-        let return_types = operation.result_types();
-        return_types.clone()
+        let return_types = operation.results().types();
+        return_types.vec()
     }
     fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let return_types = self.return_types();
-        let return_types = return_types.vec();
-        let return_types = return_types.try_read().unwrap();
         assert!(!return_types.is_empty(), "Expected result types to be set");
         assert!(return_types.len() == 1, "Expected single result type");
         let typ = return_types[0].clone();
@@ -89,7 +96,7 @@ pub trait Call: Op {
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
-        let result_type = operation.result_type().unwrap();
+        let result_type = operation.result_type().expect("no result type");
         let result_type = result_type.try_read().unwrap();
         write!(f, "{}", result_type)?;
         Ok(())
@@ -118,7 +125,7 @@ pub trait Call: Op {
 
         parser.expect(TokenKind::Arrow)?;
         let result_type = T::parse_type(parser)?;
-        operation.set_result_type(result_type);
+        operation.set_result_type(result_type)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let mut op = O::from_operation(operation.clone());
@@ -225,28 +232,8 @@ impl FuncOp {
         write!(f, ")")?;
         let operation = op.operation();
         let operation = operation.try_read().unwrap();
-        let result_types = operation.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        if !result_types.is_empty() {
-            if result_types.len() == 1 {
-                write!(
-                    f,
-                    " -> {}",
-                    result_types.get(0).unwrap().try_read().unwrap()
-                )?;
-            } else {
-                write!(
-                    f,
-                    " -> ({})",
-                    result_types
-                        .iter()
-                        .map(|t| t.try_read().unwrap().to_string())
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                )?;
-            }
-        }
+        let result_types = operation.results().types();
+        write!(f, " -> {}", result_types)?;
         let attributes = operation.attributes();
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
@@ -306,10 +293,10 @@ impl Op for FuncOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    fn result_types(&mut self) -> Result<Types> {
+    fn result_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
         let mut result_types: Vec<Arc<RwLock<dyn Type>>> = vec![];
         if !self.check(TokenKind::Arrow) {
-            return Ok(Types::new(vec![]));
+            return Ok(result_types);
         } else {
             let _arrow = self.advance();
             while self.check(TokenKind::IntType) {
@@ -319,7 +306,7 @@ impl<T: ParserDispatch> Parser<T> {
                 result_types.push(typ);
             }
         }
-        Ok(Types::new(result_types))
+        Ok(result_types)
     }
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
@@ -334,7 +321,7 @@ impl<T: ParserDispatch> Parser<T> {
         let identifier = identifier.lexeme.clone();
         operation.set_name(expected_name.clone());
         operation.set_arguments(parser.parse_function_arguments()?);
-        operation.set_result_types(parser.result_types()?);
+        operation.set_anonymous_results(parser.result_types()?)?;
         let operation = Arc::new(RwLock::new(operation));
         let mut op = F::from_operation(operation.clone());
         op.set_identifier(identifier);
@@ -384,15 +371,7 @@ impl ReturnOp {
         for operand in operands.iter() {
             write!(f, " {}", operand.read().unwrap())?;
         }
-        let result_types = operation.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        assert!(!result_types.is_empty(), "Expected result types to be set");
-        let result_types = result_types
-            .iter()
-            .map(|t| t.read().unwrap().to_string())
-            .collect::<Vec<String>>()
-            .join(", ");
+        let result_types = operation.results().types();
         write!(f, " : {}", result_types)?;
         Ok(())
     }
@@ -432,7 +411,7 @@ impl<T: ParserDispatch> Parser<T> {
         let return_type = self.expect(TokenKind::IntType)?;
         let return_type = PlaceholderType::new(&return_type.lexeme);
         let result_type = Arc::new(RwLock::new(return_type));
-        operation.set_result_type(result_type);
+        operation.set_anonymous_result(result_type)?;
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation(operation.clone());
         let op = Arc::new(RwLock::new(op));

@@ -2,6 +2,7 @@ use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
+use crate::dialect::unstable;
 use crate::ir::Block;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
@@ -56,15 +57,14 @@ impl ParserDispatch for DefaultParserDispatch {
             // Ignore nothing (e.g., `<op name> %0, %1`).
             parser.peek()
         };
-        let name = name.lexeme.clone();
-        match name.as_str() {
+        match name.lexeme.clone().as_str() {
             "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
             "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
             "func.call" => <func::CallOp as Parse>::op(parser, parent),
             "func.func" => <func::FuncOp as Parse>::op(parser, parent),
             "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
-            "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
             "llvm.alloca" => <llvm::AllocaOp as Parse>::op(parser, parent),
+            "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
             "llvm.func" => <llvm::FuncOp as Parse>::op(parser, parent),
             "llvm.mlir.constant" => <llvm::ConstantOp as Parse>::op(parser, parent),
             "llvm.mlir.global" => <llvm::GlobalOp as Parse>::op(parser, parent),
@@ -72,7 +72,11 @@ impl ParserDispatch for DefaultParserDispatch {
             "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
             "module" => <ModuleOp as Parse>::op(parser, parent),
             "return" => <func::ReturnOp as Parse>::op(parser, parent),
-            _ => Err(anyhow::anyhow!("Unknown operation: {}", name)),
+            "unstable.printf" => <unstable::PrintfOp as Parse>::op(parser, parent),
+            _ => {
+                let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
+                return Err(anyhow::anyhow!(msg));
+            }
         }
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {

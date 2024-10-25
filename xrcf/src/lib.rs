@@ -10,7 +10,6 @@ pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;
 pub use transform::TransformDispatch;
-pub use transform::TransformOptions;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

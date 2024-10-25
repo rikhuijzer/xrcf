@@ -34,6 +34,7 @@ pub use typ::Type;
 pub use typ::TypeConvert;
 pub use typ::TypeParse;
 pub use typ::Types;
+pub use value::AnonymousResult;
 pub use value::BlockArgument;
 pub use value::OpResult;
 pub use value::Users;
@@ -42,4 +43,60 @@ pub use value::Values;
 
 pub fn spaces(indent: i32) -> String {
     "  ".repeat(indent as usize)
+}
+
+/// Convert a string to a vector of bytes while handling LLVM escape sequences.
+pub fn llvm_string_to_bytes(src: &str) -> Vec<u8> {
+    let src = src.to_string();
+    let src = src.replace("\\00", "\0");
+    let src = src.replace("\\10", "\n");
+    let mut out: Vec<u8> = vec![];
+    let chars = src.as_bytes();
+    out.extend_from_slice(chars);
+    out
+}
+
+#[test]
+fn test_llvm_string_to_bytes() {
+    let src = "hello\n";
+    let bytes = llvm_string_to_bytes(src);
+    println!("hello\\n: {:?}", bytes);
+    assert_eq!(bytes.len(), 6);
+    assert_eq!(bytes.last(), Some(&10));
+
+    let src = "hello\n\\00";
+    let bytes = llvm_string_to_bytes(src);
+    println!("hello\\n\\00: {:?}", bytes);
+    assert_eq!(bytes.len(), 7);
+    assert_eq!(bytes.get(5), Some(&10));
+    assert_eq!(bytes.last(), Some(&0));
+}
+
+/// Convert a vector of bytes to a string while handling LLVM escape sequences.
+///
+// Explicitly print the null byte too or else the vector length will not match
+// the text that is shown.
+
+// A backslash with two hex characters defines the byte in LLVM IR in hex, so
+// \00 is the null byte in LLVM IR.
+pub fn bytes_to_llvm_string(bytes: &[u8]) -> String {
+    let src = String::from_utf8(bytes.to_vec()).unwrap();
+    src.replace("\0", "\\00")
+}
+
+#[test]
+fn test_bytes_to_llvm_string() {
+    let bytes = vec![104, 101, 108, 108, 111, 10, 0];
+    let src = bytes_to_llvm_string(&bytes);
+    assert_eq!(src, "hello\n\\00");
+}
+
+pub fn escape(src: &str) -> String {
+    let src = src.replace("\n", "\\n");
+    src
+}
+
+pub fn unescape(src: &str) -> String {
+    let src = src.replace("\\n", "\n");
+    src
 }

@@ -23,6 +23,24 @@ pub struct ConstantOp {
     operation: Arc<RwLock<Operation>>,
 }
 
+impl ConstantOp {
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        let operation = self.operation.read().unwrap();
+        let attributes = operation.attributes();
+        let attributes = attributes.map();
+        let attributes = attributes.read().unwrap();
+        let value = attributes.get("value").unwrap();
+        value.clone()
+    }
+    pub fn set_value(&self, value: Arc<dyn Attribute>) {
+        let operation = self.operation.read().unwrap();
+        let attributes = operation.attributes();
+        let attributes = attributes.map();
+        let mut attributes = attributes.write().unwrap();
+        attributes.insert("value".to_string(), value);
+    }
+}
+
 impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
@@ -46,31 +64,9 @@ impl Op for ConstantOp {
         let operation = self.operation.try_read().unwrap();
         operation.display_results(f)?;
         write!(f, "{}", operation.name())?;
-        let attributes = operation.attributes();
-        let attributes = attributes.get("value").unwrap();
-        let attribute = attributes.as_any().downcast_ref::<IntegerAttr>().unwrap();
-        write!(f, " {attribute}")?;
+        let value = self.value();
+        write!(f, " {value}")?;
         Ok(())
-    }
-}
-
-impl ConstantOp {
-    #[allow(dead_code)]
-    fn value(&self) -> Arc<dyn Attribute> {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let attributes = attributes.read().unwrap();
-        let value = attributes.get("value").unwrap();
-        value.clone()
-    }
-    #[allow(dead_code)]
-    fn set_value(&mut self, value: Arc<dyn Attribute>) {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let mut attributes = attributes.write().unwrap();
-        attributes.insert("value".to_string(), value);
     }
 }
 
@@ -94,7 +90,7 @@ impl Parse for ConstantOp {
         let hack = typ.to_string();
         let typ = PlaceholderType::new(&hack);
         let typ = Arc::new(RwLock::new(typ));
-        operation.set_result_type(typ);
+        operation.set_result_type(typ)?;
 
         let attributes = operation.attributes();
         attributes.insert("value", Arc::new(integer));
@@ -162,6 +158,7 @@ impl AddiOp {
         new_operation.set_attributes(attributes);
 
         let results = Values::default();
+        // TODO: use results.add_new_op_result()
         let mut result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
@@ -233,7 +230,7 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = PlaceholderType::new(&result_type.lexeme);
-        operation.set_result_type(Arc::new(RwLock::new(result_type)));
+        operation.set_result_type(Arc::new(RwLock::new(result_type)))?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation(operation);

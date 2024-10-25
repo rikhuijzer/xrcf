@@ -53,11 +53,8 @@ impl Op for AddOp {
         let results = results.try_read().unwrap();
         let result = results[0].try_read().unwrap();
         write!(f, "{result} = add")?;
-        let result_types = operation.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        let result_type = result_types[0].try_read().unwrap();
-        write!(f, " {result_type}")?;
+        let result_types = operation.results().types();
+        write!(f, " {result_types}")?;
         let operands = operation.operands();
         let operands = operands.vec();
         let operands = operands.try_read().unwrap();

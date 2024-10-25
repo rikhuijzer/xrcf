@@ -1,12 +1,15 @@
+use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
+use crate::ir::OpResult;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Users;
+use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -76,9 +79,8 @@ pub struct Operation {
     arguments: Values,
     operands: OpOperands,
     attributes: Attributes,
-    /// Results can be `Values`, so either `BlockArgument` or `OpResult`.
+    /// Results are [Value]s, so either [BlockArgument] or [OpResult].
     results: Values,
-    result_types: Types,
     region: Option<Arc<RwLock<Region>>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
@@ -111,7 +113,6 @@ impl Operation {
         operands: OpOperands,
         attributes: Attributes,
         results: Values,
-        result_types: Types,
         region: Option<Arc<RwLock<Region>>>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Self {
@@ -121,7 +122,6 @@ impl Operation {
             operands,
             attributes,
             results,
-            result_types,
             region,
             parent,
         }
@@ -142,7 +142,7 @@ impl Operation {
             .iter()
             .map(|o| o.try_read().unwrap().typ())
             .collect();
-        Types::new(operand_types)
+        Types::from_vec(operand_types)
     }
     pub fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
         let operands = self.operands.vec();
@@ -158,34 +158,49 @@ impl Operation {
     pub fn results(&self) -> Values {
         self.results.clone()
     }
-    pub fn result_types(&self) -> Types {
-        self.result_types.clone()
+    pub fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>> {
+        let results = self.results.vec();
+        let results = results.try_read().unwrap();
+        results.get(index).cloned()
     }
     /// Get the single result type of the operation.
     ///
-    /// Return `None` if the operation has fewer or more than 1 result.
+    /// Return `None` if `results.len() =! 1`.
     pub fn result_type(&self) -> Option<Arc<RwLock<dyn Type>>> {
-        let result_types = self.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        if result_types.len() != 1 {
+        let results = self.results();
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        if results.len() != 1 {
             return None;
         }
-        let result_type = result_types.get(0).unwrap();
-        Some(result_type.clone())
+        let result = results.get(0).unwrap();
+        let result = result.try_read().unwrap();
+        Some(result.typ())
     }
     pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
     }
-    /// Get the parent block (this is called `getBlock` in MLIR).
+    /// Return the parent block (this is called `getBlock` in MLIR).
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
+    }
+    pub fn parent_op(&self) -> Arc<RwLock<dyn Op>> {
+        let parent = self.parent().unwrap();
+        let parent = parent.try_read().unwrap();
+        let parent = parent.parent().unwrap();
+        let parent = parent.try_read().unwrap();
+        let parent = parent.parent().unwrap();
+        parent
     }
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
     pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
+    }
+    pub fn set_argument(&mut self, argument: Arc<RwLock<Value>>) {
+        let arguments = vec![argument];
+        self.arguments = Values::from_vec(arguments);
     }
     /// Set the operand of the operation.
     ///
@@ -203,20 +218,62 @@ impl Operation {
     pub fn set_results(&mut self, results: Values) {
         self.results = results;
     }
-    /// Set the result type of the operation.
+    /// Update the result type for the operation.
     ///
-    /// This overrides any previously set result types.
-    pub fn set_result_type(&mut self, result_type: Arc<RwLock<dyn Type>>) {
-        let result_types = vec![result_type];
-        let result_types = Types::new(result_types);
-        self.result_types = result_types;
+    /// Panics if `results.len() != 1`.
+    pub fn set_result_type(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+        let results = self.results();
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        if results.len() != 1 {
+            return Err(anyhow::anyhow!(
+                "Expected 1 result, but got {} when setting result type for {}",
+                results.len(),
+                self.name(),
+            ));
+        }
+        let result = results.get(0).unwrap();
+        let mut result = result.try_write().unwrap();
+        result.set_type(result_type);
+        Ok(())
     }
-    /// Set the result types of the operation.
-    ///
-    /// This overrides any previously set result types. For overriding a single
-    /// result type, use `set_result_type`.
-    pub fn set_result_types(&mut self, result_types: Types) {
-        self.result_types = result_types;
+    /// Set the results (and types) of the operation to [AnonymousResult]s.
+    pub fn set_anonymous_results(&self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+        let results = self.results();
+        let results = results.vec();
+        let mut results = results.try_write().unwrap();
+        for result_type in result_types.iter() {
+            let func_result = AnonymousResult::new(result_type.clone());
+            let value = Value::FuncResult(func_result);
+            let value = Arc::new(RwLock::new(value));
+            results.push(value);
+        }
+        Ok(())
+    }
+    /// Set the result (and type) of the operation to [AnonymousResult].
+    pub fn set_anonymous_result(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+        let result_types = vec![result_type];
+        self.set_anonymous_results(result_types)
+    }
+    pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+        let mut results = self.results();
+        if results.vec().try_read().unwrap().is_empty() {
+            return Err(anyhow::anyhow!("Expected results to have been set"));
+        }
+        results.update_types(result_types)?;
+        Ok(())
+    }
+    /// Add a new op result with given name and type.
+    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) {
+        let mut result = OpResult::default();
+        result.set_name(name);
+        result.set_typ(typ);
+        let result = Value::OpResult(result);
+        let result = Arc::new(RwLock::new(result));
+        let results = self.results();
+        let vec = results.vec();
+        let mut vec = vec.try_write().unwrap();
+        vec.push(result);
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;
@@ -268,12 +325,10 @@ impl Operation {
             write!(f, " {}", operands)?;
         }
         write!(f, "{}", self.attributes())?;
-        let result_types = self.result_types();
-        let result_types = result_types.vec();
-        let result_types = result_types.try_read().unwrap();
-        if !result_types.is_empty() {
+        let result_types = self.results().types();
+        if !result_types.vec().is_empty() {
             write!(f, " :")?;
-            for result_type in result_types.iter() {
+            for result_type in result_types.vec().iter() {
                 write!(f, " {}", result_type.try_read().unwrap())?;
             }
         }
@@ -289,7 +344,6 @@ impl Default for Operation {
             operands: OpOperands::default(),
             attributes: Attributes::new(),
             results: Values::default(),
-            result_types: Types::default(),
             region: None,
             parent: None,
         }
