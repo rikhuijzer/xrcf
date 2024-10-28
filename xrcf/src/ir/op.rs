@@ -155,7 +155,7 @@ pub trait Op {
         }
         result
     }
-    fn parent_op(&self) -> Arc<RwLock<dyn Op>> {
+    fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let operation = self.operation().try_read().unwrap();
         operation.parent_op()
     }

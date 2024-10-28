@@ -108,12 +108,24 @@ impl PrintLowering {
         op.set_identifier("@printf".to_string());
         Arc::new(RwLock::new(op))
     }
+    fn top_level_op(op: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+        let mut out = op.clone();
+        for i in 0..1000 {
+            let parent_op = out.try_read().unwrap().parent_op();
+            match parent_op {
+                Some(parent_op) => out = parent_op,
+                None => break,
+            }
+            if i == 999 {
+                panic!("infinite loop");
+            }
+        }
+        out
+    }
     /// Whether the parent operation of `op` contains a `printf` function.
-    fn contains_printf(op: &dyn Op) -> bool {
-        let operation = op.operation().try_read().unwrap();
-        let parent_op = operation.parent_op();
-        let parent_op = parent_op.try_read().unwrap();
-        let ops = parent_op.ops();
+    fn contains_printf(top_level_op: Arc<RwLock<dyn Op>>) -> bool {
+        let top_level_op = top_level_op.try_read().unwrap();
+        let ops = top_level_op.ops();
         for op in ops {
             let op = op.try_read().unwrap();
             if op.is_func() {
@@ -145,16 +157,14 @@ impl PrintLowering {
         Ok(op)
     }
     /// Define the printf function if it is not already defined.
-    fn define_printf(op: &dyn Op) -> Result<()> {
-        let operation = op.operation().try_read().unwrap();
-        let parent_op = operation.parent_op();
-        let parent_op = parent_op.try_read().unwrap();
-        assert!(
-            parent_op.is_func(),
-            "did not yet implement arbitrary nesting"
-        );
-        if !Self::contains_printf(&*parent_op) {
-            parent_op.insert_before(Self::printf_func_def()?);
+    fn define_printf(op: Arc<RwLock<dyn Op>>) -> Result<()> {
+        let top_level_op = Self::top_level_op(op.clone());
+        if !Self::contains_printf(top_level_op.clone()) {
+            let op = top_level_op.try_read().unwrap();
+            let ops = op.ops();
+            let op = ops[0].clone();
+            let op = op.try_read().unwrap();
+            op.insert_before(Self::printf_func_def()?);
         }
         Ok(())
     }
@@ -168,25 +178,26 @@ impl Rewrite for PrintLowering {
         Ok(op.as_any().is::<dialect::unstable::PrintfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
-        let op = op
+        let op_clone = op.clone();
+        let op_read = op_clone.try_read().unwrap();
+        let op_read = op_read
             .as_any()
             .downcast_ref::<dialect::unstable::PrintfOp>()
             .unwrap();
-        let parent = op.operation().try_read().unwrap().parent();
+        let parent = op_read.operation().try_read().unwrap().parent();
         let parent = parent.expect("no parent");
-        let (text, len) = PrintLowering::text_constant(&parent, op);
-        op.insert_before(text.clone());
+        let (text, len) = PrintLowering::text_constant(&parent, op_read);
+        op_read.insert_before(text.clone());
         let len = PrintLowering::len_specifier(&parent, len);
-        op.insert_before(len.clone());
+        op_read.insert_before(len.clone());
         let alloca = PrintLowering::alloca_op(&parent, len);
-        op.insert_before(alloca.clone());
+        op_read.insert_before(alloca.clone());
         let store = PrintLowering::store_op(&parent, text.clone(), alloca.clone());
-        op.insert_before(store);
+        op_read.insert_before(store);
         PrintLowering::define_printf(op)?;
         let call = PrintLowering::call_op(&parent, alloca);
-        op.insert_before(call.clone());
-        op.remove();
+        op_read.insert_before(call.clone());
+        op_read.remove();
 
         Ok(RewriteResult::Changed(ChangedOp::new(text)))
     }

@@ -38,3 +38,19 @@ fn test_constant() {
     assert!(module.as_any().is::<ModuleOp>());
     Test::check_lines_contain(&actual, expected, caller);
 }
+
+#[test]
+fn test_two_constants() {
+    // Note that `\n` is escaped to `\\n` by `indoc!`.
+    let src = indoc! {r#"
+    func.func @main() -> i32 {
+      %0 = arith.constant 0 : i32
+      unstable.printf("hello, world\n")
+      unstable.printf("hello 2\n")
+      return %0 : i32
+    }
+    "#};
+    Test::init_subscriber();
+    let (_module, actual) = Test::transform(FLAGS, src);
+    assert_eq!(actual.matches("func.func private @printf").count(), 1);
+}

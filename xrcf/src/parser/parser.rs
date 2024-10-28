@@ -251,9 +251,8 @@ impl<T: ParserDispatch> Parser<T> {
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
         } else {
-            let mut region = Region::default();
-            region.set_parent(Some(op.clone()));
-            let region = Arc::new(RwLock::new(region));
+            let module_region = Region::default();
+            let module_region = Arc::new(RwLock::new(module_region));
             let mut ops = vec![op.clone()];
 
             if parser.peek_op() {
@@ -264,7 +263,7 @@ impl<T: ParserDispatch> Parser<T> {
             }
             let ops = Arc::new(RwLock::new(ops));
             let arguments = Arc::new(vec![]);
-            let block = Block::new(None, arguments, ops.clone(), Some(region.clone()));
+            let block = Block::new(None, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
                 let ops = ops.read().unwrap();
@@ -274,13 +273,22 @@ impl<T: ParserDispatch> Parser<T> {
                     child_operation.set_parent(Some(block.clone()));
                 }
             }
-            region.write().unwrap().blocks_mut().push(block.clone());
+            module_region
+                .write()
+                .unwrap()
+                .blocks_mut()
+                .push(block.clone());
             let mut module_operation = Operation::default();
             module_operation.set_name(ModuleOp::operation_name());
-            module_operation.set_region(Some(region.clone()));
+            module_operation.set_region(Some(module_region.clone()));
             let module_operation = Arc::new(RwLock::new(module_operation));
             let module_op = ModuleOp::from_operation(module_operation);
-            Arc::new(RwLock::new(module_op))
+            let module_op = Arc::new(RwLock::new(module_op));
+            module_region
+                .write()
+                .unwrap()
+                .set_parent(Some(module_op.clone()));
+            module_op
         };
         Ok(op)
     }
