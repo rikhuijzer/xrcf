@@ -6,11 +6,12 @@ pub mod parser;
 pub mod targ3t;
 mod transform;
 
+pub use transform::default_passes;
 pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;
+pub use transform::Passes;
 pub use transform::TransformDispatch;
-pub use transform::default_passes;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

@@ -7,21 +7,22 @@ use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
+use xrcf::Passes;
 use xrcf::TransformDispatch;
-extern crate xrcf;
 
 struct PythonTransformDispatch;
 
 impl TransformDispatch for PythonTransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: Vec<&str>) -> Result<RewriteResult> {
+    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: &Passes) -> Result<RewriteResult> {
+        println!("here");
         let result = DefaultTransformDispatch::dispatch(op, passes)?;
         Ok(result)
     }
 }
 
-fn parse_and_transform(src: &str, arguments: &str) -> Result<RewriteResult> {
+pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
     let op = Parser::<DefaultParserDispatch>::parse(src)?;
-    let result = transform::<PythonTransformDispatch>(op, arguments)?;
+    let result = transform::<PythonTransformDispatch>(op, passes)?;
     Ok(result)
 }
 
@@ -35,12 +36,15 @@ mod tests {
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
-            unstable.printf("hello, world\n")
             return %0 : i32
         }
         "#};
-        let arguments = "--convert-unstable-to-mlir";
-        let result = parse_and_transform(src, arguments).unwrap();
+        let passes = vec![
+            "--convert-func-to-llvm".to_string(),
+            "--convert-mlir-to-llvmir".to_string(),
+        ];
+        let passes = Passes::from_vec(passes);
+        let result = parse_and_transform(src, &passes).unwrap();
         let result = match result {
             RewriteResult::Changed(op) => {
                 let op = op.0.try_read().unwrap();
@@ -50,7 +54,8 @@ mod tests {
                 panic!("Expected a changed result");
             }
         };
-        println!("After parse_and_transform ({arguments}):\n{}", result);
-        assert!(false);
+        let passes = passes.vec().join(" ");
+        println!("After parse_and_transform ({passes}):\n{}", result);
+        assert!(result.contains("define i32 @main"));
     }
 }

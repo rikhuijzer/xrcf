@@ -13,6 +13,7 @@ use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
+use xrcf::Passes;
 
 pub struct Test;
 
@@ -115,7 +116,8 @@ impl Test {
         let msg = format!("Before (transform {arguments})");
         Self::print_heading(&msg, src);
 
-        let result = transform::<DefaultTransformDispatch>(module.clone(), arguments).unwrap();
+        let passes = Passes::from_vec(vec![arguments.to_string()]);
+        let result = transform::<DefaultTransformDispatch>(module.clone(), &passes).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
