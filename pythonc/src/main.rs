@@ -5,7 +5,6 @@ use clap::Arg;
 use clap::ArgAction;
 use clap::Args;
 use clap::Command;
-use clap::Parser;
 
 #[derive(Args, Debug)]
 struct PythonArgs {
@@ -15,12 +14,14 @@ struct PythonArgs {
 }
 
 fn main() {
-    let cli = Command::new("compile-python").arg(
-        Arg::new("convert-unstable-to-mlir")
-            .long("convert-unstable-to-mlir")
-            .help("Convert unstable operations to MLIR")
-            .action(ArgAction::SetTrue),
-    );
+    let cli = Command::new("pythonc")
+        .about("An example Python compiler (that can only compile a small subset of Python)")
+        .arg(
+            Arg::new("convert-unstable-to-mlir")
+                .long("convert-unstable-to-mlir")
+                .help("Convert unstable operations to MLIR")
+                .action(ArgAction::SetTrue),
+        );
     let cli = PythonArgs::augment_args(cli);
 
     let matches = cli.get_matches();

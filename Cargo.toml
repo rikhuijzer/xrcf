@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
 members = [
-    "compile-python",
+    "pythonc",
     "xrcf",
 ]
