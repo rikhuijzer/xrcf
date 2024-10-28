@@ -1,10 +1,12 @@
 [package]
-name = "python"
+name = "compile-python"
 version = "0.0.0"
 edition = "2021"
 publish = false
 
 [dependencies]
-xrcf = { path = "../../xrcf/" }
+xrcf = { path = "../xrcf/" }
+anyhow = "1.0.86"
 
 [dev-dependencies]
+indoc = "2"
