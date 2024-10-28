@@ -11,6 +11,5 @@ mod tests {
     #[test]
     fn test_main() {
         main();
-        assert_eq!(1, 2);
     }
 }
