@@ -24,6 +24,7 @@ impl Passes {
     pub fn from_convert_args(matches: &ArgMatches) -> Passes {
         let mut passes = vec![];
         for id in matches.ids() {
+            println!("id: {}", id);
             if id.to_string().starts_with("convert-") {
                 passes.push(id.to_string());
             }
