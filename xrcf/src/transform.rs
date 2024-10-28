@@ -7,6 +7,8 @@ use crate::convert::RewriteResult;
 use crate::ir::Op;
 use anyhow::Result;
 use std::sync::Arc;
+use clap::Arg;
+use clap::ArgAction;
 use std::sync::RwLock;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
@@ -49,6 +51,23 @@ impl TransformDispatch for DefaultTransformDispatch {
         }
         Ok(RewriteResult::Unchanged)
     }
+}
+
+pub fn default_passes() -> Vec<Arg> {
+    vec![
+        Arg::new("convert-unstable-to-mlir")
+                .long("convert-unstable-to-mlir")
+                .help("Convert unstable operations to MLIR")
+            .action(ArgAction::SetTrue),
+        Arg::new("convert-func-to-llvm")
+                .long("convert-func-to-llvm")
+                .help("Convert function operations to LLVM IR")
+            .action(ArgAction::SetTrue),
+        Arg::new("convert-mlir-to-llvmir")
+                .long("convert-mlir-to-llvmir")
+                .help("Convert MLIR to LLVM IR")
+            .action(ArgAction::SetTrue),
+    ]
 }
 
 fn parse_passes(arguments: &str) -> Result<Vec<&str>> {
