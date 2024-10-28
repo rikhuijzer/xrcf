@@ -184,13 +184,24 @@ impl Operation {
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
-    pub fn parent_op(&self) -> Arc<RwLock<dyn Op>> {
-        let parent = self.parent().unwrap();
+    pub fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+        let parent = match self.parent() {
+            Some(parent) => parent,
+            None => return None,
+        };
         let parent = parent.try_read().unwrap();
-        let parent = parent.parent().unwrap();
+        let parent = parent.parent();
+        let parent = match parent {
+            Some(parent) => parent,
+            None => return None,
+        };
         let parent = parent.try_read().unwrap();
-        let parent = parent.parent().unwrap();
-        parent
+        let parent = parent.parent();
+        let parent = match parent {
+            Some(parent) => parent,
+            None => return None,
+        };
+        Some(parent)
     }
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;

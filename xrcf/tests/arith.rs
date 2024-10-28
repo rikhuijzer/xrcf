@@ -58,7 +58,16 @@ fn parse_addi() {
     let func_op = ops[0].try_read().unwrap();
     let func_operation = func_op.operation().try_read().unwrap();
     assert_eq!(func_operation.name(), FuncOp::operation_name());
-    assert!(func_operation.parent().is_some());
+    let func_parent = func_operation.parent();
+    assert!(func_parent.is_some());
+
+    let func_op = ops[0].clone();
+    let func_op = func_op.try_read().unwrap();
+    let func_parent = func_op.parent_op();
+    assert!(func_parent.is_some());
+    let func_parent = func_parent.unwrap();
+    let func_parent = func_parent.try_read().unwrap();
+    assert_eq!(func_parent.name().to_string(), "module");
 
     Test::check_lines_contain(&actual, expected, caller);
 }

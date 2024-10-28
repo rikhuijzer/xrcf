@@ -1,0 +1,10 @@
+[package]
+name = "python"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+xrcf = { path = "../../xrcf/" }
+
+[dev-dependencies]
