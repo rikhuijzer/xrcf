@@ -22,18 +22,8 @@ struct PythonArgs {
     convert_python_to_mlir: bool,
 }
 
-fn process(matches: &ArgMatches) -> Result<()> {
+fn process(matches: &ArgMatches, input_text: &str) -> Result<()> {
     let passes = Passes::from_convert_args(&matches);
-
-    let input = matches.get_one::<String>("input").unwrap();
-
-    let input_text = if input == "-" {
-        let mut buffer = String::new();
-        std::io::stdin().read_to_string(&mut buffer)?;
-        buffer
-    } else {
-        std::fs::read_to_string(input)?
-    };
 
     parse_and_transform(&input_text, &passes)?;
     Ok(())
@@ -42,28 +32,39 @@ fn process(matches: &ArgMatches) -> Result<()> {
 fn main() {
     let cli = Command::new("pythonc").args(xrcf::default_passes());
     let cli = PythonArgs::augment_args(cli);
-
     let matches = cli.get_matches();
-    process(&matches).unwrap();
+
+    let input = matches.get_one::<String>("input").unwrap();
+
+    let input_text = if input == "-" {
+        let mut buffer = String::new();
+        std::io::stdin().read_to_string(&mut buffer).unwrap();
+        buffer
+    } else {
+        std::fs::read_to_string(input).unwrap()
+    };
+
+    process(&matches, &input_text).unwrap();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
 
-    fn run_app(args: Vec<&str>) -> Result<()> {
+    fn run_app(args: Vec<&str>, input_text: &str) -> Result<()> {
         let cli = Command::new("pythonc").args(xrcf::default_passes());
         let cli = PythonArgs::augment_args(cli);
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let matches = cli.try_get_matches_from(args_owned)?;
-        process(&matches)?;
+        process(&matches, input_text)?;
         Ok(())
     }
 
     #[test]
     fn test_help() {
         let args = vec!["pythonc", "--help"];
-        let result = run_app(args);
+        let result = run_app(args, "");
         let err = match result {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
@@ -74,12 +75,23 @@ mod tests {
 
     #[test]
     fn test_invalid_args() {
-        let result = run_app(vec!["pythonc", "--invalid-flag"]);
+        let result = run_app(vec!["pythonc", "--invalid-flag"], "");
         assert!(result.is_err());
     }
 
-    fn test_valid_input() {
-        let result = run_app(vec!["pythonc", "test.py"]);
+    #[test]
+    fn test_pass_order() {
+        let src = indoc! {
+            r#"
+            func.func @main() -> i32 {
+                %0 = arith.constant 1 : i32
+                return %0 : i32
+            }
+            "#
+        };
+        // The order of these passes is important.
+        let args = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
+        let result = run_app(args, src);
         println!("{:?}", result);
         assert!(result.is_ok());
     }

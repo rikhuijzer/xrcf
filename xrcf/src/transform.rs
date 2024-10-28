@@ -9,14 +9,51 @@ use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
 use clap::ArgMatches;
+use std::fmt;
+use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
 
+pub struct SinglePass {
+    pass: String,
+}
+
+impl Display for SinglePass {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.pass)
+    }
+}
+
+impl SinglePass {
+    pub fn new(pass: &str) -> SinglePass {
+        SinglePass {
+            pass: pass.to_string(),
+        }
+    }
+    pub fn to_string(&self) -> String {
+        self.pass.clone()
+    }
+}
+
 pub struct Passes {
-    passes: Vec<String>,
+    passes: Vec<SinglePass>,
+}
+
+impl Display for Passes {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.passes
+                .iter()
+                .map(|p| p.to_string())
+                .collect::<Vec<String>>()
+                .join(" ")
+        )
+    }
 }
 
 impl Passes {
@@ -26,15 +63,17 @@ impl Passes {
         for id in matches.ids() {
             println!("id: {}", id);
             if id.to_string().starts_with("convert-") {
-                passes.push(id.to_string());
+                passes.push(SinglePass::new(&id.to_string()));
             }
         }
         Passes { passes }
     }
     pub fn from_vec(passes: Vec<String>) -> Passes {
-        Passes { passes }
+        Passes {
+            passes: passes.iter().map(|p| SinglePass::new(p)).collect(),
+        }
     }
-    pub fn vec(&self) -> &Vec<String> {
+    pub fn vec(&self) -> &Vec<SinglePass> {
         &self.passes
     }
 }
@@ -44,7 +83,7 @@ impl Passes {
 /// Downstream crates can implement this trait to add custom passes to their
 /// compiler.  This is similar to `ParserDispatch`.
 pub trait TransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: &Passes) -> Result<RewriteResult>;
+    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult>;
 }
 
 /// Default implementation of [TransformDispatch].
@@ -63,22 +102,15 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
 }
 
 impl TransformDispatch for DefaultTransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: &Passes) -> Result<RewriteResult> {
-        let mut result = RewriteResult::Unchanged;
-        for pass in passes.vec() {
-            let pass = pass.trim_start_matches("--");
-            let new_result = match pass {
-                Canonicalize::NAME => Canonicalize::convert(op.clone())?,
-                ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone())?,
-                ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone())?,
-                ConvertUnstableToMLIR::NAME => ConvertUnstableToMLIR::convert(op.clone())?,
-                _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
-            };
-            if let RewriteResult::Changed(_) = new_result {
-                result = new_result;
-            }
+    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
+        let pass = pass.to_string();
+        match pass.as_str() {
+            Canonicalize::NAME => Canonicalize::convert(op.clone()),
+            ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
+            ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
+            ConvertUnstableToMLIR::NAME => ConvertUnstableToMLIR::convert(op.clone()),
+            _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
-        Ok(result)
     }
 }
 
@@ -105,12 +137,17 @@ pub fn default_passes() -> Vec<Arg> {
 /// `transform` is used instead of `compile` because the infrastructure is not
 /// limited to compiling. For example, it could also be used to build
 /// decompilers (i.e., for security research where the assembly is decompiled to
-/// a more readable form.). In MLIR, this function is called `opt`, but clearly
-/// that is too restrictive too since a set of passes don't have to optimize the
-/// code.
+/// a more readable form.).
 pub fn transform<T: TransformDispatch>(
     op: Arc<RwLock<dyn Op>>,
     passes: &Passes,
 ) -> Result<RewriteResult> {
-    T::dispatch(op, &passes)
+    let mut result = RewriteResult::Unchanged;
+    for pass in passes.vec() {
+        let new_result = T::dispatch(op.clone(), pass)?;
+        if let RewriteResult::Changed(_) = new_result {
+            result = new_result;
+        }
+    }
+    Ok(result)
 }

@@ -11,6 +11,7 @@ pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;
 pub use transform::Passes;
+pub use transform::SinglePass;
 pub use transform::TransformDispatch;
 
 /// Dialects can define new operations, attributes, and types.

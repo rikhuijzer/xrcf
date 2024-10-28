@@ -8,15 +8,17 @@ use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
 use xrcf::Passes;
+use xrcf::SinglePass;
 use xrcf::TransformDispatch;
 
 struct PythonTransformDispatch;
 
 impl TransformDispatch for PythonTransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, passes: &Passes) -> Result<RewriteResult> {
-        println!("here");
-        let result = DefaultTransformDispatch::dispatch(op, passes)?;
-        Ok(result)
+    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
+        match pass.to_string().as_str() {
+            "convert-python-to-mlir" => todo!(),
+            _ => DefaultTransformDispatch::dispatch(op, pass),
+        }
     }
 }
 
@@ -54,7 +56,6 @@ mod tests {
                 panic!("Expected a changed result");
             }
         };
-        let passes = passes.vec().join(" ");
         println!("After parse_and_transform ({passes}):\n{}", result);
         assert!(result.contains("define i32 @main"));
     }
