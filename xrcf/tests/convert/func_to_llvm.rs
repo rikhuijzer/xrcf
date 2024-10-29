@@ -103,3 +103,22 @@ fn test_hello_world() {
     let (_module, actual) = Test::transform(flags(), src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
+
+#[test]
+fn test_empty_return() {
+    let src = indoc! {r#"
+    func.func @main() {
+      return
+    }
+    "#};
+    let expected = indoc! {r#"
+    module {
+      llvm.func @main() {
+        llvm.return
+      }
+    }
+    "#};
+    Test::init_tracing();
+    let (_module, actual) = Test::transform(flags(), src);
+    Test::check_lines_exact(&actual, expected, Location::caller());
+}

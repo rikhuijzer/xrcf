@@ -233,7 +233,9 @@ impl FuncOp {
         let operation = op.operation();
         let operation = operation.try_read().unwrap();
         let result_types = operation.results().types();
-        write!(f, " -> {}", result_types)?;
+        if !result_types.vec().is_empty() {
+            write!(f, " -> {}", result_types)?;
+        }
         let attributes = operation.attributes();
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
@@ -368,11 +370,13 @@ impl ReturnOp {
         write!(f, "{name}")?;
         let operands = operation.operands().vec();
         let operands = operands.try_read().unwrap();
-        for operand in operands.iter() {
-            write!(f, " {}", operand.read().unwrap())?;
+        if !operands.is_empty() {
+            for operand in operands.iter() {
+                write!(f, " {}", operand.read().unwrap())?;
+            }
+            let result_types = operation.results().types();
+            write!(f, " : {}", result_types)?;
         }
-        let result_types = operation.results().types();
-        write!(f, " : {}", result_types)?;
         Ok(())
     }
 }
@@ -401,17 +405,19 @@ impl<T: ParserDispatch> Parser<T> {
         &mut self,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<O>>> {
-        tracing::debug!("Parsing return op");
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
         self.parse_operation_name_into::<O>(&mut operation)?;
-        operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
-        let _colon = self.expect(TokenKind::Colon)?;
-        let return_type = self.expect(TokenKind::IntType)?;
-        let return_type = PlaceholderType::new(&return_type.lexeme);
-        let result_type = Arc::new(RwLock::new(return_type));
-        operation.set_anonymous_result(result_type)?;
+        let has_operands = !self.check(TokenKind::RBrace);
+        if has_operands {
+            operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
+            let _colon = self.expect(TokenKind::Colon)?;
+            let return_type = self.expect(TokenKind::IntType)?;
+            let return_type = PlaceholderType::new(&return_type.lexeme);
+            let result_type = Arc::new(RwLock::new(return_type));
+            operation.set_anonymous_result(result_type)?;
+        }
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation(operation.clone());
         let op = Arc::new(RwLock::new(op));

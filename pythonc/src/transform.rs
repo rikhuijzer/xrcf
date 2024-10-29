@@ -160,7 +160,7 @@ mod tests {
     ///
     /// Cannot pass options, since the tests run concurrently.
     pub fn init_tracing() {
-        let level = tracing::Level::DEBUG;
+        let level = tracing::Level::INFO;
         match init_subscriber(level) {
             Ok(_) => (),
             Err(_e) => (),
@@ -210,8 +210,18 @@ mod tests {
 
         hello()
         "#};
+        let expected = indoc! {r#"
+        module {
+          func.func @hello() {
+            unstable.printf("Hello, World!")
+          }
+          func.func @main() {
+            hello()
+          }
+        }
+        "#};
         let passes = vec!["--convert-python-to-mlir"];
         let result = test_helper(src, passes);
-        assert!(result.contains("define void @hello"));
+        assert_eq!(result.trim(), expected.trim());
     }
 }
