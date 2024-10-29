@@ -113,7 +113,6 @@ pub fn apply_rewrites(
             RewriteResult::Changed(changed) => {
                 has_changed = true;
                 root = changed.0;
-                println!("changed, {}", root.try_read().unwrap().name());
             }
             RewriteResult::Unchanged => {
                 if has_changed {
