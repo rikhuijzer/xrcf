@@ -1,12 +1,10 @@
 mod python_to_mlir;
 mod transform;
 
-use anyhow::Result;
 use clap::arg;
 use clap::Args;
 use clap::Command;
 use std::io::Read;
-use xrcf::convert::RewriteResult;
 use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
@@ -23,14 +21,14 @@ struct PythonArgs {
     convert_python_to_mlir: bool,
 }
 
-fn process(passes: &Passes, input_text: &str) -> Result<RewriteResult> {
-    let result = parse_and_transform(&input_text, &passes)?;
-    Ok(result)
+fn cli() -> Command {
+    let cli = Command::new("pythonc").args(xrcf::default_passes());
+    let cli = PythonArgs::augment_args(cli);
+    cli
 }
 
 fn main() {
-    let cli = Command::new("pythonc").args(xrcf::default_passes());
-    let cli = PythonArgs::augment_args(cli);
+    let cli = cli();
     let args = std::env::args_os();
     let passes = Passes::from_convert_args(args);
     let matches = cli.get_matches();
@@ -45,23 +43,22 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    process(&passes, &input_text).unwrap();
+    parse_and_transform(&input_text, &passes).unwrap();
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Result;
     use indoc::indoc;
+    use xrcf::convert::RewriteResult;
 
     fn run_app(args: Vec<&str>, input_text: &str) -> Result<RewriteResult> {
-        let cli = Command::new("pythonc").args(xrcf::default_passes());
-        let cli = PythonArgs::augment_args(cli);
+        let cli = cli();
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let _matches = cli.try_get_matches_from(args_owned)?;
-        println!("Args: {:?}", args);
         let passes = Passes::from_convert_vec(args);
-        println!("Passes: {}", passes);
-        let result = process(&passes, input_text)?;
+        let result = parse_and_transform(input_text, &passes)?;
         Ok(result)
     }
 
