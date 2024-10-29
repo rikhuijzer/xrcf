@@ -45,6 +45,34 @@ pub trait ParserDispatch {
 /// it.
 pub struct DefaultParserDispatch;
 
+pub fn default_dispatch<T: ParserDispatch>(
+    name: Token,
+    parser: &mut Parser<T>,
+    parent: Option<Arc<RwLock<Block>>>,
+) -> Result<Arc<RwLock<dyn Op>>> {
+    match name.lexeme.clone().as_str() {
+        "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
+        "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+        "func.call" => <func::CallOp as Parse>::op(parser, parent),
+        "func.func" => <func::FuncOp as Parse>::op(parser, parent),
+        "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
+        "llvm.alloca" => <llvm::AllocaOp as Parse>::op(parser, parent),
+        "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
+        "llvm.func" => <llvm::FuncOp as Parse>::op(parser, parent),
+        "llvm.mlir.constant" => <llvm::ConstantOp as Parse>::op(parser, parent),
+        "llvm.mlir.global" => <llvm::GlobalOp as Parse>::op(parser, parent),
+        "llvm.return" => <llvm::ReturnOp as Parse>::op(parser, parent),
+        "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
+        "module" => <ModuleOp as Parse>::op(parser, parent),
+        "return" => <func::ReturnOp as Parse>::op(parser, parent),
+        "unstable.printf" => <unstable::PrintfOp as Parse>::op(parser, parent),
+        _ => {
+            let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
+            return Err(anyhow::anyhow!(msg));
+        }
+    }
+}
+
 impl ParserDispatch for DefaultParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
@@ -52,32 +80,12 @@ impl ParserDispatch for DefaultParserDispatch {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `%0 = <op name>`).
-            parser.peek_n(2).unwrap()
+            parser.peek_n(2).unwrap().clone()
         } else {
             // Ignore nothing (e.g., `<op name> %0, %1`).
-            parser.peek()
+            parser.peek().clone()
         };
-        match name.lexeme.clone().as_str() {
-            "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
-            "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
-            "func.call" => <func::CallOp as Parse>::op(parser, parent),
-            "func.func" => <func::FuncOp as Parse>::op(parser, parent),
-            "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
-            "llvm.alloca" => <llvm::AllocaOp as Parse>::op(parser, parent),
-            "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
-            "llvm.func" => <llvm::FuncOp as Parse>::op(parser, parent),
-            "llvm.mlir.constant" => <llvm::ConstantOp as Parse>::op(parser, parent),
-            "llvm.mlir.global" => <llvm::GlobalOp as Parse>::op(parser, parent),
-            "llvm.return" => <llvm::ReturnOp as Parse>::op(parser, parent),
-            "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
-            "module" => <ModuleOp as Parse>::op(parser, parent),
-            "return" => <func::ReturnOp as Parse>::op(parser, parent),
-            "unstable.printf" => <unstable::PrintfOp as Parse>::op(parser, parent),
-            _ => {
-                let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
-                return Err(anyhow::anyhow!(msg));
-            }
-        }
+        default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
         if parser.check(TokenKind::IntType) {
