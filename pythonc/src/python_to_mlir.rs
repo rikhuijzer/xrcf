@@ -2,7 +2,6 @@ use crate::python;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
-use xrcf::dialect::unstable;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
@@ -10,6 +9,7 @@ use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Func;
+use xrcf::dialect::unstable;
 use xrcf::ir::Op;
 
 struct FuncLowering;

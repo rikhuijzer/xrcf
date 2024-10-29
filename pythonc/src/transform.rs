@@ -23,8 +23,8 @@ use xrcf::TransformDispatch;
 struct PythonParserDispatch;
 
 fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
-    let syntax_matches = parser.peek().kind == TokenKind::BareIdentifier &&
-        parser.peek_n(1).unwrap().kind == TokenKind::LParen;
+    let syntax_matches = parser.peek().kind == TokenKind::BareIdentifier
+        && parser.peek_n(1).unwrap().kind == TokenKind::LParen;
     let known_keyword = {
         if let TokenKind::BareIdentifier = parser.peek().kind {
             match parser.peek().lexeme.as_str() {

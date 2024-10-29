@@ -1,13 +1,13 @@
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use xrcf::ir::StringAttr;
 use std::sync::RwLock;
 use xrcf::dialect::func::Func;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::StringAttr;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
