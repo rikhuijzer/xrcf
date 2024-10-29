@@ -29,6 +29,11 @@ impl Display for SinglePass {
 
 impl SinglePass {
     pub fn new(pass: &str) -> SinglePass {
+        let pass = if pass.starts_with("--") {
+            pass.split("--").last().unwrap()
+        } else {
+            pass
+        };
         SinglePass {
             pass: pass.to_string(),
         }
@@ -79,16 +84,13 @@ impl Passes {
 }
 
 /// Interface to add custom passes to the compiler.
-///
-/// Downstream crates can implement this trait to add custom passes to their
-/// compiler.  This is similar to `ParserDispatch`.
 pub trait TransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult>;
 }
 
 /// Default implementation of [TransformDispatch].
 ///
-/// This implementation knows only passes that are implemented in xrcf.
+/// This default implementation knows only passes that are implemented in xrcf.
 pub struct DefaultTransformDispatch;
 
 pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {

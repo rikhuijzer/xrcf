@@ -1,6 +1,8 @@
+use crate::python_to_mlir::ConvertPythonToMLIR;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
+use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
@@ -16,7 +18,7 @@ struct PythonTransformDispatch;
 impl TransformDispatch for PythonTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            "convert-python-to-mlir" => todo!(),
+            "convert-python-to-mlir" => ConvertPythonToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }

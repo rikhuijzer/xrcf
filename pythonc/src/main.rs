@@ -1,3 +1,4 @@
+mod python_to_mlir;
 mod transform;
 
 use anyhow::Result;
@@ -6,6 +7,7 @@ use clap::ArgMatches;
 use clap::Args;
 use clap::Command;
 use std::io::Read;
+use xrcf::convert::RewriteResult;
 use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
@@ -22,11 +24,10 @@ struct PythonArgs {
     convert_python_to_mlir: bool,
 }
 
-fn process(matches: &ArgMatches, input_text: &str) -> Result<()> {
+fn process(matches: &ArgMatches, input_text: &str) -> Result<RewriteResult> {
     let passes = Passes::from_convert_args(&matches);
-
-    parse_and_transform(&input_text, &passes)?;
-    Ok(())
+    let result = parse_and_transform(&input_text, &passes)?;
+    Ok(result)
 }
 
 fn main() {
@@ -52,13 +53,13 @@ mod tests {
     use super::*;
     use indoc::indoc;
 
-    fn run_app(args: Vec<&str>, input_text: &str) -> Result<()> {
+    fn run_app(args: Vec<&str>, input_text: &str) -> Result<RewriteResult> {
         let cli = Command::new("pythonc").args(xrcf::default_passes());
         let cli = PythonArgs::augment_args(cli);
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let matches = cli.try_get_matches_from(args_owned)?;
-        process(&matches, input_text)?;
-        Ok(())
+        let result = process(&matches, input_text)?;
+        Ok(result)
     }
 
     #[test]
@@ -81,18 +82,26 @@ mod tests {
 
     #[test]
     fn test_pass_order() {
-        let src = indoc! {
-            r#"
-            func.func @main() -> i32 {
-                %0 = arith.constant 1 : i32
-                return %0 : i32
-            }
-            "#
+        let src = indoc! {r#"
+        func.func @main() -> i32 {
+            %0 = arith.constant 1 : i32
+            return %0 : i32
+        }
+        "#
         };
         // The order of these passes is important.
         let args = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
-        let result = run_app(args, src);
-        println!("{:?}", result);
+        println!("\nBefore {args:?}:\n{src}");
+        let result = run_app(args.clone(), src);
         assert!(result.is_ok());
+        let actual = match result.unwrap() {
+            RewriteResult::Changed(op) => {
+                let op = op.0.try_read().unwrap();
+                op.to_string()
+            }
+            RewriteResult::Unchanged => panic!("Expected a change"),
+        };
+        println!("\nAfter {args:?}:\n{actual}");
+        assert!(actual.contains("define i32 @main"));
     }
 }
