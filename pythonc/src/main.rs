@@ -3,7 +3,6 @@ mod transform;
 
 use anyhow::Result;
 use clap::arg;
-use clap::ArgMatches;
 use clap::Args;
 use clap::Command;
 use std::io::Read;
