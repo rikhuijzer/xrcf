@@ -24,8 +24,7 @@ struct PythonArgs {
     convert_python_to_mlir: bool,
 }
 
-fn process(matches: &ArgMatches, input_text: &str) -> Result<RewriteResult> {
-    let passes = Passes::from_convert_args(&matches);
+fn process(passes: &Passes, input_text: &str) -> Result<RewriteResult> {
     let result = parse_and_transform(&input_text, &passes)?;
     Ok(result)
 }
@@ -33,6 +32,8 @@ fn process(matches: &ArgMatches, input_text: &str) -> Result<RewriteResult> {
 fn main() {
     let cli = Command::new("pythonc").args(xrcf::default_passes());
     let cli = PythonArgs::augment_args(cli);
+    let args = std::env::args_os();
+    let passes = Passes::from_convert_args(args);
     let matches = cli.get_matches();
 
     let input = matches.get_one::<String>("input").unwrap();
@@ -45,7 +46,7 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    process(&matches, &input_text).unwrap();
+    process(&passes, &input_text).unwrap();
 }
 
 #[cfg(test)]
@@ -57,8 +58,11 @@ mod tests {
         let cli = Command::new("pythonc").args(xrcf::default_passes());
         let cli = PythonArgs::augment_args(cli);
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
-        let matches = cli.try_get_matches_from(args_owned)?;
-        let result = process(&matches, input_text)?;
+        let _matches = cli.try_get_matches_from(args_owned)?;
+        println!("Args: {:?}", args);
+        let passes = Passes::from_convert_vec(args);
+        println!("Passes: {}", passes);
+        let result = process(&passes, input_text)?;
         Ok(result)
     }
 

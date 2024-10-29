@@ -8,7 +8,7 @@ use crate::ir::Op;
 use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
-use clap::ArgMatches;
+use std::env::ArgsOs;
 use std::fmt;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -62,21 +62,31 @@ impl Display for Passes {
 }
 
 impl Passes {
-    /// Extract passes (starting with `--convert-`) from the given args.
-    pub fn from_convert_args(matches: &ArgMatches) -> Passes {
-        let mut passes = vec![];
-        for id in matches.ids() {
-            println!("id: {}", id);
-            if id.to_string().starts_with("convert-") {
-                passes.push(SinglePass::new(&id.to_string()));
-            }
-        }
-        Passes { passes }
-    }
-    pub fn from_vec(passes: Vec<String>) -> Passes {
+    pub fn from_vec(passes: Vec<&str>) -> Passes {
         Passes {
             passes: passes.iter().map(|p| SinglePass::new(p)).collect(),
         }
+    }
+    pub fn from_convert_vec(args: Vec<&str>) -> Passes {
+        let mut passes = vec![];
+        for arg in args {
+            if arg.starts_with("--convert-") || arg.starts_with("--canonicalize") {
+                passes.push(arg);
+            }
+        }
+        Passes::from_vec(passes)
+    }
+    /// Extract passes (starting with `--convert-` or `--canonicalize`) from the
+    /// given args.
+    pub fn from_convert_args(args: ArgsOs) -> Passes {
+        let mut passes = vec![];
+        for arg in args {
+            let arg = arg.to_string_lossy();
+            if arg.starts_with("--convert-") || arg.starts_with("--canonicalize") {
+                passes.push(SinglePass::new(&arg));
+            }
+        }
+        Passes { passes }
     }
     pub fn vec(&self) -> &Vec<SinglePass> {
         &self.passes

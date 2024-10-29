@@ -43,10 +43,7 @@ mod tests {
             return %0 : i32
         }
         "#};
-        let passes = vec![
-            "--convert-func-to-llvm".to_string(),
-            "--convert-mlir-to-llvmir".to_string(),
-        ];
+        let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
         let passes = Passes::from_vec(passes);
         let result = parse_and_transform(src, &passes).unwrap();
         let result = match result {

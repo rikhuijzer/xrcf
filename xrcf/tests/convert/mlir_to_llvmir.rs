@@ -5,7 +5,9 @@ use indoc::indoc;
 use std::panic::Location;
 use xrcf::targ3t;
 
-const FLAGS: &str = "--convert-mlir-to-llvmir";
+fn flags() -> Vec<&'static str> {
+    vec!["--convert-mlir-to-llvmir"]
+}
 
 #[test]
 fn test_constant() {
@@ -32,7 +34,7 @@ fn test_constant() {
     "#};
     Test::init_subscriber();
     let caller = Location::caller();
-    let (module, actual) = Test::transform(FLAGS, src);
+    let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
     Test::check_lines_contain(&actual, expected, caller);
@@ -56,7 +58,7 @@ fn test_add_one() {
     Test::init_subscriber();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Test::transform(FLAGS, src);
+    let (_module, actual) = Test::transform(flags(), src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
 
@@ -98,6 +100,6 @@ fn test_hello_world() {
     Test::init_subscriber();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Test::transform(FLAGS, src);
+    let (_module, actual) = Test::transform(flags(), src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
