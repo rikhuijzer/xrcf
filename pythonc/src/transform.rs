@@ -209,17 +209,21 @@ mod tests {
             print("Hello, World!")
 
         hello()
-        "#};
+        "#}
+        .trim();
         let expected = indoc! {r#"
         module {
           func.func @hello() {
             unstable.printf("Hello, World!")
+            return
           }
           func.func @main() {
-            hello()
+            func.call @hello() : () -> ()
+            return
           }
         }
-        "#};
+        "#}
+        .trim();
         let passes = vec!["--convert-python-to-mlir"];
         let result = test_helper(src, passes);
         assert_eq!(result.trim(), expected.trim());

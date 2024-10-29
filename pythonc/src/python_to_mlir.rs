@@ -8,9 +8,33 @@ use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
 use xrcf::dialect::func;
+use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::dialect::unstable;
 use xrcf::ir::Op;
+
+struct CallLowering;
+
+impl Rewrite for CallLowering {
+    fn name(&self) -> &'static str {
+        "python_to_mlir::CallLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<python::CallOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<python::CallOp>().unwrap();
+        let identifier = op.identifier().unwrap();
+        let operation = op.operation();
+        let mut new_op = func::CallOp::from_operation(operation.clone());
+        let identifier = format!("@{}", identifier);
+        new_op.set_identifier(identifier);
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
 
 struct FuncLowering;
 
@@ -61,7 +85,7 @@ pub struct ConvertPythonToMLIR;
 impl Pass for ConvertPythonToMLIR {
     const NAME: &'static str = "convert-python-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &PrintLowering];
+        let rewrites: Vec<&dyn Rewrite> = vec![&CallLowering, &FuncLowering, &PrintLowering];
         apply_rewrites(op, &rewrites)
     }
 }

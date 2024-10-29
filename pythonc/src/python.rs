@@ -22,6 +22,9 @@ impl CallOp {
     pub fn identifier(&self) -> Option<String> {
         self.identifier.clone()
     }
+    pub fn set_identifier(&mut self, identifier: String) {
+        self.identifier = Some(identifier);
+    }
 }
 
 impl Op for CallOp {
