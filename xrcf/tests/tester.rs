@@ -13,6 +13,7 @@ use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
+use xrcf::Passes;
 
 pub struct Test;
 
@@ -109,13 +110,19 @@ impl Test {
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
-    pub fn transform(arguments: &str, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn transform(arguments: Vec<&str>, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
         let src = src.trim();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
-        let msg = format!("Before (transform {arguments})");
+        let msg = format!("Before (transform {arguments:?})");
         Self::print_heading(&msg, src);
 
-        let result = transform::<DefaultTransformDispatch>(module.clone(), arguments).unwrap();
+        for arg in arguments.clone() {
+            if arg.starts_with("convert-") {
+                panic!("conversion passes should be prefixed with `--convert-`");
+            }
+        }
+        let passes = Passes::from_convert_vec(arguments.clone());
+        let result = transform::<DefaultTransformDispatch>(module.clone(), &passes).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
@@ -123,7 +130,7 @@ impl Test {
             }
         };
         let actual = format!("{}", new_root_op.try_read().unwrap());
-        let msg = format!("After (transform {arguments})");
+        let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }

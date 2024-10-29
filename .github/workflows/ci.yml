@@ -36,13 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: crate-ci/typos@master
         with:
-          toolchain: '${{ env.RUST_TOOLCHAIN }}'
-
-      - run: cargo install typos-cli
-
-      - run: typos .
+          files: '.'
 
   fmt:
     runs-on: ubuntu-22.04

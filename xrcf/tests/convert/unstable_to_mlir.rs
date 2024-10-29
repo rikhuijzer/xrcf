@@ -5,7 +5,9 @@ use indoc::indoc;
 use std::panic::Location;
 use xrcf::ir::ModuleOp;
 
-const FLAGS: &str = "--convert-unstable-to-mlir";
+fn flags() -> Vec<&'static str> {
+    vec!["--convert-unstable-to-mlir"]
+}
 
 #[test]
 fn test_constant() {
@@ -33,7 +35,7 @@ fn test_constant() {
     "#};
     Test::init_subscriber();
     let caller = Location::caller();
-    let (module, actual) = Test::transform(FLAGS, src);
+    let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<ModuleOp>());
     Test::check_lines_contain(&actual, expected, caller);
@@ -51,6 +53,6 @@ fn test_two_constants() {
     }
     "#};
     Test::init_subscriber();
-    let (_module, actual) = Test::transform(FLAGS, src);
+    let (_module, actual) = Test::transform(flags(), src);
     assert_eq!(actual.matches("func.func private @printf").count(), 1);
 }

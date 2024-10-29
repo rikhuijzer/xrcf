@@ -10,7 +10,9 @@ use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 
-const FLAGS: &str = "--canonicalize";
+fn flags() -> Vec<&'static str> {
+    vec!["--canonicalize"]
+}
 
 #[test]
 fn determine_users() {
@@ -65,7 +67,7 @@ fn canonicalize_addi() {
     }
     "};
     Test::init_subscriber();
-    let (module, actual) = Test::transform(FLAGS, src);
+    let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
     Test::check_lines_exact(&actual, expected, Location::caller());
     assert!(module.as_any().is::<ir::ModuleOp>());
