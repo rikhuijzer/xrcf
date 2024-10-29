@@ -22,11 +22,31 @@ use xrcf::TransformDispatch;
 
 struct PythonParserDispatch;
 
+fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
+    let syntax_matches = parser.peek().kind == TokenKind::BareIdentifier &&
+        parser.peek_n(1).unwrap().kind == TokenKind::LParen;
+    let known_keyword = {
+        if let TokenKind::BareIdentifier = parser.peek().kind {
+            match parser.peek().lexeme.as_str() {
+                "def" => true,
+                "print" => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    };
+    syntax_matches && !known_keyword
+}
+
 impl ParserDispatch for PythonParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
+        if is_function_call(parser) {
+            return <python::CallOp as Parse>::op(parser, parent);
+        }
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
             parser.peek_n(2).unwrap().clone()
@@ -36,6 +56,7 @@ impl ParserDispatch for PythonParserDispatch {
         };
         match name.lexeme.clone().as_str() {
             "def" => <python::FuncOp as Parse>::op(parser, parent),
+            "print" => <python::PrintOp as Parse>::op(parser, parent),
             _ => default_dispatch(name, parser, parent),
         }
     }
