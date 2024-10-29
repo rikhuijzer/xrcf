@@ -33,7 +33,7 @@ fn test_constant() {
       return %0 : i32
     }
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
@@ -52,7 +52,7 @@ fn test_two_constants() {
       return %0 : i32
     }
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::transform(flags(), src);
     assert_eq!(actual.matches("func.func private @printf").count(), 1);
 }

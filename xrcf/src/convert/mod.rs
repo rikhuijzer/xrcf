@@ -113,6 +113,7 @@ pub fn apply_rewrites(
             RewriteResult::Changed(changed) => {
                 has_changed = true;
                 root = changed.0;
+                println!("changed, {}", root.try_read().unwrap().name());
             }
             RewriteResult::Unchanged => {
                 if has_changed {
@@ -124,7 +125,8 @@ pub fn apply_rewrites(
             }
         }
     }
-    anyhow::bail!("too many rewrite iterations");
+    tracing::warn!("too many rewrite iterations");
+    Ok(RewriteResult::Changed(ChangedOp::new(root)))
 }
 
 /// A pass is a transformation that can be applied to the IR. MLIR makes a

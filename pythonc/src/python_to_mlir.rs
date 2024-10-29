@@ -1,11 +1,14 @@
+use crate::python;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 use xrcf::convert::apply_rewrites;
+use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
 use xrcf::dialect::func;
+use xrcf::dialect::func::Func;
 use xrcf::ir::Op;
 
 struct FuncLowering;
@@ -15,10 +18,17 @@ impl Rewrite for FuncLowering {
         "python_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::FuncOp>())
+        Ok(op.name() == python::FuncOp::operation_name())
     }
-    fn rewrite(&self, _op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        todo!()
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let func_op = op.try_read().unwrap();
+        let func_op = func_op.as_any().downcast_ref::<python::FuncOp>().unwrap();
+        let identifier = func_op.identifier().unwrap();
+        let func_op = func_op.operation();
+        let mut func_op = func::FuncOp::from_operation(func_op.clone());
+        func_op.set_identifier(identifier);
+        let func_op = Arc::new(RwLock::new(func_op));
+        Ok(RewriteResult::Changed(ChangedOp::new(func_op)))
     }
 }
 

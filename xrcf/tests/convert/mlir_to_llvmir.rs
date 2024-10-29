@@ -32,7 +32,7 @@ fn test_constant() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
@@ -55,7 +55,7 @@ fn test_add_one() {
         ret i32 %1
     }
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
     let (_module, actual) = Test::transform(flags(), src);
@@ -97,7 +97,7 @@ fn test_hello_world() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
     let (_module, actual) = Test::transform(flags(), src);

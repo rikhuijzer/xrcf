@@ -66,7 +66,7 @@ fn canonicalize_addi() {
       }
     }
     "};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
     Test::check_lines_exact(&actual, expected, Location::caller());

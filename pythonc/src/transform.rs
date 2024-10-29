@@ -64,17 +64,28 @@ pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> 
 mod tests {
     use super::*;
     use indoc::indoc;
+    use tracing;
+    use xrcf::init_subscriber;
 
-    #[test]
-    fn test_transform() {
-        let src = indoc! {r#"
-        func.func @main() -> i32 {
-            %0 = arith.constant 0 : i32
-            return %0 : i32
+    /// Initialize the subscriber for the tests.
+    ///
+    /// Cannot pass options, since the tests run concurrently.
+    pub fn init_tracing() {
+        let level = tracing::Level::DEBUG;
+        match init_subscriber(level) {
+            Ok(_) => (),
+            Err(_e) => (),
         }
-        "#};
-        let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
+    }
+
+    fn print_heading(msg: &str, src: &str) {
+        tracing::info!("{msg}:\n```\n{src}\n```\n");
+    }
+    fn test_helper(src: &str, passes: Vec<&str>) -> String {
+        let src = src.trim();
+        init_tracing();
         let passes = Passes::from_vec(passes);
+        print_heading("Before {passes:?}", src);
         let result = parse_and_transform(src, &passes).unwrap();
         let result = match result {
             RewriteResult::Changed(op) => {
@@ -85,7 +96,33 @@ mod tests {
                 panic!("Expected a changed result");
             }
         };
-        println!("After parse_and_transform ({passes}):\n{}", result);
+        print_heading("After {passes:?}", &result);
+        result
+    }
+
+    #[test]
+    fn test_default_dispatch() {
+        let src = indoc! {r#"
+        func.func @main() -> i32 {
+            %0 = arith.constant 0 : i32
+            return %0 : i32
+        }
+        "#};
+        let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
+        let result = test_helper(src, passes);
         assert!(result.contains("define i32 @main"));
+    }
+
+    #[test]
+    fn test_python_to_mlir() {
+        let src = indoc! {r#"
+        def hello():
+            print("Hello, World!")
+
+        hello()
+        "#};
+        let passes = vec!["--convert-python-to-mlir"];
+        let result = test_helper(src, passes);
+        assert!(result.contains("define void @hello"));
     }
 }

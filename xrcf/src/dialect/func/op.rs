@@ -17,63 +17,6 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-pub trait Func: Op {
-    fn identifier(&self) -> Option<String>;
-    fn set_identifier(&mut self, identifier: String);
-    fn set_argument_from_type(&mut self, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
-        let argument = crate::ir::BlockArgument::new(None, typ);
-        let value = Value::BlockArgument(argument);
-        let value = Arc::new(RwLock::new(value));
-        let operation = self.operation();
-        let mut operation = operation.write().unwrap();
-        operation.set_argument(value);
-        Ok(())
-    }
-    fn sym_visibility(&self) -> Option<String> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attribute = attributes.get("sym_visibility");
-        match attribute {
-            Some(attribute) => Some(attribute.to_string()),
-            // It is legal to not have set visibility.
-            None => None,
-        }
-    }
-    /// Set the symbol visibility.
-    ///
-    /// It is legal to not have set visibility.
-    fn set_sym_visibility(&mut self, visibility: Option<String>) {
-        if let Some(visibility) = visibility {
-            let operation = self.operation();
-            let operation = operation.try_write().unwrap();
-            let attributes = operation.attributes();
-            let attribute = StringAttr::from_str(&visibility);
-            let attribute = Arc::new(attribute);
-            attributes.insert("sym_visibility", attribute);
-        }
-    }
-    fn arguments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let arguments = operation.arguments();
-        Ok(arguments.clone())
-    }
-    fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let return_types = operation.results().types();
-        return_types.vec()
-    }
-    fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let return_types = self.return_types();
-        assert!(!return_types.is_empty(), "Expected result types to be set");
-        assert!(return_types.len() == 1, "Expected single result type");
-        let typ = return_types[0].clone();
-        Ok(typ)
-    }
-}
-
 /// `func.call`
 ///
 /// ```ebnf
@@ -179,6 +122,63 @@ impl Parse for CallOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent)?;
         Ok(call_op)
+    }
+}
+
+pub trait Func: Op {
+    fn identifier(&self) -> Option<String>;
+    fn set_identifier(&mut self, identifier: String);
+    fn set_argument_from_type(&mut self, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
+        let argument = crate::ir::BlockArgument::new(None, typ);
+        let value = Value::BlockArgument(argument);
+        let value = Arc::new(RwLock::new(value));
+        let operation = self.operation();
+        let mut operation = operation.write().unwrap();
+        operation.set_argument(value);
+        Ok(())
+    }
+    fn sym_visibility(&self) -> Option<String> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let attributes = operation.attributes();
+        let attribute = attributes.get("sym_visibility");
+        match attribute {
+            Some(attribute) => Some(attribute.to_string()),
+            // It is legal to not have set visibility.
+            None => None,
+        }
+    }
+    /// Set the symbol visibility.
+    ///
+    /// It is legal to not have set visibility.
+    fn set_sym_visibility(&mut self, visibility: Option<String>) {
+        if let Some(visibility) = visibility {
+            let operation = self.operation();
+            let operation = operation.try_write().unwrap();
+            let attributes = operation.attributes();
+            let attribute = StringAttr::from_str(&visibility);
+            let attribute = Arc::new(attribute);
+            attributes.insert("sym_visibility", attribute);
+        }
+    }
+    fn arguments(&self) -> Result<Values> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let arguments = operation.arguments();
+        Ok(arguments.clone())
+    }
+    fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
+        let operation = self.operation();
+        let operation = operation.read().unwrap();
+        let return_types = operation.results().types();
+        return_types.vec()
+    }
+    fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
+        let return_types = self.return_types();
+        assert!(!return_types.is_empty(), "Expected result types to be set");
+        assert!(return_types.len() == 1, "Expected single result type");
+        let typ = return_types[0].clone();
+        Ok(typ)
     }
 }
 

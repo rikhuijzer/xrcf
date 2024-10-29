@@ -24,7 +24,7 @@ fn test_constant() {
       }
     }
     "};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::transform(flags(), src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
@@ -45,7 +45,7 @@ fn test_add_one() {
       llvm.return %1 : i32
     }
     "};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::transform(flags(), src);
     Test::check_lines_contain(&actual, expected, Location::caller());
 }
@@ -60,7 +60,7 @@ fn test_hello_world() {
     llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
     llvm.func @something() -> i32
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
     let (_module, actual) = Test::transform(flags(), src);
