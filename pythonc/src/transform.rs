@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
+use xrcf::ir::spaces;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Type;
@@ -54,8 +55,45 @@ impl TransformDispatch for PythonTransformDispatch {
     }
 }
 
+/// Replace Python's indentation with brackets to make it easier to parse.
+///
+/// For example, this function changes
+/// ```python
+/// def main():
+///     print("Hello, World!")
+/// ```
+/// to
+/// ```python
+/// def main() {
+///     print("Hello, World!")
+/// }
+/// ```
+fn replace_indentation(src: &str) -> String {
+    let mut result = String::new();
+    let mut indent = 0;
+    for line in src.lines() {
+        if line.ends_with(":") {
+            indent += 1;
+            let line = line.trim_end_matches(':');
+            result.push_str(&format!("{} {{", line));
+        } else if line.starts_with(&format!("{}", spaces(2 * indent))) {
+            let line = line.trim();
+            result.push_str(&format!("{}{}", spaces(indent), line));
+        } else {
+            indent -= 1;
+            result.push_str(&format!("{}}}", spaces(indent)));
+            result.push('\n');
+            let line = line.trim();
+            result.push_str(&format!("{}{}", spaces(indent), line));
+        }
+        result.push('\n');
+    }
+    result
+}
+
 pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
-    let op = Parser::<PythonParserDispatch>::parse(src)?;
+    let src = replace_indentation(src);
+    let op = Parser::<PythonParserDispatch>::parse(&src)?;
     let result = transform::<PythonTransformDispatch>(op, passes)?;
     Ok(result)
 }
@@ -66,6 +104,36 @@ mod tests {
     use indoc::indoc;
     use tracing;
     use xrcf::init_subscriber;
+
+    #[test]
+    fn test_replace_indentation() {
+        let src = indoc! {r#"
+        def main():
+            print("Hello, World!")
+
+        def hello():
+            print("Hello, World!")
+
+        hello()
+        "#}
+        .trim();
+        let expected = indoc! {r#"
+        def main() {
+          print("Hello, World!")
+        }
+
+        def hello() {
+          print("Hello, World!")
+        }
+
+        hello()
+        "#}
+        .trim();
+        let result = replace_indentation(src);
+        tracing::info!("Before replace_indentation:\n{src}\n");
+        tracing::info!("After replace_indentation:\n{result}\n");
+        assert_eq!(result.trim(), expected.trim());
+    }
 
     /// Initialize the subscriber for the tests.
     ///
@@ -78,14 +146,14 @@ mod tests {
         }
     }
 
-    fn print_heading(msg: &str, src: &str) {
-        tracing::info!("{msg}:\n```\n{src}\n```\n");
+    fn print_heading(msg: &str, src: &str, passes: &Passes) {
+        tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
     fn test_helper(src: &str, passes: Vec<&str>) -> String {
         let src = src.trim();
         init_tracing();
         let passes = Passes::from_vec(passes);
-        print_heading("Before {passes:?}", src);
+        print_heading("Before", src, &passes);
         let result = parse_and_transform(src, &passes).unwrap();
         let result = match result {
             RewriteResult::Changed(op) => {
@@ -96,7 +164,7 @@ mod tests {
                 panic!("Expected a changed result");
             }
         };
-        print_heading("After {passes:?}", &result);
+        print_heading("After", &result, &passes);
         result
     }
 

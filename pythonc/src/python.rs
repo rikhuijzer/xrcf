@@ -50,7 +50,9 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation.try_read().unwrap();
-        write!(f, "{} foo", operation.name())?;
+        write!(f, "{} ", operation.name())?;
+        write!(f, "{}", self.identifier().unwrap())?;
+        write!(f, "():")?;
         Ok(())
     }
 }
@@ -73,6 +75,10 @@ impl Parse for FuncOp {
             identifier: Some(identifier),
         };
         let op = Arc::new(RwLock::new(op));
+        parser.expect(TokenKind::LParen)?;
+        parser.expect(TokenKind::RParen)?;
+        parser.expect(TokenKind::Colon)?;
+        let region = parser.region(op.clone())?;
         Ok(op)
     }
 }
