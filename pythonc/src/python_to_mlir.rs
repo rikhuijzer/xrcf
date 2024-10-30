@@ -12,6 +12,7 @@ use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::dialect::unstable;
 use xrcf::ir::Op;
+use xrcf::ir::Operation;
 
 struct CallLowering;
 
@@ -38,6 +39,23 @@ impl Rewrite for CallLowering {
 
 struct FuncLowering;
 
+impl FuncLowering {
+    /// Python code does not require a return statement, but MLIR does.
+    fn ensure_return(&self, op: &mut func::FuncOp) {
+        let ops = op.ops();
+        let last = ops.last().unwrap();
+        let last = last.try_read().unwrap();
+        if last.as_any().is::<func::ReturnOp>() {
+            return;
+        }
+        let operation = Operation::default();
+        let operation = Arc::new(RwLock::new(operation));
+        let ret = func::ReturnOp::from_operation(operation.clone());
+        let ret = Arc::new(RwLock::new(ret));
+        last.insert_after(ret);
+    }
+}
+
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "python_to_mlir::FuncLowering"
@@ -49,9 +67,11 @@ impl Rewrite for FuncLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<python::FuncOp>().unwrap();
         let identifier = op.identifier().unwrap();
+        let identifier = format!("@{}", identifier);
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation(operation.clone());
         new_op.set_identifier(identifier);
+        self.ensure_return(&mut new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

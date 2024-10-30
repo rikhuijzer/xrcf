@@ -99,6 +99,13 @@ pub trait Op {
         let later = self.operation().clone();
         block.insert_before(earlier, later);
     }
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+        let operation = self.operation().read().unwrap();
+        let block = operation.parent().unwrap();
+        let block = block.read().unwrap();
+        let earlier = self.operation().clone();
+        block.insert_after(earlier, later);
+    }
     /// Remove the operation from its parent block.
     fn remove(&self) {
         let operation = self.operation().read().unwrap();

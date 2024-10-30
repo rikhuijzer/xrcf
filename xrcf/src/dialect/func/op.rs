@@ -32,16 +32,24 @@ pub trait Call: Op {
     fn set_identifier(&mut self, identifier: String);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
-        write!(f, "{} = ", operation.results())?;
+        let results = operation.results();
+        let has_results = !results.vec().try_read().unwrap().is_empty();
+        if has_results {
+            write!(f, "{} = ", operation.results())?;
+        }
         write!(f, "{}", operation.name())?;
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
-        let result_type = operation.result_type().expect("no result type");
-        let result_type = result_type.try_read().unwrap();
-        write!(f, "{}", result_type)?;
+        if has_results {
+            let result_type = operation.result_type().expect("no result type");
+            let result_type = result_type.try_read().unwrap();
+            write!(f, "{}", result_type)?;
+        } else {
+            write!(f, "()")?;
+        }
         Ok(())
     }
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(

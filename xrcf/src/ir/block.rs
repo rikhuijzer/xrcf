@@ -136,6 +136,18 @@ impl Block {
         let mut ops = ops.try_write().unwrap();
         ops.insert(index, earlier);
     }
+    pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
+        let index = self.index_of(earlier);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find op in block");
+            }
+        };
+        let ops = self.ops();
+        let mut ops = ops.try_write().unwrap();
+        ops.insert(index + 1, later);
+    }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
         let index = self.index_of(old.clone());
         let index = match index {

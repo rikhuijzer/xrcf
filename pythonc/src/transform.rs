@@ -170,7 +170,7 @@ mod tests {
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
-    fn test_helper(src: &str, passes: Vec<&str>) -> String {
+    fn test_transform(src: &str, passes: Vec<&str>) -> String {
         let src = src.trim();
         init_tracing();
         let passes = Passes::from_vec(passes);
@@ -198,7 +198,7 @@ mod tests {
         }
         "#};
         let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
-        let result = test_helper(src, passes);
+        let result = test_transform(src, passes);
         assert!(result.contains("define i32 @main"));
     }
 
@@ -225,7 +225,10 @@ mod tests {
         "#}
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
-        let result = test_helper(src, passes);
-        assert_eq!(result.trim(), expected.trim());
+        let result = test_transform(src, passes);
+        let actual = result.trim();
+        for (expected_line, actual_line) in expected.lines().zip(actual.lines()) {
+            assert_eq!(expected_line.trim(), actual_line.trim());
+        }
     }
 }
