@@ -82,6 +82,13 @@ impl Parse for ConstantOp {
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         let integer = parser.parse_integer()?;
+        let typ = *integer
+            .as_any()
+            .downcast_ref::<IntegerAttr>()
+            .unwrap()
+            .typ();
+        let result_type = Arc::new(RwLock::new(typ));
+        operation.set_result_type(0, result_type)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp { operation };
@@ -218,6 +225,8 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = PlaceholderType::new(&result_type.lexeme);
+        let result_type = Arc::new(RwLock::new(result_type));
+        operation.set_result_type(0, result_type)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation(operation.clone());
