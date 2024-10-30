@@ -38,6 +38,7 @@ pub use typ::Types;
 pub use value::AnonymousResult;
 pub use value::BlockArgument;
 pub use value::OpResult;
+pub use value::ResultWithoutParent;
 pub use value::Users;
 pub use value::Value;
 pub use value::Values;

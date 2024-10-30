@@ -6,6 +6,7 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::OpResult;
 use crate::ir::Region;
+use crate::ir::ResultWithoutParent;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Users;
@@ -279,7 +280,7 @@ impl Operation {
         Ok(())
     }
     /// Add a new op result with given name.
-    pub fn add_new_op_result(&self, name: &str) {
+    pub fn add_new_op_result(&self, name: &str) -> ResultWithoutParent {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
@@ -289,7 +290,9 @@ impl Operation {
         result.set_name(name);
         result.set_pos(pos);
         let op_result = Value::OpResult(result);
-        vec.push(Arc::new(RwLock::new(op_result)));
+        let op_result = Arc::new(RwLock::new(op_result));
+        vec.push(op_result.clone());
+        ResultWithoutParent::new(op_result)
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;

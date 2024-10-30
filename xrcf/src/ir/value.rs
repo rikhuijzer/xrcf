@@ -162,6 +162,23 @@ impl Display for OpResult {
     }
 }
 
+pub struct ResultWithoutParent {
+    result: Arc<RwLock<Value>>,
+}
+
+impl ResultWithoutParent {
+    pub fn new(result: Arc<RwLock<Value>>) -> Self {
+        assert!(
+            matches!(&*result.try_read().unwrap(), Value::OpResult(_)),
+            "Expected OpResult"
+        );
+        ResultWithoutParent { result }
+    }
+    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+        self.result.try_write().unwrap().set_defining_op(op);
+    }
+}
+
 pub enum Users {
     /// The operation defines no `OpResult`s.
     HasNoOpResults,
