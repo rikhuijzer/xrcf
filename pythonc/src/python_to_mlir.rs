@@ -1,7 +1,9 @@
 use crate::python;
 use anyhow::Result;
+use xrcf::ir::OpOperand;
 use std::sync::Arc;
 use std::sync::RwLock;
+use xrcf::ir::Block;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
@@ -95,6 +97,37 @@ impl ModuleLowering {
         }
         false
     }
+    fn constant_op(parent: &Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+        let mut constant = Operation::default();
+        constant.set_name(arith::ConstantOp::operation_name());
+        let typ = IntegerType::new(32);
+        let value = APInt::new(32, 0, true);
+        let integer = IntegerAttr::new(typ, value);
+        let name = parent.try_read().unwrap().unique_value_name();
+        let result_type = Arc::new(RwLock::new(typ));
+        let result = constant.add_new_op_result(&name, result_type.clone());
+        let constant = Arc::new(RwLock::new(constant));
+        let constant = arith::ConstantOp::from_operation(constant.clone());
+        constant.set_value(Arc::new(integer));
+        let constant = Arc::new(RwLock::new(constant));
+        result.set_defining_op(Some(constant.clone()));
+        constant
+    }
+    fn return_op(parent: &Arc<RwLock<Block>>, constant: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+        let typ = IntegerType::new(32);
+        let result_type = Arc::new(RwLock::new(typ));
+        let mut ret = Operation::default();
+        ret.set_name(func::ReturnOp::operation_name());
+        ret.set_anonymous_result(result_type).unwrap();
+        ret.set_parent(Some(parent.clone()));
+        let value = constant.try_read().unwrap().result(0);
+        let operand = OpOperand::new(value);
+        ret.set_operand(Arc::new(RwLock::new(operand)));
+        let ret = Arc::new(RwLock::new(ret));
+        let ret = func::ReturnOp::from_operation(ret.clone());
+        let ret = Arc::new(RwLock::new(ret));
+        ret
+    }
     fn return_zero(func: Arc<RwLock<func::FuncOp>>) {
         let func = func.try_read().unwrap();
         let ops = func.ops();
@@ -107,28 +140,10 @@ impl ModuleLowering {
         let block = last_operation.try_read().unwrap().parent();
         let block = block.unwrap();
 
-        {
-            let mut constant = Operation::default();
-            constant.set_name(arith::ConstantOp::operation_name());
-            let typ = IntegerType::new(64);
-            let value = APInt::new(64, 0, true);
-            let integer = IntegerAttr::new(typ, value);
-            let name = block.try_read().unwrap().unique_value_name();
-            let result_type = Arc::new(RwLock::new(typ));
-            let result = constant.add_new_op_result(&name, result_type);
-            let constant = Arc::new(RwLock::new(constant));
-            let constant = arith::ConstantOp::from_operation(constant.clone());
-            constant.set_value(Arc::new(integer));
-            let constant = Arc::new(RwLock::new(constant));
-            result.set_defining_op(Some(constant.clone()));
-            last.insert_before(constant.clone());
-        }
+        let constant = Self::constant_op(&block);
+        last.insert_before(constant.clone());
 
-        let mut ret = Operation::default();
-        ret.set_name(func::ReturnOp::operation_name());
-        let ret = Arc::new(RwLock::new(ret));
-        let ret = func::ReturnOp::from_operation(ret.clone());
-        let ret = Arc::new(RwLock::new(ret));
+        let ret = Self::return_op(&block, constant);
         last.insert_after(ret.clone());
     }
     fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
