@@ -359,3 +359,14 @@ impl Display for Operation {
         self.display(f, 0)
     }
 }
+
+pub trait GuardedOperation {
+    fn parent(&self) -> Option<Arc<RwLock<Block>>>;
+}
+
+impl GuardedOperation for Arc<RwLock<Operation>> {
+    fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+        let operation = self.try_read().unwrap();
+        operation.parent()
+    }
+}

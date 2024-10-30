@@ -1,5 +1,6 @@
 use crate::python;
 use anyhow::Result;
+use xrcf::ir::GuardedOperation;
 use xrcf::ir::OpOperand;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -13,6 +14,7 @@ use xrcf::dialect::arith;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
+use xrcf::ir::GuardedOp;
 use xrcf::dialect::unstable;
 use xrcf::ir::APInt;
 use xrcf::ir::IntegerAttr;
@@ -120,7 +122,7 @@ impl ModuleLowering {
         ret.set_name(func::ReturnOp::operation_name());
         ret.set_anonymous_result(result_type).unwrap();
         ret.set_parent(Some(parent.clone()));
-        let value = constant.try_read().unwrap().result(0);
+        let value = constant.result(0);
         let operand = OpOperand::new(value);
         ret.set_operand(Arc::new(RwLock::new(operand)));
         let ret = Arc::new(RwLock::new(ret));
@@ -128,16 +130,13 @@ impl ModuleLowering {
         let ret = Arc::new(RwLock::new(ret));
         ret
     }
-    fn return_zero(func: Arc<RwLock<func::FuncOp>>) {
-        let func = func.try_read().unwrap();
+    fn return_zero(func: Arc<RwLock<dyn Op>>) {
         let ops = func.ops();
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
         let last = ops.last().unwrap();
-        let last = last.try_read().unwrap();
-        let last_operation = last.operation();
-        let block = last_operation.try_read().unwrap().parent();
+        let block = last.operation().parent();
         let block = block.unwrap();
 
         let constant = Self::constant_op(&block);
