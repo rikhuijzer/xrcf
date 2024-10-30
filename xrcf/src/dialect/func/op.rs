@@ -1,6 +1,7 @@
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::Op;
+use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::PlaceholderType;
@@ -203,37 +204,32 @@ pub struct FuncOp {
 
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
-    pub fn insert_op(parent: Arc<RwLock<dyn Op>>, op: Arc<RwLock<dyn Op>>) {
+    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> OpWithoutParent {
         let read = op.try_read().unwrap();
         let ops = read.ops();
         if ops.is_empty() {
-            let parent_read = parent.try_read().unwrap();
-            let operation = parent_read.operation();
+            println!("empty");
+            let operation = self.operation();
             let mut operation = operation.try_write().unwrap();
             let region = operation.region();
-            if let Some(_region) = region {
-                todo!()
-            } else {
-                let ops = vec![op.clone()];
-                let ops = Arc::new(RwLock::new(ops));
-                let mut block = Block::default();
-                block.set_ops(ops);
-                let mut region = Region::default();
-                region.set_parent(Some(parent.clone()));
-                let block = Arc::new(RwLock::new(block));
-                let op = op.try_read().unwrap();
-                op.set_parent(block.clone());
-                region.blocks_mut().push(block.clone());
-                let region = Arc::new(RwLock::new(region));
-                let mut block = block.try_write().unwrap();
-                block.set_parent(Some(region.clone()));
-                operation.set_region(Some(region));
+            if region.is_some() {
+                panic!("Expected region to be empty");
             }
+            let ops = vec![op.clone()];
+            let ops = Arc::new(RwLock::new(ops));
+            let mut region = Region::default();
+            let block = region.add_new_block();
+            let region = Arc::new(RwLock::new(region));
+            let mut block = block.try_write().unwrap();
+            block.set_ops(ops);
+            block.set_parent(Some(region.clone()));
+            operation.set_region(Some(region));
         } else {
             let last = ops.last().unwrap();
             let last = last.try_read().unwrap();
             last.insert_after(op.clone());
         }
+        OpWithoutParent::new(op.clone())
     }
 }
 

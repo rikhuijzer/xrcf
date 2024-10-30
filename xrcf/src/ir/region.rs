@@ -19,6 +19,9 @@ impl Region {
     pub fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
         self.blocks.clone()
     }
+    pub fn block(&self, index: usize) -> Arc<RwLock<Block>> {
+        self.blocks[index].clone()
+    }
     pub fn parent(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.parent.clone()
     }
@@ -30,6 +33,12 @@ impl Region {
     }
     pub fn set_blocks(&mut self, blocks: Vec<Arc<RwLock<Block>>>) {
         self.blocks = blocks;
+    }
+    pub fn add_new_block(&mut self) -> Arc<RwLock<Block>> {
+        let block = Block::default();
+        let block = Arc::new(RwLock::new(block));
+        self.blocks_mut().push(block.clone());
+        block
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
         self.parent = parent;

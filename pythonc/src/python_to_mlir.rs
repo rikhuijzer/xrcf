@@ -12,9 +12,11 @@ use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::dialect::unstable;
+use xrcf::ir::Block;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
+use xrcf::ir::Region;
 
 struct CallLowering;
 
@@ -124,13 +126,25 @@ impl ModuleLowering {
         let main = Arc::new(RwLock::new(main));
         let mut main = func::FuncOp::from_operation(main.clone());
         main.set_identifier("@main".to_string());
+        let last_without_parent = main.insert_op(last.clone());
+        let region = main.operation().try_write().unwrap().region().unwrap();
 
         let main = Arc::new(RwLock::new(main));
-        func::FuncOp::insert_op(main.clone(), last.clone());
+        region.try_write().unwrap().set_parent(Some(main.clone()));
         last_read.insert_after(main.clone());
-
         last_read.remove();
-        Self::return_zero(main);
+        last_without_parent.set_parent(region.try_read().unwrap().block(0).clone());
+        let block = last
+            .try_read()
+            .unwrap()
+            .operation()
+            .try_read()
+            .unwrap()
+            .parent();
+        last.try_read()
+            .unwrap()
+            .set_parent(block.clone().expect("no parent"));
+        // Self::return_zero(main);
         Ok(())
     }
 }

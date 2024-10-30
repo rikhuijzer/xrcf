@@ -202,3 +202,17 @@ impl Display for dyn Op {
         self.display(f, 0)
     }
 }
+
+#[must_use = "the object inside `OpWithoutParent` should receive a parent"]
+pub struct OpWithoutParent(Arc<RwLock<dyn Op>>);
+
+impl OpWithoutParent {
+    pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
+        OpWithoutParent(op)
+    }
+    pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+        let op = self.0.try_read().unwrap();
+        op.set_parent(parent);
+        self.0.clone()
+    }
+}
