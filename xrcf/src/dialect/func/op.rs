@@ -1,5 +1,6 @@
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
@@ -455,7 +456,7 @@ impl<T: ParserDispatch> Parser<T> {
             operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
             let _colon = self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
-            let return_type = PlaceholderType::new(&return_type.lexeme);
+            let return_type = IntegerType::from_str(&return_type.lexeme);
             let result_type = Arc::new(RwLock::new(return_type));
             operation.set_anonymous_result(result_type)?;
         }
