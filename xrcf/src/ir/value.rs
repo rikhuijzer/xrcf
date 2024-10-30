@@ -149,7 +149,7 @@ impl Default for OpResult {
     fn default() -> Self {
         Self {
             name: None,
-            typ: None,
+            pos: None,
             defining_op: None,
         }
     }

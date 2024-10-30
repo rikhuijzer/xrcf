@@ -78,7 +78,7 @@ pub trait Call: Op {
 
         parser.expect(TokenKind::Arrow)?;
         let result_type = T::parse_type(parser)?;
-        operation.set_result_type(result_type)?;
+        operation.set_result_type(0, result_type)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let mut op = O::from_operation(operation.clone());

@@ -139,7 +139,7 @@ impl Parse for AllocaOp {
         parser.expect(TokenKind::RParen)?;
         parser.expect(TokenKind::Arrow)?;
         let result_type = T::parse_type(parser)?;
-        operation.set_result_type(result_type)?;
+        operation.set_result_type(0, result_type)?;
 
         let op = AllocaOp {
             operation: Arc::new(RwLock::new(operation)),
@@ -296,7 +296,7 @@ impl Parse for ConstantOp {
 
         let _colon = parser.expect(TokenKind::Colon)?;
         let typ = T::parse_type(parser)?;
-        operation.set_result_type(typ)?;
+        operation.set_result_type(0, typ)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp {

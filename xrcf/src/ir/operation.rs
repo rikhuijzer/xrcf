@@ -278,17 +278,18 @@ impl Operation {
         results.update_types(result_types)?;
         Ok(())
     }
-    /// Add a new op result with given name and type.
-    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) {
-        let mut result = OpResult::default();
-        result.set_name(name);
-        result.set_typ(typ);
-        let result = Value::OpResult(result);
-        let result = Arc::new(RwLock::new(result));
+    /// Add a new op result with given name.
+    pub fn add_new_op_result(&self, name: &str) {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
-        vec.push(result);
+        let pos = vec.len();
+
+        let mut result = OpResult::default();
+        result.set_name(name);
+        result.set_pos(pos);
+        let op_result = Value::OpResult(result);
+        vec.push(Arc::new(RwLock::new(op_result)));
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;
