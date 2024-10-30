@@ -4,6 +4,7 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::PlaceholderType;
+use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::Value;
@@ -198,6 +199,40 @@ pub struct FuncOp {
     identifier: Option<String>,
     sym_visibility: Option<String>,
     operation: Arc<RwLock<Operation>>,
+}
+
+impl FuncOp {
+    /// Insert `op` into the region of `self`, while creating a region if necessary.
+    pub fn insert_op(parent: Arc<RwLock<dyn Op>>, op: Arc<RwLock<dyn Op>>) {
+        let read = op.try_read().unwrap();
+        let ops = read.ops();
+        if ops.is_empty() {
+            let parent_read = parent.try_read().unwrap();
+            let operation = parent_read.operation();
+            let mut operation = operation.try_write().unwrap();
+            let region = operation.region();
+            if let Some(_region) = region {
+                todo!()
+            } else {
+                let ops = vec![op.clone()];
+                let ops = Arc::new(RwLock::new(ops));
+                let mut block = Block::default();
+                block.set_ops(ops);
+                let mut region = Region::default();
+                region.set_parent(Some(parent.clone()));
+                let block = Arc::new(RwLock::new(block));
+                region.blocks_mut().push(block.clone());
+                let region = Arc::new(RwLock::new(region));
+                let mut block = block.try_write().unwrap();
+                block.set_parent(Some(region.clone()));
+                operation.set_region(Some(region));
+            }
+        } else {
+            let last = ops.last().unwrap();
+            let last = last.try_read().unwrap();
+            last.insert_after(op.clone());
+        }
+    }
 }
 
 impl Func for FuncOp {

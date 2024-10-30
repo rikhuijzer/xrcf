@@ -35,6 +35,12 @@ impl Block {
     pub fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.ops.clone()
     }
+    pub fn set_ops(&mut self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
+        self.ops = ops;
+    }
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Region>>>) {
+        self.parent = parent;
+    }
     pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
@@ -124,6 +130,11 @@ impl Block {
         }
         None
     }
+    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
+        let ops = self.ops();
+        let mut ops = ops.try_write().unwrap();
+        ops.insert(index, op);
+    }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
         let index = self.index_of(later);
         let index = match index {
@@ -132,9 +143,7 @@ impl Block {
                 panic!("Could not find op in block");
             }
         };
-        let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        ops.insert(index, earlier);
+        self.insert_op(earlier, index);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         let index = self.index_of(earlier);
@@ -144,9 +153,7 @@ impl Block {
                 panic!("Could not find op in block");
             }
         };
-        let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        ops.insert(index + 1, later);
+        self.insert_op(later, index + 1);
     }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
         let index = self.index_of(old.clone());
@@ -216,6 +223,16 @@ impl Block {
             write!(f, "\n")?;
         }
         Ok(())
+    }
+}
+
+impl Default for Block {
+    fn default() -> Self {
+        let label = None;
+        let arguments: Arc<Vec<Value>> = Arc::new(Vec::new());
+        let ops = Arc::new(RwLock::new(vec![]));
+        let parent = None;
+        Self::new(label, arguments, ops, parent)
     }
 }
 

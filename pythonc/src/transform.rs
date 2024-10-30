@@ -217,18 +217,19 @@ mod tests {
             unstable.printf("Hello, World!")
             return
           }
-          func.func @main() {
+          func.func @main() -> i32 {
+            %0 = arith.constant 0 : i32
             func.call @hello() : () -> ()
-            return
+            return %0 : i32
           }
         }
         "#}
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
-        let result = test_transform(src, passes);
-        let actual = result.trim();
-        for (expected_line, actual_line) in expected.lines().zip(actual.lines()) {
-            assert_eq!(expected_line.trim(), actual_line.trim());
+        let actual = test_transform(src, passes).trim().to_string();
+        let lines = expected.lines().zip(actual.lines());
+        for (i, (expected_line, actual_line)) in lines.enumerate() {
+            assert_eq!(expected_line.trim(), actual_line.trim(), "Line {i} differs");
         }
     }
 }
