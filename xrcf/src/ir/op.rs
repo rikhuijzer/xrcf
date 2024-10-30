@@ -1,5 +1,6 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
+use crate::ir::Block;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -92,17 +93,19 @@ pub trait Op {
         let value = attributes.get(key)?;
         Some(value.clone())
     }
+    /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().try_read().unwrap();
         let block = operation.parent().expect("no parent");
-        let block = block.read().unwrap();
+        let block = block.try_read().unwrap();
         let later = self.operation().clone();
         block.insert_before(earlier, later);
     }
+    /// Insert `later` after `self` inside `self`'s parent block.
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().try_read().unwrap();
         let block = operation.parent().expect("no parent");
-        let block = block.read().unwrap();
+        let block = block.try_read().unwrap();
         let earlier = self.operation().clone();
         block.insert_after(earlier, later);
     }
@@ -165,6 +168,11 @@ pub trait Op {
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let operation = self.operation().try_read().unwrap();
         operation.parent_op()
+    }
+    fn set_parent(&self, parent: Arc<RwLock<Block>>) {
+        let operation = self.operation();
+        let mut operation = operation.try_write().unwrap();
+        operation.set_parent(Some(parent));
     }
     /// Return the result at the given index.
     ///

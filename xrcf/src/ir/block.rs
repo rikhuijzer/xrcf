@@ -150,7 +150,7 @@ impl Block {
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Could not find op in block");
+                panic!("Could not find op in block during insert_after");
             }
         };
         self.insert_op(later, index + 1);

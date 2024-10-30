@@ -221,6 +221,8 @@ impl FuncOp {
                 let mut region = Region::default();
                 region.set_parent(Some(parent.clone()));
                 let block = Arc::new(RwLock::new(block));
+                let op = op.try_read().unwrap();
+                op.set_parent(block.clone());
                 region.blocks_mut().push(block.clone());
                 let region = Arc::new(RwLock::new(region));
                 let mut block = block.try_write().unwrap();

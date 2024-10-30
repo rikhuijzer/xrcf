@@ -7,13 +7,14 @@ use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
+use xrcf::dialect::arith;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::dialect::unstable;
+use xrcf::ir::IntegerAttr;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
-use xrcf::ir::Region;
 
 struct CallLowering;
 
@@ -98,7 +99,17 @@ impl ModuleLowering {
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
-        let constant = Operation::default();
+        let last = ops.last().unwrap();
+        let last = last.try_read().unwrap();
+
+        let mut constant = Operation::default();
+        constant.set_name(arith::ConstantOp::operation_name());
+        let integer = IntegerAttr::from_i32(0);
+        let constant = Arc::new(RwLock::new(constant));
+        let constant = arith::ConstantOp::from_operation(constant.clone());
+        constant.set_value(Arc::new(integer));
+        let constant = Arc::new(RwLock::new(constant));
+        last.insert_before(constant.clone());
     }
     fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
         let module = module.try_read().unwrap();
@@ -113,10 +124,11 @@ impl ModuleLowering {
         let main = Arc::new(RwLock::new(main));
         let mut main = func::FuncOp::from_operation(main.clone());
         main.set_identifier("@main".to_string());
-        // main.return_zero();
+
         let main = Arc::new(RwLock::new(main));
         func::FuncOp::insert_op(main.clone(), last.clone());
         last_read.insert_after(main.clone());
+
         last_read.remove();
         Self::return_zero(main);
         Ok(())
