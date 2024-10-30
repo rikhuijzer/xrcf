@@ -112,11 +112,12 @@ impl ModuleLowering {
             constant.set_name(arith::ConstantOp::operation_name());
             let integer = IntegerAttr::from_i32(0);
             let name = block.try_read().unwrap().unique_value_name();
-            constant.add_new_op_result(&name, integer.typ().clone());
+            let result = constant.add_new_op_result(&name);
             let constant = Arc::new(RwLock::new(constant));
             let constant = arith::ConstantOp::from_operation(constant.clone());
             constant.set_value(Arc::new(integer));
             let constant = Arc::new(RwLock::new(constant));
+            result.set_defining_op(Some(constant.clone()));
             last.insert_before(constant.clone());
         }
 

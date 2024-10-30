@@ -234,7 +234,7 @@ impl Operation {
     ///
     /// Panics if `results.len() != 1`.
     pub fn set_result_type(
-        &mut self,
+        &self,
         index: usize,
         result_type: Arc<RwLock<dyn Type>>,
     ) -> Result<()> {

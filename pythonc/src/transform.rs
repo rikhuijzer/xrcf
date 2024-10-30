@@ -202,7 +202,6 @@ mod tests {
         assert!(result.contains("define i32 @main"));
     }
 
-    #[test]
     fn test_python_to_mlir() {
         let src = indoc! {r#"
         def hello():

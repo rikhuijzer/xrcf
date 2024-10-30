@@ -137,7 +137,7 @@ impl OpResult {
         let defining_op = defining_op.expect("no defining_op");
         let defining_op = defining_op.try_read().unwrap();
         let def_operation = defining_op.operation();
-        let mut operation = def_operation.try_write().unwrap();
+        let operation = def_operation.try_read().unwrap();
         operation.set_result_type(pos, typ).unwrap();
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
@@ -174,8 +174,25 @@ impl ResultWithoutParent {
         );
         ResultWithoutParent { result }
     }
-    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+    pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.result.try_write().unwrap().set_defining_op(op);
+    }
+}
+
+pub struct ResultsWithoutParent {
+    results: Values,
+}
+
+impl ResultsWithoutParent {
+    pub fn new(results: Values) -> Self {
+        ResultsWithoutParent { results }
+    }
+    pub fn values(&self) -> Values {
+        self.results.clone()
+    }
+    pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
+        let values = self.values();
+        values.set_defining_op(op);
     }
 }
 
@@ -459,13 +476,15 @@ impl<T: ParserDispatch> Parser<T> {
         perc || int || excl
     }
     /// Parse %0, %1.
-    fn parse_op_results(&mut self) -> Result<Values> {
+    fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
             let name = identifier.lexeme.clone();
             let mut op_result = OpResult::default();
             op_result.set_name(&name);
+            let pos = results.len();
+            op_result.set_pos(pos);
             let result = Value::OpResult(op_result);
             results.push(Arc::new(RwLock::new(result)));
             if self.check(TokenKind::Equal) {
@@ -474,14 +493,15 @@ impl<T: ParserDispatch> Parser<T> {
         }
         let results = Arc::new(RwLock::new(results));
         let values = Values { values: results };
-        Ok(values)
+        Ok(ResultsWithoutParent::new(values))
     }
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
     /// This returns the results to allow setting the defining op on them.
-    pub fn parse_op_results_into(&mut self, operation: &mut Operation) -> Result<Values> {
+    pub fn parse_op_results_into(&mut self, operation: &mut Operation) -> Result<ResultsWithoutParent> {
         let results = self.parse_op_results()?;
-        operation.set_results(results.clone());
+        let values = results.values();
+        operation.set_results(values.clone());
         Ok(results)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`, or `(i64, !llvm.ptr)`.
