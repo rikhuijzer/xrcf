@@ -437,6 +437,9 @@ impl<T: ParserDispatch> Parser<T> {
         let values = Values { values: results };
         Ok(values)
     }
+    /// Parse results (e.g., `%0 = ...`) into an operation.
+    ///
+    /// This returns the results to allow setting the defining op on them.
     pub fn parse_op_results_into(&mut self, operation: &mut Operation) -> Result<Values> {
         let results = self.parse_op_results()?;
         operation.set_results(results.clone());

@@ -82,22 +82,16 @@ impl Parse for ConstantOp {
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         let integer = parser.parse_integer()?;
-        let typ = integer
+        let typ = *integer
             .as_any()
             .downcast_ref::<IntegerAttr>()
             .unwrap()
             .typ();
-        let hack = typ.to_string();
-        let typ = PlaceholderType::new(&hack);
-        let typ = Arc::new(RwLock::new(typ));
-        operation.set_result_type(typ)?;
+        operation.set_result_type(Arc::new(RwLock::new(typ)))?;
 
-        let attributes = operation.attributes();
-        attributes.insert("value", Arc::new(integer));
         let operation = Arc::new(RwLock::new(operation));
-        let op = ConstantOp {
-            operation: operation.clone(),
-        };
+        let op = ConstantOp { operation };
+        op.set_value(Arc::new(integer));
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)

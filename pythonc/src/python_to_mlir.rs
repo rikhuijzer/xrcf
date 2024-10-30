@@ -92,6 +92,14 @@ impl ModuleLowering {
         }
         false
     }
+    fn return_zero(func: Arc<RwLock<func::FuncOp>>) {
+        let func = func.try_read().unwrap();
+        let ops = func.ops();
+        if ops.is_empty() {
+            panic!("Expected ops to be non-empty");
+        }
+        let constant = Operation::default();
+    }
     fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
         let module = module.try_read().unwrap();
         let ops = module.ops();
@@ -108,8 +116,9 @@ impl ModuleLowering {
         // main.return_zero();
         let main = Arc::new(RwLock::new(main));
         func::FuncOp::insert_op(main.clone(), last.clone());
-        last_read.insert_after(main);
+        last_read.insert_after(main.clone());
         last_read.remove();
+        Self::return_zero(main);
         Ok(())
     }
 }
