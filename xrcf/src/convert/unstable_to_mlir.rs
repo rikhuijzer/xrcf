@@ -34,7 +34,9 @@ impl PrintLowering {
         let text = text.c_string();
         let len = text.len();
         let name = parent.try_read().unwrap().unique_value_name();
-        let result = const_operation.add_new_op_result(&name);
+        let typ = llvm::ArrayType::for_bytes(&text);
+        let typ = Arc::new(RwLock::new(typ));
+        let result = const_operation.add_new_op_result(&name, typ);
 
         let const_operation = Arc::new(RwLock::new(const_operation));
         let const_op = llvm::ConstantOp::from_operation(const_operation);
@@ -48,7 +50,8 @@ impl PrintLowering {
         let operation = Operation::default();
         let typ = IntegerType::from_str("i16");
         let name = parent.try_read().unwrap().unique_value_name();
-        let result = operation.add_new_op_result(&name);
+        let result_type = Arc::new(RwLock::new(typ));
+        let result = operation.add_new_op_result(&name, result_type);
         let operation = Arc::new(RwLock::new(operation));
         let op = arith::ConstantOp::from_operation(operation);
         let len = APInt::from_str("i16", &len.to_string());
@@ -62,7 +65,8 @@ impl PrintLowering {
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
         let name = parent.try_read().unwrap().unique_value_name();
-        let result = operation.add_new_op_result(&name);
+        let result_type = Arc::new(RwLock::new(typ));
+        let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.try_read().unwrap().result(0);
         let array_size = OpOperand::new(array_size);
         operation.set_operand(Arc::new(RwLock::new(array_size)));
@@ -101,8 +105,10 @@ impl PrintLowering {
         let addr = OpOperand::new(addr);
         operation.set_operand(Arc::new(RwLock::new(addr)));
 
+        let typ = IntegerType::from_str("i32");
         let name = parent.try_read().unwrap().unique_value_name();
-        let result = operation.add_new_op_result(&name);
+        let result_type = Arc::new(RwLock::new(typ));
+        let result = operation.add_new_op_result(&name, result_type);
 
         let operation = Arc::new(RwLock::new(operation));
         let mut op = func::CallOp::from_operation(operation);

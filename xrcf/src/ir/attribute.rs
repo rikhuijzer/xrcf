@@ -50,11 +50,6 @@ impl IntegerAttr {
     pub fn new(typ: IntegerType, value: APInt) -> Self {
         Self { typ, value }
     }
-    pub fn from_i32(value: i32) -> Self {
-        let typ = IntegerType::new(32);
-        let value = APInt::new(32, value as u64, true);
-        Self { typ, value }
-    }
     pub fn typ(&self) -> &IntegerType {
         &self.typ
     }

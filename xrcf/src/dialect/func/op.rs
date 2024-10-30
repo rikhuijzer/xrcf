@@ -46,7 +46,7 @@ pub trait Call: Op {
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
         if has_results {
-            let result_type = operation.result_type().expect("no result type");
+            let result_type = operation.result_type(0).expect("no result type");
             let result_type = result_type.try_read().unwrap();
             write!(f, "{}", result_type)?;
         } else {

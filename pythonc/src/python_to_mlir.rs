@@ -12,11 +12,11 @@ use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::dialect::unstable;
-use xrcf::ir::Block;
+use xrcf::ir::APInt;
 use xrcf::ir::IntegerAttr;
+use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
-use xrcf::ir::Region;
 
 struct CallLowering;
 
@@ -110,9 +110,12 @@ impl ModuleLowering {
         {
             let mut constant = Operation::default();
             constant.set_name(arith::ConstantOp::operation_name());
-            let integer = IntegerAttr::from_i32(0);
+            let typ = IntegerType::new(64);
+            let value = APInt::new(64, 0, true);
+            let integer = IntegerAttr::new(typ, value);
             let name = block.try_read().unwrap().unique_value_name();
-            let result = constant.add_new_op_result(&name);
+            let result_type = Arc::new(RwLock::new(typ));
+            let result = constant.add_new_op_result(&name, result_type);
             let constant = Arc::new(RwLock::new(constant));
             let constant = arith::ConstantOp::from_operation(constant.clone());
             constant.set_value(Arc::new(integer));

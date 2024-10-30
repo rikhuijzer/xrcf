@@ -167,14 +167,11 @@ impl Operation {
     /// Get the single result type of the operation.
     ///
     /// Return `None` if `results.len() =! 1`.
-    pub fn result_type(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    pub fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
-        if results.len() != 1 {
-            return None;
-        }
-        let result = results.get(0).unwrap();
+        let result = results.get(index).unwrap();
         let result = result.try_read().unwrap();
         Some(result.typ())
     }
@@ -237,13 +234,6 @@ impl Operation {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
-        if results.len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Expected 1 result, but got {} when setting result type for {}",
-                results.len(),
-                self.name(),
-            ));
-        }
         let result = results.get(index).unwrap();
         let mut result = result.try_write().unwrap();
         result.set_type(result_type);
@@ -276,13 +266,14 @@ impl Operation {
         Ok(())
     }
     /// Add a new op result with given name.
-    pub fn add_new_op_result(&self, name: &str) -> ResultWithoutParent {
+    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> ResultWithoutParent {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
 
         let mut result = OpResult::default();
         result.set_name(name);
+        result.set_typ(typ);
         let op_result = Value::OpResult(result);
         let op_result = Arc::new(RwLock::new(op_result));
         vec.push(op_result.clone());

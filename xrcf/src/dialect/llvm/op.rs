@@ -109,7 +109,7 @@ impl Op for AllocaOp {
         let array_size_type = array_size_type.try_read().unwrap();
         write!(f, "({})", array_size_type)?;
         write!(f, " -> ")?;
-        let result_type = operation.result_type().unwrap();
+        let result_type = operation.result_type(0).unwrap();
         let result_type = result_type.try_read().unwrap();
         write!(f, "{result_type}")?;
         Ok(())
@@ -258,7 +258,7 @@ impl Op for ConstantOp {
         write!(f, "{}", value)?;
         write!(f, ")")?;
 
-        let typ = operation.result_type().expect("no result type");
+        let typ = operation.result_type(0).expect("no result type");
         let typ = typ.try_read().unwrap();
         write!(f, " : {typ}")?;
 
