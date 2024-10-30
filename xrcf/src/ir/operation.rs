@@ -233,11 +233,7 @@ impl Operation {
     /// Update the result type for the operation.
     ///
     /// Panics if `results.len() != 1`.
-    pub fn set_result_type(
-        &self,
-        index: usize,
-        result_type: Arc<RwLock<dyn Type>>,
-    ) -> Result<()> {
+    pub fn set_result_type(&self, index: usize, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
@@ -284,11 +280,9 @@ impl Operation {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
-        let pos = vec.len();
 
         let mut result = OpResult::default();
         result.set_name(name);
-        result.set_pos(pos);
         let op_result = Value::OpResult(result);
         let op_result = Arc::new(RwLock::new(op_result));
         vec.push(op_result.clone());

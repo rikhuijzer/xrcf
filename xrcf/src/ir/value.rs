@@ -87,40 +87,27 @@ impl Display for AnonymousResult {
 
 pub struct OpResult {
     name: Option<String>,
-    /// The position of this op result in the operation that defines it.
-    pos: Option<usize>,
+    typ: Option<Arc<RwLock<dyn Type>>>,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
     pub fn new(
         name: Option<String>,
-        pos: Option<usize>,
+        typ: Option<Arc<RwLock<dyn Type>>>,
         defining_op: Option<Arc<RwLock<dyn Op>>>,
     ) -> Self {
         OpResult {
             name,
-            pos,
+            typ,
             defining_op,
         }
     }
     pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
-    pub fn pos(&self) -> Option<usize> {
-        self.pos.clone()
-    }
     pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
-        let pos = self.pos.expect("position was not set");
-        let defining_op = self.defining_op();
-        let defining_op = defining_op.expect("no defining_op");
-        let defining_op = defining_op.try_read().unwrap();
-        let operation = defining_op.operation();
-        let operation = operation.try_read().unwrap();
-        let results = operation.results().vec();
-        let results = results.try_read().unwrap();
-        let result = results[pos].try_read().unwrap();
-        Some(result.typ().clone())
+        self.typ.clone()
     }
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.defining_op.clone()
@@ -128,17 +115,8 @@ impl OpResult {
     pub fn set_name(&mut self, name: &str) {
         self.name = Some(name.to_string());
     }
-    pub fn set_pos(&mut self, pos: usize) {
-        self.pos = Some(pos);
-    }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
-        let pos = self.pos.expect("position was not set");
-        let defining_op = self.defining_op();
-        let defining_op = defining_op.expect("no defining_op");
-        let defining_op = defining_op.try_read().unwrap();
-        let def_operation = defining_op.operation();
-        let operation = def_operation.try_read().unwrap();
-        operation.set_result_type(pos, typ).unwrap();
+        self.typ = Some(typ);
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
@@ -149,7 +127,7 @@ impl Default for OpResult {
     fn default() -> Self {
         Self {
             name: None,
-            pos: None,
+            typ: None,
             defining_op: None,
         }
     }
@@ -483,8 +461,6 @@ impl<T: ParserDispatch> Parser<T> {
             let name = identifier.lexeme.clone();
             let mut op_result = OpResult::default();
             op_result.set_name(&name);
-            let pos = results.len();
-            op_result.set_pos(pos);
             let result = Value::OpResult(op_result);
             results.push(Arc::new(RwLock::new(result)));
             if self.check(TokenKind::Equal) {
@@ -498,7 +474,10 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
     /// This returns the results to allow setting the defining op on them.
-    pub fn parse_op_results_into(&mut self, operation: &mut Operation) -> Result<ResultsWithoutParent> {
+    pub fn parse_op_results_into(
+        &mut self,
+        operation: &mut Operation,
+    ) -> Result<ResultsWithoutParent> {
         let results = self.parse_op_results()?;
         let values = results.values();
         operation.set_results(values.clone());
