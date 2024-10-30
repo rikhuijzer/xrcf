@@ -232,7 +232,11 @@ impl Operation {
     /// Update the result type for the operation.
     ///
     /// Panics if `results.len() != 1`.
-    pub fn set_result_type(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+    pub fn set_result_type(
+        &mut self,
+        index: usize,
+        result_type: Arc<RwLock<dyn Type>>,
+    ) -> Result<()> {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
@@ -243,7 +247,7 @@ impl Operation {
                 self.name(),
             ));
         }
-        let result = results.get(0).unwrap();
+        let result = results.get(index).unwrap();
         let mut result = result.try_write().unwrap();
         result.set_type(result_type);
         Ok(())

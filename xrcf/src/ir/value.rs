@@ -87,27 +87,40 @@ impl Display for AnonymousResult {
 
 pub struct OpResult {
     name: Option<String>,
-    typ: Option<Arc<RwLock<dyn Type>>>,
+    /// The position of this op result in the operation that defines it.
+    pos: Option<usize>,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
     pub fn new(
         name: Option<String>,
-        typ: Option<Arc<RwLock<dyn Type>>>,
+        pos: Option<usize>,
         defining_op: Option<Arc<RwLock<dyn Op>>>,
     ) -> Self {
         OpResult {
             name,
-            typ,
+            pos,
             defining_op,
         }
     }
     pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
+    pub fn pos(&self) -> Option<usize> {
+        self.pos.clone()
+    }
     pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
-        self.typ.clone()
+        let pos = self.pos.expect("position was not set");
+        let defining_op = self.defining_op();
+        let defining_op = defining_op.expect("no defining_op");
+        let defining_op = defining_op.try_read().unwrap();
+        let operation = defining_op.operation();
+        let operation = operation.try_read().unwrap();
+        let results = operation.results().vec();
+        let results = results.try_read().unwrap();
+        let result = results[pos].try_read().unwrap();
+        Some(result.typ().clone())
     }
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.defining_op.clone()
@@ -115,8 +128,17 @@ impl OpResult {
     pub fn set_name(&mut self, name: &str) {
         self.name = Some(name.to_string());
     }
+    pub fn set_pos(&mut self, pos: usize) {
+        self.pos = Some(pos);
+    }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
-        self.typ = Some(typ);
+        let pos = self.pos.expect("position was not set");
+        let defining_op = self.defining_op();
+        let defining_op = defining_op.expect("no defining_op");
+        let defining_op = defining_op.try_read().unwrap();
+        let def_operation = defining_op.operation();
+        let mut operation = def_operation.try_write().unwrap();
+        operation.set_result_type(pos, typ).unwrap();
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;

@@ -103,15 +103,29 @@ impl ModuleLowering {
         }
         let last = ops.last().unwrap();
         let last = last.try_read().unwrap();
+        let last_operation = last.operation();
+        let block = last_operation.try_read().unwrap().parent();
+        let block = block.unwrap();
 
-        let mut constant = Operation::default();
-        constant.set_name(arith::ConstantOp::operation_name());
-        let integer = IntegerAttr::from_i32(0);
-        let constant = Arc::new(RwLock::new(constant));
-        let constant = arith::ConstantOp::from_operation(constant.clone());
-        constant.set_value(Arc::new(integer));
-        let constant = Arc::new(RwLock::new(constant));
-        last.insert_before(constant.clone());
+        {
+            let mut constant = Operation::default();
+            constant.set_name(arith::ConstantOp::operation_name());
+            let integer = IntegerAttr::from_i32(0);
+            let name = block.try_read().unwrap().unique_value_name();
+            constant.add_new_op_result(&name, integer.typ().clone());
+            let constant = Arc::new(RwLock::new(constant));
+            let constant = arith::ConstantOp::from_operation(constant.clone());
+            constant.set_value(Arc::new(integer));
+            let constant = Arc::new(RwLock::new(constant));
+            last.insert_before(constant.clone());
+        }
+
+        let mut ret = Operation::default();
+        ret.set_name(func::ReturnOp::operation_name());
+        let ret = Arc::new(RwLock::new(ret));
+        let ret = func::ReturnOp::from_operation(ret.clone());
+        let ret = Arc::new(RwLock::new(ret));
+        last.insert_after(ret.clone());
     }
     fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
         let module = module.try_read().unwrap();
