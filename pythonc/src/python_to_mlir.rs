@@ -144,7 +144,7 @@ impl ModuleLowering {
         last.try_read()
             .unwrap()
             .set_parent(block.clone().expect("no parent"));
-        // Self::return_zero(main);
+        Self::return_zero(main);
         Ok(())
     }
 }
