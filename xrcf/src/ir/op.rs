@@ -228,27 +228,20 @@ impl OpWithoutParent {
 }
 
 pub trait GuardedOp {
-    fn operation(&self) -> Arc<RwLock<Operation>>;
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
     fn is_const(&self) -> bool;
+    fn operation(&self) -> Arc<RwLock<Operation>>;
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn remove(&self);
+    fn replace(&self, new: Arc<RwLock<dyn Op>>);
     fn result(&self, index: usize) -> Arc<RwLock<Value>>;
 }
 
 impl GuardedOp for Arc<RwLock<dyn Op>> {
-    fn operation(&self) -> Arc<RwLock<Operation>> {
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
         let op = self.try_read().unwrap();
-        op.operation().clone()
-    }
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        let op = self.try_read().unwrap();
-        op.ops()
-    }
-    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
-        let op = self.try_read().unwrap();
-        op.result(index)
+        op.insert_after(later);
     }
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
         let op = self.try_read().unwrap();
@@ -258,12 +251,24 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
         let op = self.try_read().unwrap();
         op.is_const()
     }
-    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+    fn operation(&self) -> Arc<RwLock<Operation>> {
         let op = self.try_read().unwrap();
-        op.insert_after(later);
+        op.operation().clone()
+    }
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let op = self.try_read().unwrap();
+        op.ops()
     }
     fn remove(&self) {
         let op = self.try_read().unwrap();
         op.remove();
+    }
+    fn replace(&self, new: Arc<RwLock<dyn Op>>) {
+        let op = self.try_read().unwrap();
+        op.replace(new);
+    }
+    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
+        let op = self.try_read().unwrap();
+        op.result(index)
     }
 }

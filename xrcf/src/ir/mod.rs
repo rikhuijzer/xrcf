@@ -40,6 +40,7 @@ pub use typ::TypeParse;
 pub use typ::Types;
 pub use value::AnonymousResult;
 pub use value::BlockArgument;
+pub use value::GuardedValue;
 pub use value::OpResult;
 pub use value::ResultWithoutParent;
 pub use value::ResultsWithoutParent;
