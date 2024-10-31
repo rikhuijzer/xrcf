@@ -80,5 +80,6 @@ mod tests {
         println!("{result}");
         assert!(result.contains("Usage: xrcf"));
         assert!(result.contains("--convert-func-to-llvm"));
+        assert!(false)
     }
 }
