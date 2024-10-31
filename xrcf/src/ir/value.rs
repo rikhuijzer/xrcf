@@ -140,6 +140,40 @@ impl Display for OpResult {
     }
 }
 
+pub struct ResultWithoutParent {
+    result: Arc<RwLock<Value>>,
+}
+
+impl ResultWithoutParent {
+    pub fn new(result: Arc<RwLock<Value>>) -> Self {
+        assert!(
+            matches!(&*result.try_read().unwrap(), Value::OpResult(_)),
+            "Expected OpResult"
+        );
+        ResultWithoutParent { result }
+    }
+    pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
+        self.result.try_write().unwrap().set_defining_op(op);
+    }
+}
+
+pub struct ResultsWithoutParent {
+    results: Values,
+}
+
+impl ResultsWithoutParent {
+    pub fn new(results: Values) -> Self {
+        ResultsWithoutParent { results }
+    }
+    pub fn values(&self) -> Values {
+        self.results.clone()
+    }
+    pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
+        let values = self.values();
+        values.set_defining_op(op);
+    }
+}
+
 pub enum Users {
     /// The operation defines no `OpResult`s.
     HasNoOpResults,
@@ -420,7 +454,7 @@ impl<T: ParserDispatch> Parser<T> {
         perc || int || excl
     }
     /// Parse %0, %1.
-    fn parse_op_results(&mut self) -> Result<Values> {
+    fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {
         let mut results = vec![];
         while self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
@@ -435,11 +469,18 @@ impl<T: ParserDispatch> Parser<T> {
         }
         let results = Arc::new(RwLock::new(results));
         let values = Values { values: results };
-        Ok(values)
+        Ok(ResultsWithoutParent::new(values))
     }
-    pub fn parse_op_results_into(&mut self, operation: &mut Operation) -> Result<Values> {
+    /// Parse results (e.g., `%0 = ...`) into an operation.
+    ///
+    /// This returns the results to allow setting the defining op on them.
+    pub fn parse_op_results_into(
+        &mut self,
+        operation: &mut Operation,
+    ) -> Result<ResultsWithoutParent> {
         let results = self.parse_op_results()?;
-        operation.set_results(results.clone());
+        let values = results.values();
+        operation.set_results(values.clone());
         Ok(results)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`, or `(i64, !llvm.ptr)`.

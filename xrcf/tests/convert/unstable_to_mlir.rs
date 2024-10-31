@@ -33,7 +33,7 @@ fn test_constant() {
       return %0 : i32
     }
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
@@ -52,7 +52,46 @@ fn test_two_constants() {
       return %0 : i32
     }
     "#};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::transform(flags(), src);
     assert_eq!(actual.matches("func.func private @printf").count(), 1);
+}
+
+#[test]
+fn test_hello_world() {
+    let src = indoc! {r#"
+    module {
+      func.func @hello() {
+        unstable.printf("Hello, World!")
+        return
+      }
+      func.func @main() -> i32 {
+        %0 = arith.constant 0 : i32
+        func.call @hello() : () -> ()
+        return %0 : i32
+      }
+    }
+    "#}
+    .trim();
+    let expected = indoc! {r#"
+    module {
+      func.func private @printf(!llvm.ptr) -> i32
+      func.func @hello() {
+        %0 = llvm.mlir.constant("Hello, World!\00") : !llvm.array<14 x i8>
+        %1 = arith.constant 14 : i16
+        %2 = llvm.alloca %1 x i8 : (i16) -> !llvm.ptr
+        llvm.store %0, %2 : !llvm.array<14 x i8>, !llvm.ptr
+        %3 = func.call @printf(%2) : (!llvm.ptr) -> i32
+        return
+      }
+      func.func @main() -> i32 {
+        %0 = arith.constant 0 : i32
+        func.call @hello() : () -> ()
+        return %0 : i32
+      }
+    }
+    "#};
+    Test::init_tracing();
+    let (_module, actual) = Test::transform(flags(), src);
+    Test::check_lines_exact(&actual, expected, Location::caller());
 }

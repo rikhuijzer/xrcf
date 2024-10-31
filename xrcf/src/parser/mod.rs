@@ -4,6 +4,7 @@ mod parser;
 mod scanner;
 mod token;
 
+pub use parser::default_dispatch;
 pub use parser::DefaultParserDispatch;
 pub use parser::Parse;
 pub use parser::Parser;

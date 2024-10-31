@@ -6,6 +6,7 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::OpResult;
 use crate::ir::Region;
+use crate::ir::ResultWithoutParent;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Users;
@@ -166,14 +167,11 @@ impl Operation {
     /// Get the single result type of the operation.
     ///
     /// Return `None` if `results.len() =! 1`.
-    pub fn result_type(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    pub fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
-        if results.len() != 1 {
-            return None;
-        }
-        let result = results.get(0).unwrap();
+        let result = results.get(index).unwrap();
         let result = result.try_read().unwrap();
         Some(result.typ())
     }
@@ -232,18 +230,11 @@ impl Operation {
     /// Update the result type for the operation.
     ///
     /// Panics if `results.len() != 1`.
-    pub fn set_result_type(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+    pub fn set_result_type(&self, index: usize, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
         let results = self.results();
         let results = results.vec();
         let results = results.try_read().unwrap();
-        if results.len() != 1 {
-            return Err(anyhow::anyhow!(
-                "Expected 1 result, but got {} when setting result type for {}",
-                results.len(),
-                self.name(),
-            ));
-        }
-        let result = results.get(0).unwrap();
+        let result = results.get(index).unwrap();
         let mut result = result.try_write().unwrap();
         result.set_type(result_type);
         Ok(())
@@ -274,17 +265,19 @@ impl Operation {
         results.update_types(result_types)?;
         Ok(())
     }
-    /// Add a new op result with given name and type.
-    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) {
-        let mut result = OpResult::default();
-        result.set_name(name);
-        result.set_typ(typ);
-        let result = Value::OpResult(result);
-        let result = Arc::new(RwLock::new(result));
+    /// Add a new op result with given name.
+    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> ResultWithoutParent {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
-        vec.push(result);
+
+        let mut result = OpResult::default();
+        result.set_name(name);
+        result.set_typ(typ);
+        let op_result = Value::OpResult(result);
+        let op_result = Arc::new(RwLock::new(op_result));
+        vec.push(op_result.clone());
+        ResultWithoutParent::new(op_result)
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;
@@ -364,5 +357,16 @@ impl Default for Operation {
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
+    }
+}
+
+pub trait GuardedOperation {
+    fn parent(&self) -> Option<Arc<RwLock<Block>>>;
+}
+
+impl GuardedOperation for Arc<RwLock<Operation>> {
+    fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+        let operation = self.try_read().unwrap();
+        operation.parent()
     }
 }

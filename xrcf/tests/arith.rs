@@ -17,7 +17,7 @@ fn parse_module() {
       }
     }
     "};
-    Test::init_subscriber();
+    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
 }
@@ -45,7 +45,7 @@ fn parse_addi() {
     }
     "};
     let caller = Location::caller();
-    Test::init_subscriber();
+    Test::init_tracing();
     let (module, actual) = Test::parse(src);
 
     let module = module.try_read().unwrap();

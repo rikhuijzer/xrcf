@@ -1,5 +1,6 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
+use crate::ir::Block;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -28,13 +29,10 @@ pub trait Op {
     fn new(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized;
-    /// Create an [Op] from an [Operation].
+    /// Create an [Op] from an [Operation] wrapped in an [Arc].
     ///
-    /// The default implementation for this method automatically sets the name
-    /// of the operation to the name of the op. This duplication of the name is
-    /// unfortunate, but necessary because it allows showing the operation name
-    /// even when the [Operation] is not wrapped inside an [Op].
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Self
+    /// See [Self::from_operation] for more information.
+    fn from_operation_arc(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized,
     {
@@ -46,6 +44,19 @@ pub trait Op {
         }
         let op = Self::new(operation);
         op
+    }
+    /// Create an [Op] from an [Operation].
+    ///
+    /// The default implementation for this method automatically sets the name
+    /// of the operation to the name of the op. This duplication of the name is
+    /// necessary because it allows showing the operation name even when the
+    /// [Operation] is not wrapped inside an [Op].
+    fn from_operation(operation: Operation) -> Self
+    where
+        Self: Sized,
+    {
+        let operation = Arc::new(RwLock::new(operation));
+        Self::from_operation_arc(operation)
     }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
@@ -92,17 +103,26 @@ pub trait Op {
         let value = attributes.get(key)?;
         Some(value.clone())
     }
+    /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
-        let operation = self.operation().read().unwrap();
-        let block = operation.parent().unwrap();
-        let block = block.read().unwrap();
+        let operation = self.operation().try_read().unwrap();
+        let block = operation.parent().expect("no parent");
+        let block = block.try_read().unwrap();
         let later = self.operation().clone();
         block.insert_before(earlier, later);
+    }
+    /// Insert `later` after `self` inside `self`'s parent block.
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+        let operation = self.operation().try_read().unwrap();
+        let block = operation.parent().expect("no parent");
+        let block = block.try_read().unwrap();
+        let earlier = self.operation().clone();
+        block.insert_after(earlier, later);
     }
     /// Remove the operation from its parent block.
     fn remove(&self) {
         let operation = self.operation().read().unwrap();
-        let block = operation.parent().unwrap();
+        let block = operation.parent().expect("no parent");
         let block = block.read().unwrap();
         block.remove(self.operation().clone());
     }
@@ -159,6 +179,11 @@ pub trait Op {
         let operation = self.operation().try_read().unwrap();
         operation.parent_op()
     }
+    fn set_parent(&self, parent: Arc<RwLock<Block>>) {
+        let operation = self.operation();
+        let mut operation = operation.try_write().unwrap();
+        operation.set_parent(Some(parent));
+    }
     /// Return the result at the given index.
     ///
     /// Convenience function which makes it easier to set an operand to the
@@ -185,5 +210,55 @@ pub trait Op {
 impl Display for dyn Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
+    }
+}
+
+#[must_use = "the object inside `OpWithoutParent` should receive a parent"]
+pub struct OpWithoutParent(Arc<RwLock<dyn Op>>);
+
+impl OpWithoutParent {
+    pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
+        OpWithoutParent(op)
+    }
+    pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+        let op = self.0.try_read().unwrap();
+        op.set_parent(parent);
+        self.0.clone()
+    }
+}
+
+pub trait GuardedOp {
+    fn operation(&self) -> Arc<RwLock<Operation>>;
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
+    fn result(&self, index: usize) -> Arc<RwLock<Value>>;
+    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
+    fn remove(&self);
+}
+
+impl GuardedOp for Arc<RwLock<dyn Op>> {
+    fn operation(&self) -> Arc<RwLock<Operation>> {
+        let op = self.try_read().unwrap();
+        op.operation().clone()
+    }
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let op = self.try_read().unwrap();
+        op.ops()
+    }
+    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
+        let op = self.try_read().unwrap();
+        op.result(index)
+    }
+    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
+        let op = self.try_read().unwrap();
+        op.insert_before(earlier);
+    }
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+        let op = self.try_read().unwrap();
+        op.insert_after(later);
+    }
+    fn remove(&self) {
+        let op = self.try_read().unwrap();
+        op.remove();
     }
 }

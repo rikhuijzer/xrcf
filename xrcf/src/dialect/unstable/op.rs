@@ -25,6 +25,9 @@ impl PrintfOp {
     pub fn text(&self) -> Option<StringAttr> {
         self.text.clone()
     }
+    pub fn set_text(&mut self, text: StringAttr) {
+        self.text = Some(text);
+    }
 }
 
 impl Op for PrintfOp {
@@ -44,7 +47,9 @@ impl Op for PrintfOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        write!(f, "{}", self.operation().read().unwrap())?;
+        write!(f, "({})", self.text().unwrap())?;
+        Ok(())
     }
 }
 

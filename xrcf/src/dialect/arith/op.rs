@@ -82,22 +82,17 @@ impl Parse for ConstantOp {
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         let integer = parser.parse_integer()?;
-        let typ = integer
+        let typ = *integer
             .as_any()
             .downcast_ref::<IntegerAttr>()
             .unwrap()
             .typ();
-        let hack = typ.to_string();
-        let typ = PlaceholderType::new(&hack);
-        let typ = Arc::new(RwLock::new(typ));
-        operation.set_result_type(typ)?;
+        let result_type = Arc::new(RwLock::new(typ));
+        operation.set_result_type(0, result_type)?;
 
-        let attributes = operation.attributes();
-        attributes.insert("value", Arc::new(integer));
         let operation = Arc::new(RwLock::new(operation));
-        let op = ConstantOp {
-            operation: operation.clone(),
-        };
+        let op = ConstantOp { operation };
+        op.set_value(Arc::new(integer));
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
@@ -166,8 +161,7 @@ impl AddiOp {
         results.vec().try_write().unwrap().push(result.clone());
         new_operation.set_results(results);
 
-        let new_const = Arc::new(RwLock::new(new_operation));
-        let new_const = ConstantOp::from_operation(new_const);
+        let new_const = ConstantOp::from_operation(new_operation);
         let new_const = Arc::new(RwLock::new(new_const));
         let mut result = result.try_write().unwrap();
         if let Value::OpResult(result) = &mut *result {
@@ -230,9 +224,9 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = PlaceholderType::new(&result_type.lexeme);
-        operation.set_result_type(Arc::new(RwLock::new(result_type)))?;
+        let result_type = Arc::new(RwLock::new(result_type));
+        operation.set_result_type(0, result_type)?;
 
-        let operation = Arc::new(RwLock::new(operation));
         let op = O::from_operation(operation);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());

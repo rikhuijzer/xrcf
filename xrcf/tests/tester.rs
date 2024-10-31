@@ -21,7 +21,7 @@ impl Test {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.
-    pub fn init_subscriber() {
+    pub fn init_tracing() {
         let level = tracing::Level::INFO;
         match init_subscriber(level) {
             Ok(_) => (),

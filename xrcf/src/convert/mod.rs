@@ -124,7 +124,8 @@ pub fn apply_rewrites(
             }
         }
     }
-    anyhow::bail!("too many rewrite iterations");
+    tracing::warn!("too many rewrite iterations");
+    Ok(RewriteResult::Changed(ChangedOp::new(root)))
 }
 
 /// A pass is a transformation that can be applied to the IR. MLIR makes a

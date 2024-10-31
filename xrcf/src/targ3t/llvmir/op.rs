@@ -176,7 +176,7 @@ impl Op for CallOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().try_read().unwrap();
         write!(f, "{} = ", operation.results())?;
-        let return_type = operation.result_type();
+        let return_type = operation.result_type(0);
         let return_type = return_type.unwrap();
         let return_type = return_type.try_read().unwrap();
         write!(f, "call {return_type} {}(", self.identifier().unwrap())?;

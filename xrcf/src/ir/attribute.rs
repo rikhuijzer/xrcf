@@ -40,7 +40,7 @@ impl Display for dyn Attribute {
 
 /// An attribute containing an integer value.
 pub struct IntegerAttr {
-    // The type of the integer like the precision.
+    // The type of the integer: specifies the precision.
     typ: IntegerType,
     // An arbitrary precision integer value.
     value: APInt,
