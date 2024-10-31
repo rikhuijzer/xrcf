@@ -24,8 +24,13 @@ fn cli() -> Command {
     cli
 }
 
+fn remove_comments(src: &str) -> String {
+    src.lines().filter(|line| !line.starts_with("//")).collect()
+}
+
 fn parse_and_transform(src: &str, passes: &Passes) -> String {
-    let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
+    let src = remove_comments(src);
+    let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
     let result = transform::<DefaultTransformDispatch>(module, &passes).unwrap();
     let result = match result {
         RewriteResult::Changed(op) => op.0.try_read().unwrap().to_string(),
