@@ -93,7 +93,7 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
+        self.const_value.clone().expect("array size not set")
     }
     pub fn set_element_type(&mut self, element_type: String) {
         self.element_type = Some(element_type);

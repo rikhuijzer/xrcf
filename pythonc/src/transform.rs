@@ -126,8 +126,20 @@ mod tests {
     use tracing;
     use xrcf::init_subscriber;
 
+    /// Initialize the subscriber for the tests.
+    ///
+    /// Cannot pass options, since the tests run concurrently.
+    pub fn init_tracing() {
+        let level = tracing::Level::INFO;
+        match init_subscriber(level) {
+            Ok(_) => (),
+            Err(_e) => (),
+        }
+    }
+
     #[test]
     fn test_replace_indentation() {
+        init_tracing();
         let src = indoc! {r#"
         def main():
             print("Hello, World!")
@@ -156,17 +168,6 @@ mod tests {
         assert_eq!(result.trim(), expected.trim());
     }
 
-    /// Initialize the subscriber for the tests.
-    ///
-    /// Cannot pass options, since the tests run concurrently.
-    pub fn init_tracing() {
-        let level = tracing::Level::INFO;
-        match init_subscriber(level) {
-            Ok(_) => (),
-            Err(_e) => (),
-        }
-    }
-
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
@@ -191,6 +192,7 @@ mod tests {
 
     #[test]
     fn test_default_dispatch() {
+        init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
@@ -211,6 +213,7 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
+        init_tracing();
         let src = indoc! {r#"
         def hello():
             print("Hello, World!")
@@ -239,6 +242,7 @@ mod tests {
         let passes = vec![
             "--convert-python-to-mlir",
             "--convert-unstable-to-mlir",
+            "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];
         let actual = test_transform(src, passes).trim().to_string();

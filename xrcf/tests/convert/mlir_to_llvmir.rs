@@ -11,6 +11,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_constant() {
+    Test::init_tracing();
     let src = indoc! {"
     module {
       llvm.func @main() -> i64 {
@@ -32,7 +33,6 @@ fn test_constant() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    Test::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Test::transform(flags(), src);
     let module = module.try_read().unwrap();
@@ -42,6 +42,7 @@ fn test_constant() {
 
 #[test]
 fn test_add_one() {
+    Test::init_tracing();
     let src = indoc! {"
     llvm.func @add_one(%arg0 : i32) -> i32 {
       %0 = llvm.mlir.constant(1 : i32) : i32
@@ -55,7 +56,6 @@ fn test_add_one() {
         ret i32 %1
     }
     "#};
-    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
     let (_module, actual) = Test::transform(flags(), src);
@@ -64,6 +64,7 @@ fn test_add_one() {
 
 #[test]
 fn test_hello_world() {
+    Test::init_tracing();
     let src = indoc! {r#"
     llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
 
@@ -97,7 +98,6 @@ fn test_hello_world() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    Test::init_tracing();
     let (_module, actual) = Test::parse(src);
     Test::check_lines_contain(&actual, &src, Location::caller());
     let (_module, actual) = Test::transform(flags(), src);
