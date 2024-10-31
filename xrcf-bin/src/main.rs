@@ -63,6 +63,7 @@ fn main() {
 mod tests {
     use super::*;
     use anyhow::Result;
+    use indoc::indoc;
 
     fn run_app(args: Vec<&str>, input_text: &str) -> Result<String> {
         let cli = cli();
@@ -85,5 +86,26 @@ mod tests {
         println!("{result}");
         assert!(result.contains("Usage: xrcf"));
         assert!(result.contains("--convert-func-to-llvm"));
+    }
+
+    #[test]
+    fn test_multiple_passes() {
+        let args = vec![
+            "xrcf",
+            "--convert-unstable-to-mlir",
+            "--convert-func-to-llvm",
+            "--convert-mlir-to-llvmir",
+        ];
+        let src = indoc! {r#"
+        module {
+          func.func @main() -> i32 {
+            %0 = arith.constant 0 : i32
+            unstable.printf("Hello, World!\n")
+            return %0 : i32
+          }
+        }
+        "#};
+        let result = run_app(args, &src);
+        assert!(result.is_ok());
     }
 }
