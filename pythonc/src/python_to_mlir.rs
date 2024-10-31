@@ -150,6 +150,8 @@ impl ModuleLowering {
         let last = ops.last().unwrap();
 
         let mut main = Operation::default();
+        let result_type = Arc::new(RwLock::new(IntegerType::new(32)));
+        main.set_anonymous_result(result_type)?;
         let parent = last.operation().parent();
         main.set_parent(parent);
 
