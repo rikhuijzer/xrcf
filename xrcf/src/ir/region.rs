@@ -72,13 +72,21 @@ impl Default for Region {
 }
 
 pub trait GuardedRegion {
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
+    fn set_blocks(&self, blocks: Vec<Arc<RwLock<Block>>>);
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>);
 }
 
 impl GuardedRegion for Arc<RwLock<Region>> {
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        self.try_read().unwrap().blocks()
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
+    }
+    fn set_blocks(&self, blocks: Vec<Arc<RwLock<Block>>>) {
+        self.try_write().unwrap().set_blocks(blocks);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>) {
         self.try_write().unwrap().set_parent(parent);

@@ -3,6 +3,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -209,7 +210,7 @@ impl Block {
         }
         format!("%{new_name}")
     }
-    pub fn display(&self, f: &mut std::fmt::Formatter<'_>, indent: i32) -> std::fmt::Result {
+    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
             write!(f, "{} ", label)?;
         }
@@ -237,7 +238,7 @@ impl Default for Block {
 }
 
 impl Display for Block {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
     }
 }
@@ -261,11 +262,23 @@ impl BlockWithoutParent {
 }
 
 pub trait GuardedBlock {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
+    fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
+    fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn unique_value_name(&self) -> String;
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        self.try_read().unwrap().display(f, indent)
+    }
+    fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
+        self.try_read().unwrap().ops()
+    }
+    fn remove(&self, op: Arc<RwLock<Operation>>) {
+        self.try_write().unwrap().remove(op);
+    }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);
     }
