@@ -29,13 +29,10 @@ pub trait Op {
     fn new(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized;
-    /// Create an [Op] from an [Operation].
+    /// Create an [Op] from an [Operation] wrapped in an [Arc].
     ///
-    /// The default implementation for this method automatically sets the name
-    /// of the operation to the name of the op. This duplication of the name is
-    /// unfortunate, but necessary because it allows showing the operation name
-    /// even when the [Operation] is not wrapped inside an [Op].
-    fn from_operation(operation: Arc<RwLock<Operation>>) -> Self
+    /// See [Self::from_operation] for more information.
+    fn from_operation_arc(operation: Arc<RwLock<Operation>>) -> Self
     where
         Self: Sized,
     {
@@ -47,6 +44,19 @@ pub trait Op {
         }
         let op = Self::new(operation);
         op
+    }
+    /// Create an [Op] from an [Operation].
+    ///
+    /// The default implementation for this method automatically sets the name
+    /// of the operation to the name of the op. This duplication of the name is
+    /// necessary because it allows showing the operation name even when the
+    /// [Operation] is not wrapped inside an [Op].
+    fn from_operation(operation: Operation) -> Self
+    where
+        Self: Sized,
+    {
+        let operation = Arc::new(RwLock::new(operation));
+        Self::from_operation_arc(operation)
     }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
@@ -223,6 +233,7 @@ pub trait GuardedOp {
     fn result(&self, index: usize) -> Arc<RwLock<Value>>;
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
+    fn remove(&self);
 }
 
 impl GuardedOp for Arc<RwLock<dyn Op>> {
@@ -245,5 +256,9 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
         let op = self.try_read().unwrap();
         op.insert_after(later);
+    }
+    fn remove(&self) {
+        let op = self.try_read().unwrap();
+        op.remove();
     }
 }

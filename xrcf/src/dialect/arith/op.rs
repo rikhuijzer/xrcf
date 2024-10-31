@@ -161,8 +161,7 @@ impl AddiOp {
         results.vec().try_write().unwrap().push(result.clone());
         new_operation.set_results(results);
 
-        let new_const = Arc::new(RwLock::new(new_operation));
-        let new_const = ConstantOp::from_operation(new_const);
+        let new_const = ConstantOp::from_operation(new_operation);
         let new_const = Arc::new(RwLock::new(new_const));
         let mut result = result.try_write().unwrap();
         if let Value::OpResult(result) = &mut *result {
@@ -228,8 +227,7 @@ impl<T: ParserDispatch> Parser<T> {
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_result_type(0, result_type)?;
 
-        let operation = Arc::new(RwLock::new(operation));
-        let op = O::from_operation(operation.clone());
+        let op = O::from_operation(operation);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)

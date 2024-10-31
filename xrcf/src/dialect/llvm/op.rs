@@ -459,7 +459,6 @@ impl Parse for GlobalOp {
         operation.set_name(GlobalOp::operation_name());
         operation.set_attributes(attributes);
         operation.set_parent(parent);
-        let operation = Arc::new(RwLock::new(operation));
         let op = GlobalOp::from_operation(operation);
         Ok(Arc::new(RwLock::new(op)))
     }

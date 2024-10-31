@@ -289,7 +289,6 @@ impl<T: ParserDispatch> Parser<T> {
             let mut module_operation = Operation::default();
             module_operation.set_name(ModuleOp::operation_name());
             module_operation.set_region(Some(module_region.clone()));
-            let module_operation = Arc::new(RwLock::new(module_operation));
             let module_op = ModuleOp::from_operation(module_operation);
             let module_op = Arc::new(RwLock::new(module_op));
             module_region

@@ -81,8 +81,7 @@ pub trait Call: Op {
         let result_type = T::parse_type(parser)?;
         operation.set_result_type(0, result_type)?;
 
-        let operation = Arc::new(RwLock::new(operation));
-        let mut op = O::from_operation(operation.clone());
+        let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
@@ -366,15 +365,17 @@ impl<T: ParserDispatch> Parser<T> {
         operation.set_name(expected_name.clone());
         operation.set_arguments(parser.parse_function_arguments()?);
         operation.set_anonymous_results(parser.result_types()?)?;
-        let operation = Arc::new(RwLock::new(operation));
-        let mut op = F::from_operation(operation.clone());
+        let mut op = F::from_operation(operation);
         op.set_identifier(identifier);
         op.set_sym_visibility(visibility);
         let op = Arc::new(RwLock::new(op));
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.region(op.clone())?;
-            let mut operation = operation.write().unwrap();
+            // let mut operation = op..write().unwrap();
+            // operation.set_region(Some(region.clone()));
+            let op_rd = op.try_read().unwrap();
+            let mut operation = op_rd.operation().try_write().unwrap();
             operation.set_region(Some(region.clone()));
 
             let mut region = region.write().unwrap();
@@ -460,8 +461,7 @@ impl<T: ParserDispatch> Parser<T> {
             let result_type = Arc::new(RwLock::new(return_type));
             operation.set_anonymous_result(result_type)?;
         }
-        let operation = Arc::new(RwLock::new(operation));
-        let op = O::from_operation(operation.clone());
+        let op = O::from_operation(operation);
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }

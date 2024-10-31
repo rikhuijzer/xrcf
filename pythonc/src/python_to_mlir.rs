@@ -1,10 +1,7 @@
 use crate::python;
 use anyhow::Result;
-use xrcf::ir::GuardedOperation;
-use xrcf::ir::OpOperand;
 use std::sync::Arc;
 use std::sync::RwLock;
-use xrcf::ir::Block;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
@@ -14,12 +11,15 @@ use xrcf::dialect::arith;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
-use xrcf::ir::GuardedOp;
 use xrcf::dialect::unstable;
 use xrcf::ir::APInt;
+use xrcf::ir::Block;
+use xrcf::ir::GuardedOp;
+use xrcf::ir::GuardedOperation;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
+use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 
 struct CallLowering;
@@ -36,7 +36,7 @@ impl Rewrite for CallLowering {
         let op = op.as_any().downcast_ref::<python::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
-        let mut new_op = func::CallOp::from_operation(operation.clone());
+        let mut new_op = func::CallOp::from_operation_arc(operation.clone());
         let identifier = format!("@{}", identifier);
         new_op.set_identifier(identifier);
         let new_op = Arc::new(RwLock::new(new_op));
@@ -57,8 +57,7 @@ impl FuncLowering {
             return;
         }
         let operation = Operation::default();
-        let operation = Arc::new(RwLock::new(operation));
-        let ret = func::ReturnOp::from_operation(operation.clone());
+        let ret = func::ReturnOp::from_operation(operation);
         let ret = Arc::new(RwLock::new(ret));
         last.insert_after(ret);
     }
@@ -77,7 +76,7 @@ impl Rewrite for FuncLowering {
         let identifier = op.identifier().unwrap();
         let identifier = format!("@{}", identifier);
         let operation = op.operation();
-        let mut new_op = func::FuncOp::from_operation(operation.clone());
+        let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(identifier);
         self.ensure_return(&mut new_op);
         let new_op = Arc::new(RwLock::new(new_op));
@@ -108,14 +107,16 @@ impl ModuleLowering {
         let name = parent.try_read().unwrap().unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
         let result = constant.add_new_op_result(&name, result_type.clone());
-        let constant = Arc::new(RwLock::new(constant));
-        let constant = arith::ConstantOp::from_operation(constant.clone());
+        let constant = arith::ConstantOp::from_operation(constant);
         constant.set_value(Arc::new(integer));
         let constant = Arc::new(RwLock::new(constant));
         result.set_defining_op(Some(constant.clone()));
         constant
     }
-    fn return_op(parent: &Arc<RwLock<Block>>, constant: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+    fn return_op(
+        parent: &Arc<RwLock<Block>>,
+        constant: Arc<RwLock<dyn Op>>,
+    ) -> Arc<RwLock<dyn Op>> {
         let typ = IntegerType::new(32);
         let result_type = Arc::new(RwLock::new(typ));
         let mut ret = Operation::default();
@@ -125,8 +126,7 @@ impl ModuleLowering {
         let value = constant.result(0);
         let operand = OpOperand::new(value);
         ret.set_operand(Arc::new(RwLock::new(operand)));
-        let ret = Arc::new(RwLock::new(ret));
-        let ret = func::ReturnOp::from_operation(ret.clone());
+        let ret = func::ReturnOp::from_operation(ret);
         let ret = Arc::new(RwLock::new(ret));
         ret
     }
@@ -146,25 +146,22 @@ impl ModuleLowering {
         last.insert_after(ret.clone());
     }
     fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
-        let module = module.try_read().unwrap();
         let ops = module.ops();
         let last = ops.last().unwrap();
-        let last_read = last.try_read().unwrap();
 
         let mut main = Operation::default();
-        let parent = last_read.operation().try_read().unwrap().parent();
+        let parent = last.operation().parent();
         main.set_parent(parent);
 
-        let main = Arc::new(RwLock::new(main));
-        let mut main = func::FuncOp::from_operation(main.clone());
+        let mut main = func::FuncOp::from_operation(main);
         main.set_identifier("@main".to_string());
         let last_without_parent = main.insert_op(last.clone());
         let region = main.operation().try_write().unwrap().region().unwrap();
 
         let main = Arc::new(RwLock::new(main));
         region.try_write().unwrap().set_parent(Some(main.clone()));
-        last_read.insert_after(main.clone());
-        last_read.remove();
+        last.insert_after(main.clone());
+        last.remove();
         last_without_parent.set_parent(region.try_read().unwrap().block(0).clone());
         let block = last
             .try_read()
@@ -215,7 +212,7 @@ impl Rewrite for PrintLowering {
         let op = op.as_any().downcast_ref::<python::PrintOp>().unwrap();
         let text = op.text().unwrap();
         let operation = op.operation();
-        let mut new_op = unstable::PrintfOp::from_operation(operation.clone());
+        let mut new_op = unstable::PrintfOp::from_operation_arc(operation.clone());
         new_op.set_text(text);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());

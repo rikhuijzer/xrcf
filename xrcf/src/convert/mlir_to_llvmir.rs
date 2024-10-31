@@ -85,7 +85,7 @@ impl Rewrite for AddLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<dialect::llvm::AddOp>().unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::AddOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
         let value = find_constant_operand(op).unwrap();
         set_constant_value(&mut new_op, &value.try_read().unwrap());
         let new_op = Arc::new(RwLock::new(new_op));
@@ -110,7 +110,7 @@ impl Rewrite for AllocaLowering {
             .downcast_ref::<dialect::llvm::AllocaOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::AllocaOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::AllocaOp::from_operation_arc(operation.clone());
         {
             let operation = operation.try_read().unwrap();
             operation.results().convert_types::<ConvertMLIRToLLVMIR>()?;
@@ -137,7 +137,7 @@ impl Rewrite for CallLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<dialect::llvm::CallOp>().unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::CallOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::CallOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
@@ -185,7 +185,7 @@ impl Rewrite for FuncLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<dialect::llvm::FuncOp>().unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::FuncOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::FuncOp::from_operation_arc(operation.clone());
 
         {
             let mut operation = operation.try_write().unwrap();
@@ -211,7 +211,7 @@ impl Rewrite for ModuleLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let operation = op.operation().clone();
-        let new_op = targ3t::llvmir::ModuleOp::from_operation(operation);
+        let new_op = targ3t::llvmir::ModuleOp::from_operation_arc(operation);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -234,7 +234,7 @@ impl Rewrite for ReturnLowering {
             .downcast_ref::<dialect::llvm::ReturnOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::ReturnOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
         let value = op.operand();
         set_constant_value(&mut new_op, &value.try_read().unwrap());
         let new_op = Arc::new(RwLock::new(new_op));
@@ -259,7 +259,7 @@ impl Rewrite for StoreLowering {
             .downcast_ref::<dialect::llvm::StoreOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::StoreOp::from_operation(operation.clone());
+        let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         let op_operand = op.value();
         let op_operand = op_operand.try_read().unwrap();
         let value = op_operand.value();

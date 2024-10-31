@@ -38,7 +38,6 @@ impl PrintLowering {
         let typ = Arc::new(RwLock::new(typ));
         let result = const_operation.add_new_op_result(&name, typ);
 
-        let const_operation = Arc::new(RwLock::new(const_operation));
         let const_op = llvm::ConstantOp::from_operation(const_operation);
         const_op.set_value(Arc::new(StringAttr::new(text)));
         let const_op = Arc::new(RwLock::new(const_op));
@@ -52,7 +51,6 @@ impl PrintLowering {
         let name = parent.try_read().unwrap().unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
-        let operation = Arc::new(RwLock::new(operation));
         let op = arith::ConstantOp::from_operation(operation);
         let len = APInt::from_str("i16", &len.to_string());
         op.set_value(Arc::new(IntegerAttr::new(typ, len)));
@@ -71,7 +69,6 @@ impl PrintLowering {
         let array_size = OpOperand::new(array_size);
         operation.set_operand(Arc::new(RwLock::new(array_size)));
 
-        let operation = Arc::new(RwLock::new(operation));
         let mut op = llvm::AllocaOp::from_operation(operation);
         op.set_element_type("i8".to_string());
         let op = Arc::new(RwLock::new(op));
@@ -86,7 +83,6 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
 
-        let operation = Arc::new(RwLock::new(operation));
         let mut op = llvm::StoreOp::from_operation(operation);
 
         let value = text.try_read().unwrap().result(0);
@@ -110,7 +106,6 @@ impl PrintLowering {
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
 
-        let operation = Arc::new(RwLock::new(operation));
         let mut op = func::CallOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         let op = Arc::new(RwLock::new(op));
@@ -153,7 +148,6 @@ impl PrintLowering {
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_anonymous_result(result_type)?;
 
-        let operation = Arc::new(RwLock::new(operation));
         let mut op = func::FuncOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         op.set_sym_visibility(Some("private".to_string()));
