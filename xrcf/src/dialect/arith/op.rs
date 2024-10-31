@@ -2,6 +2,7 @@ use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::GuardedOperation;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpResult;
@@ -25,19 +26,13 @@ pub struct ConstantOp {
 
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let attributes = attributes.read().unwrap();
+        let attributes = self.operation.attributes();
         let value = attributes.get("value").unwrap();
         value.clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let mut attributes = attributes.write().unwrap();
-        attributes.insert("value".to_string(), value);
+        let attributes = self.operation.attributes();
+        attributes.insert("value", value);
     }
 }
 
@@ -61,9 +56,8 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation.try_read().unwrap();
-        operation.display_results(f)?;
-        write!(f, "{}", operation.name())?;
+        self.operation.display_results(f)?;
+        write!(f, "{}", self.operation.name())?;
         let value = self.value();
         write!(f, " {value}")?;
         Ok(())
@@ -106,8 +100,7 @@ pub struct AddiOp {
 impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&self) -> RewriteResult {
-        let operation = self.operation.read().unwrap();
-        let operands = operation.operands();
+        let operands = self.operation.operands();
         let operands = operands.vec();
         let operands = operands.try_read().unwrap();
         assert!(operands.len() == 2);

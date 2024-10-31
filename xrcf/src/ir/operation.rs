@@ -361,6 +361,8 @@ impl Display for Operation {
 }
 
 pub trait GuardedOperation {
+    fn attributes(&self) -> Attributes;
+    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
     fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
@@ -368,6 +370,12 @@ pub trait GuardedOperation {
 }
 
 impl GuardedOperation for Arc<RwLock<Operation>> {
+    fn attributes(&self) -> Attributes {
+        self.try_read().unwrap().attributes()
+    }
+    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.try_read().unwrap().display_results(f)
+    }
     fn name(&self) -> OperationName {
         self.try_read().unwrap().name()
     }
