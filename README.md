@@ -1,9 +1,8 @@
 # xrcf
 
-Building blocks for creating a custom compiler.
+Building blocks for compiler development.
 
-The problem that this project aims to solve is that it should be easy to target multiple backends (like GPUs, TPUs, and CPUs) from a single programming language.
-Like MLIR, it should be easy to write compilers that can take high-level code,
+The problem that this project aims to solve is to make it easy to write compilers that can take high-level code,
 optimize it during multiple lowering stages, and generate efficient code for
 different backends.
 These backends should be easy to add and combine.
@@ -43,8 +42,12 @@ The compiler should translate this to use the AVX instructions where possible.
 To do this, it is important for the compiler to handle the full stack.
 A problem that the creators of MLIR set out to solve is that LLVM can receive
 code that is too low-level.
-At that point, it is not always possible to generate efficient code since some
-information was lost during lowering.
+Especially when you have multidimensiohnal arrays (tensors) and GPUs, it's not
+always possible to generate efficient code after the code has been lowered to
+LLVM IR.
+Instead, the compiler should be able to optimize the code at an earlier stage.
+This is what languages like Jax and Mojo do.
+They receive high-level code and optimize it during multiple lowering stages.
 
 ## Notes
 
