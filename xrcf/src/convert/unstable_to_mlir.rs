@@ -49,7 +49,8 @@ impl PrintLowering {
     }
     /// Return an [Op] which defines the length for the text `alloca`.
     fn len_specifier(parent: &Arc<RwLock<Block>>, len: usize) -> Arc<RwLock<dyn Op>> {
-        let operation = Operation::default();
+        let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
         let name = parent.try_read().unwrap().unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));

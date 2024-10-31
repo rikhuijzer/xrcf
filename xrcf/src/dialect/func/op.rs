@@ -217,7 +217,6 @@ impl FuncOp {
         let read = op.try_read().unwrap();
         let ops = read.ops();
         if ops.is_empty() {
-            println!("empty");
             let operation = self.operation();
             let region = operation.region();
             if region.is_some() {

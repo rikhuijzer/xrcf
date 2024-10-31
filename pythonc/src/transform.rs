@@ -210,7 +210,7 @@ mod tests {
     }
 
     #[test]
-    fn test_python_to_mlir() {
+    fn test_hello_world() {
         let src = indoc! {r#"
         def hello():
             print("Hello, World!")
@@ -235,5 +235,13 @@ mod tests {
         let passes = vec!["--convert-python-to-mlir"];
         let actual = test_transform(src, passes).trim().to_string();
         compare_lines(expected, &actual);
+
+        let passes = vec![
+            "--convert-python-to-mlir",
+            "--convert-unstable-to-mlir",
+            "--convert-mlir-to-llvmir",
+        ];
+        let actual = test_transform(src, passes).trim().to_string();
+        assert!(actual.contains("define void @hello"));
     }
 }
