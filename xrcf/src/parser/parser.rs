@@ -247,8 +247,6 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn empty_type(&self) -> bool {
         let lparen = self.check(TokenKind::LParen);
-        println!("lparen: {}", lparen);
-        println!("peek: {:?}", self.peek_n(1));
         let rparen = {
             let peek = self.peek_n(1);
             peek.is_some() && peek.unwrap().kind == TokenKind::RParen

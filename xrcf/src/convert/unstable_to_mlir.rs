@@ -165,7 +165,7 @@ impl PrintLowering {
     fn define_printf(op: Arc<RwLock<dyn Op>>) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
         if !Self::contains_printf(top_level_op.clone()) {
-            let ops = op.ops();
+            let ops = top_level_op.ops();
             let op = ops[0].clone();
             op.insert_before(Self::printf_func_def()?);
         }
