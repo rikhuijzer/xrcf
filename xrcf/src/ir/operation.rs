@@ -361,12 +361,24 @@ impl Display for Operation {
 }
 
 pub trait GuardedOperation {
+    fn name(&self) -> OperationName;
+    fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
+    fn set_name(&self, name: OperationName);
 }
 
 impl GuardedOperation for Arc<RwLock<Operation>> {
+    fn name(&self) -> OperationName {
+        self.try_read().unwrap().name()
+    }
+    fn operands(&self) -> OpOperands {
+        self.try_read().unwrap().operands()
+    }
     fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         let operation = self.try_read().unwrap();
         operation.parent()
+    }
+    fn set_name(&self, name: OperationName) {
+        self.try_write().unwrap().set_name(name);
     }
 }

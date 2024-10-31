@@ -49,6 +49,21 @@ impl Display for OpOperand {
     }
 }
 
+pub trait GuardedOpOperand {
+    fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
+    fn value(&self) -> Arc<RwLock<Value>>;
+}
+
+impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
+    fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+        let op = self.try_read().unwrap();
+        op.defining_op()
+    }
+    fn value(&self) -> Arc<RwLock<Value>> {
+        self.try_read().unwrap().value()
+    }
+}
+
 #[derive(Clone)]
 pub struct OpOperands {
     operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,

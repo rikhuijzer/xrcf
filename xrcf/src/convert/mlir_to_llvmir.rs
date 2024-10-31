@@ -10,6 +10,9 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir;
 use crate::ir::BlockArgument;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOpOperand;
+use crate::ir::GuardedOperation;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -25,7 +28,6 @@ use std::sync::RwLock;
 
 fn remove_operand_to_constant(new_op: &dyn OneConst) {
     let operation = new_op.operation();
-    let operation = operation.try_read().unwrap();
     let operands = operation.operands();
     let operands = operands.vec();
     let mut operands = operands.try_write().unwrap();
@@ -57,14 +59,11 @@ struct AddLowering;
 /// This is used to find a value that can be unlinked during the lowering process.
 fn find_constant_operand(op: &dyn Op) -> Option<Arc<RwLock<Value>>> {
     let operation = op.operation();
-    let operation = operation.try_read().unwrap();
     let operands = operation.operands().vec();
     let operands = operands.try_read().unwrap();
     for operand in operands.iter() {
-        let operand = operand.try_read().unwrap();
         let op = operand.defining_op();
         if let Some(op) = op {
-            let op = op.try_read().unwrap();
             if op.is_const() {
                 let value = operand.value();
                 return Some(value.clone());

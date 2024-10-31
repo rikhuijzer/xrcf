@@ -230,10 +230,11 @@ impl OpWithoutParent {
 pub trait GuardedOp {
     fn operation(&self) -> Arc<RwLock<Operation>>;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-    fn result(&self, index: usize) -> Arc<RwLock<Value>>;
-    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
+    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
+    fn is_const(&self) -> bool;
     fn remove(&self);
+    fn result(&self, index: usize) -> Arc<RwLock<Value>>;
 }
 
 impl GuardedOp for Arc<RwLock<dyn Op>> {
@@ -252,6 +253,10 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
         let op = self.try_read().unwrap();
         op.insert_before(earlier);
+    }
+    fn is_const(&self) -> bool {
+        let op = self.try_read().unwrap();
+        op.is_const()
     }
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
         let op = self.try_read().unwrap();
