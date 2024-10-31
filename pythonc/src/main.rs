@@ -14,7 +14,7 @@ use crate::transform::parse_and_transform;
 #[derive(Args, Debug)]
 #[command(version, about)]
 struct PythonArgs {
-    /// The input file (defaults to "-", which is stdin)
+    /// The input file (- is interpreted as stdin)
     #[arg(default_value = "-")]
     input: String,
     /// Convert Python operations to MLIR
