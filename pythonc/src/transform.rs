@@ -202,6 +202,13 @@ mod tests {
         assert!(result.contains("define i32 @main"));
     }
 
+    fn compare_lines(expected: &str, actual: &str) {
+        let lines = expected.lines().zip(actual.lines());
+        for (i, (expected_line, actual_line)) in lines.enumerate() {
+            assert_eq!(expected_line.trim(), actual_line.trim(), "Line {i} differs");
+        }
+    }
+
     #[test]
     fn test_python_to_mlir() {
         let src = indoc! {r#"
@@ -227,9 +234,6 @@ mod tests {
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
         let actual = test_transform(src, passes).trim().to_string();
-        let lines = expected.lines().zip(actual.lines());
-        for (i, (expected_line, actual_line)) in lines.enumerate() {
-            assert_eq!(expected_line.trim(), actual_line.trim(), "Line {i} differs");
-        }
+        compare_lines(expected, &actual);
     }
 }

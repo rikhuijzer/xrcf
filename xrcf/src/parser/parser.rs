@@ -245,6 +245,26 @@ impl<T: ParserDispatch> Parser<T> {
         }
         Ok(())
     }
+    pub fn empty_type(&self) -> bool {
+        let lparen = self.check(TokenKind::LParen);
+        println!("lparen: {}", lparen);
+        println!("peek: {:?}", self.peek_n(1));
+        let rparen = {
+            let peek = self.peek_n(1);
+            peek.is_some() && peek.unwrap().kind == TokenKind::RParen
+        };
+        lparen && rparen
+    }
+    pub fn parse_empty_type(&mut self) -> Result<()> {
+        if self.empty_type() {
+            self.advance();
+            self.advance();
+            Ok(())
+        } else {
+            let msg = self.error(self.peek(), "Expected empty type");
+            Err(anyhow::anyhow!(msg))
+        }
+    }
     pub fn parse(src: &str) -> Result<Arc<RwLock<dyn Op>>> {
         let mut parser = Parser::<T> {
             src: src.to_string(),

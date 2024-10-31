@@ -67,19 +67,30 @@ pub trait Call: Op {
         let identifier = identifier.lexeme.clone();
 
         parser.expect(TokenKind::LParen)?;
-        let operand = parser.parse_op_operand_into(parent.unwrap(), &mut operation)?;
+        let has_operand = !parser.check(TokenKind::RParen);
+        let operand = if has_operand {
+            Some(parser.parse_op_operand_into(parent.unwrap(), &mut operation)?)
+        } else {
+            None
+        };
         parser.expect(TokenKind::RParen)?;
 
         parser.expect(TokenKind::Colon)?;
 
         parser.expect(TokenKind::LParen)?;
-        let operand_type = T::parse_type(parser)?;
-        parser.verify_type(operand, operand_type)?;
+        if let Some(operand) = operand {
+            let operand_type = T::parse_type(parser)?;
+            parser.verify_type(operand, operand_type)?;
+        }
         parser.expect(TokenKind::RParen)?;
 
         parser.expect(TokenKind::Arrow)?;
-        let result_type = T::parse_type(parser)?;
-        operation.set_result_type(0, result_type)?;
+        if parser.empty_type() {
+            parser.parse_empty_type()?;
+        } else {
+            let result_type = T::parse_type(parser)?;
+            operation.set_result_type(0, result_type)?;
+        }
 
         let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
