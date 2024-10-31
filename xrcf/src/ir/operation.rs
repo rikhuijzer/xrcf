@@ -365,12 +365,16 @@ pub trait GuardedOperation {
     fn attributes(&self) -> Attributes;
     fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
+    fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>>;
     fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>>;
+    fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
     fn set_argument(&self, argument: Arc<RwLock<Value>>);
+    fn set_attributes(&self, attributes: Attributes);
     fn set_name(&self, name: OperationName);
+    fn set_operand(&self, operand: Arc<RwLock<OpOperand>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
 }
 
@@ -387,6 +391,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn name(&self) -> OperationName {
         self.try_read().unwrap().name()
     }
+    fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
+        self.try_read().unwrap().operand(index)
+    }
     fn operands(&self) -> OpOperands {
         self.try_read().unwrap().operands()
     }
@@ -397,14 +404,23 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.try_read().unwrap().region()
     }
+    fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
+        self.try_read().unwrap().result_type(index)
+    }
     fn results(&self) -> Values {
         self.try_read().unwrap().results()
     }
     fn set_argument(&self, argument: Arc<RwLock<Value>>) {
         self.try_write().unwrap().set_argument(argument);
     }
+    fn set_attributes(&self, attributes: Attributes) {
+        self.try_write().unwrap().set_attributes(attributes);
+    }
     fn set_name(&self, name: OperationName) {
         self.try_write().unwrap().set_name(name);
+    }
+    fn set_operand(&self, operand: Arc<RwLock<OpOperand>>) {
+        self.try_write().unwrap().set_operand(operand);
     }
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>) {
         self.try_write().unwrap().set_region(region);

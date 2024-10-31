@@ -18,6 +18,8 @@ use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use anyhow::Result;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedOpOperand;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -73,9 +75,7 @@ impl AllocaOp {
         self.element_type = Some(element_type);
     }
     pub fn array_size(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.try_read().unwrap();
-        let operand = operation.operand(0).expect("no operand");
-        operand
+        self.operation().operand(0).expect("no operand")
     }
 }
 
@@ -130,7 +130,7 @@ impl Parse for AllocaOp {
         parser.parse_keyword("x")?;
         let element_type = T::parse_type(parser)?;
         let element_type = element_type.try_read().unwrap();
-        let _colon = parser.expect(TokenKind::Colon)?;
+        parser.expect(TokenKind::Colon)?;
         parser.expect(TokenKind::LParen)?;
 
         let array_size_type = T::parse_type(parser)?;
@@ -213,16 +213,10 @@ pub struct ConstantOp {
 
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
-        let operation = self.operation().try_read().unwrap();
-        let attributes = operation.attributes().map();
-        let attributes = attributes.try_read().unwrap();
-        attributes.get("value").unwrap().clone()
+        self.operation().attributes().get("value").unwrap().clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {
-        let operation = self.operation().try_write().unwrap();
-        let attributes = operation.attributes().map();
-        let mut attributes = attributes.try_write().unwrap();
-        attributes.insert("value".to_string(), value);
+        self.operation().attributes().insert("value", value);
     }
 }
 
@@ -246,8 +240,7 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().try_read().unwrap();
-        let results = operation.results();
+        let results = self.operation().results();
         let results = results.vec();
         let results = results.try_read().unwrap();
         let result = results.get(0).expect("no result");
@@ -258,7 +251,7 @@ impl Op for ConstantOp {
         write!(f, "{}", value)?;
         write!(f, ")")?;
 
-        let typ = operation.result_type(0).expect("no result type");
+        let typ = self.operation().result_type(0).expect("no result type");
         let typ = typ.try_read().unwrap();
         write!(f, " : {typ}")?;
 
@@ -283,18 +276,17 @@ impl Parse for ConstantOp {
 
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
-        let _lparen = parser.expect(TokenKind::LParen)?;
+        parser.expect(TokenKind::LParen)?;
         let value: Arc<dyn Attribute> = if parser.check(TokenKind::Integer) {
             Arc::new(parser.parse_integer()?)
         } else {
             Arc::new(parser.parse_string()?)
         };
-        let _rparen = parser.expect(TokenKind::RParen)?;
+        parser.expect(TokenKind::RParen)?;
 
-        let attributes = operation.attributes();
-        attributes.insert("value", value);
+        operation.attributes().insert("value", value);
 
-        let _colon = parser.expect(TokenKind::Colon)?;
+        parser.expect(TokenKind::Colon)?;
         let typ = T::parse_type(parser)?;
         operation.set_result_type(0, typ)?;
 
@@ -327,8 +319,7 @@ impl Op for GlobalOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
-        let operation = self.operation().read().unwrap();
-        let attributes = operation.attributes().map();
+        let attributes = self.operation().attributes().map();
         let attributes = attributes.read().unwrap();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
@@ -397,8 +388,7 @@ impl Parse for FuncOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = FuncOp::operation_name();
-        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent)?;
         if parser.check(TokenKind::BareIdentifier) {
             let text = parser.peek();
             let text = text.lexeme.clone();
@@ -406,9 +396,7 @@ impl Parse for FuncOp {
                 parser.advance();
                 let attributes = parser.parse_attributes()?;
                 let op = op.try_read().unwrap();
-                let operation = op.operation();
-                let mut operation = operation.try_write().unwrap();
-                operation.set_attributes(attributes);
+                op.operation().set_attributes(attributes);
             }
         }
         Ok(op)
@@ -470,10 +458,7 @@ pub struct ReturnOp {
 
 impl ReturnOp {
     pub fn operand(&self) -> Arc<RwLock<Value>> {
-        let operation = self.operation.try_read().unwrap();
-        let operand = operation.operand(0).unwrap();
-        let operand = operand.try_read().unwrap();
-        operand.value()
+        self.operation().operand(0).unwrap().value()
     }
 }
 
@@ -490,9 +475,9 @@ impl Op for ReturnOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let name = Self::operation_name().to_string();
-        func::ReturnOp::display_return(self, &name, f, _indent)
+        func::ReturnOp::display_return(self, &name, f, indent)
     }
 }
 
@@ -509,13 +494,10 @@ pub struct StoreOp {
 
 impl StoreOp {
     pub fn value(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.try_read().unwrap();
-        let operand = operation.operand(0).expect("no value set");
-        operand
+        self.operation().operand(0).expect("no value set")
     }
     pub fn set_value(&mut self, value: Arc<RwLock<OpOperand>>) {
-        let mut operation = self.operation.try_write().unwrap();
-        operation.set_operand(value);
+        self.operation().set_operand(value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         let operation = self.operation.try_read().unwrap();
@@ -548,11 +530,9 @@ impl Op for StoreOp {
         write!(f, " {}", operation.operands())?;
         write!(f, " : ")?;
         let value = self.value();
-        let value = value.try_read().unwrap();
         write!(f, "{}", value.typ().try_read().unwrap())?;
         write!(f, ", ")?;
         let addr = self.addr();
-        let addr = addr.try_read().unwrap();
         write!(f, "{}", addr.typ().try_read().unwrap())?;
         Ok(())
     }

@@ -357,15 +357,14 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-        expected_name: OperationName,
     ) -> Result<Arc<RwLock<F>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         parser.parse_operation_name_into::<F>(&mut operation)?;
+        let expected_name = F::operation_name();
         let visibility = FuncOp::try_parse_func_visibility(parser, &expected_name);
         let identifier = parser.expect(TokenKind::AtIdentifier)?;
         let identifier = identifier.lexeme.clone();
-        operation.set_name(expected_name.clone());
         operation.set_arguments(parser.parse_function_arguments()?);
         operation.set_anonymous_results(parser.result_types()?)?;
         let mut op = F::from_operation(operation);
@@ -389,8 +388,7 @@ impl Parse for FuncOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = FuncOp::operation_name();
-        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent)?;
         Ok(op)
     }
 }
@@ -452,7 +450,7 @@ impl<T: ParserDispatch> Parser<T> {
         let has_operands = !self.check(TokenKind::RBrace);
         if has_operands {
             operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
-            let _colon = self.expect(TokenKind::Colon)?;
+            self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
             let return_type = IntegerType::from_str(&return_type.lexeme);
             let result_type = Arc::new(RwLock::new(return_type));
