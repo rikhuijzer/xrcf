@@ -42,7 +42,7 @@ The compiler should translate this to use the AVX instructions where possible.
 To do this, it is important for the compiler to handle the full stack.
 A problem that the creators of MLIR set out to solve is that LLVM can receive
 code that is too low-level.
-Especially when you have multidimensiohnal arrays (tensors) and GPUs, it's not
+Especially when you have multidimensional arrays (tensors) and GPUs, it's not
 always possible to generate efficient code after the code has been lowered to
 LLVM IR.
 Instead, the compiler should be able to optimize the code at an earlier stage.
