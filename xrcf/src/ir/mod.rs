@@ -19,6 +19,7 @@ pub use attribute::Attributes;
 pub use attribute::IntegerAttr;
 pub use attribute::StringAttr;
 pub use block::Block;
+pub use block::GuardedBlock;
 pub use module::ModuleOp;
 pub use op::GuardedOp;
 pub use op::Op;

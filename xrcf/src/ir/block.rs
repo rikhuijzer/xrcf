@@ -241,3 +241,13 @@ impl Display for Block {
         self.display(f, 0)
     }
 }
+
+pub trait GuardedBlock {
+    fn unique_value_name(&self) -> String;
+}
+
+impl GuardedBlock for Arc<RwLock<Block>> {
+    fn unique_value_name(&self) -> String {
+        self.try_read().unwrap().unique_value_name()
+    }
+}
