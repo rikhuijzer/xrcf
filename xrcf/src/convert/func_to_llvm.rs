@@ -30,12 +30,12 @@ impl Rewrite for FuncLowering {
         {
             let name = operation.name();
             assert!(name == func::FuncOp::operation_name());
-            operation.set_name(name);
+            operation.set_name(name.clone());
 
             let parent = operation.parent();
             assert!(
                 parent.is_some(),
-                "maybe func parent was not set during parsing?"
+                "maybe parent was not set during parsing for {name}?",
             );
         }
 

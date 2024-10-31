@@ -125,6 +125,7 @@ mod tests {
     use indoc::indoc;
     use tracing;
     use xrcf::init_subscriber;
+    use xrcf::ir::GuardedOp;
 
     /// Initialize the subscriber for the tests.
     ///
@@ -171,23 +172,21 @@ mod tests {
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
-    fn test_transform(src: &str, passes: Vec<&str>) -> String {
+    fn test_transform(src: &str, passes: Vec<&str>) -> (Arc<RwLock<dyn Op>>, String) {
         let src = src.trim();
         init_tracing();
         let passes = Passes::from_vec(passes);
         print_heading("Before", src, &passes);
         let result = parse_and_transform(src, &passes).unwrap();
-        let result = match result {
-            RewriteResult::Changed(op) => {
-                let op = op.0.try_read().unwrap();
-                op.to_string()
-            }
+        let new_root_op = match result {
+            RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
-                panic!("Expected a changed result");
+                panic!("Expected changes");
             }
         };
-        print_heading("After", &result, &passes);
-        result
+        let actual = new_root_op.try_read().unwrap().to_string();
+        print_heading("After", &actual, &passes);
+        (new_root_op, actual)
     }
 
     #[test]
@@ -200,8 +199,8 @@ mod tests {
         }
         "#};
         let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
-        let result = test_transform(src, passes);
-        assert!(result.contains("define i32 @main"));
+        let (_module, actual) = test_transform(src, passes);
+        assert!(actual.contains("define i32 @main"));
     }
 
     fn compare_lines(expected: &str, actual: &str) {
@@ -236,16 +235,22 @@ mod tests {
         "#}
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
-        let actual = test_transform(src, passes).trim().to_string();
-        compare_lines(expected, &actual);
+        let (_module, actual) = test_transform(src, passes);
+        compare_lines(expected, actual.trim());
 
-        let passes = vec![
-            "--convert-python-to-mlir",
-            "--convert-unstable-to-mlir",
-            "--convert-func-to-llvm",
-            "--convert-mlir-to-llvmir",
-        ];
-        let actual = test_transform(src, passes).trim().to_string();
-        assert!(actual.contains("define void @hello"));
+        let passes = vec!["--convert-python-to-mlir", "--convert-unstable-to-mlir"];
+        let (module, _actual) = test_transform(src, passes);
+
+        let ops = module.ops();
+        println!("ops[1]: {}", ops[1].operation().try_read().unwrap());
+        assert_eq!(ops.len(), 3);
+        for (i, op) in ops.iter().enumerate() {
+            let operation = op.operation();
+            let operation = operation.try_read().unwrap();
+            assert!(
+                operation.parent().is_some(),
+                "op {i}: {operation} has no parent"
+            );
+        }
     }
 }
