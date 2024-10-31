@@ -1,12 +1,12 @@
 use clap::arg;
 use clap::Args;
 use clap::Command;
+use std::io::Read;
+use xrcf::convert::RewriteResult;
+use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 use xrcf::transform;
-use xrcf::convert::RewriteResult;
 use xrcf::DefaultTransformDispatch;
-use xrcf::parser::DefaultParserDispatch;
-use std::io::Read;
 use xrcf::Passes;
 
 /// An example XRCF compiler that contains all default passes

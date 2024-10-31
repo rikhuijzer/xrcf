@@ -5,3 +5,11 @@ members = [
     "xrcf",
     "xrcf-bin",
 ]
+
+[workspace.package]
+version = "0.3.0"
+authors = ["xrcf contributors"]
+edition = "2021"
+license = "Apache-2.0 WITH LLVM-exception"
+repository = "https://git.huijzer.xyz/xrcf/xrcf"
+homepage = "https://xrcf.org"

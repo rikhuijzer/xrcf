@@ -1,13 +1,13 @@
 [package]
 name = "pythonc"
-version = "0.0.0"
 description = "An example Python compiler that can compile a small subset of Python"
-edition = "2021"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 publish = false
-authors = ["xrcf contributors"]
-license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://git.huijzer.xyz/xrcf/xrcf"
-homepage = "https://xrcf.org"
 
 [dependencies]
 xrcf = { path = "../xrcf/" }
