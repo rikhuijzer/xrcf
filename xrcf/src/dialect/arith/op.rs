@@ -2,7 +2,9 @@ use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedValue;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpResult;
@@ -106,7 +108,6 @@ impl AddiOp {
         assert!(operands.len() == 2);
 
         let lhs = operands.get(0).unwrap();
-        let lhs = lhs.read().unwrap();
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
@@ -120,7 +121,6 @@ impl AddiOp {
         };
 
         let rhs = operands.get(1).unwrap();
-        let rhs = rhs.read().unwrap();
         let rhs = match rhs.defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
@@ -139,9 +139,8 @@ impl AddiOp {
 
         let mut new_operation = Operation::default();
         new_operation.set_name(ConstantOp::operation_name());
-        new_operation.set_parent(rhs.operation().read().unwrap().parent());
-        let attributes = rhs.operation().read().unwrap().attributes();
-        let attributes = attributes.deep_clone();
+        new_operation.set_parent(rhs.operation().parent());
+        let attributes = rhs.operation().attributes().deep_clone();
         attributes.insert("value", Arc::new(new_value));
         new_operation.set_attributes(attributes);
 
@@ -170,8 +169,7 @@ impl AddiOp {
             let results = results.vec();
             let results = results.try_read().unwrap();
             assert!(results.len() == 1);
-            let mut result = results[0].try_write().unwrap();
-            result.rename("%c3_i64");
+            results[0].rename("%c3_i64");
         }
 
         RewriteResult::Changed(ChangedOp::new(new_const))

@@ -361,15 +361,23 @@ impl Display for Operation {
 }
 
 pub trait GuardedOperation {
+    fn arguments(&self) -> Values;
     fn attributes(&self) -> Attributes;
     fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
     fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
+    fn region(&self) -> Option<Arc<RwLock<Region>>>;
+    fn results(&self) -> Values;
+    fn set_argument(&self, argument: Arc<RwLock<Value>>);
     fn set_name(&self, name: OperationName);
+    fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
 }
 
 impl GuardedOperation for Arc<RwLock<Operation>> {
+    fn arguments(&self) -> Values {
+        self.try_read().unwrap().arguments()
+    }
     fn attributes(&self) -> Attributes {
         self.try_read().unwrap().attributes()
     }
@@ -386,7 +394,19 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
         let operation = self.try_read().unwrap();
         operation.parent()
     }
+    fn region(&self) -> Option<Arc<RwLock<Region>>> {
+        self.try_read().unwrap().region()
+    }
+    fn results(&self) -> Values {
+        self.try_read().unwrap().results()
+    }
+    fn set_argument(&self, argument: Arc<RwLock<Value>>) {
+        self.try_write().unwrap().set_argument(argument);
+    }
     fn set_name(&self, name: OperationName) {
         self.try_write().unwrap().set_name(name);
+    }
+    fn set_region(&self, region: Option<Arc<RwLock<Region>>>) {
+        self.try_write().unwrap().set_region(region);
     }
 }

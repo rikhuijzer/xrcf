@@ -242,11 +242,33 @@ impl Display for Block {
     }
 }
 
+pub struct BlockWithoutParent {
+    block: Arc<RwLock<Block>>,
+}
+
+impl BlockWithoutParent {
+    pub fn new(block: Arc<RwLock<Block>>) -> Self {
+        Self { block }
+    }
+    pub fn block(&self) -> Arc<RwLock<Block>> {
+        self.block.clone()
+    }
+    pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
+        let mut block = self.block.try_write().unwrap();
+        block.set_parent(parent);
+        self.block.clone()
+    }
+}
+
 pub trait GuardedBlock {
+    fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn unique_value_name(&self) -> String;
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
+        self.try_write().unwrap().set_ops(ops);
+    }
     fn unique_value_name(&self) -> String {
         self.try_read().unwrap().unique_value_name()
     }
