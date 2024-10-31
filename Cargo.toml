@@ -3,4 +3,5 @@ resolver = "2"
 members = [
     "pythonc",
     "xrcf",
+    "xrcf-bin",
 ]
