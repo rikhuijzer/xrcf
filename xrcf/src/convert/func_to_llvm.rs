@@ -8,6 +8,7 @@ use crate::dialect::func;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use anyhow::Result;
 use std::sync::Arc;
@@ -25,12 +26,11 @@ impl Rewrite for FuncLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+        let operation = op.operation();
         {
-            let operation = op.operation();
-            let mut operation = operation.try_write().unwrap();
             let name = operation.name();
             assert!(name == func::FuncOp::operation_name());
-            operation.set_name(llvm::FuncOp::operation_name());
+            operation.set_name(name);
 
             let parent = operation.parent();
             assert!(
@@ -39,7 +39,7 @@ impl Rewrite for FuncLowering {
             );
         }
 
-        let mut new_op = llvm::FuncOp::from_operation_arc(op.operation().clone());
+        let mut new_op = llvm::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
         new_op.set_sym_visibility(op.sym_visibility().clone());
         let new_op = Arc::new(RwLock::new(new_op));

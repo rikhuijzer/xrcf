@@ -10,6 +10,10 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir;
 use crate::ir::BlockArgument;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOpOperand;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -25,14 +29,14 @@ use std::sync::RwLock;
 
 fn remove_operand_to_constant(new_op: &dyn OneConst) {
     let operation = new_op.operation();
-    let operation = operation.try_read().unwrap();
     let operands = operation.operands();
     let operands = operands.vec();
     let mut operands = operands.try_write().unwrap();
     operands.remove(0);
 }
 
-fn set_constant_value(new_op: &mut dyn OneConst, value: &Value) {
+fn set_constant_value(new_op: &mut dyn OneConst, value: Arc<RwLock<Value>>) {
+    let value = value.try_read().unwrap();
     match &*value {
         Value::BlockArgument(_) => todo!(),
         Value::FuncResult(_) => todo!(),
@@ -57,14 +61,11 @@ struct AddLowering;
 /// This is used to find a value that can be unlinked during the lowering process.
 fn find_constant_operand(op: &dyn Op) -> Option<Arc<RwLock<Value>>> {
     let operation = op.operation();
-    let operation = operation.try_read().unwrap();
     let operands = operation.operands().vec();
     let operands = operands.try_read().unwrap();
     for operand in operands.iter() {
-        let operand = operand.try_read().unwrap();
         let op = operand.defining_op();
         if let Some(op) = op {
-            let op = op.try_read().unwrap();
             if op.is_const() {
                 let value = operand.value();
                 return Some(value.clone());
@@ -87,7 +88,7 @@ impl Rewrite for AddLowering {
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
         let value = find_constant_operand(op).unwrap();
-        set_constant_value(&mut new_op, &value.try_read().unwrap());
+        set_constant_value(&mut new_op, value);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -117,7 +118,7 @@ impl Rewrite for AllocaLowering {
         }
         new_op.set_element_type(op.element_type().unwrap());
         let value = find_constant_operand(op).unwrap();
-        set_constant_value(&mut new_op, &value.try_read().unwrap());
+        set_constant_value(&mut new_op, value);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -154,8 +155,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
         let arguments = arguments.try_read().unwrap();
         let mut new_arguments = vec![];
         for argument in arguments.iter() {
-            let argument_read = argument.try_read().unwrap();
-            let typ = argument_read.typ();
+            let typ = argument.typ();
             let typ = typ.try_read().unwrap();
             if typ.as_any().is::<dialect::llvm::PointerType>() {
                 let typ = targ3t::llvmir::PointerType::from_str("ptr");
@@ -209,7 +209,6 @@ impl Rewrite for ModuleLowering {
         Ok(op.as_any().is::<ir::ModuleOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
         let operation = op.operation().clone();
         let new_op = targ3t::llvmir::ModuleOp::from_operation_arc(operation);
         let new_op = Arc::new(RwLock::new(new_op));
@@ -236,7 +235,7 @@ impl Rewrite for ReturnLowering {
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
         let value = op.operand();
-        set_constant_value(&mut new_op, &value.try_read().unwrap());
+        set_constant_value(&mut new_op, value);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -261,10 +260,8 @@ impl Rewrite for StoreLowering {
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         let op_operand = op.value();
-        let op_operand = op_operand.try_read().unwrap();
         let value = op_operand.value();
-        let value = value.try_read().unwrap();
-        set_constant_value(&mut new_op, &value);
+        set_constant_value(&mut new_op, value.clone());
         let value_typ = value.typ();
         let value_typ = value_typ.try_read().unwrap();
         let value_typ = value_typ

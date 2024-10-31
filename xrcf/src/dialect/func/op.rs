@@ -1,5 +1,9 @@
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpWithoutParent;
@@ -154,13 +158,11 @@ pub trait Func: Op {
         let value = Value::BlockArgument(argument);
         let value = Arc::new(RwLock::new(value));
         let operation = self.operation();
-        let mut operation = operation.write().unwrap();
         operation.set_argument(value);
         Ok(())
     }
     fn sym_visibility(&self) -> Option<String> {
         let operation = self.operation();
-        let operation = operation.read().unwrap();
         let attributes = operation.attributes();
         let attribute = attributes.get("sym_visibility");
         match attribute {
@@ -189,17 +191,13 @@ pub trait Func: Op {
         Ok(arguments.clone())
     }
     fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let return_types = operation.results().types();
-        return_types.vec()
+        self.operation().results().types().vec()
     }
     fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let return_types = self.return_types();
         assert!(!return_types.is_empty(), "Expected result types to be set");
         assert!(return_types.len() == 1, "Expected single result type");
-        let typ = return_types[0].clone();
-        Ok(typ)
+        Ok(return_types[0].clone())
     }
 }
 
@@ -221,7 +219,6 @@ impl FuncOp {
         if ops.is_empty() {
             println!("empty");
             let operation = self.operation();
-            let mut operation = operation.try_write().unwrap();
             let region = operation.region();
             if region.is_some() {
                 panic!("Expected region to be empty");
@@ -229,15 +226,13 @@ impl FuncOp {
             let ops = vec![op.clone()];
             let ops = Arc::new(RwLock::new(ops));
             let mut region = Region::default();
-            let block = region.add_new_block();
+            let without_parent = region.add_new_block();
             let region = Arc::new(RwLock::new(region));
-            let mut block = block.try_write().unwrap();
+            let block = without_parent.set_parent(Some(region.clone()));
             block.set_ops(ops);
-            block.set_parent(Some(region.clone()));
             operation.set_region(Some(region));
         } else {
             let last = ops.last().unwrap();
-            let last = last.try_read().unwrap();
             last.insert_after(op.clone());
         }
         OpWithoutParent::new(op.clone())
@@ -279,11 +274,10 @@ impl FuncOp {
             write!(f, "{visibility} ")?;
         }
         write!(f, "{identifier}(")?;
-        let arguments = op.operation().try_read().unwrap().arguments();
+        let arguments = op.operation().arguments();
         write!(f, "{}", arguments)?;
         write!(f, ")")?;
         let operation = op.operation();
-        let operation = operation.try_read().unwrap();
         let result_types = operation.results().types();
         if !result_types.vec().is_empty() {
             write!(f, " -> {}", result_types)?;
@@ -292,9 +286,8 @@ impl FuncOp {
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        let region = op.operation().try_read().unwrap().region();
+        let region = op.operation().region();
         if let Some(region) = region {
-            let region = region.try_read().unwrap();
             region.display(f, indent)?;
         }
         Ok(())
@@ -336,7 +329,6 @@ impl Op for FuncOp {
     }
     fn assignments(&self) -> Result<Values> {
         let operation = self.operation();
-        let operation = operation.read().unwrap();
         let arguments = operation.arguments();
         Ok(arguments.clone())
     }
@@ -365,15 +357,14 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
-        expected_name: OperationName,
     ) -> Result<Arc<RwLock<F>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         parser.parse_operation_name_into::<F>(&mut operation)?;
+        let expected_name = F::operation_name();
         let visibility = FuncOp::try_parse_func_visibility(parser, &expected_name);
         let identifier = parser.expect(TokenKind::AtIdentifier)?;
         let identifier = identifier.lexeme.clone();
-        operation.set_name(expected_name.clone());
         operation.set_arguments(parser.parse_function_arguments()?);
         operation.set_anonymous_results(parser.result_types()?)?;
         let mut op = F::from_operation(operation);
@@ -383,13 +374,8 @@ impl<T: ParserDispatch> Parser<T> {
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.region(op.clone())?;
-            // let mut operation = op..write().unwrap();
-            // operation.set_region(Some(region.clone()));
             let op_rd = op.try_read().unwrap();
-            let mut operation = op_rd.operation().try_write().unwrap();
-            operation.set_region(Some(region.clone()));
-
-            let mut region = region.write().unwrap();
+            op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
         }
 
@@ -402,8 +388,7 @@ impl Parse for FuncOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let expected_name = FuncOp::operation_name();
-        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent, expected_name)?;
+        let op = Parser::<T>::parse_func::<FuncOp>(parser, parent)?;
         Ok(op)
     }
 }
@@ -420,7 +405,6 @@ impl ReturnOp {
         _indent: i32,
     ) -> std::fmt::Result {
         let operation = op.operation();
-        let operation = operation.read().unwrap();
         write!(f, "{name}")?;
         let operands = operation.operands().vec();
         let operands = operands.try_read().unwrap();
@@ -466,7 +450,7 @@ impl<T: ParserDispatch> Parser<T> {
         let has_operands = !self.check(TokenKind::RBrace);
         if has_operands {
             operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
-            let _colon = self.expect(TokenKind::Colon)?;
+            self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
             let return_type = IntegerType::from_str(&return_type.lexeme);
             let result_type = Arc::new(RwLock::new(return_type));

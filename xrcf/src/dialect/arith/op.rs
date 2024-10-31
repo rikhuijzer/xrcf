@@ -2,6 +2,9 @@ use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::GuardedOpOperand;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedValue;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpResult;
@@ -25,19 +28,13 @@ pub struct ConstantOp {
 
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let attributes = attributes.read().unwrap();
+        let attributes = self.operation.attributes();
         let value = attributes.get("value").unwrap();
         value.clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {
-        let operation = self.operation.read().unwrap();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let mut attributes = attributes.write().unwrap();
-        attributes.insert("value".to_string(), value);
+        let attributes = self.operation.attributes();
+        attributes.insert("value", value);
     }
 }
 
@@ -61,9 +58,8 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation.try_read().unwrap();
-        operation.display_results(f)?;
-        write!(f, "{}", operation.name())?;
+        self.operation.display_results(f)?;
+        write!(f, "{}", self.operation.name())?;
         let value = self.value();
         write!(f, " {value}")?;
         Ok(())
@@ -106,14 +102,12 @@ pub struct AddiOp {
 impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&self) -> RewriteResult {
-        let operation = self.operation.read().unwrap();
-        let operands = operation.operands();
+        let operands = self.operation.operands();
         let operands = operands.vec();
         let operands = operands.try_read().unwrap();
         assert!(operands.len() == 2);
 
         let lhs = operands.get(0).unwrap();
-        let lhs = lhs.read().unwrap();
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
@@ -127,7 +121,6 @@ impl AddiOp {
         };
 
         let rhs = operands.get(1).unwrap();
-        let rhs = rhs.read().unwrap();
         let rhs = match rhs.defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
@@ -146,9 +139,8 @@ impl AddiOp {
 
         let mut new_operation = Operation::default();
         new_operation.set_name(ConstantOp::operation_name());
-        new_operation.set_parent(rhs.operation().read().unwrap().parent());
-        let attributes = rhs.operation().read().unwrap().attributes();
-        let attributes = attributes.deep_clone();
+        new_operation.set_parent(rhs.operation().parent());
+        let attributes = rhs.operation().attributes().deep_clone();
         attributes.insert("value", Arc::new(new_value));
         new_operation.set_attributes(attributes);
 
@@ -177,8 +169,7 @@ impl AddiOp {
             let results = results.vec();
             let results = results.try_read().unwrap();
             assert!(results.len() == 1);
-            let mut result = results[0].try_write().unwrap();
-            result.rename("%c3_i64");
+            results[0].rename("%c3_i64");
         }
 
         RewriteResult::Changed(ChangedOp::new(new_const))

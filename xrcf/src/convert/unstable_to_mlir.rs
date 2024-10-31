@@ -12,6 +12,9 @@ use crate::dialect::llvm;
 use crate::dialect::llvm::PointerType;
 use crate::ir::APInt;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::IntegerAttr;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -65,7 +68,7 @@ impl PrintLowering {
         let name = parent.try_read().unwrap().unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
-        let array_size = len.try_read().unwrap().result(0);
+        let array_size = len.result(0);
         let array_size = OpOperand::new(array_size);
         operation.set_operand(Arc::new(RwLock::new(array_size)));
 
@@ -85,11 +88,11 @@ impl PrintLowering {
 
         let mut op = llvm::StoreOp::from_operation(operation);
 
-        let value = text.try_read().unwrap().result(0);
+        let value = text.result(0);
         let value = OpOperand::new(value);
         op.set_value(Arc::new(RwLock::new(value)));
 
-        let addr = alloca.try_read().unwrap().result(0);
+        let addr = alloca.result(0);
         let addr = OpOperand::new(addr);
         op.set_addr(Arc::new(RwLock::new(addr)));
         Arc::new(RwLock::new(op))
@@ -97,12 +100,12 @@ impl PrintLowering {
     fn call_op(parent: &Arc<RwLock<Block>>, alloca: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        let addr = alloca.try_read().unwrap().result(0);
+        let addr = alloca.result(0);
         let addr = OpOperand::new(addr);
         operation.set_operand(Arc::new(RwLock::new(addr)));
 
         let typ = IntegerType::from_str("i32");
-        let name = parent.try_read().unwrap().unique_value_name();
+        let name = parent.unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
 
@@ -115,7 +118,7 @@ impl PrintLowering {
     fn top_level_op(op: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
         let mut out = op.clone();
         for i in 0..1000 {
-            let parent_op = out.try_read().unwrap().parent_op();
+            let parent_op = out.parent_op();
             match parent_op {
                 Some(parent_op) => out = parent_op,
                 None => break,
@@ -128,7 +131,6 @@ impl PrintLowering {
     }
     /// Whether the parent operation of `op` contains a `printf` function.
     fn contains_printf(top_level_op: Arc<RwLock<dyn Op>>) -> bool {
-        let top_level_op = top_level_op.try_read().unwrap();
         let ops = top_level_op.ops();
         for op in ops {
             let op = op.try_read().unwrap();
@@ -163,10 +165,8 @@ impl PrintLowering {
     fn define_printf(op: Arc<RwLock<dyn Op>>) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
         if !Self::contains_printf(top_level_op.clone()) {
-            let op = top_level_op.try_read().unwrap();
-            let ops = op.ops();
+            let ops = top_level_op.ops();
             let op = ops[0].clone();
-            let op = op.try_read().unwrap();
             op.insert_before(Self::printf_func_def()?);
         }
         Ok(())
@@ -182,25 +182,25 @@ impl Rewrite for PrintLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op_clone = op.clone();
-        let op_read = op_clone.try_read().unwrap();
-        let op_read = op_read
+        let op_rd = op_clone.try_read().unwrap();
+        let op_rd = op_rd
             .as_any()
             .downcast_ref::<dialect::unstable::PrintfOp>()
             .unwrap();
-        let parent = op_read.operation().try_read().unwrap().parent();
+        let parent = op_rd.operation().parent();
         let parent = parent.expect("no parent");
-        let (text, len) = PrintLowering::text_constant(&parent, op_read);
-        op_read.insert_before(text.clone());
+        let (text, len) = PrintLowering::text_constant(&parent, op_rd);
+        op_rd.insert_before(text.clone());
         let len = PrintLowering::len_specifier(&parent, len);
-        op_read.insert_before(len.clone());
+        op_rd.insert_before(len.clone());
         let alloca = PrintLowering::alloca_op(&parent, len);
-        op_read.insert_before(alloca.clone());
+        op_rd.insert_before(alloca.clone());
         let store = PrintLowering::store_op(&parent, text.clone(), alloca.clone());
-        op_read.insert_before(store);
+        op_rd.insert_before(store);
         PrintLowering::define_printf(op)?;
         let call = PrintLowering::call_op(&parent, alloca);
-        op_read.insert_before(call.clone());
-        op_read.remove();
+        op_rd.insert_before(call.clone());
+        op_rd.remove();
 
         Ok(RewriteResult::Changed(ChangedOp::new(text)))
     }

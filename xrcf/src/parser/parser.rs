@@ -4,6 +4,10 @@ use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
 use crate::dialect::unstable;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
@@ -204,12 +208,10 @@ impl<T: ParserDispatch> Parser<T> {
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        let ops = block.read().unwrap().ops();
-        let ops = ops.read().unwrap();
+        let ops = block.ops();
+        let ops = ops.try_read().unwrap();
         for op in ops.iter() {
-            let op = op.read().unwrap();
-            let mut operation = op.operation().write().unwrap();
-            operation.set_parent(Some(block.clone()));
+            op.operation().set_parent(Some(block.clone()));
         }
         Ok(block)
     }
@@ -229,7 +231,7 @@ impl<T: ParserDispatch> Parser<T> {
         let _lbrace = self.expect(TokenKind::LBrace)?;
         let block = self.block(Some(region.clone()))?;
         let blocks = vec![block];
-        region.write().unwrap().set_blocks(blocks);
+        region.set_blocks(blocks);
         self.advance();
         Ok(region)
     }
@@ -247,8 +249,6 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn empty_type(&self) -> bool {
         let lparen = self.check(TokenKind::LParen);
-        println!("lparen: {}", lparen);
-        println!("peek: {:?}", self.peek_n(1));
         let rparen = {
             let peek = self.peek_n(1);
             peek.is_some() && peek.unwrap().kind == TokenKind::RParen
@@ -257,8 +257,8 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn parse_empty_type(&mut self) -> Result<()> {
         if self.empty_type() {
-            self.advance();
-            self.advance();
+            self.expect(TokenKind::LParen)?;
+            self.expect(TokenKind::RParen)?;
             Ok(())
         } else {
             let msg = self.error(self.peek(), "Expected empty type");
@@ -296,9 +296,7 @@ impl<T: ParserDispatch> Parser<T> {
             {
                 let ops = ops.read().unwrap();
                 for child_op in ops.iter() {
-                    let child_op = child_op.try_read().unwrap();
-                    let mut child_operation = child_op.operation().try_write().unwrap();
-                    child_operation.set_parent(Some(block.clone()));
+                    child_op.operation().set_parent(Some(block.clone()));
                 }
             }
             module_region
@@ -311,10 +309,7 @@ impl<T: ParserDispatch> Parser<T> {
             module_operation.set_region(Some(module_region.clone()));
             let module_op = ModuleOp::from_operation(module_operation);
             let module_op = Arc::new(RwLock::new(module_op));
-            module_region
-                .write()
-                .unwrap()
-                .set_parent(Some(module_op.clone()));
+            module_region.set_parent(Some(module_op.clone()));
             module_op
         };
         Ok(op)

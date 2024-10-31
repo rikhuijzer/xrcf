@@ -304,6 +304,22 @@ impl Display for Value {
     }
 }
 
+pub trait GuardedValue {
+    fn rename(&self, new_name: &str);
+    fn typ(&self) -> Arc<RwLock<dyn Type>>;
+}
+
+impl GuardedValue for Arc<RwLock<Value>> {
+    fn rename(&self, new_name: &str) {
+        let mut value = self.try_write().unwrap();
+        value.rename(new_name);
+    }
+    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        let value = self.try_read().unwrap();
+        value.typ()
+    }
+}
+
 /// Vector of values.
 ///
 /// Used to store operation results and function arguments. This naming is

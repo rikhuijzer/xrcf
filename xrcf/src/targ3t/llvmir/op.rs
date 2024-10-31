@@ -2,6 +2,10 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
+use crate::ir::GuardedBlock;
+use crate::ir::GuardedOpOperand;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -59,8 +63,7 @@ impl Op for AddOp {
         let operands = operands.vec();
         let operands = operands.try_read().unwrap();
         let operand = operands.get(0).unwrap();
-        let operand = operand.try_read().unwrap();
-        write!(f, " {operand}, ")?;
+        write!(f, " {}, ", operand.try_read().unwrap())?;
         let const_value = self.const_value();
         write!(f, "{const_value}")?;
         write!(f, "\n")
@@ -115,8 +118,7 @@ impl Op for AllocaOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().try_read().unwrap();
-        write!(f, "{} = ", operation.results())?;
+        write!(f, "{} = ", self.operation().results())?;
         write!(f, "{} ", AllocaOp::operation_name())?;
         write!(f, "{}", self.element_type.as_ref().unwrap())?;
         let array_size = self.array_size();
@@ -199,9 +201,7 @@ pub struct FuncOp {
 
 impl FuncOp {
     fn has_implementation(&self) -> bool {
-        let operation = self.operation().try_read().unwrap();
-        let region = operation.region();
-        region.is_some()
+        self.operation().region().is_some()
     }
 }
 
@@ -306,12 +306,9 @@ impl Op for ModuleOp {
         write!(f, "; ModuleID = '{}'\n", self.module_id)?;
         write!(f, r#"source_filename = "{}""#, self.source_filename)?;
         write!(f, "\n\n")?;
-        let operation = self.operation().try_read().unwrap();
-        let region = operation.region();
+        let region = self.operation().region();
         if let Some(region) = region {
-            let region = region.try_read().unwrap();
             for block in region.blocks() {
-                let block = block.try_read().unwrap();
                 block.display(f, indent)?;
             }
         }
@@ -364,9 +361,7 @@ impl Op for ReturnOp {
             write!(f, "ret {typ} {const_value}")
         } else {
             // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-            let operation = self.operation().try_read().unwrap();
-            let operand = operation.operand(0).unwrap();
-            let operand = operand.try_read().unwrap();
+            let operand = self.operation().operand(0).unwrap();
             let value = operand.value();
             let value = value.try_read().unwrap();
             let typ = value.typ();
