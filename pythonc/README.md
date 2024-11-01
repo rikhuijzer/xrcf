@@ -4,13 +4,22 @@ This directory contains an example Python compiler that can compile a small subs
 Please do not expect this to be a fully featured Python compiler.
 It is a proof of concept that shows how to build your own compiler using the `xrcf` crate.
 
-To run the compiler, we can step inside this directory and run the following:
+To run the compiler, we install the `pythonc` binary via
 
 ```sh
-$ cargo run -- --help
+$ cargo install --path pythonc
 ```
 
-Which prints:
+This places the `pythonc` binary in `$HOME/.cargo/bin`.
+(It can be uninstalled later with `cargo uninstall pythonc`.)
+
+Next, let's see whether the installation was successful:
+
+```sh
+$ pythonc --help
+```
+
+This should print:
 
 ```text
 An example Python compiler that can compile a small subset of Python
@@ -31,6 +40,7 @@ Options:
 ```
 
 If this succeeds, then that shows that the compiler is correctly built.
+You can also decide to use 
 
 To compile Python, let's create a file called `tmp.py` with the following content:
 
@@ -44,7 +54,7 @@ hello()
 Before we run this, let's see what the compiler does with the `--convert-python-to-mlir` pass:
 
 ```sh
-$ cargo run -- --convert-python-to-mlir tmp.py
+$ pythonc --convert-python-to-mlir tmp.py
 ```
 
 This prints:
@@ -70,7 +80,7 @@ This is similar to Python, which by default also will return a 0 status code.
 To convert our code to LLVM IR, let's run all the required passes in order:
 
 ```sh
-$ cargo run -- --convert-python-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.py
+$ pythonc --convert-python-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.py
 ```
 
 This prints:
@@ -96,7 +106,7 @@ define i32 @main() {
 Remembering these passes and in the order in which to run them is cumbersome, so let's use the `--compile` flag, which is a wrapper around the above command:
 
 ```sh
-$ cargo run -- --compile tmp.py
+$ pythonc --compile tmp.py
 ```
 
 It returns the same LLVM IR as above.
@@ -109,7 +119,7 @@ For example, on MacOS, `brew install llvm`.
 So let's run our compiled code:
 
 ```sh
-$ cargo run -- --compile tmp.py | lli
+$ pythonc --compile tmp.py | lli
 ```
 
 This should print:
