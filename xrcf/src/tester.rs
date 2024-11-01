@@ -149,6 +149,9 @@ impl Tester {
     /// more flexibility due to Rust's testing framework and thus XRCF aims to
     /// run verification only during testing. If something is wrong in
     /// production code, it means that test coverage was insufficient.
+    /// 
+    /// Essentially, this verification aims to catch problems that are not
+    /// visible in the textual representation.
     pub fn verify(op: Arc<RwLock<dyn Op>>) {
         Self::verify_core(op.clone());
         let ops = op.ops();
