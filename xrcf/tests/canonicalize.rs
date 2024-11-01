@@ -24,6 +24,7 @@ fn determine_users() {
     "};
 
     let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
+    Tester::verify(module.clone());
     let module = module.try_read().unwrap();
 
     let ops = module.ops();
@@ -67,6 +68,7 @@ fn canonicalize_addi() {
     "};
     Tester::init_tracing();
     let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module.clone());
     let module = module.try_read().unwrap();
     Tester::check_lines_exact(&actual, expected, Location::caller());
     assert!(module.as_any().is::<ir::ModuleOp>());

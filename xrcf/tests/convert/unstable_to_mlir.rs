@@ -36,6 +36,7 @@ fn test_constant() {
     Tester::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module.clone());
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<ModuleOp>());
     Tester::check_lines_contain(&actual, expected, caller);
@@ -53,7 +54,8 @@ fn test_two_constants() {
     }
     "#};
     Tester::init_tracing();
-    let (_module, actual) = Tester::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
     assert_eq!(actual.matches("func.func private @printf").count(), 1);
 }
 

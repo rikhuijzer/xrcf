@@ -46,6 +46,7 @@ fn parse_addi() {
     "};
     let caller = Location::caller();
     let (module, actual) = Tester::parse(src);
+    Tester::verify(module.clone());
 
     let module = module.try_read().unwrap();
     let module_operation = module.operation().try_read().unwrap();

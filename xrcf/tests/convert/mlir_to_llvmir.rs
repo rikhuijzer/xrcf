@@ -35,6 +35,7 @@ fn test_constant() {
     "#};
     let caller = Location::caller();
     let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module.clone());
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
     Tester::check_lines_contain(&actual, expected, caller);
@@ -58,7 +59,8 @@ fn test_add_one() {
     "#};
     let (_module, actual) = Tester::parse(src);
     Tester::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Tester::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
 }
 
@@ -100,6 +102,7 @@ fn test_hello_world() {
     "#};
     let (_module, actual) = Tester::parse(src);
     Tester::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Tester::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
 }

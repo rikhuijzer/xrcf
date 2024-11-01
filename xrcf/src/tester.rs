@@ -137,21 +137,23 @@ impl Tester {
         if !op.name().to_string().contains("module") {
             assert!(
                 op.operation().parent().is_some(),
-                "op without parent: {}",
+                "op without parent:\n{}",
                 op.try_read().unwrap()
             );
         }
     }
-    /// Run some basic verification on the IR (usually on a module).
+    /// Run some extra verification on the IR (usually on a module).
     ///
-    /// This method can be used to run some extra verifications on generated IR.
-    /// MLIR runs these verifications inside the production code, but XRCF has
-    /// more flexibility due to Rust's testing framework and thus XRCF aims to
-    /// run verification only during testing. If something is wrong in
-    /// production code, it means that test coverage was insufficient.
-    /// 
+    /// This method can be used to run some extra verification on generated IR.
+    /// MLIR runs verification inside the production code, but XRCF has more
+    /// flexibility due to Rust's testing framework and thus XRCF aims to run
+    /// verification only during testing. If something is wrong in production
+    /// code, it means that test coverage was insufficient.
+    ///
     /// Essentially, this verification aims to catch problems that are not
-    /// visible in the textual representation.
+    /// visible in the textual representation. For example, whether an op is
+    /// added to it's parent is visible or the op wouldn't be printed, but
+    /// whether the op has also a pointer to the parent is not visible.
     pub fn verify(op: Arc<RwLock<dyn Op>>) {
         Self::verify_core(op.clone());
         let ops = op.ops();
