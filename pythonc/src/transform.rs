@@ -218,8 +218,9 @@ mod tests {
         "#}
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
-        let (_module, actual) = test_transform(src, passes);
+        let (module, actual) = test_transform(src, passes);
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
+        Tester::verify(module);
 
         // TODO: The problem is this combination of passes. If parsed separately, all is good.
 

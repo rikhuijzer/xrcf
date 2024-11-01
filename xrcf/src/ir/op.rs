@@ -231,6 +231,7 @@ pub trait GuardedOp {
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
     fn is_const(&self) -> bool;
+    fn name(&self) -> OperationName;
     fn operation(&self) -> Arc<RwLock<Operation>>;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
@@ -248,6 +249,9 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
     }
     fn is_const(&self) -> bool {
         self.try_read().unwrap().is_const()
+    }
+    fn name(&self) -> OperationName {
+        self.try_read().unwrap().name()
     }
     fn operation(&self) -> Arc<RwLock<Operation>> {
         self.try_read().unwrap().operation().clone()

@@ -1,5 +1,7 @@
 use crate::convert::RewriteResult;
 use crate::init_subscriber;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
@@ -130,5 +132,28 @@ impl Tester {
         let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
+    }
+    fn verify_core(op: Arc<RwLock<dyn Op>>) {
+        if !op.name().to_string().contains("module") {
+            assert!(
+                op.operation().parent().is_some(),
+                "op without parent: {}",
+                op.try_read().unwrap()
+            );
+        }
+    }
+    /// Run some basic verification on the IR (usually on a module).
+    ///
+    /// This method can be used to run some extra verifications on generated IR.
+    /// MLIR runs these verifications inside the production code, but XRCF has
+    /// more flexibility due to Rust's testing framework and thus XRCF aims to
+    /// run verification only during testing. If something is wrong in
+    /// production code, it means that test coverage was insufficient.
+    pub fn verify(op: Arc<RwLock<dyn Op>>) {
+        Self::verify_core(op.clone());
+        let ops = op.ops();
+        for op in ops {
+            Self::verify(op);
+        }
     }
 }
