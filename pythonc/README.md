@@ -75,19 +75,32 @@ $ cargo run -- --convert-python-to-mlir --convert-unstable-to-mlir --convert-fun
 This prints:
 
 ```llvm
-foo
+; ModuleID = 'LLVMDialectModule'
+source_filename = "LLVMDialectModule"
+
+declare i32 @printf(ptr)
+
+define i32 @main() {
+    %2 = alloca i8, i64 14, align 1
+    store [14 x i8] c"hello, world\0A\00", ptr %2, align 1
+    %3 = call i32 @printf(ptr %2)
+    ret i32 0
+}
+
+!llvm.module.flags = !{!0}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
 ```
 
-Remembering these passes and in which order is cumbersome, so let's use the `--compile` flag.
-This is just a wrapper around the above command:
+Remembering these passes and in the order in which to run them is cumbersome, so let's use the `--compile` flag, which is a wrapper around the above command:
 
 ```sh
 $ cargo run -- --compile tmp.py
 ```
 
-So it returns the same as the above command.
+It returns the same as the above command.
 
-To run this, we can use the `lli` command.
+To run our compiled code, we can use the `lli` command.
 `lli` executes programs written in the LLVM bitcode format.
 This executable is part of the LLVM project, so it can usually be installed via the package manager.
 For example, on MacOS, `brew install llvm`.
