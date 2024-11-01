@@ -8,6 +8,8 @@ use clap::Command;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
 use xrcf::Passes;
+use clap::ArgMatches;
+use std::env::ArgsOs;
 
 use crate::transform::parse_and_transform;
 
@@ -32,12 +34,7 @@ fn cli() -> Command {
     cli
 }
 
-fn main() {
-    let cli = cli();
-    let args = std::env::args_os();
-    let mut passes = Passes::from_convert_args(args);
-    let matches = cli.get_matches();
-
+fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
         let args = vec![
             "--convert-python-to-mlir",
@@ -45,8 +42,17 @@ fn main() {
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];
-        passes = Passes::from_convert_vec(args);
+        Passes::from_convert_vec(args)
+    } else {
+        Passes::from_convert_args(args)
     }
+}
+
+fn main() {
+    let cli = cli();
+    let args = std::env::args_os();
+    let matches = cli.get_matches();
+    let passes = passes_from_args(args, matches.clone());
 
     let input = matches.get_one::<String>("input").unwrap();
 

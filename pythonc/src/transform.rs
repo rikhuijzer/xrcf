@@ -229,6 +229,7 @@ mod tests {
         ];
         let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
+        assert!(actual.contains("define i32 @main()"));
         assert!(actual.contains("call void @hello()"));
     }
 }
