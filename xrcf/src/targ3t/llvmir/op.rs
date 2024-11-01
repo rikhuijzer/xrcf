@@ -65,6 +65,7 @@ impl Op for AddOp {
         let operand = operands.get(0).unwrap();
         write!(f, " {}, ", operand.try_read().unwrap())?;
         let const_value = self.const_value();
+        let const_value = const_value.value();
         write!(f, "{const_value}")?;
         write!(f, "\n")
     }
@@ -177,9 +178,12 @@ impl Op for CallOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().try_read().unwrap();
-        write!(f, "{} = ", operation.results())?;
-        let return_types = operation.results().types();
-        let return_type = if return_types.vec().len() == 1 {
+        let results = operation.results();
+        let n_results = results.vec().try_read().unwrap().len();
+        if 0 < n_results {
+            write!(f, "{} = ", results)?;
+        }
+        let return_type = if n_results == 1 {
             let return_type = operation.result_type(0);
             let return_type = return_type.unwrap();
             let return_type = return_type.try_read().unwrap().to_string();
