@@ -56,7 +56,8 @@ impl FuncLowering {
         if last.as_any().is::<func::ReturnOp>() {
             return;
         }
-        let operation = Operation::default();
+        let mut operation = Operation::default();
+        operation.set_parent(last.operation().parent().clone());
         let ret = func::ReturnOp::from_operation(operation);
         let ret = Arc::new(RwLock::new(ret));
         last.insert_after(ret);

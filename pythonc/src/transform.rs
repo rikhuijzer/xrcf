@@ -222,21 +222,8 @@ mod tests {
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
-        // TODO: The problem is this combination of passes. If parsed separately, all is good.
-
         let passes = vec!["--convert-python-to-mlir", "--convert-unstable-to-mlir"];
         let (module, _actual) = test_transform(src, passes);
-
-        let ops = module.ops();
-        println!("ops[1]: {}", ops[1].operation().try_read().unwrap());
-        assert_eq!(ops.len(), 3);
-        for (i, op) in ops.iter().enumerate() {
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            assert!(
-                operation.parent().is_some(),
-                "op {i}: {operation} has no parent"
-            );
-        }
+        Tester::verify(module);
     }
 }
