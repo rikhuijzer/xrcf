@@ -1,9 +1,10 @@
 # pythonc
 
 This directory contains an example Python compiler that can compile a small subset of Python code to LLVM IR, and can be executed via `lli`.
+Please do not expect this to be a fully featured Python compiler.
+It is a proof of concept that shows how to build your own compiler using the `xrcf` crate.
 
-To build the compiler, we use `cargo run`.
-To do so, we can step inside this directory and run the following:
+To run the compiler, we can step inside this directory and run the following:
 
 ```sh
 $ cargo run -- --help
