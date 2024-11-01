@@ -98,7 +98,7 @@ Remembering these passes and in the order in which to run them is cumbersome, so
 $ cargo run -- --compile tmp.py
 ```
 
-It returns the same as the above command.
+It returns the same LLVM IR as above.
 
 To run our compiled code, we can use the `lli` command.
 `lli` executes programs written in the LLVM bitcode format.
@@ -116,3 +116,12 @@ This should print:
 ```text
 Hello, World!
 ```
+
+To learn how to build your own compiler like this, see the files inside this `pythonc` directory.
+It is split into three parts:
+
+1. `src/main.rs` contains the command line interface of the compiler.
+1. `src/python.rs` specifies how to parse the Python code (convert the text to data structures).
+1. `src/python_to_mlir.rs` contains the `--convert-python-to-mlir` pass, which converts the Python code to MLIR.
+
+All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
