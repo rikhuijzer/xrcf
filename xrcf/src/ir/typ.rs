@@ -154,7 +154,7 @@ impl Display for APInt {
     }
 }
 
-/// A collection of `Type`s; typically from [Value]s.
+/// A collection of `Type`s.
 ///
 /// Provides some convenience methods around [Type]s.
 #[derive(Clone)]

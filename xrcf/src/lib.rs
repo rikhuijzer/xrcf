@@ -1,5 +1,8 @@
 //! XRCF is a set of tools to build your own compiler.
 //!
+//! To see the code in action, see the example Python compiler in the
+//! [`pythonc` directory](https://github.com/rikhuijzer/xrcf/tree/main/pythonc).
+//! 
 //! This project is very similar to MLIR.
 //! For people unfamiliar with MLIR, here is a high-level overview:
 //!
@@ -24,7 +27,7 @@
 //! And to compile to GPU, you would use the passes `--convert-func-to-gpu`.
 //!
 //! This project gives you these building blocks.
-//! //! It already includes some default IR and default passes, but you can also add your own.
+//! It already includes some default IR and default passes, but you can also add your own.
 //! This means that if you want to write your own compiler for your language, you only have to convert your code into the default IR that is inside this project, and then you can choose which passes you want to use in which situation.
 //!
 //! Note that this is different than LLVM.
