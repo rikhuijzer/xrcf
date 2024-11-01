@@ -1,23 +1,22 @@
-#![allow(dead_code)]
-extern crate xrcf;
-
+use crate::convert::RewriteResult;
+use crate::init_subscriber;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
+use crate::ir::Op;
+use crate::parser::DefaultParserDispatch;
+use crate::parser::Parser;
+use crate::transform;
+use crate::DefaultTransformDispatch;
+use crate::Passes;
 use std::cmp::max;
 use std::panic::Location;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::info;
-use xrcf::convert::RewriteResult;
-use xrcf::init_subscriber;
-use xrcf::ir::Op;
-use xrcf::parser::DefaultParserDispatch;
-use xrcf::parser::Parser;
-use xrcf::transform;
-use xrcf::DefaultTransformDispatch;
-use xrcf::Passes;
 
-pub struct Test;
+pub struct Tester;
 
-impl Test {
+impl Tester {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.
@@ -88,7 +87,7 @@ impl Test {
             let start = actual_index;
             for j in start..actual.lines().count() {
                 let actual_line = actual.lines().nth(j).unwrap();
-                if actual_line.contains(expected_line) {
+                if actual_line.trim() == expected_line.trim() {
                     actual_index = j + 1;
                     continue 'outer;
                 }
@@ -133,5 +132,33 @@ impl Test {
         let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
+    }
+    fn verify_core(op: Arc<RwLock<dyn Op>>) {
+        if !op.name().to_string().contains("module") {
+            assert!(
+                op.operation().parent().is_some(),
+                "op without parent:\n{}",
+                op.try_read().unwrap()
+            );
+        }
+    }
+    /// Run some extra verification on the IR (usually on a module).
+    ///
+    /// This method can be used to run some extra verification on generated IR.
+    /// MLIR runs verification inside the production code, but XRCF has more
+    /// flexibility due to Rust's testing framework and thus XRCF aims to run
+    /// verification only during testing. If something is wrong in production
+    /// code, it means that test coverage was insufficient.
+    ///
+    /// Essentially, this verification aims to catch problems that are not
+    /// visible in the textual representation. For example, whether an op is
+    /// added to it's parent is visible or the op wouldn't be printed, but
+    /// whether the op has also a pointer to the parent is not visible.
+    pub fn verify(op: Arc<RwLock<dyn Op>>) {
+        Self::verify_core(op.clone());
+        let ops = op.ops();
+        for op in ops {
+            Self::verify(op);
+        }
     }
 }

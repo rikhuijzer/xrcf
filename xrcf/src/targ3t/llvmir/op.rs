@@ -65,6 +65,7 @@ impl Op for AddOp {
         let operand = operands.get(0).unwrap();
         write!(f, " {}, ", operand.try_read().unwrap())?;
         let const_value = self.const_value();
+        let const_value = const_value.value();
         write!(f, "{const_value}")?;
         write!(f, "\n")
     }
@@ -93,7 +94,7 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
+        self.const_value.clone().expect("array size not set")
     }
     pub fn set_element_type(&mut self, element_type: String) {
         self.element_type = Some(element_type);
@@ -177,12 +178,24 @@ impl Op for CallOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().try_read().unwrap();
-        write!(f, "{} = ", operation.results())?;
-        let return_type = operation.result_type(0);
-        let return_type = return_type.unwrap();
-        let return_type = return_type.try_read().unwrap();
+        let results = operation.results();
+        let n_results = results.vec().try_read().unwrap().len();
+        if 0 < n_results {
+            write!(f, "{} = ", results)?;
+        }
+        let return_type = if n_results == 1 {
+            let return_type = operation.result_type(0);
+            let return_type = return_type.unwrap();
+            let return_type = return_type.try_read().unwrap().to_string();
+            return_type
+        } else {
+            "void".to_string()
+        };
         write!(f, "call {return_type} {}(", self.identifier().unwrap())?;
-        write!(f, "{} ", operation.operand_types())?;
+        let operand_types = operation.operand_types();
+        if !operand_types.vec().is_empty() {
+            write!(f, "{} ", operand_types)?;
+        }
         write!(f, "{})", operation.operands())?;
         Ok(())
     }
@@ -225,8 +238,14 @@ impl Op for FuncOp {
         true
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let return_type = self.return_type().unwrap();
-        let return_type = return_type.try_read().unwrap();
+        let return_types = self.return_types();
+        let return_type = if return_types.len() == 1 {
+            let return_type = return_types[0].clone();
+            let return_type = return_type.try_read().unwrap();
+            return_type.to_string()
+        } else {
+            "void".to_string()
+        };
         let fn_keyword = if self.has_implementation() {
             "define"
         } else {
@@ -358,15 +377,21 @@ impl Op for ReturnOp {
         if let Some(const_value) = &self.const_value {
             let const_value = const_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
             let typ = const_value.typ();
-            write!(f, "ret {typ} {const_value}")
-        } else {
-            // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-            let operand = self.operation().operand(0).unwrap();
-            let value = operand.value();
-            let value = value.try_read().unwrap();
-            let typ = value.typ();
-            let typ = typ.try_read().unwrap();
+            let value = const_value.value();
             write!(f, "ret {typ} {value}")
+        } else {
+            let operands = self.operation().operands();
+            if operands.vec().try_read().unwrap().is_empty() {
+                write!(f, "ret void")
+            } else {
+                // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
+                let operand = self.operation().operand(0).unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                let typ = value.typ();
+                let typ = typ.try_read().unwrap();
+                write!(f, "ret {typ} {value}")
+            }
         }
     }
 }

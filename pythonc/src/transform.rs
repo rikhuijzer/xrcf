@@ -123,11 +123,13 @@ pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> 
 mod tests {
     use super::*;
     use indoc::indoc;
+    use std::panic::Location;
     use tracing;
-    use xrcf::init_subscriber;
+    use xrcf::tester::Tester;
 
     #[test]
     fn test_replace_indentation() {
+        Tester::init_tracing();
         let src = indoc! {r#"
         def main():
             print("Hello, World!")
@@ -156,41 +158,29 @@ mod tests {
         assert_eq!(result.trim(), expected.trim());
     }
 
-    /// Initialize the subscriber for the tests.
-    ///
-    /// Cannot pass options, since the tests run concurrently.
-    pub fn init_tracing() {
-        let level = tracing::Level::INFO;
-        match init_subscriber(level) {
-            Ok(_) => (),
-            Err(_e) => (),
-        }
-    }
-
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
-    fn test_transform(src: &str, passes: Vec<&str>) -> String {
+    fn test_transform(src: &str, passes: Vec<&str>) -> (Arc<RwLock<dyn Op>>, String) {
+        Tester::init_tracing();
         let src = src.trim();
-        init_tracing();
         let passes = Passes::from_vec(passes);
         print_heading("Before", src, &passes);
         let result = parse_and_transform(src, &passes).unwrap();
-        let result = match result {
-            RewriteResult::Changed(op) => {
-                let op = op.0.try_read().unwrap();
-                op.to_string()
-            }
+        let new_root_op = match result {
+            RewriteResult::Changed(changed_op) => changed_op.0,
             RewriteResult::Unchanged => {
-                panic!("Expected a changed result");
+                panic!("Expected changes");
             }
         };
-        print_heading("After", &result, &passes);
-        result
+        let actual = new_root_op.try_read().unwrap().to_string();
+        print_heading("After", &actual, &passes);
+        (new_root_op, actual)
     }
 
     #[test]
     fn test_default_dispatch() {
+        Tester::init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
@@ -198,19 +188,13 @@ mod tests {
         }
         "#};
         let passes = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
-        let result = test_transform(src, passes);
-        assert!(result.contains("define i32 @main"));
-    }
-
-    fn compare_lines(expected: &str, actual: &str) {
-        let lines = expected.lines().zip(actual.lines());
-        for (i, (expected_line, actual_line)) in lines.enumerate() {
-            assert_eq!(expected_line.trim(), actual_line.trim(), "Line {i} differs");
-        }
+        let (_module, actual) = test_transform(src, passes);
+        assert!(actual.contains("define i32 @main"));
     }
 
     #[test]
-    fn test_python_to_mlir() {
+    fn test_hello_world() {
+        Tester::init_tracing();
         let src = indoc! {r#"
         def hello():
             print("Hello, World!")
@@ -233,7 +217,18 @@ mod tests {
         "#}
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
-        let actual = test_transform(src, passes).trim().to_string();
-        compare_lines(expected, &actual);
+        let (module, actual) = test_transform(src, passes);
+        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
+        Tester::verify(module);
+
+        let passes = vec![
+            "--convert-python-to-mlir",
+            "--convert-unstable-to-mlir",
+            "--convert-func-to-llvm",
+            "--convert-mlir-to-llvmir",
+        ];
+        let (module, actual) = test_transform(src, passes);
+        Tester::verify(module);
+        assert!(actual.contains("call void @hello()"));
     }
 }

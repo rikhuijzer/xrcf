@@ -49,7 +49,8 @@ impl PrintLowering {
     }
     /// Return an [Op] which defines the length for the text `alloca`.
     fn len_specifier(parent: &Arc<RwLock<Block>>, len: usize) -> Arc<RwLock<dyn Op>> {
-        let operation = Operation::default();
+        let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
         let name = parent.try_read().unwrap().unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
@@ -144,8 +145,9 @@ impl PrintLowering {
         false
     }
     /// Return an [Op] which defines (declares) the `printf` function.
-    fn printf_func_def() -> Result<Arc<RwLock<dyn Op>>> {
+    fn printf_func_def(parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
+        operation.set_parent(Some(parent.clone()));
         let result_type = crate::ir::IntegerType::from_str("i32");
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_anonymous_result(result_type)?;
@@ -167,7 +169,8 @@ impl PrintLowering {
         if !Self::contains_printf(top_level_op.clone()) {
             let ops = top_level_op.ops();
             let op = ops[0].clone();
-            op.insert_before(Self::printf_func_def()?);
+            let parent = op.operation().parent().unwrap();
+            op.insert_before(Self::printf_func_def(parent)?);
         }
         Ok(())
     }

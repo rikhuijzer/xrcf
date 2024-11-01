@@ -56,7 +56,8 @@ impl FuncLowering {
         if last.as_any().is::<func::ReturnOp>() {
             return;
         }
-        let operation = Operation::default();
+        let mut operation = Operation::default();
+        operation.set_parent(last.operation().parent().clone());
         let ret = func::ReturnOp::from_operation(operation);
         let ret = Arc::new(RwLock::new(ret));
         last.insert_after(ret);
@@ -100,6 +101,7 @@ impl ModuleLowering {
     }
     fn constant_op(parent: &Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
         let mut constant = Operation::default();
+        constant.set_parent(Some(parent.clone()));
         constant.set_name(arith::ConstantOp::operation_name());
         let typ = IntegerType::new(32);
         let value = APInt::new(32, 0, true);
@@ -120,9 +122,9 @@ impl ModuleLowering {
         let typ = IntegerType::new(32);
         let result_type = Arc::new(RwLock::new(typ));
         let mut ret = Operation::default();
+        ret.set_parent(Some(parent.clone()));
         ret.set_name(func::ReturnOp::operation_name());
         ret.set_anonymous_result(result_type).unwrap();
-        ret.set_parent(Some(parent.clone()));
         let value = constant.result(0);
         let operand = OpOperand::new(value);
         ret.set_operand(Arc::new(RwLock::new(operand)));
@@ -194,7 +196,6 @@ impl Rewrite for ModuleLowering {
         }
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        println!("ModuleLowering");
         Self::ensure_main(op.clone())?;
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }

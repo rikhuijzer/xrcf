@@ -6,6 +6,7 @@ use clap::arg;
 use clap::Args;
 use clap::Command;
 use std::io::Read;
+use xrcf::convert::RewriteResult;
 use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
@@ -20,6 +21,9 @@ struct PythonArgs {
     /// Convert Python operations to MLIR
     #[arg(long, name = "convert-python-to-mlir")]
     convert_python_to_mlir: bool,
+    /// Compile the code
+    #[arg(long, name = "compile")]
+    compile: bool,
 }
 
 fn cli() -> Command {
@@ -31,8 +35,18 @@ fn cli() -> Command {
 fn main() {
     let cli = cli();
     let args = std::env::args_os();
-    let passes = Passes::from_convert_args(args);
+    let mut passes = Passes::from_convert_args(args);
     let matches = cli.get_matches();
+
+    if matches.get_flag("compile") {
+        let args = vec![
+            "--convert-python-to-mlir",
+            "--convert-unstable-to-mlir",
+            "--convert-func-to-llvm",
+            "--convert-mlir-to-llvmir",
+        ];
+        passes = Passes::from_convert_vec(args);
+    }
 
     let input = matches.get_one::<String>("input").unwrap();
 
@@ -44,7 +58,12 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    parse_and_transform(&input_text, &passes).unwrap();
+    let result = parse_and_transform(&input_text, &passes).unwrap();
+    let result = match result {
+        RewriteResult::Changed(op) => op.0.try_read().unwrap().to_string(),
+        RewriteResult::Unchanged => input_text.to_string(),
+    };
+    println!("{result}");
 }
 
 #[cfg(test)]

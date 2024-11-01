@@ -255,7 +255,7 @@ impl Value {
             let operation = op.operation();
             let operation = operation.try_read().unwrap();
             let parent = operation.parent();
-            parent.unwrap()
+            parent.expect(&format!("no parent for operation:\n{operation}"))
         };
         let block = parent.try_read().unwrap();
         let index = block.index_of(op.operation().clone());

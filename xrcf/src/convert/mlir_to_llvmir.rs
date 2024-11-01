@@ -234,8 +234,11 @@ impl Rewrite for ReturnLowering {
             .unwrap();
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
+        //
         let value = op.operand();
-        set_constant_value(&mut new_op, value);
+        if let Some(value) = value {
+            set_constant_value(&mut new_op, value.value().clone());
+        }
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

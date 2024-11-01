@@ -29,7 +29,8 @@ jobs:
 
       - run: cargo test --all-features
 
-      - run: |
+      - name: Test xrcf-bin output
+        run: |
           HELP_OUTPUT=$(cargo run --bin xrcf-bin -- --help)
           echo "$HELP_OUTPUT"
           if ! echo "$HELP_OUTPUT" | grep -q "Usage: xrcf-bin"; then
@@ -37,6 +38,12 @@ jobs:
             echo "Unexpected help output"
             exit 1
           fi
+
+      - name: Test xrcf docs build
+        run: |
+          cd xrcf/
+          # Deny warnings.
+          RUSTDOCFLAGS="-D warnings" cargo doc
 
   typos:
     runs-on: ubuntu-22.04
