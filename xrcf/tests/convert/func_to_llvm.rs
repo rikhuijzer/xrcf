@@ -43,7 +43,7 @@ fn test_add_one() {
     let expected = indoc! {"
     llvm.func @add_one(%arg0 : i32) -> i32 {
       %0 = llvm.mlir.constant(1 : i32) : i32
-      %1 = llvm.add
+      %1 = llvm.add %0, %arg0 : i32
       llvm.return %1 : i32
     }
     "};

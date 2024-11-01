@@ -178,11 +178,20 @@ impl Op for CallOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().try_read().unwrap();
         write!(f, "{} = ", operation.results())?;
-        let return_type = operation.result_type(0);
-        let return_type = return_type.unwrap();
-        let return_type = return_type.try_read().unwrap();
+        let return_types = operation.results().types();
+        let return_type = if return_types.vec().len() == 1 {
+            let return_type = operation.result_type(0);
+            let return_type = return_type.unwrap();
+            let return_type = return_type.try_read().unwrap().to_string();
+            return_type
+        } else {
+            "void".to_string()
+        };
         write!(f, "call {return_type} {}(", self.identifier().unwrap())?;
-        write!(f, "{} ", operation.operand_types())?;
+        let operand_types = operation.operand_types();
+        if !operand_types.vec().is_empty() {
+            write!(f, "{} ", operand_types)?;
+        }
         write!(f, "{})", operation.operands())?;
         Ok(())
     }
@@ -364,7 +373,8 @@ impl Op for ReturnOp {
         if let Some(const_value) = &self.const_value {
             let const_value = const_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
             let typ = const_value.typ();
-            write!(f, "ret {typ} {const_value}")
+            let value = const_value.value();
+            write!(f, "ret {typ} {value}")
         } else {
             let operands = self.operation().operands();
             if operands.vec().try_read().unwrap().is_empty() {

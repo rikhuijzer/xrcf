@@ -87,7 +87,7 @@ impl Tester {
             let start = actual_index;
             for j in start..actual.lines().count() {
                 let actual_line = actual.lines().nth(j).unwrap();
-                if actual_line.contains(expected_line) {
+                if actual_line.trim() == expected_line.trim() {
                     actual_index = j + 1;
                     continue 'outer;
                 }
