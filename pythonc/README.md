@@ -126,3 +126,12 @@ It is split into three parts:
 1. `src/python_to_mlir.rs` contains the `--convert-python-to-mlir` pass, which converts the Python code to MLIR.
 
 All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
+
+To get inspiration for your own compiler, the following projects are built on MLIR:
+
+- [jax](https://github.com/jax-ml/jax): A Python library for accelerator-oriented computing
+- [triton](https://github.com/triton-lang/triton): A Python library for high-performance computation on GPUs by OpenAI.
+- [torch-mlir](https://github.com/llvm/torch-mlir): Compiles PyTorch to MLIR.
+- [mlir-hlo](https://github.com/llvm/mlir-hlo): A set of transformations from TensorFlow HLO to MLIR.
+- [circt](https://github.com/llvm/circt): A compiler for hardware design.
+- [mojo](https://www.modular.com/mojo): A new programming language for AI by Modular.
