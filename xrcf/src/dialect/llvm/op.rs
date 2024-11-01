@@ -14,7 +14,6 @@ use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StringAttr;
-use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -457,8 +456,8 @@ pub struct ReturnOp {
 }
 
 impl ReturnOp {
-    pub fn operand(&self) -> Arc<RwLock<Value>> {
-        self.operation().operand(0).expect("no operand").value()
+    pub fn operand(&self) -> Option<Arc<RwLock<OpOperand>>> {
+        self.operation().operand(0)
     }
 }
 

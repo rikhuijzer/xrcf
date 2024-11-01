@@ -125,7 +125,6 @@ mod tests {
     use indoc::indoc;
     use std::panic::Location;
     use tracing;
-    use xrcf::ir::GuardedOp;
     use xrcf::tester::Tester;
 
     #[test]

@@ -225,8 +225,14 @@ impl Op for FuncOp {
         true
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let return_type = self.return_type().unwrap();
-        let return_type = return_type.try_read().unwrap();
+        let return_types = self.return_types();
+        let return_type = if return_types.len() == 1 {
+            let return_type = return_types[0].clone();
+            let return_type = return_type.try_read().unwrap();
+            return_type.to_string()
+        } else {
+            "void".to_string()
+        };
         let fn_keyword = if self.has_implementation() {
             "define"
         } else {
@@ -360,13 +366,18 @@ impl Op for ReturnOp {
             let typ = const_value.typ();
             write!(f, "ret {typ} {const_value}")
         } else {
-            // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-            let operand = self.operation().operand(0).unwrap();
-            let value = operand.value();
-            let value = value.try_read().unwrap();
-            let typ = value.typ();
-            let typ = typ.try_read().unwrap();
-            write!(f, "ret {typ} {value}")
+            let operands = self.operation().operands();
+            if operands.vec().try_read().unwrap().is_empty() {
+                write!(f, "ret void")
+            } else {
+                // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
+                let operand = self.operation().operand(0).unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                let typ = value.typ();
+                let typ = typ.try_read().unwrap();
+                write!(f, "ret {typ} {value}")
+            }
         }
     }
 }
