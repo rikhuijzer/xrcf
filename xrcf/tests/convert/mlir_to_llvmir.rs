@@ -33,12 +33,29 @@ fn test_constant() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    let caller = Location::caller();
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
-    Tester::check_lines_contain(&actual, expected, caller);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
+}
+
+#[test]
+fn test_empty_return() {
+    Tester::init_tracing();
+    let src = indoc! {"
+    llvm.func @main() {
+      llvm.return
+    }
+    "};
+    let expected = indoc! {"
+    define void @main() {
+      ret void
+    }
+    "};
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
 }
 
 #[test]

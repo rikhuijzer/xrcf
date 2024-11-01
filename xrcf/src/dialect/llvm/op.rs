@@ -458,7 +458,7 @@ pub struct ReturnOp {
 
 impl ReturnOp {
     pub fn operand(&self) -> Arc<RwLock<Value>> {
-        self.operation().operand(0).unwrap().value()
+        self.operation().operand(0).expect("no operand").value()
     }
 }
 

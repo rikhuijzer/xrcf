@@ -226,9 +226,9 @@ mod tests {
             "--convert-python-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
+            // "--convert-mlir-to-llvmir",
         ];
         let (module, _actual) = test_transform(src, passes);
         Tester::verify(module);
-        assert!(false);
     }
 }
