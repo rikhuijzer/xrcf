@@ -2,7 +2,7 @@
 //!
 //! To see the code in action, see the example Python compiler in the
 //! [`pythonc` directory](https://github.com/rikhuijzer/xrcf/tree/main/pythonc).
-//! 
+//!
 //! This project is very similar to MLIR.
 //! For people unfamiliar with MLIR, here is a high-level overview:
 //!
