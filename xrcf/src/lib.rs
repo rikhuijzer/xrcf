@@ -1,10 +1,11 @@
 //! XRCF is a set of tools to build your own compiler.
 //!
-//! To see the code in action, see the example Python compiler in the
+//! Below is a a high-level overview of xrcf.
+//! To instead see the code in action, see the example Python compiler in the
 //! [`pythonc` directory](https://github.com/rikhuijzer/xrcf/tree/main/pythonc).
 //!
-//! This project is very similar to MLIR.
-//! For people unfamiliar with MLIR, here is a high-level overview:
+//! This project is very similar to MLIR, namely it provides tools to build your own compiler.
+//! This works as follows:
 //!
 //! Say you want to write a compiler for a new programming language.
 //! The compiler should take the source code in your language and convert it to platform that can execute it such as a CPU or GPU.
