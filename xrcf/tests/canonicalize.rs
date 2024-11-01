@@ -1,7 +1,5 @@
 extern crate xrcf;
-mod tester;
 
-use crate::tester::Test;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::dialect::arith;
@@ -9,6 +7,7 @@ use xrcf::ir;
 use xrcf::ir::Op;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
+use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--canonicalize"]
@@ -66,9 +65,9 @@ fn canonicalize_addi() {
       }
     }
     "};
-    Test::init_tracing();
-    let (module, actual) = Test::transform(flags(), src);
+    Tester::init_tracing();
+    let (module, actual) = Tester::transform(flags(), src);
     let module = module.try_read().unwrap();
-    Test::check_lines_exact(&actual, expected, Location::caller());
+    Tester::check_lines_exact(&actual, expected, Location::caller());
     assert!(module.as_any().is::<ir::ModuleOp>());
 }

@@ -1,9 +1,9 @@
 extern crate xrcf;
 
-use crate::tester::Test;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::ir::ModuleOp;
+use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-unstable-to-mlir"]
@@ -33,12 +33,12 @@ fn test_constant() {
       return %0 : i32
     }
     "#};
-    Test::init_tracing();
+    Tester::init_tracing();
     let caller = Location::caller();
-    let (module, actual) = Test::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<ModuleOp>());
-    Test::check_lines_contain(&actual, expected, caller);
+    Tester::check_lines_contain(&actual, expected, caller);
 }
 
 #[test]
@@ -52,8 +52,8 @@ fn test_two_constants() {
       return %0 : i32
     }
     "#};
-    Test::init_tracing();
-    let (_module, actual) = Test::transform(flags(), src);
+    Tester::init_tracing();
+    let (_module, actual) = Tester::transform(flags(), src);
     assert_eq!(actual.matches("func.func private @printf").count(), 1);
 }
 
@@ -91,7 +91,7 @@ fn test_hello_world() {
       }
     }
     "#};
-    Test::init_tracing();
-    let (_module, actual) = Test::transform(flags(), src);
-    Test::check_lines_exact(&actual, expected, Location::caller());
+    Tester::init_tracing();
+    let (_module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_exact(&actual, expected, Location::caller());
 }

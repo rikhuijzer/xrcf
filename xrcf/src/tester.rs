@@ -1,23 +1,20 @@
-#![allow(dead_code)]
-extern crate xrcf;
-
+use crate::convert::RewriteResult;
+use crate::init_subscriber;
+use crate::ir::Op;
+use crate::parser::DefaultParserDispatch;
+use crate::parser::Parser;
+use crate::transform;
+use crate::DefaultTransformDispatch;
+use crate::Passes;
 use std::cmp::max;
 use std::panic::Location;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::info;
-use xrcf::convert::RewriteResult;
-use xrcf::init_subscriber;
-use xrcf::ir::Op;
-use xrcf::parser::DefaultParserDispatch;
-use xrcf::parser::Parser;
-use xrcf::transform;
-use xrcf::DefaultTransformDispatch;
-use xrcf::Passes;
 
-pub struct Test;
+pub struct Tester;
 
-impl Test {
+impl Tester {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.

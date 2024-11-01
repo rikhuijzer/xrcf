@@ -1,14 +1,14 @@
 extern crate xrcf;
-mod tester;
 
-use crate::tester::Test;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::dialect::func::FuncOp;
 use xrcf::ir::Op;
+use xrcf::tester::Tester;
 
 #[test]
 fn parse_module() {
+    Tester::init_tracing();
     let src = indoc! {"
     module {
       func.func @main() -> i64 {
@@ -17,13 +17,13 @@ fn parse_module() {
       }
     }
     "};
-    Test::init_tracing();
-    let (_module, actual) = Test::parse(src);
-    Test::check_lines_contain(&actual, &src, Location::caller());
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_contain(&actual, &src, Location::caller());
 }
 
 #[test]
 fn parse_addi() {
+    Tester::init_tracing();
     let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
       %0 = arith.constant 1 : i64
@@ -45,8 +45,7 @@ fn parse_addi() {
     }
     "};
     let caller = Location::caller();
-    Test::init_tracing();
-    let (module, actual) = Test::parse(src);
+    let (module, actual) = Tester::parse(src);
 
     let module = module.try_read().unwrap();
     let module_operation = module.operation().try_read().unwrap();
@@ -69,5 +68,5 @@ fn parse_addi() {
     let func_parent = func_parent.try_read().unwrap();
     assert_eq!(func_parent.name().to_string(), "module");
 
-    Test::check_lines_contain(&actual, expected, caller);
+    Tester::check_lines_contain(&actual, expected, caller);
 }

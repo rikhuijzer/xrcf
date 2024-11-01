@@ -60,6 +60,8 @@ pub mod dialect;
 pub mod ir;
 pub mod parser;
 pub mod targ3t;
+#[cfg(feature = "test-utils")]
+pub mod tester;
 mod transform;
 
 pub use transform::default_passes;

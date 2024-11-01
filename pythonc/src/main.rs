@@ -4,9 +4,9 @@ mod transform;
 
 use clap::arg;
 use clap::Args;
-use xrcf::convert::RewriteResult;
 use clap::Command;
 use std::io::Read;
+use xrcf::convert::RewriteResult;
 use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
@@ -39,7 +39,12 @@ fn main() {
     let matches = cli.get_matches();
 
     if matches.get_flag("compile") {
-        let args = vec!["--convert-python-to-mlir", "--convert-unstable-to-mlir", "--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
+        let args = vec![
+            "--convert-python-to-mlir",
+            "--convert-unstable-to-mlir",
+            "--convert-func-to-llvm",
+            "--convert-mlir-to-llvmir",
+        ];
         passes = Passes::from_convert_vec(args);
     }
 

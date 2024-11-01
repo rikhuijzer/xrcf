@@ -1,9 +1,9 @@
 extern crate xrcf;
 
-use crate::tester::Test;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::targ3t;
+use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-mlir-to-llvmir"]
@@ -11,7 +11,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_constant() {
-    Test::init_tracing();
+    Tester::init_tracing();
     let src = indoc! {"
     module {
       llvm.func @main() -> i64 {
@@ -34,15 +34,15 @@ fn test_constant() {
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
     let caller = Location::caller();
-    let (module, actual) = Test::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
     let module = module.try_read().unwrap();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
-    Test::check_lines_contain(&actual, expected, caller);
+    Tester::check_lines_contain(&actual, expected, caller);
 }
 
 #[test]
 fn test_add_one() {
-    Test::init_tracing();
+    Tester::init_tracing();
     let src = indoc! {"
     llvm.func @add_one(%arg0 : i32) -> i32 {
       %0 = llvm.mlir.constant(1 : i32) : i32
@@ -56,15 +56,15 @@ fn test_add_one() {
         ret i32 %1
     }
     "#};
-    let (_module, actual) = Test::parse(src);
-    Test::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Test::transform(flags(), src);
-    Test::check_lines_contain(&actual, expected, Location::caller());
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_contain(&actual, &src, Location::caller());
+    let (_module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
 }
 
 #[test]
 fn test_hello_world() {
-    Test::init_tracing();
+    Tester::init_tracing();
     let src = indoc! {r#"
     llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
 
@@ -98,8 +98,8 @@ fn test_hello_world() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
-    let (_module, actual) = Test::parse(src);
-    Test::check_lines_contain(&actual, &src, Location::caller());
-    let (_module, actual) = Test::transform(flags(), src);
-    Test::check_lines_contain(&actual, expected, Location::caller());
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_contain(&actual, &src, Location::caller());
+    let (_module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
 }

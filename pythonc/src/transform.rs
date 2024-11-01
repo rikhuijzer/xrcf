@@ -123,24 +123,14 @@ pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> 
 mod tests {
     use super::*;
     use indoc::indoc;
+    use std::panic::Location;
     use tracing;
-    use xrcf::init_subscriber;
     use xrcf::ir::GuardedOp;
-
-    /// Initialize the subscriber for the tests.
-    ///
-    /// Cannot pass options, since the tests run concurrently.
-    pub fn init_tracing() {
-        let level = tracing::Level::INFO;
-        match init_subscriber(level) {
-            Ok(_) => (),
-            Err(_e) => (),
-        }
-    }
+    use xrcf::tester::Tester;
 
     #[test]
     fn test_replace_indentation() {
-        init_tracing();
+        Tester::init_tracing();
         let src = indoc! {r#"
         def main():
             print("Hello, World!")
@@ -173,8 +163,8 @@ mod tests {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
     fn test_transform(src: &str, passes: Vec<&str>) -> (Arc<RwLock<dyn Op>>, String) {
+        Tester::init_tracing();
         let src = src.trim();
-        init_tracing();
         let passes = Passes::from_vec(passes);
         print_heading("Before", src, &passes);
         let result = parse_and_transform(src, &passes).unwrap();
@@ -191,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_default_dispatch() {
-        init_tracing();
+        Tester::init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
@@ -203,16 +193,9 @@ mod tests {
         assert!(actual.contains("define i32 @main"));
     }
 
-    fn compare_lines(expected: &str, actual: &str) {
-        let lines = expected.lines().zip(actual.lines());
-        for (i, (expected_line, actual_line)) in lines.enumerate() {
-            assert_eq!(expected_line.trim(), actual_line.trim(), "Line {i} differs");
-        }
-    }
-
-    // #[test]
+    #[test]
     fn test_hello_world() {
-        init_tracing();
+        Tester::init_tracing();
         let src = indoc! {r#"
         def hello():
             print("Hello, World!")
@@ -236,7 +219,7 @@ mod tests {
         .trim();
         let passes = vec!["--convert-python-to-mlir"];
         let (_module, actual) = test_transform(src, passes);
-        compare_lines(expected, actual.trim());
+        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
 
         // TODO: The problem is this combination of passes. If parsed separately, all is good.
 
