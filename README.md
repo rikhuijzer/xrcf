@@ -1,53 +1,57 @@
 # xrcf
 
-Building blocks for compiler development.
+Tools to build your own compiler.
 
-The problem that this project aims to solve is to make it easy to write compilers that can take high-level code,
-optimize it during multiple lowering stages, and generate efficient code for
-different backends.
-These backends should be easy to add and combine.
-In the long-term, these backends will probably be available as separate crates (like a plugin system).
+This project is very similar to MLIR.
+For people unfamiliar with MLIR, here is a high-level overview:
 
-For example, in C++, the code
+Say you want to write a compiler for a new programming language.
+The compiler should take the source code in your language and convert it to platform that can execute it such as a CPU or GPU.
+Now you could do this via some string manipulation.
+You just read a string like `print("Hello")`, but then you realize that converting this to say LLVM is not that easy.
+In LLVM, you would need to create an array to hold the string, to then allocate this in memory, and next pass this pointer to a call to `printf`.
+Doing this via string manipulation is very hard.
+That's why compilers first scan and parse the source code into some intermediate representation (IR).
+Unlike strings, the IR provides common methods to interact with the code.
+For example, this project defines a `insert_before` method for operations.
+That means that if you want to insert an operation before the `print` call, you can just call `print_op.insert_before(new_op)`.
 
-```cpp
-float a[4] = {8.0f, 7.0f, 6.0f, 5.0f};
-float b[4] = {16.0f, 15.0f, 14.0f, 13.0f};
-float c[4];
+Next you decide that you want to compile this code to another platform such as a GPU.
+Typically GPUs don't have print operations, but let's assume for now that they do.
+Then you would need to convert the `print` operation this `gpu.print` operation.
+But how to manage when to convert the `print` to `printf` and when to `gpu.print`?
+This is where passes come in.
+A pass is a group of transformations that are applied to the IR.
+For example, to compile to CPU via LLVM, you would use the passes `--convert-func-to-llvm` and `--convert-llvm-to-llvm-ir`.
+And to compile to GPU, you would use the passes `--convert-func-to-gpu`.
 
-for (int i = 0; i < 4; i++) {
-    c[i] = a[i] + b[i];
-}
-```
+This project gives you these building blocks.
+It already includes some default IR and default passes, but you can also add your own.
+This means that if you want to write your own compiler for your language, you only have to convert your code into the default IR that is inside this project, and then you can choose which passes you want to use in which situation.
 
-can be sped up by using AVX instructions.
-One way is to manually call the intrinsic:
+Note that this is different than LLVM.
+Where this project allows you to write your own passes, LLVM expects you to generate LLVM IR.
+This means that you first have to write your own compiler and then hand the generated LLVM IR over to LLVM.
 
-```cpp
-__m256 a = _mm256_set_ps(8.0f, 7.0f, 6.0f, 5.0f);
-__m256 b = _mm256_set_ps(16.0f, 15.0f, 14.0f, 13.0f);
-__m256 result = _mm256_add_ps(a, b);
-```
+In a more big picture, the long-term goal of MLIR is to provide a common IR that developers can lower to, and next there should be various platforms, such as GPUs, CPUs, and TPUs, available.
 
-But this is not very convenient.
-What we want is to write the code in a high-level syntax,
+How this project differs from MLIR is that it brings all the benefits of Rust.
+In MLIR, if one team builds pass to lower to say an AMD GPU, and another team builds passes to lower to NVIDIA GPUs, then the two teams now have separate C++ codebases.
+Combining the base MLIR codebase with the two other codebases is not easy.
+In Rust, this would be easier because the backends can be separate crates.
+In other words, Rust provides much better tooling around managing dependencies.
 
-```cpp
-float a[4] = {8.0f, 7.0f, 6.0f, 5.0f};
-float b[4] = {16.0f, 15.0f, 14.0f, 13.0f};
-float c[4] = a + b;
-```
+Another benefit of this project is that the code is easier to read than MLIR.
+For example, this project does not use code generators in the codebase like TableGen.
+TableGen is great for generating code, but it also gets in the way of much of the tooling.
+For example, finding where a certain operation is defined is hard because TableGen generates code that is not always visible in the IDE.
 
-The compiler should translate this to use the AVX instructions where possible.
-To do this, it is important for the compiler to handle the full stack.
-A problem that the creators of MLIR set out to solve is that LLVM can receive
-code that is too low-level.
-Especially when you have multidimensional arrays (tensors) and GPUs, it's not
-always possible to generate efficient code after the code has been lowered to
-LLVM IR.
-Instead, the compiler should be able to optimize the code at an earlier stage.
-This is what languages like Jax and Mojo do.
-They receive high-level code and optimize it during multiple lowering stages.
+Finally, another benefit of this project is that Rust provides much better tooling for writing tests.
+MLIR tests work via the `lit` tool, which is a binary build by the LLVM project to test their compiler.
+`lit` is executed on `lit` files and compare the code before and after transformations.
+This makes sense in C++ because there isn't much tooling around testing.
+But in Rust, the default testing framework can be used.
+With this, it is possible to not only compare the code before and after transformations, but also to easily access the IR and verify the data structures more explicitly.
 
 ## Notes
 
@@ -57,9 +61,7 @@ This project does not include any LLVM code.
 The LLVM codebase is great, but also big.
 Including the C files would require lots of compilation.
 Calling out to an installed LLVM version is better but is hard with package versions and such.
-Let's for now just generate LLVM IR and let the client compile it themselves.
-For now, this project aims to generate valid LLVM IR.
-Then this code can be compiled client-side.
+Let's for now just generate LLVM IR, then the LLVM binary can be used to compile that.
 At a later point, the plan is to include the LLVM backend in a separate crate.
 
 ### `Operation`

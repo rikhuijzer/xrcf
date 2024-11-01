@@ -238,6 +238,8 @@ mod tests {
         let (_module, actual) = test_transform(src, passes);
         compare_lines(expected, actual.trim());
 
+        // TODO: The problem is this combination of passes. If parsed separately, all is good.
+
         let passes = vec!["--convert-python-to-mlir", "--convert-unstable-to-mlir"];
         let (module, _actual) = test_transform(src, passes);
 
