@@ -229,5 +229,6 @@ mod tests {
         ];
         let (module, _actual) = test_transform(src, passes);
         Tester::verify(module);
+        // assert!(false);
     }
 }

@@ -43,11 +43,11 @@ fn test_constant() {
 #[test]
 fn test_empty_return() {
     Tester::init_tracing();
-    let src = indoc! {"
+    let src = indoc! {r#"
     llvm.func @main() {
       llvm.return
     }
-    "};
+    "#};
     let expected = indoc! {"
     define void @main() {
       ret void
@@ -119,6 +119,32 @@ fn test_hello_world() {
     "#};
     let (_module, actual) = Tester::parse(src);
     Tester::check_lines_contain(&actual, &src, Location::caller());
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
+}
+
+#[test]
+fn test_something() {
+    Tester::init_tracing();
+    let src = indoc! {r#"
+    llvm.func @hello() {
+      llvm.return
+    }
+    llvm.func @main() {
+      llvm.call @hello() : () -> ()
+      llvm.return
+    }
+    "#};
+    let expected = indoc! {r#"
+    define void @hello() {
+      ret void
+    }
+    define void @main() {
+      call void @hello()
+      ret void
+    }
+    "#};
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
