@@ -3,13 +3,13 @@ mod python_to_mlir;
 mod transform;
 
 use clap::arg;
+use clap::ArgMatches;
 use clap::Args;
 use clap::Command;
+use std::env::ArgsOs;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
 use xrcf::Passes;
-use clap::ArgMatches;
-use std::env::ArgsOs;
 
 use crate::transform::parse_and_transform;
 

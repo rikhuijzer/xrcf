@@ -11,6 +11,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_constant() {
+    Tester::init_tracing();
     // Note that `\n` is escaped to `\\n` by `indoc!`.
     let src = indoc! {r#"
     func.func @main() -> i32 {
@@ -25,7 +26,7 @@ fn test_constant() {
 
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
-      %1 = llvm.mlir.constant("hello, world\n\00") : !llvm.array<14 x i8>
+      %1 = llvm.mlir.constant("hello, world\0A\00") : !llvm.array<14 x i8>
       %2 = arith.constant 14 : i16
       %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
       llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr
@@ -33,7 +34,6 @@ fn test_constant() {
       return %0 : i32
     }
     "#};
-    Tester::init_tracing();
     let caller = Location::caller();
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
@@ -61,6 +61,7 @@ fn test_two_constants() {
 
 #[test]
 fn test_hello_world() {
+    Tester::init_tracing();
     let src = indoc! {r#"
     module {
       func.func @hello() {
@@ -93,7 +94,18 @@ fn test_hello_world() {
       }
     }
     "#};
-    Tester::init_tracing();
     let (_module, actual) = Tester::transform(flags(), src);
     Tester::check_lines_exact(&actual, expected, Location::caller());
+
+    let src = indoc! {r#"
+    func.func @hello() {
+      unstable.printf("Hello, World!\n")
+      return
+    }
+    "#};
+    let expected = indoc! {r#"
+    %0 = llvm.mlir.constant("Hello, World!\0A\00") : !llvm.array<15 x i8>
+    "#};
+    let (_module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
 }
