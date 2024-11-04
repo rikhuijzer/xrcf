@@ -26,7 +26,7 @@ fn test_constant() {
 
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
-      %1 = llvm.mlir.constant("hello, world\n\00") : !llvm.array<14 x i8>
+      %1 = llvm.mlir.constant("hello, world\0A\00") : !llvm.array<14 x i8>
       %2 = arith.constant 14 : i16
       %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
       llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr

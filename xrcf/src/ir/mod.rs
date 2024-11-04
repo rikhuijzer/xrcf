@@ -59,7 +59,7 @@ pub fn spaces(indent: i32) -> String {
 pub fn llvm_string_to_bytes(src: &str) -> Vec<u8> {
     let src = src.to_string();
     let src = src.replace("\\00", "\0");
-    let src = src.replace("\\10", "\n");
+    let src = src.replace("\\0A", "\n");
     let mut out: Vec<u8> = vec![];
     let chars = src.as_bytes();
     out.extend_from_slice(chars);
@@ -91,14 +91,14 @@ fn test_llvm_string_to_bytes() {
 // \00 is the null byte in LLVM IR.
 pub fn bytes_to_llvm_string(bytes: &[u8]) -> String {
     let src = String::from_utf8(bytes.to_vec()).unwrap();
-    src.replace("\0", "\\00")
+    src.replace("\0", "\\00").replace("\n", "\\0A")
 }
 
 #[test]
 fn test_bytes_to_llvm_string() {
     let bytes = vec![104, 101, 108, 108, 111, 10, 0];
     let src = bytes_to_llvm_string(&bytes);
-    assert_eq!(src, "hello\n\\00");
+    assert_eq!(src, "hello\\0A\\00");
 }
 
 pub fn escape(src: &str) -> String {
