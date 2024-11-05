@@ -1,5 +1,5 @@
 use crate::example;
-use crate::example_to_mlir::ConvertToyToMLIR;
+use crate::example_to_mlir::ConvertExampleToMLIR;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -70,7 +70,7 @@ struct ExampleTransformDispatch;
 impl TransformDispatch for ExampleTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            "convert-example-to-mlir" => ConvertToyToMLIR::convert(op),
+            "convert-example-to-mlir" => ConvertExampleToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }

@@ -96,7 +96,7 @@ mod tests {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
         };
-        assert!(err.to_string().contains("Example compiler"));
+        assert!(err.to_string().contains("An example compiler"));
         assert!(err.to_string().contains("--convert-func-to-llvm"));
     }
 

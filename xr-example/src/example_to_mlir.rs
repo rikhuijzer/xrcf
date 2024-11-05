@@ -223,9 +223,9 @@ impl Rewrite for PrintLowering {
     }
 }
 
-pub struct ConvertToyToMLIR;
+pub struct ConvertExampleToMLIR;
 
-impl Pass for ConvertToyToMLIR {
+impl Pass for ConvertExampleToMLIR {
     const NAME: &'static str = "convert-toy-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
