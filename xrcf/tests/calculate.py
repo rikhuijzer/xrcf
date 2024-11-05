@@ -2,11 +2,13 @@ from ctypes import CDLL, c_int, Structure, c_int16, POINTER, byref
 import os
 import sys
 
+
 class Vec16x16(Structure):
     _fields_ = [("values", c_int16 * 16)]
 
     def __repr__(self):
         return f"Vec16x16({list(self.values)})"
+
 
 ll = """
 define i32 @calculate(i32 %a, i32 %b) #0 {
@@ -15,16 +17,17 @@ define i32 @calculate(i32 %a, i32 %b) #0 {
   ret i32 %2
 }
 
-define void @calc_vec(<16 x i16>* %result, <16 x i16>* %a, <16 x i16>* %b) #0 {
+define void @calc_vec(<16 x i16>* %o, <16 x i16>* %a, <16 x i16>* %b) #0 {
   %1 = load <16 x i16>, <16 x i16>* %a, align 32
   %2 = load <16 x i16>, <16 x i16>* %b, align 32
   %3 = add <16 x i16> %1, %2
-  store <16 x i16> %3, <16 x i16>* %result, align 32
+  store <16 x i16> %3, <16 x i16>* %o, align 32
   ret void
 }
 
 attributes #0 = { nounwind }
 """
+
 
 def load_lib():
     res = os.system(f"echo '{ll}' | clang -x ir - -shared -o tmp.so")
@@ -51,6 +54,6 @@ for i in range(1, 8):
 for i in range(8, 16):
     a.values[i] = 3
     b.values[i] = 4
-result = Vec16x16()
-lib.calc_vec(byref(result), a, b)
-print(f"calc_vec: {result}")
+o = Vec16x16()
+lib.calc_vec(byref(o), byref(a), byref(b))
+print(f"calc_vec: {o}")
