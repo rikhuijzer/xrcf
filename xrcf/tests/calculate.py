@@ -1,6 +1,7 @@
 from ctypes import CDLL, c_int, Structure, c_int16, POINTER, byref
 import os
 import sys
+from timeit import timeit
 
 
 class Vec16x16(Structure):
@@ -44,7 +45,10 @@ def load_lib():
 
 lib = load_lib()
 result = lib.calculate(1, 2)
+secs = lib.calculate(1, 2)
 print(f"calculate: {result}")
+
+number = 100_000
 
 a = Vec16x16()
 b = Vec16x16()
@@ -55,5 +59,29 @@ for i in range(8, 16):
     a.values[i] = 3
     b.values[i] = 4
 o = Vec16x16()
-lib.calc_vec(byref(o), byref(a), byref(b))
+secs = timeit(lambda: lib.calc_vec(byref(o), byref(a), byref(b)), number=number)
 print(f"calc_vec: {o}")
+print(f"calc_vec: {secs}")
+
+
+def calc_vec_py(o, a, b):
+    for i in range(1, 8):
+        o.values[i] = a.values[i] + b.values[i]
+    for i in range(8, 16):
+        o.values[i] = a.values[i] + b.values[i]
+    return o
+
+
+a = Vec16x16()
+for i in range(1, 8):
+    a.values[i] = 1
+    b.values[i] = 2
+for i in range(8, 16):
+    a.values[i] = 3
+    b.values[i] = 4
+o = Vec16x16()
+py_secs = timeit(lambda: calc_vec_py(o, a, b), number=number)
+print(f"calc_vec_py: {o}")
+print(f"calc_vec_py: {py_secs}")
+
+print(f"Difference: {py_secs / secs}")
