@@ -5,7 +5,7 @@ Tools to build your own compiler.
 You may be looking for:
 
 - [An high-level overview of xrcf](https://docs.rs/xrcf/latest/xrcf/)
-- [An example Python compiler built with xrcf](https://github.com/rikhuijzer/xrcf/tree/main/pythonc)
+- [An example compiler built with xrcf](https://github.com/rikhuijzer/xrcf/tree/main/xr-example)
 
 ## Notes
 
