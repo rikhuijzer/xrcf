@@ -1,30 +1,38 @@
-# pythonc
+# xr-example
 
-This directory contains an example Python compiler that can compile a small subset of Python code to LLVM IR, and can be executed via `lli`.
-Please do not expect this to be a fully featured Python compiler.
-It is a proof of concept that shows how to build your own compiler using the `xrcf` crate.
+This directory contains an example compiler that can compile a small program in an "Example" language to LLVM IR, and can be executed via `lli`.
+The example shows how to build your own language and compiler using the `xrcf` crate.
 
-To run the compiler, we install the `pythonc` binary via
+To get an idea of the Example language, the following is valid Example code:
 
-```sh
-$ cargo install --path pythonc
+```example
+def hello():
+    print("Hello, World!")
+
+hello()
 ```
 
-This places the `pythonc` binary in `$HOME/.cargo/bin`.
-(It can be uninstalled later with `cargo uninstall pythonc`.)
+In order to compile this code, we first install the `xr-example` binary via
+
+```sh
+$ cargo install --path xr-example
+```
+
+This places the `xr-example` binary in `$HOME/.cargo/bin`.
+(It can be uninstalled later with `cargo uninstall xr-example`.)
 
 Next, let's see whether the installation was successful:
 
 ```sh
-$ pythonc --help
+$ xr-example --help
 ```
 
 This should print:
 
 ```text
-An example Python compiler that can compile a small subset of Python
+An example compiler that can compile a small program in the "Example" language to LLVM IR
 
-Usage: pythonc [OPTIONS] [INPUT]
+Usage: xr-example [OPTIONS] [INPUT]
 
 Arguments:
   [INPUT]  The input file (defaults to "-", which is stdin) [default: -]
@@ -33,7 +41,7 @@ Options:
       --convert-unstable-to-mlir  Convert unstable operations to MLIR
       --convert-func-to-llvm      Convert function operations to LLVM IR
       --convert-mlir-to-llvmir    Convert MLIR to LLVM IR
-      --convert-python-to-mlir    Convert Python operations to MLIR
+      --convert-example-to-mlir   Convert Example operations to MLIR
       --compile                   Compile the code
   -h, --help                      Print help
   -V, --version                   Print version
@@ -42,19 +50,19 @@ Options:
 If this succeeds, then that shows that the compiler is correctly built.
 You can also decide to use 
 
-To compile Python, let's create a file called `tmp.py` with the following content:
+To compile Example, let's create a file called `tmp.example` with the following content:
 
-```python
+```example
 def hello():
     print("Hello, World!")
 
 hello()
 ```
 
-Before we run this, let's see what the compiler does with the `--convert-python-to-mlir` pass:
+Before we run this, let's see what the compiler does with the `--convert-example-to-mlir` pass:
 
 ```sh
-$ pythonc --convert-python-to-mlir tmp.py
+$ xr-example --convert-example-to-mlir tmp.example
 ```
 
 This prints:
@@ -80,7 +88,7 @@ This is similar to Python, which by default also will return a 0 status code.
 To convert our code to LLVM IR, let's run all the required passes in order:
 
 ```sh
-$ pythonc --convert-python-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.py
+$ xr-example --convert-example-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.example
 ```
 
 This prints:
@@ -106,7 +114,7 @@ define i32 @main() {
 Remembering these passes and in the order in which to run them is cumbersome, so let's use the `--compile` flag, which is a wrapper around the above command:
 
 ```sh
-$ pythonc --compile tmp.py
+$ xr-example --compile tmp.example
 ```
 
 It returns the same LLVM IR as above.
@@ -119,7 +127,7 @@ For example, on MacOS, `brew install llvm`.
 So let's run our compiled code:
 
 ```sh
-$ pythonc --compile tmp.py | lli
+$ xr-example --compile tmp.example | lli
 ```
 
 This should print:
@@ -128,20 +136,21 @@ This should print:
 Hello, World!
 ```
 
-To learn how to build your own compiler like this, see the files inside this `pythonc` directory.
+To learn how to build your own compiler like this, see the files inside this `xr-example` directory.
 It is split into three parts:
 
 1. `src/main.rs` contains the command line interface of the compiler.
-1. `src/python.rs` specifies how to parse the Python code (convert the text to data structures).
-1. `src/python_to_mlir.rs` contains the `--convert-python-to-mlir` pass, which converts the Python code to MLIR.
+1. `src/example.rs` specifies how to parse the Example code (convert the text to data structures).
+1. `src/example_to_mlir.rs` contains the `--convert-example-to-mlir` pass, which converts the Example code to MLIR.
 
 All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
 
-To get inspiration for your own compiler, the following projects are built on MLIR:
+To get inspiration for building your own compiler, the following projects are built on MLIR:
 
 - [jax](https://github.com/jax-ml/jax): A Python library for accelerator-oriented computing
 - [triton](https://github.com/triton-lang/triton): A Python library for high-performance computation on GPUs by OpenAI.
 - [torch-mlir](https://github.com/llvm/torch-mlir): Compiles PyTorch to MLIR.
 - [mlir-hlo](https://github.com/llvm/mlir-hlo): A set of transformations from TensorFlow HLO to MLIR.
+- [Flang](https://flang.llvm.org/docs/): A LLVM-based Fortran compiler.
 - [circt](https://github.com/llvm/circt): A compiler for hardware design.
 - [mojo](https://www.modular.com/mojo): A new programming language for AI by Modular.

@@ -1,6 +1,6 @@
 [package]
-name = "pythonc"
-description = "An example Python compiler that can compile a small subset of Python"
+name = "xr-example"
+description = "An example compiler"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

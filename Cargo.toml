@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "pythonc",
+    "xr-bin",
+    "xr-example",
     "xrcf",
-    "xrcf-bin",
 ]
 
 [workspace.package]

@@ -1,6 +1,6 @@
 [package]
-name = "xrcf-bin"
-description = "CLI containing only the default XRCF passes"
+name = "xr-bin"
+description = "CLI containing only the default passes of xrcf"
 keywords = ["compiler", "framework"]
 categories = ["compilers"]
 version.workspace = true

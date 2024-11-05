@@ -1,4 +1,4 @@
-use crate::python;
+use crate::example;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -26,14 +26,14 @@ struct CallLowering;
 
 impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
-        "python_to_mlir::CallLowering"
+        "example_to_mlir::CallLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<python::CallOp>())
+        Ok(op.as_any().is::<example::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<python::CallOp>().unwrap();
+        let op = op.as_any().downcast_ref::<example::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
         let mut new_op = func::CallOp::from_operation_arc(operation.clone());
@@ -66,14 +66,14 @@ impl FuncLowering {
 
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
-        "python_to_mlir::FuncLowering"
+        "example_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == python::FuncOp::operation_name())
+        Ok(op.name() == example::FuncOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<python::FuncOp>().unwrap();
+        let op = op.as_any().downcast_ref::<example::FuncOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let identifier = format!("@{}", identifier);
         let operation = op.operation();
@@ -184,7 +184,7 @@ impl ModuleLowering {
 
 impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
-        "python_to_mlir::ModuleLowering"
+        "example_to_mlir::ModuleLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         let is_module = op.name() == xrcf::ir::ModuleOp::operation_name();
@@ -205,14 +205,14 @@ struct PrintLowering;
 
 impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
-        "python_to_mlir::PrintLowering"
+        "example_to_mlir::PrintLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == python::PrintOp::operation_name())
+        Ok(op.name() == example::PrintOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<python::PrintOp>().unwrap();
+        let op = op.as_any().downcast_ref::<example::PrintOp>().unwrap();
         let text = op.text().unwrap();
         let operation = op.operation();
         let mut new_op = unstable::PrintfOp::from_operation_arc(operation.clone());
@@ -223,10 +223,10 @@ impl Rewrite for PrintLowering {
     }
 }
 
-pub struct ConvertPythonToMLIR;
+pub struct ConvertToyToMLIR;
 
-impl Pass for ConvertPythonToMLIR {
-    const NAME: &'static str = "convert-python-to-mlir";
+impl Pass for ConvertToyToMLIR {
+    const NAME: &'static str = "convert-toy-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CallLowering,

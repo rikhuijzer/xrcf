@@ -1,5 +1,5 @@
-mod python;
-mod python_to_mlir;
+mod example;
+mod example_to_mlir;
 mod transform;
 
 use clap::arg;
@@ -13,31 +13,31 @@ use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
 
-/// An example Python compiler that can compile a small subset of Python
+/// A compiler for an "Example" language.
 #[derive(Args, Debug)]
 #[command(version, about)]
-struct PythonArgs {
+struct ExampleArgs {
     /// The input file (- is interpreted as stdin)
     #[arg(default_value = "-")]
     input: String,
-    /// Convert Python operations to MLIR
-    #[arg(long, name = "convert-python-to-mlir")]
-    convert_python_to_mlir: bool,
+    /// Convert Example operations to MLIR
+    #[arg(long, name = "convert-example-to-mlir")]
+    convert_example_to_mlir: bool,
     /// Compile the code
     #[arg(long, name = "compile")]
     compile: bool,
 }
 
 fn cli() -> Command {
-    let cli = Command::new("pythonc").args(xrcf::default_passes());
-    let cli = PythonArgs::augment_args(cli);
+    let cli = Command::new("xr-example").args(xrcf::default_passes());
+    let cli = ExampleArgs::augment_args(cli);
     cli
 }
 
 fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
         let args = vec![
-            "--convert-python-to-mlir",
+            "--convert-example-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
@@ -90,19 +90,19 @@ mod tests {
 
     #[test]
     fn test_help() {
-        let args = vec!["pythonc", "--help"];
+        let args = vec!["xr-example", "--help"];
         let result = run_app(args, "");
         let err = match result {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
         };
-        assert!(err.to_string().contains("Python compiler"));
+        assert!(err.to_string().contains("Example compiler"));
         assert!(err.to_string().contains("--convert-func-to-llvm"));
     }
 
     #[test]
     fn test_invalid_args() {
-        let result = run_app(vec!["pythonc", "--invalid-flag"], "");
+        let result = run_app(vec!["xr-example", "--invalid-flag"], "");
         assert!(result.is_err());
     }
 

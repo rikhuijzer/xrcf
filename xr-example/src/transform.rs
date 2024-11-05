@@ -1,5 +1,5 @@
-use crate::python;
-use crate::python_to_mlir::ConvertPythonToMLIR;
+use crate::example;
+use crate::example_to_mlir::ConvertToyToMLIR;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -20,7 +20,7 @@ use xrcf::Passes;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
 
-struct PythonParserDispatch;
+struct ExampleParserDispatch;
 
 fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     let syntax_matches = parser.peek().kind == TokenKind::BareIdentifier
@@ -39,13 +39,13 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     syntax_matches && !known_keyword
 }
 
-impl ParserDispatch for PythonParserDispatch {
+impl ParserDispatch for ExampleParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         if is_function_call(parser) {
-            return <python::CallOp as Parse>::op(parser, parent);
+            return <example::CallOp as Parse>::op(parser, parent);
         }
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
@@ -55,8 +55,8 @@ impl ParserDispatch for PythonParserDispatch {
             parser.peek().clone()
         };
         match name.lexeme.clone().as_str() {
-            "def" => <python::FuncOp as Parse>::op(parser, parent),
-            "print" => <python::PrintOp as Parse>::op(parser, parent),
+            "def" => <example::FuncOp as Parse>::op(parser, parent),
+            "print" => <example::PrintOp as Parse>::op(parser, parent),
             _ => default_dispatch(name, parser, parent),
         }
     }
@@ -65,12 +65,12 @@ impl ParserDispatch for PythonParserDispatch {
     }
 }
 
-struct PythonTransformDispatch;
+struct ExampleTransformDispatch;
 
-impl TransformDispatch for PythonTransformDispatch {
+impl TransformDispatch for ExampleTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            "convert-python-to-mlir" => ConvertPythonToMLIR::convert(op),
+            "convert-example-to-mlir" => ConvertToyToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }
@@ -79,12 +79,12 @@ impl TransformDispatch for PythonTransformDispatch {
 /// Replace Python's indentation with brackets to make it easier to parse.
 ///
 /// For example, this function changes
-/// ```python
+/// ```toy
 /// def main():
 ///     print("Hello, World!")
 /// ```
 /// to
-/// ```python
+/// ```toy
 /// def main() {
 ///     print("Hello, World!")
 /// }
@@ -114,8 +114,8 @@ fn replace_indentation(src: &str) -> String {
 
 pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
     let src = replace_indentation(src);
-    let op = Parser::<PythonParserDispatch>::parse(&src)?;
-    let result = transform::<PythonTransformDispatch>(op, passes)?;
+    let op = Parser::<ExampleParserDispatch>::parse(&src)?;
+    let result = transform::<ExampleTransformDispatch>(op, passes)?;
     Ok(result)
 }
 
@@ -216,13 +216,13 @@ mod tests {
         }
         "#}
         .trim();
-        let passes = vec!["--convert-python-to-mlir"];
+        let passes = vec!["--convert-example-to-mlir"];
         let (module, actual) = test_transform(src, passes);
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
         let passes = vec![
-            "--convert-python-to-mlir",
+            "--convert-example-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
