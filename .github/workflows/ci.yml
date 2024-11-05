@@ -31,9 +31,9 @@ jobs:
 
       - name: Test xrcf-bin output
         run: |
-          HELP_OUTPUT=$(cargo run --bin xrcf-bin -- --help)
+          HELP_OUTPUT=$(cargo run --bin xr-bin -- --help)
           echo "$HELP_OUTPUT"
-          if ! echo "$HELP_OUTPUT" | grep -q "Usage: xrcf-bin"; then
+          if ! echo "$HELP_OUTPUT" | grep -q "Usage: xr-bin"; then
             echo
             echo "Unexpected help output"
             exit 1
