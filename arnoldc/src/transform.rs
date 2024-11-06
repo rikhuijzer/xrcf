@@ -221,4 +221,41 @@ mod tests {
         assert!(actual.contains("declare i32 @printf(ptr)"));
         assert!(actual.contains("define i32 @main()"));
     }
+
+    #[test]
+    fn test_if_else() {
+        Tester::init_tracing();
+        let src = indoc! {r#"
+        IT'S SHOWTIME
+
+        HEY CHRISTMAS TREE a
+        YOU SET US UP 0
+
+        BECAUSE I'M GOING TO SAY PLEASE a
+        TALK TO THE HAND "a is true"
+        BULLSHIT
+        TALK TO THE HAND "a is not true"
+        YOU HAVE NO RESPECT FOR LOGIC
+
+        YOU HAVE BEEN TERMINATED
+        "#}
+        .trim();
+        let expected = indoc! {r#"
+        func.func @main() -> i32 {
+          %0 = arith.constant 0 : i32
+          if (%0) {
+            unstable.printf("a is true\0A")
+          } else {
+            unstable.printf("a is not true\0A")
+          }
+          %0 = arith.constant 0 : i32
+          return %0 : i32
+        }
+        "#}
+        .trim();
+        let passes = vec!["--convert-arnold-to-mlir"];
+        let (module, actual) = test_transform(src, passes);
+        Tester::verify(module);
+        Tester::check_lines_contain(expected, actual.trim(), Location::caller());
+    }
 }

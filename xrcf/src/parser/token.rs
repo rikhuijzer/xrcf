@@ -31,6 +31,8 @@ pub enum TokenKind {
     Arrow,
     /// :
     Colon,
+    /// '
+    SingleQuote,
     /// ,
     Comma,
     /// =
