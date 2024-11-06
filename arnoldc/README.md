@@ -6,7 +6,7 @@ The example shows how to build your own language and compiler.
 The ArnoldC language is based on one-liners from Arnold Schwarzenegger movies.
 This is what a valid "Hello, World!" program in ArnoldC looks like:
 
-```example
+```arnoldc
 IT'S SHOWTIME
 TALK TO THE HAND "Hello, World!"
 YOU HAVE BEEN TERMINATED

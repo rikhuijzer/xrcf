@@ -13,31 +13,31 @@ use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
 
-/// A compiler for an "Example" language.
+/// A compiler for the ArnoldC language.
 #[derive(Args, Debug)]
 #[command(version, about)]
-struct ExampleArgs {
+struct ArnoldcArgs {
     /// The input file (- is interpreted as stdin)
     #[arg(default_value = "-")]
     input: String,
-    /// Convert Example operations to MLIR
-    #[arg(long, name = "convert-example-to-mlir")]
-    convert_example_to_mlir: bool,
+    /// Convert ArnoldC operations to MLIR
+    #[arg(long, name = "convert-arnold-to-mlir")]
+    convert_arnold_to_mlir: bool,
     /// Compile the code
     #[arg(long, name = "compile")]
     compile: bool,
 }
 
 fn cli() -> Command {
-    let cli = Command::new("xr-example").args(xrcf::default_passes());
-    let cli = ExampleArgs::augment_args(cli);
+    let cli = Command::new("arnoldc").args(xrcf::default_passes());
+    let cli = ArnoldcArgs::augment_args(cli);
     cli
 }
 
 fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
         let args = vec![
-            "--convert-example-to-mlir",
+            "--convert-arnold-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
