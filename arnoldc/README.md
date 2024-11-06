@@ -1,38 +1,42 @@
-# xr-example
+# arnoldc
 
-This directory contains an example compiler that can compile a small program in an "Example" language to LLVM IR, and can be executed via `lli`.
+This directory contains an example compiler that can compile a small program to LLVM IR, which then can be executed via the LLVM interpreter `lli`.
 The example shows how to build your own language and compiler using the `xrcf` crate.
 
-To get an idea of the Example language, the following is valid Example code:
+The language that we will implement a compiler for is called ArnoldC.
+It's based on one-liners from Arnold Schwarzenegger movies.
+This is what a valid "Hello, World!" program in ArnoldC looks like:
 
 ```example
-def hello():
-    print("Hello, World!")
-
-hello()
+IT'S SHOWTIME
+TALK TO THE HAND "Hello, World!"
+YOU HAVE BEEN TERMINATED
 ```
 
-In order to compile this code, we first install the `xr-example` binary via
+Here, `IT'S SHOWTIME` means "begin main", `TALK TO THE HAND` means "print", and `YOU HAVE BEEN TERMINATED` means "end main".
+
+In the directory that contains this README, there is an example compiler that can compile ArnoldC code to LLVM IR.
+To use this compiler, we first install the `arnoldc` binary via
 
 ```sh
-$ cargo install --path xr-example
+$ cargo install --path arnoldc
 ```
 
-This places the `xr-example` binary in `$HOME/.cargo/bin`.
-(It can be uninstalled later with `cargo uninstall xr-example`.)
+This places the `arnoldc` binary in `$HOME/.cargo/bin`.
+(It can be uninstalled later with `cargo uninstall arnoldc`.)
 
 Next, let's see whether the installation was successful:
 
 ```sh
-$ xr-example --help
+$ arnoldc --help
 ```
 
 This should print:
 
 ```text
-An example compiler that can compile a small program in the "Example" language to LLVM IR
+An example compiler that can compile ArnoldC code to LLVM IR
 
-Usage: xr-example [OPTIONS] [INPUT]
+Usage: arnoldc [OPTIONS] [INPUT]
 
 Arguments:
   [INPUT]  The input file (defaults to "-", which is stdin) [default: -]
