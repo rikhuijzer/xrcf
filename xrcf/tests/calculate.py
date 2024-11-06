@@ -3,7 +3,7 @@ import os
 import sys
 from timeit import timeit
 
-length = 256
+length = 16
 
 
 class Vec8x16(Structure):
@@ -70,14 +70,14 @@ def calc_vec_py(o, a, b):
 a = Vec8x16(1)
 b = Vec8x16(2)
 o = Vec8x16(0)
-py_secs = timeit(lambda: calc_vec_py(o, a, b), number=number)
+py_secs = timeit(lambda: calc_vec_py(o, a, b), number=number)/number
 print(f"calc_vec_py: {o}")
 print(f"calc_vec_py: {py_secs}")
 
 a = Vec8x16(1)
 b = Vec8x16(2)
 o = Vec8x16()
-secs = timeit(lambda: lib.calc_vec(byref(o), byref(a), byref(b)), number=number)
+secs = timeit(lambda: lib.calc_vec(byref(o), byref(a), byref(b)), number=number)/number
 print(f"calc_vec: {o}")
 print(f"calc_vec: {secs}")
 
