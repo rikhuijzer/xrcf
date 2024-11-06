@@ -89,16 +89,6 @@ impl Rewrite for FuncLowering {
 struct ModuleLowering;
 
 impl ModuleLowering {
-    fn has_main(op: &dyn Op) -> bool {
-        let ops = op.ops();
-        let last = ops.last().unwrap();
-        let last = last.try_read().unwrap();
-        if last.as_any().is::<func::FuncOp>() {
-            let op = last.as_any().downcast_ref::<func::FuncOp>().unwrap();
-            return op.identifier().unwrap() == "@main";
-        }
-        false
-    }
     fn constant_op(parent: &Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
         let mut constant = Operation::default();
         constant.set_parent(Some(parent.clone()));
@@ -133,52 +123,48 @@ impl ModuleLowering {
         ret
     }
     fn return_zero(func: Arc<RwLock<dyn Op>>) {
+        let operation = func.operation();
+        let typ = IntegerType::new(32);
+        operation
+            .set_anonymous_result(Arc::new(RwLock::new(typ)))
+            .unwrap();
+
         let ops = func.ops();
+        for op in &ops {
+            let op = op.try_read().unwrap();
+            if op.as_any().is::<func::ReturnOp>() {
+                op.remove();
+            }
+        }
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
-        let last = ops.last().unwrap();
-        let block = last.operation().parent();
+        let first = ops.first().unwrap();
+        let block = first.operation().parent();
         let block = block.unwrap();
 
         let constant = Self::constant_op(&block);
-        last.insert_before(constant.clone());
+        first.insert_before(constant.clone());
 
         let ret = Self::return_op(&block, constant);
-        last.insert_after(ret.clone());
+        first.insert_after(ret.clone());
     }
-    fn ensure_main(module: Arc<RwLock<dyn Op>>) -> Result<()> {
+    fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
+        let func = func.try_read().unwrap();
+        let func_op = func.as_any().downcast_ref::<func::FuncOp>().unwrap();
+        let result = func_op.operation().results();
+        println!("result: {}", result);
+        result.vec().try_read().unwrap().len() == 1
+    }
+    fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let ops = module.ops();
         let last = ops.last().unwrap();
-
-        let mut main = Operation::default();
-        let result_type = Arc::new(RwLock::new(IntegerType::new(32)));
-        main.set_anonymous_result(result_type)?;
-        let parent = last.operation().parent();
-        main.set_parent(parent);
-
-        let mut main = func::FuncOp::from_operation(main);
-        main.set_identifier("@main".to_string());
-        let last_without_parent = main.insert_op(last.clone());
-        let region = main.operation().try_write().unwrap().region().unwrap();
-
-        let main = Arc::new(RwLock::new(main));
-        region.try_write().unwrap().set_parent(Some(main.clone()));
-        last.insert_after(main.clone());
-        last.remove();
-        last_without_parent.set_parent(region.try_read().unwrap().block(0).clone());
-        let block = last
-            .try_read()
-            .unwrap()
-            .operation()
-            .try_read()
-            .unwrap()
-            .parent();
-        last.try_read()
-            .unwrap()
-            .set_parent(block.clone().expect("no parent"));
-        Self::return_zero(main);
-        Ok(())
+        if !Self::returns_something(last.clone()) {
+            Self::return_zero(last.clone());
+            Ok(RewriteResult::Changed(ChangedOp::new(module)))
+        } else {
+            Ok(RewriteResult::Unchanged)
+        }
     }
 }
 
@@ -187,17 +173,10 @@ impl Rewrite for ModuleLowering {
         "example_to_mlir::ModuleLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        let is_module = op.name() == xrcf::ir::ModuleOp::operation_name();
-        if is_module {
-            let needs_main = !Self::has_main(op);
-            Ok(needs_main)
-        } else {
-            Ok(false)
-        }
+        Ok(op.name() == xrcf::ir::ModuleOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        Self::ensure_main(op.clone())?;
-        Ok(RewriteResult::Changed(ChangedOp::new(op)))
+        Self::ensure_main_returns_zero(op.clone())
     }
 }
 

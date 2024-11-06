@@ -47,6 +47,12 @@ impl ParserDispatch for ExampleParserDispatch {
         if is_function_call(parser) {
             return <arnold::CallOp as Parse>::op(parser, parent);
         }
+        let first = parser.peek();
+        let second = parser.peek_n(1).unwrap();
+        let first_two = format!("{} {}", first.lexeme, second.lexeme);
+        if first_two == "TALK TO" {
+            return <arnold::PrintOp as Parse>::op(parser, parent);
+        }
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
             parser.peek_n(2).unwrap().clone()
@@ -184,21 +190,16 @@ mod tests {
     fn test_hello_world() {
         Tester::init_tracing();
         let src = indoc! {r#"
-        def hello():
-            print("Hello, World!")
-
-        hello()
+        IT'S SHOWTIME
+        TALK TO THE HAND "Hello, World!"
+        YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @hello() {
-            unstable.printf("Hello, World!")
-            return
-          }
           func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
-            func.call @hello() : () -> ()
+            unstable.printf("Hello, World!")
             return %0 : i32
           }
         }
@@ -217,7 +218,7 @@ mod tests {
         ];
         let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
+        assert!(actual.contains("declare i32 @printf(ptr)"));
         assert!(actual.contains("define i32 @main()"));
-        assert!(actual.contains("call void @hello()"));
     }
 }

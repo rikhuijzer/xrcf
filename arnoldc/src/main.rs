@@ -96,7 +96,9 @@ mod tests {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
         };
-        assert!(err.to_string().contains("A compiler for the ArnoldC language"));
+        assert!(err
+            .to_string()
+            .contains("A compiler for the ArnoldC language"));
         assert!(err.to_string().contains("--convert-func-to-llvm"));
     }
 

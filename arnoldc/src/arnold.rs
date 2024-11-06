@@ -147,7 +147,7 @@ impl PrintOp {
 
 impl Op for PrintOp {
     fn operation_name() -> OperationName {
-        OperationName::new("print".to_string())
+        OperationName::new("TALK TO THE HAND".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         PrintOp {
@@ -162,8 +162,8 @@ impl Op for PrintOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "print")?;
-        write!(f, "({})", self.text().unwrap())?;
+        write!(f, "TALK TO THE HAND")?;
+        write!(f, " {}", self.text().unwrap())?;
         Ok(())
     }
 }
@@ -175,11 +175,13 @@ impl Parse for PrintOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        parser.parse_operation_name_into::<PrintOp>(&mut operation)?;
+        operation.set_name(PrintOp::operation_name());
+        let _talk = parser.expect(TokenKind::BareIdentifier)?;
+        let _to = parser.expect(TokenKind::BareIdentifier)?;
+        let _the = parser.expect(TokenKind::BareIdentifier)?;
+        let _hand = parser.expect(TokenKind::BareIdentifier)?;
         let operation = Arc::new(RwLock::new(operation));
-        parser.expect(TokenKind::LParen)?;
         let text = parser.parse_string()?;
-        parser.expect(TokenKind::RParen)?;
         let op = PrintOp {
             operation: operation.clone(),
             text: Some(text),
