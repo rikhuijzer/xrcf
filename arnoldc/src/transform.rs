@@ -1,5 +1,5 @@
 use crate::arnold;
-use crate::arnold_to_mlir::ConvertExampleToMLIR;
+use crate::arnold_to_mlir::ConvertArnoldToMLIR;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -76,7 +76,7 @@ struct ExampleTransformDispatch;
 impl TransformDispatch for ExampleTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            "convert-example-to-mlir" => ConvertExampleToMLIR::convert(op),
+            ConvertArnoldToMLIR::NAME => ConvertArnoldToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }
@@ -198,20 +198,20 @@ mod tests {
         let expected = indoc! {r#"
         module {
           func.func @main() -> i32 {
-            %0 = arith.constant 0 : i32
             unstable.printf("Hello, World!")
+            %0 = arith.constant 0 : i32
             return %0 : i32
           }
         }
         "#}
         .trim();
-        let passes = vec!["--convert-example-to-mlir"];
+        let passes = vec!["--convert-arnold-to-mlir"];
         let (module, actual) = test_transform(src, passes);
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
         let passes = vec![
-            "--convert-example-to-mlir",
+            "--convert-arnold-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",

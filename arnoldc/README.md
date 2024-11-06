@@ -37,65 +37,60 @@ $ arnoldc --help
 This should print:
 
 ```text
-An example compiler that can compile ArnoldC code to LLVM IR
+A compiler for the ArnoldC language
 
 Usage: arnoldc [OPTIONS] [INPUT]
 
 Arguments:
-  [INPUT]  The input file (defaults to "-", which is stdin) [default: -]
+  [INPUT]  The input file (- is interpreted as stdin) [default: -]
 
 Options:
       --convert-unstable-to-mlir  Convert unstable operations to MLIR
       --convert-func-to-llvm      Convert function operations to LLVM IR
       --convert-mlir-to-llvmir    Convert MLIR to LLVM IR
-      --convert-example-to-mlir   Convert Example operations to MLIR
+      --convert-arnold-to-mlir    Convert ArnoldC operations to MLIR
       --compile                   Compile the code
   -h, --help                      Print help
   -V, --version                   Print version
 ```
 
 If this succeeds, then that shows that the compiler is correctly built.
-You can also decide to use 
 
-To compile Example, let's create a file called `tmp.example` with the following content:
+To compile ArnoldC, let's create a file called `tmp.arnoldc` with the following content:
 
-```example
-def hello():
-    print("Hello, World!")
-
-hello()
+```arnoldc
+IT'S SHOWTIME
+TALK TO THE HAND "Hello, World!"
+YOU HAVE BEEN TERMINATED
 ```
 
 Before we run this, let's see what the compiler does with the `--convert-example-to-mlir` pass:
 
 ```sh
-$ xr-example --convert-example-to-mlir tmp.example
+$ arnoldc --convert-arnold-to-mlir tmp.arnoldc
 ```
 
 This prints:
 
 ```mlir
 module {
-  func.func @hello() {
-    unstable.printf("Hello, World!")
-    return
-  }
   func.func @main() -> i32 {
+    unstable.printf("Hello, World!")
     %0 = arith.constant 0 : i32
-    func.call @hello() : () -> ()
     return %0 : i32
   }
 }
 ```
 
-What this shows is that the compiler has wrapped the `hello` call into a `main` function.
-This way, once we lowered the code to LLVM, LLVM will execute `main` and return a 0 status code if the code didn't crash.
-This is similar to Python, which by default also will return a 0 status code.
+What this shows is that the compiler has converted the ArnoldC code to MLIR.
+It also added a 0 return value to the `main` function.
+This ensures that the program will return a 0 status code, which is the convention for a program that didn't crash.
 
-To convert our code to LLVM IR, let's run all the required passes in order:
+Although this MLIR code looks nice, I expect Arnold wants to also run the code.
+To do so, let's convert the MLIR code to LLVM IR by running all the required passes in order:
 
 ```sh
-$ xr-example --convert-example-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.example
+$ arnoldc --convert-arnold-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.arnoldc
 ```
 
 This prints:

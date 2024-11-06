@@ -144,16 +144,15 @@ impl ModuleLowering {
         let block = block.unwrap();
 
         let constant = Self::constant_op(&block);
-        first.insert_before(constant.clone());
+        first.insert_after(constant.clone());
 
-        let ret = Self::return_op(&block, constant);
-        first.insert_after(ret.clone());
+        let ret = Self::return_op(&block, constant.clone());
+        constant.insert_after(ret.clone());
     }
     fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
         let func = func.try_read().unwrap();
         let func_op = func.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let result = func_op.operation().results();
-        println!("result: {}", result);
         result.vec().try_read().unwrap().len() == 1
     }
     fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
@@ -202,10 +201,10 @@ impl Rewrite for PrintLowering {
     }
 }
 
-pub struct ConvertExampleToMLIR;
+pub struct ConvertArnoldToMLIR;
 
-impl Pass for ConvertExampleToMLIR {
-    const NAME: &'static str = "convert-toy-to-mlir";
+impl Pass for ConvertArnoldToMLIR {
+    const NAME: &'static str = "convert-arnold-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CallLowering,
