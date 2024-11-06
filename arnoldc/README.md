@@ -144,16 +144,16 @@ That wraps up this walkthrough, or as Arnold would conclude:
 I'LL BE BACK
 ```
 
-To learn how to build your own compiler like this, see the files inside this `arnoldc` directory.
+To learn how to build your own compiler, see the files inside this `arnoldc` directory.
 It is split into three parts:
 
-1. `src/main.rs` contains the command line interface of the compiler.
+1. `src/main.rs` defines the command line interface.
 1. `src/arnold.rs` specifies how to parse the ArnoldC code (convert the text to data structures).
 1. `src/arnold_to_mlir.rs` contains the `--convert-arnold-to-mlir` pass, which converts the ArnoldC code to MLIR.
 
 All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
 
-If you want to build your own compiler, here are some modern compiler projects:
+If you want to build your own compiler, here are some modern compiler projects that could serve as inspiration:
 
 - [jax](https://github.com/jax-ml/jax): A Python library for accelerator-oriented computing
 - [triton](https://github.com/triton-lang/triton): A Python library for high-performance computation on GPUs by OpenAI.
