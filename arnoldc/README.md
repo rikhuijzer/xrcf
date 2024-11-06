@@ -1,10 +1,9 @@
 # arnoldc
 
-This directory contains an example compiler that can compile a small program to LLVM IR, which then can be executed via the LLVM interpreter `lli`.
-The example shows how to build your own language and compiler using the `xrcf` crate.
+This directory contains an example compiler that can compile and run a small program in the ArnoldC language.
+The example shows how to build your own language and compiler.
 
-The language that we will implement a compiler for is called ArnoldC.
-It's based on one-liners from Arnold Schwarzenegger movies.
+The ArnoldC language is based on one-liners from Arnold Schwarzenegger movies.
 This is what a valid "Hello, World!" program in ArnoldC looks like:
 
 ```example
@@ -15,8 +14,12 @@ YOU HAVE BEEN TERMINATED
 
 Here, `IT'S SHOWTIME` means "begin main", `TALK TO THE HAND` means "print", and `YOU HAVE BEEN TERMINATED` means "end main".
 
-In the directory that contains this README, there is an example compiler that can compile ArnoldC code to LLVM IR.
-To use this compiler, we first install the `arnoldc` binary via
+This language allows Arnold Schwarzenegger to be a programmer.
+Of course, since it's Arnold, we still want the program to run fast so we compile to LLVM.
+
+The code to build the compiler is in the same directory as this README.
+In this README, we will show how the compiler can be built and used.
+First, we install it via:
 
 ```sh
 $ cargo install --path arnoldc
