@@ -181,11 +181,10 @@ impl Block {
             }
         };
     }
-    /// Find a unique name for a value (for example, `%4 = ...`).
-    pub fn unique_value_name(&self) -> String {
-        let mut new_name: i32 = 0;
+    fn used_names(&self) -> Vec<String> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
+        let mut used_names = vec![];
         for op in ops.iter() {
             let op = op.try_read().unwrap();
             let operation = op.operation();
@@ -200,14 +199,24 @@ impl Block {
                     Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
                     Value::FuncResult(_) => continue,
                 };
-                let possible_name = format!("%{new_name}");
-                if name == possible_name {
-                    new_name += 1;
-                } else {
-                    return possible_name;
-                }
+                used_names.push(name);
             }
         }
+        used_names
+    }
+    /// Find a unique name for a value (for example, `%4 = ...`).
+    pub fn unique_value_name(&self) -> String {
+        let used_names = self.used_names();
+        let mut new_name: i32 = -1;
+        for name in used_names.iter() {
+            let name = name.trim_start_matches('%');
+            if let Ok(num) = name.parse::<i32>() {
+                // Ensure new_name is greater than any used name.
+                // This is required by LLVM.
+                new_name = new_name.max(num);
+            }
+        }
+        new_name += 1;
         format!("%{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
