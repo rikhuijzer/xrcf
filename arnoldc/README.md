@@ -1,10 +1,9 @@
 # arnoldc
 
-This directory contains an example compiler that can compile and run a small program in the ArnoldC language.
-The example shows how to build your own language and compiler.
+This directory contains an example compiler that can compile and run a small program in the [ArnoldC language](https://github.com/lhartikk/ArnoldC).
 
 The ArnoldC language is based on one-liners from Arnold Schwarzenegger movies.
-This is what a valid "Hello, World!" program in ArnoldC looks like:
+This is what a valid "Hello, World!" program looks like:
 
 ```arnoldc
 IT'S SHOWTIME
@@ -14,12 +13,10 @@ YOU HAVE BEEN TERMINATED
 
 Here, `IT'S SHOWTIME` means "begin main", `TALK TO THE HAND` means "print", and `YOU HAVE BEEN TERMINATED` means "end main".
 
-This language allows Arnold Schwarzenegger to be a programmer.
-Of course, since it's Arnold, we still want the program to run fast so we compile to LLVM.
+In this walkthrough, we will show how to build and install the `arnoldc` compiler.
+Next, we will use this compiler to build and run the hello world program.
 
-The code to build the compiler is in the same directory as this README.
-In this README, we will show how the compiler can be built and used.
-First, we install it via:
+First, we install the compile via:
 
 ```sh
 $ cargo install --path arnoldc
@@ -54,9 +51,7 @@ Options:
   -V, --version                   Print version
 ```
 
-If this succeeds, then that shows that the compiler is correctly built.
-
-To compile ArnoldC, let's create a file called `tmp.arnoldc` with the following content:
+To compile ArnoldC, let's create a file called `tmp.arnoldc` with the hello world program:
 
 ```arnoldc
 IT'S SHOWTIME
@@ -64,7 +59,7 @@ TALK TO THE HAND "Hello, World!\n"
 YOU HAVE BEEN TERMINATED
 ```
 
-Before we run this, let's see what the compiler does with the `--convert-example-to-mlir` pass:
+Next, let's see what the compiler generates when we run the `--convert-arnold-to-mlir` pass:
 
 ```sh
 $ arnoldc --convert-arnold-to-mlir tmp.arnoldc
@@ -82,11 +77,11 @@ module {
 }
 ```
 
-What this shows is that the compiler has converted the ArnoldC code to MLIR.
+What this shows is that the compiler has converted the ArnoldC code to [MLIR code](https://mlir.llvm.org/).
 It also added a 0 return value to the `main` function.
 This ensures that the program will return a 0 status code, which is the convention for programs that didn't crash.
 
-Although this MLIR code looks nice, Arnold programmers probably want to run the code.
+Although this MLIR code looks nice (or at least more so than ArnoldC), let's get it to run.
 To do so, let's convert the MLIR code to LLVM IR by running all the required passes in order:
 
 ```sh
@@ -113,13 +108,13 @@ define i32 @main() {
 !0 = !{i32 2, !"Debug Info Version", i32 3}
 ```
 
-Remembering these passes and in the order in which to run them is cumbersome, so let's use the `--compile` flag, which is a wrapper around the above command:
+Remembering these passes and in the order in which to run them is cumbersome, so let's use the `compile` flag, which is a wrapper around the above command:
 
 ```sh
 $ arnoldc --compile tmp.arnoldc
 ```
 
-It returns the same LLVM IR as above.
+It returns the same LLVM IR as before.
 
 To run our compiled code, we can use the LLVM interpreter via the `lli` command.
 `lli` executes programs written in the LLVM bitcode format.
@@ -138,11 +133,13 @@ This should print:
 Hello, World!
 ```
 
-That wraps up this walkthrough, or as Arnold would conclude:
+That wraps up this walkthrough, or as Arnold would say:
 
 ```text
-I'LL BE BACK
+YOU HAVE BEEN TERMINATED
 ```
+
+## Next Steps
 
 To learn how to build your own compiler, see the files inside this `arnoldc` directory.
 It is split into three parts:
