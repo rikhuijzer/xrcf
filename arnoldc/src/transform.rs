@@ -1,5 +1,5 @@
-use crate::example;
-use crate::example_to_mlir::ConvertExampleToMLIR;
+use crate::arnold;
+use crate::arnold_to_mlir::ConvertArnoldToMLIR;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -45,7 +45,13 @@ impl ParserDispatch for ExampleParserDispatch {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         if is_function_call(parser) {
-            return <example::CallOp as Parse>::op(parser, parent);
+            return <arnold::CallOp as Parse>::op(parser, parent);
+        }
+        let first = parser.peek();
+        let second = parser.peek_n(1).unwrap();
+        let first_two = format!("{} {}", first.lexeme, second.lexeme);
+        if first_two == "TALK TO" {
+            return <arnold::PrintOp as Parse>::op(parser, parent);
         }
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
@@ -55,8 +61,8 @@ impl ParserDispatch for ExampleParserDispatch {
             parser.peek().clone()
         };
         match name.lexeme.clone().as_str() {
-            "def" => <example::FuncOp as Parse>::op(parser, parent),
-            "print" => <example::PrintOp as Parse>::op(parser, parent),
+            "def" => <arnold::FuncOp as Parse>::op(parser, parent),
+            "print" => <arnold::PrintOp as Parse>::op(parser, parent),
             _ => default_dispatch(name, parser, parent),
         }
     }
@@ -70,40 +76,38 @@ struct ExampleTransformDispatch;
 impl TransformDispatch for ExampleTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            "convert-example-to-mlir" => ConvertExampleToMLIR::convert(op),
+            ConvertArnoldToMLIR::NAME => ConvertArnoldToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }
 }
 
-/// Replace Python's indentation with brackets to make it easier to parse.
+/// Replace begin and end of blocks with braces to make it easier to parse.
 ///
+/// Also adds some indentation for readability.
 /// For example, this function changes
-/// ```toy
-/// def main():
-///     print("Hello, World!")
+/// ```arnoldc
+/// IT'S SHOWTIME
+/// TALK TO THE HAND "Hello, World!"
+/// YOU HAVE BEEN TERMINATED
 /// ```
 /// to
-/// ```toy
-/// def main() {
-///     print("Hello, World!")
+/// ```mlir
+/// def @main() {
+///   TALK TO THE HAND "Hello, World!"
 /// }
 /// ```
-fn replace_indentation(src: &str) -> String {
+fn replace_begin_and_end(src: &str) -> String {
     let mut result = String::new();
     let mut indent = 0;
     for line in src.lines() {
-        if line.ends_with(":") {
+        if line.contains("IT'S SHOWTIME") {
             indent += 1;
-            let line = line.trim_end_matches(':');
-            result.push_str(&format!("{} {{", line));
-        } else if line.starts_with(&format!("{}", spaces(2 * indent))) {
-            let line = line.trim();
-            result.push_str(&format!("{}{}", spaces(indent), line));
-        } else {
+            result.push_str(&format!("{}def main() {{", spaces(indent)));
+        } else if line.contains("YOU HAVE BEEN TERMINATED") {
             indent -= 1;
             result.push_str(&format!("{}}}", spaces(indent)));
-            result.push('\n');
+        } else {
             let line = line.trim();
             result.push_str(&format!("{}{}", spaces(indent), line));
         }
@@ -113,7 +117,7 @@ fn replace_indentation(src: &str) -> String {
 }
 
 pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
-    let src = replace_indentation(src);
+    let src = replace_begin_and_end(src);
     let op = Parser::<ExampleParserDispatch>::parse(&src)?;
     let result = transform::<ExampleTransformDispatch>(op, passes)?;
     Ok(result)
@@ -128,33 +132,23 @@ mod tests {
     use xrcf::tester::Tester;
 
     #[test]
-    fn test_replace_indentation() {
+    fn test_replace_begin_and_end() {
         Tester::init_tracing();
         let src = indoc! {r#"
-        def main():
-            print("Hello, World!")
-
-        def hello():
-            print("Hello, World!")
-
-        hello()
+        IT'S SHOWTIME
+        TALK TO THE HAND "Hello, World!\n"
+        YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
         def main() {
-          print("Hello, World!")
+          TALK TO THE HAND "Hello, World!\n"
         }
-
-        def hello() {
-          print("Hello, World!")
-        }
-
-        hello()
         "#}
         .trim();
-        let result = replace_indentation(src);
-        tracing::info!("Before replace_indentation:\n{src}\n");
-        tracing::info!("After replace_indentation:\n{result}\n");
+        let result = replace_begin_and_end(src);
+        tracing::info!("Before replace_begin_and_end:\n{src}\n");
+        tracing::info!("After replace_begin_and_end:\n{result}\n");
         assert_eq!(result.trim(), expected.trim());
     }
 
@@ -196,40 +190,35 @@ mod tests {
     fn test_hello_world() {
         Tester::init_tracing();
         let src = indoc! {r#"
-        def hello():
-            print("Hello, World!")
-
-        hello()
+        IT'S SHOWTIME
+        TALK TO THE HAND "Hello, World!\n"
+        YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @hello() {
-            unstable.printf("Hello, World!")
-            return
-          }
           func.func @main() -> i32 {
+            unstable.printf("Hello, World!\0A")
             %0 = arith.constant 0 : i32
-            func.call @hello() : () -> ()
             return %0 : i32
           }
         }
         "#}
         .trim();
-        let passes = vec!["--convert-example-to-mlir"];
+        let passes = vec!["--convert-arnold-to-mlir"];
         let (module, actual) = test_transform(src, passes);
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
         let passes = vec![
-            "--convert-example-to-mlir",
+            "--convert-arnold-to-mlir",
             "--convert-unstable-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];
         let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
+        assert!(actual.contains("declare i32 @printf(ptr)"));
         assert!(actual.contains("define i32 @main()"));
-        assert!(actual.contains("call void @hello()"));
     }
 }

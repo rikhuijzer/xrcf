@@ -372,6 +372,7 @@ pub trait GuardedOperation {
     fn region(&self) -> Option<Arc<RwLock<Region>>>;
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
+    fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
     fn set_argument(&self, argument: Arc<RwLock<Value>>);
     fn set_attributes(&self, attributes: Attributes);
     fn set_name(&self, name: OperationName);
@@ -414,6 +415,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn results(&self) -> Values {
         self.try_read().unwrap().results()
+    }
+    fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+        self.try_write().unwrap().set_anonymous_result(result_type)
     }
     fn set_argument(&self, argument: Arc<RwLock<Value>>) {
         self.try_write().unwrap().set_argument(argument);

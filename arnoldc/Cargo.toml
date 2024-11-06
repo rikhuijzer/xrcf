@@ -1,6 +1,6 @@
 [package]
-name = "xr-example"
-description = "An example compiler"
+name = "arnoldc"
+description = "A compiler for the ArnoldC language"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true

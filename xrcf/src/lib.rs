@@ -40,25 +40,6 @@
 //!
 //! So, the long-term goal of this project is to provide an easy-to-use set of tools that can be used to build your own compiler.
 //! In other words, it should be easy to build a compiler that can transform your favorite language to this project's core IR, and then it should be easy to transform this to various platforms such as GPUs, CPUs, and TPUs.
-//! 
-//! ## Benefits Compared to MLIR
-//! 
-//! This project is very similar to MLIR.
-//! I think MLIR is a great project which is built by a lot of very smart people.
-//! I've contributed a few times to MLIR and generally had a good time.
-//! The design of the core IR is powerful and the idea of expressing code as a set of operations and passes is very good.
-//! However, I noticed that the use of C++ causes some issues.
-//! 
-//! For example, it's hard to compose C++ projects.
-//! Rust has a great package manager and build system that makes it much easier to combine existing projects into a new project.
-//! No need to learn CMake and set the right flags and include paths.
-//! 
-//! Futhermore, LLVM and MLIR use TableGen to define the operations and types of the IR.
-//! This is a powerful tool, but it can get in the way of IDEs, which can make it difficult to find where operations and types are defined.
-//! 
-//! Finally, C++ lacks tooling around testing.
-//! This is why MLIR has built their own testing framework built around LLVM's `lit`.
-//! This means the tests can only easily compare the textual representations, whereas in Rust it's much easier to also access the data structures.
 
 mod canonicalize;
 pub mod convert;
