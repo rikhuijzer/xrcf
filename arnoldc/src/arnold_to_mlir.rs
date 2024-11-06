@@ -1,4 +1,4 @@
-use crate::example;
+use crate::arnold;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -29,11 +29,11 @@ impl Rewrite for CallLowering {
         "example_to_mlir::CallLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<example::CallOp>())
+        Ok(op.as_any().is::<arnold::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<example::CallOp>().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
         let mut new_op = func::CallOp::from_operation_arc(operation.clone());
@@ -69,11 +69,11 @@ impl Rewrite for FuncLowering {
         "example_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == example::FuncOp::operation_name())
+        Ok(op.name() == arnold::FuncOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<example::FuncOp>().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::FuncOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let identifier = format!("@{}", identifier);
         let operation = op.operation();
@@ -208,11 +208,11 @@ impl Rewrite for PrintLowering {
         "example_to_mlir::PrintLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == example::PrintOp::operation_name())
+        Ok(op.name() == arnold::PrintOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<example::PrintOp>().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
         let text = op.text().unwrap();
         let operation = op.operation();
         let mut new_op = unstable::PrintfOp::from_operation_arc(operation.clone());

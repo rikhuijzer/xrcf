@@ -1,5 +1,5 @@
-mod example;
-mod example_to_mlir;
+mod arnold;
+mod arnold_to_mlir;
 mod transform;
 
 use clap::arg;
@@ -96,7 +96,7 @@ mod tests {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
         };
-        assert!(err.to_string().contains("An example compiler"));
+        assert!(err.to_string().contains("A compiler for the ArnoldC language"));
         assert!(err.to_string().contains("--convert-func-to-llvm"));
     }
 
