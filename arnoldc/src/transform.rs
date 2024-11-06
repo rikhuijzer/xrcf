@@ -136,13 +136,13 @@ mod tests {
         Tester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
-        TALK TO THE HAND "Hello, World!"
+        TALK TO THE HAND "Hello, World!\n"
         YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
         def main() {
-          TALK TO THE HAND "Hello, World!"
+          TALK TO THE HAND "Hello, World!\n"
         }
         "#}
         .trim();
@@ -191,14 +191,14 @@ mod tests {
         Tester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
-        TALK TO THE HAND "Hello, World!"
+        TALK TO THE HAND "Hello, World!\n"
         YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
         module {
           func.func @main() -> i32 {
-            unstable.printf("Hello, World!")
+            unstable.printf("Hello, World!\0A")
             %0 = arith.constant 0 : i32
             return %0 : i32
           }

@@ -8,7 +8,7 @@ This is what a valid "Hello, World!" program in ArnoldC looks like:
 
 ```arnoldc
 IT'S SHOWTIME
-TALK TO THE HAND "Hello, World!"
+TALK TO THE HAND "Hello, World!\n"
 YOU HAVE BEEN TERMINATED
 ```
 
@@ -60,7 +60,7 @@ To compile ArnoldC, let's create a file called `tmp.arnoldc` with the following 
 
 ```arnoldc
 IT'S SHOWTIME
-TALK TO THE HAND "Hello, World!"
+TALK TO THE HAND "Hello, World!\n"
 YOU HAVE BEEN TERMINATED
 ```
 
@@ -75,7 +75,7 @@ This prints:
 ```mlir
 module {
   func.func @main() -> i32 {
-    unstable.printf("Hello, World!")
+    unstable.printf("Hello, World!\0A")
     %0 = arith.constant 0 : i32
     return %0 : i32
   }
@@ -84,9 +84,9 @@ module {
 
 What this shows is that the compiler has converted the ArnoldC code to MLIR.
 It also added a 0 return value to the `main` function.
-This ensures that the program will return a 0 status code, which is the convention for a program that didn't crash.
+This ensures that the program will return a 0 status code, which is the convention for programs that didn't crash.
 
-Although this MLIR code looks nice, I expect Arnold wants to also run the code.
+Although this MLIR code looks nice, Arnold programmers probably want to run the code.
 To do so, let's convert the MLIR code to LLVM IR by running all the required passes in order:
 
 ```sh
@@ -100,13 +100,13 @@ This prints:
 source_filename = "LLVMDialectModule"
 
 declare i32 @printf(ptr)
-
 define i32 @main() {
-    %2 = alloca i8, i64 14, align 1
-    store [14 x i8] c"hello, world\0A\00", ptr %2, align 1
-    %3 = call i32 @printf(ptr %2)
-    ret i32 0
+  %3 = alloca i8, i16 15, align 1
+  store [15 x i8] c"Hello, World!\0A\00", ptr %3, align 1
+  %4 = call i32 @printf(ptr %3)
+  ret i32 0
 }
+
 
 !llvm.module.flags = !{!0}
 
@@ -116,20 +116,20 @@ define i32 @main() {
 Remembering these passes and in the order in which to run them is cumbersome, so let's use the `--compile` flag, which is a wrapper around the above command:
 
 ```sh
-$ xr-example --compile tmp.example
+$ arnoldc --compile tmp.arnoldc
 ```
 
 It returns the same LLVM IR as above.
 
-To run our compiled code, we can use the `lli` command.
+To run our compiled code, we can use the LLVM interpreter via the `lli` command.
 `lli` executes programs written in the LLVM bitcode format.
 This executable is part of the LLVM project, so it can usually be installed via the package manager.
 For example, on MacOS, `brew install llvm`.
 
-So let's run our compiled code:
+Let's run our compiled code:
 
 ```sh
-$ xr-example --compile tmp.example | lli
+$ arnoldc --compile tmp.arnoldc | lli
 ```
 
 This should print:
@@ -138,19 +138,26 @@ This should print:
 Hello, World!
 ```
 
-To learn how to build your own compiler like this, see the files inside this `xr-example` directory.
+That wraps up this walkthrough, or as Arnold would conclude:
+
+```text
+I'LL BE BACK
+```
+
+To learn how to build your own compiler like this, see the files inside this `arnoldc` directory.
 It is split into three parts:
 
 1. `src/main.rs` contains the command line interface of the compiler.
-1. `src/example.rs` specifies how to parse the Example code (convert the text to data structures).
-1. `src/example_to_mlir.rs` contains the `--convert-example-to-mlir` pass, which converts the Example code to MLIR.
+1. `src/arnold.rs` specifies how to parse the ArnoldC code (convert the text to data structures).
+1. `src/arnold_to_mlir.rs` contains the `--convert-arnold-to-mlir` pass, which converts the ArnoldC code to MLIR.
 
 All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
 
-To get inspiration for building your own compiler, the following projects are built on MLIR:
+If you want to build your own compiler, here are some modern compiler projects:
 
 - [jax](https://github.com/jax-ml/jax): A Python library for accelerator-oriented computing
 - [triton](https://github.com/triton-lang/triton): A Python library for high-performance computation on GPUs by OpenAI.
+- [tvm](https://tvm.apache.org/): A end to end machine learning compiler framework for CPUs, GPUs, and accelerators.
 - [torch-mlir](https://github.com/llvm/torch-mlir): Compiles PyTorch to MLIR.
 - [mlir-hlo](https://github.com/llvm/mlir-hlo): A set of transformations from TensorFlow HLO to MLIR.
 - [Flang](https://flang.llvm.org/docs/): A LLVM-based Fortran compiler.
