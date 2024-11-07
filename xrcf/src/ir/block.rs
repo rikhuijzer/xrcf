@@ -107,6 +107,7 @@ impl Block {
                             return Some(value.clone());
                         }
                     }
+                    Value::Variadic(_) => continue,
                 }
             }
         }
@@ -198,6 +199,7 @@ impl Block {
                     Value::OpResult(res) => res.name().expect("failed to get name"),
                     Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
                     Value::FuncResult(_) => continue,
+                    Value::Variadic(_) => continue,
                 };
                 used_names.push(name);
             }

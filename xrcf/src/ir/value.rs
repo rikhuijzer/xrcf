@@ -190,6 +190,14 @@ impl Users {
     }
 }
 
+pub struct Variadic;
+
+impl Display for Variadic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "...")
+    }
+}
+
 /// Represents an instance of an SSA value in the IR,
 /// representing a computable value that has a type and a set of users. An SSA
 /// value is either a BlockArgument or the result of an operation. Note: This
@@ -203,6 +211,7 @@ pub enum Value {
     BlockArgument(BlockArgument),
     FuncResult(AnonymousResult),
     OpResult(OpResult),
+    Variadic(Variadic),
 }
 
 impl Value {
@@ -215,6 +224,7 @@ impl Value {
             Value::BlockArgument(arg) => arg.name.clone(),
             Value::FuncResult(_) => None,
             Value::OpResult(result) => result.name.clone(),
+            Value::Variadic(_) => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
@@ -224,6 +234,7 @@ impl Value {
             Value::OpResult(result) => result
                 .typ()
                 .expect(&format!("Type was not set for OpResult {}", self)),
+            Value::Variadic(_) => todo!(),
         }
     }
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
@@ -231,6 +242,7 @@ impl Value {
             Value::BlockArgument(arg) => arg.set_typ(typ),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
+            Value::Variadic(_) => todo!(),
         }
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
@@ -238,6 +250,7 @@ impl Value {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
+            Value::Variadic(_) => panic!("Cannot set defining op for Variadic"),
         }
     }
     pub fn set_name(&mut self, name: &str) {
@@ -245,6 +258,7 @@ impl Value {
             Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
+            Value::Variadic(_) => panic!("Cannot set name for Variadic"),
         }
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
@@ -286,6 +300,7 @@ impl Value {
             Value::BlockArgument(_) => Users::HasNoOpResults,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
+            Value::Variadic(_) => Users::HasNoOpResults,
         }
     }
     /// Rename the value, and all its users.
@@ -300,6 +315,7 @@ impl Display for Value {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
+            Value::Variadic(variadic) => write!(f, "{variadic}"),
         }
     }
 }
@@ -389,6 +405,9 @@ impl Values {
                     panic!("Trying to set defining op for func result")
                 }
                 Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
+                Value::Variadic(_) => {
+                    panic!("Trying to set defining op for variadic")
+                }
             }
         }
     }
@@ -434,7 +453,7 @@ impl Display for Values {
 
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
-    /// Parse `%arg0 : i64,`, or `i64,`.
+    /// Parse `%arg0 : i64,`, `i64,`, or `...`.
     pub fn parse_function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
         if self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
@@ -458,6 +477,13 @@ impl<T: ParserDispatch> Parser<T> {
             }
             return Ok(operand);
         }
+        if self.check(TokenKind::Dot) {
+            self.expect(TokenKind::Dot)?;
+            self.expect(TokenKind::Dot)?;
+            self.expect(TokenKind::Dot)?;
+            let variadic = Value::Variadic(Variadic);
+            return Ok(Arc::new(RwLock::new(variadic)));
+        }
         Err(anyhow::anyhow!("Expected function argument"))
     }
     pub fn is_function_argument(&mut self) -> bool {
@@ -467,7 +493,9 @@ impl<T: ParserDispatch> Parser<T> {
         let int = self.check(TokenKind::IntType);
         // For example, `@printf(!llvm.ptr)`.
         let excl = self.check(TokenKind::Exclamation);
-        perc || int || excl
+        // For example, `@printf(ptr, ...)`.
+        let dot = self.check(TokenKind::Dot);
+        perc || int || excl || dot
     }
     /// Parse %0, %1.
     fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {

@@ -35,6 +35,8 @@ pub enum TokenKind {
     SingleQuote,
     /// ,
     Comma,
+    /// .
+    Dot,
     /// =
     Equal,
     /// (

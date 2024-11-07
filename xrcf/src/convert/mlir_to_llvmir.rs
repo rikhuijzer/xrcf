@@ -51,6 +51,7 @@ fn set_constant_value(new_op: &mut dyn OneConst, value: Arc<RwLock<Value>>) {
                 remove_operand_to_constant(new_op);
             }
         }
+        Value::Variadic(_) => todo!(),
     }
 }
 

@@ -176,6 +176,7 @@ impl Scanner {
             ':' => self.add_token(TokenKind::Colon),
             '\'' => self.add_token(TokenKind::SingleQuote),
             ',' => self.add_token(TokenKind::Comma),
+            '.' => self.add_token(TokenKind::Dot),
             '=' => self.add_token(TokenKind::Equal),
             '!' => self.add_token(TokenKind::Exclamation),
             '>' => self.add_token(TokenKind::Greater),
