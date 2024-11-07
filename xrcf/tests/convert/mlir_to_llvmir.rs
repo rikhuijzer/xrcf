@@ -140,18 +140,17 @@ fn test_print_with_vararg() {
         (!llvm.ptr, i32) -> i32
       %5 = llvm.mlir.constant(0 : i32) : i32
       llvm.return %5 : i32
-        }
+    }
     "#};
     let expected = indoc! {r#"
     ; ModuleID = 'LLVMDialectModule'
     source_filename = "LLVMDialectModule"
 
     declare i32 @printf(ptr, ...)
-
     define i32 @main() {
-      %1 = alloca i8, i64 14, align 1
-      store [11 x i8] c"hello, %d\0A\00", ptr %1, align 1
-      %2 = call i32 (ptr, ...) @printf(ptr %1, i32 42)
+      %2 = alloca i8, i64 14, align 1
+      store [11 x i8] c"hello, %d\0A\00", ptr %2, align 1
+      %3 = call i32 (ptr, ...) @printf(ptr %2, i32 42)
       ret i32 0
     }
 

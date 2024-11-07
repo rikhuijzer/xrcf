@@ -1,6 +1,8 @@
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
+use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -211,6 +213,44 @@ impl<T: ParserDispatch> Parser<T> {
             );
             let msg = self.error(&token, &msg);
             return Err(anyhow::anyhow!(msg));
+        }
+        Ok(())
+    }
+    /// Parse types until a closing parenthesis.
+    pub fn parse_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
+        let mut types = vec![];
+        while !self.check(TokenKind::RParen) {
+            let typ = T::parse_type(self)?;
+            types.push(typ);
+            if self.check(TokenKind::Comma) {
+                self.advance();
+            }
+        }
+        Ok(types)
+    }
+    /// Parse types and verify that they match the given operands.
+    ///
+    /// For example, can be used to verify that `%0` has type `i32` in:
+    ///
+    /// ```mlir
+    /// %0 = arith.constant 42 : i32
+    /// llvm.call @printf(%0) : (i32) -> (i32)
+    /// ```
+    pub fn parse_types_for_op_operands(&mut self, operands: OpOperands) -> Result<()> {
+        let types = self.parse_types()?;
+        if types.len() != operands.vec().try_read().unwrap().len() {
+            let msg = format!(
+                "Expected {} types but got {}",
+                operands.vec().try_read().unwrap().len(),
+                types.len()
+            );
+            return Err(anyhow::anyhow!(msg));
+        }
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
+        for x in operands.iter().zip(types.iter()) {
+            let (operand, typ) = x;
+            self.verify_type(operand.clone(), typ.clone())?;
         }
         Ok(())
     }

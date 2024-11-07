@@ -59,6 +59,18 @@ pub trait Call: Op {
         }
         Ok(())
     }
+    /// Parse a call op such as `llvm.call`.
+    ///
+    /// Examples:
+    ///
+    /// ```mlir
+    /// llvm.call @hello() : () -> ()
+    ///
+    /// llvm.call @printf(%0) : (!llvm.ptr) -> i32
+    ///
+    /// llvm.call @prtinf(%0, %1) vararg(!llvm.func<i32 (ptr, ...)>) :
+    ///   (!llvm.ptr, i32) -> i32
+    /// ```
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -71,24 +83,36 @@ pub trait Call: Op {
         let identifier = identifier.lexeme.clone();
 
         parser.expect(TokenKind::LParen)?;
-        let has_operand = !parser.check(TokenKind::RParen);
-        let operand = if has_operand {
-            Some(parser.parse_op_operand_into(parent.unwrap(), &mut operation)?)
-        } else {
-            None
-        };
+        let operands = parser.parse_op_operands_into(parent.unwrap(), &mut operation)?;
         parser.expect(TokenKind::RParen)?;
 
+        // vararg(!llvm.func<i32 (ptr, ...)>)
+        {
+            if parser.peek().kind == TokenKind::BareIdentifier && parser.peek().lexeme == "vararg" {
+                let _vararg = parser.advance();
+                parser.expect(TokenKind::LParen)?;
+                // Parsing it but ignoring the information away since it's redundant.
+                parser.expect(TokenKind::Exclamation)?;
+                parser.expect(TokenKind::BareIdentifier)?;
+                parser.expect(TokenKind::Less)?;
+                while parser.peek().kind != TokenKind::Greater {
+                    parser.advance();
+                }
+                parser.expect(TokenKind::Greater)?;
+                parser.expect(TokenKind::RParen)?;
+            }
+        }
         parser.expect(TokenKind::Colon)?;
 
+        // (i32) or (!llvm.ptr, i32)
         parser.expect(TokenKind::LParen)?;
-        if let Some(operand) = operand {
-            let operand_type = T::parse_type(parser)?;
-            parser.verify_type(operand, operand_type)?;
+        if !operands.vec().try_read().unwrap().is_empty() {
+            parser.parse_types_for_op_operands(operands)?;
         }
         parser.expect(TokenKind::RParen)?;
 
         parser.expect(TokenKind::Arrow)?;
+
         if parser.empty_type() {
             parser.parse_empty_type()?;
         } else {

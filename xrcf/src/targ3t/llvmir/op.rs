@@ -259,17 +259,24 @@ impl Op for FuncOp {
         let arguments = self.arguments().unwrap();
         let arguments = arguments.vec();
         let arguments = arguments.try_read().unwrap();
-        for argument in arguments.iter() {
+        for (i, argument) in arguments.iter().enumerate() {
+            if 0 < i {
+                write!(f, ", ")?;
+            }
             let argument = argument.try_read().unwrap();
-            if let Value::BlockArgument(arg) = &*argument {
-                let typ = arg.typ();
-                let typ = typ.try_read().unwrap();
-                match arg.name() {
-                    Some(name) => write!(f, "{} {}", typ, name),
-                    None => write!(f, "{}", typ),
-                }?;
-            } else {
-                panic!("Expected BlockArgument");
+            match &*argument {
+                Value::BlockArgument(arg) => {
+                    let typ = arg.typ();
+                    let typ = typ.try_read().unwrap();
+                    match arg.name() {
+                        Some(name) => write!(f, "{} {}", typ, name),
+                        None => write!(f, "{}", typ),
+                    }?;
+                }
+                Value::Variadic(variadic) => {
+                    write!(f, "{variadic}")?;
+                }
+                _ => panic!("Unexpected"),
             }
         }
         write!(f, ")")?;

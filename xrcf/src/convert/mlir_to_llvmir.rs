@@ -156,20 +156,25 @@ fn lower_block_argument_types(operation: &mut Operation) {
         let arguments = arguments.try_read().unwrap();
         let mut new_arguments = vec![];
         for argument in arguments.iter() {
-            let typ = argument.typ();
-            let typ = typ.try_read().unwrap();
-            if typ.as_any().is::<dialect::llvm::PointerType>() {
-                let typ = targ3t::llvmir::PointerType::from_str("ptr");
-                let typ = Arc::new(RwLock::new(typ));
-                let arg = Value::BlockArgument(BlockArgument::new(None, typ));
-                new_arguments.push(Arc::new(RwLock::new(arg)));
-            } else {
+            let argument_rd = argument.try_read().unwrap();
+            if let Value::Variadic(_) = &*argument_rd {
                 new_arguments.push(argument.clone());
-            }
+            } else {
+                let typ = argument.typ();
+                let typ = typ.try_read().unwrap();
+                if typ.as_any().is::<dialect::llvm::PointerType>() {
+                    let typ = targ3t::llvmir::PointerType::from_str("ptr");
+                    let typ = Arc::new(RwLock::new(typ));
+                    let arg = Value::BlockArgument(BlockArgument::new(None, typ));
+                    new_arguments.push(Arc::new(RwLock::new(arg)));
+                } else {
+                    new_arguments.push(argument.clone());
+                }
+            };
         }
         new_arguments
     };
-    if 0 < new_arguments.len() {
+    if !new_arguments.is_empty() {
         let new_arguments = Values::from_vec(new_arguments);
         operation.set_arguments(new_arguments);
     }

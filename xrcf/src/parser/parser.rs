@@ -98,10 +98,13 @@ impl ParserDispatch for DefaultParserDispatch {
             return Ok(Arc::new(RwLock::new(typ)));
         }
         let text = parser.parse_type_text()?;
+        if text.is_empty() {
+            panic!("Expected type but got empty string");
+        }
         if text.starts_with("!llvm") {
             return LLVM::parse_type(&text);
         }
-        todo!("Not yet implemented for {}", text)
+        todo!("Not yet implemented for '{text}'")
     }
 }
 
@@ -314,7 +317,14 @@ impl<T: ParserDispatch> Parser<T> {
         };
         Ok(op)
     }
-    /// Parse a type to a string (for example, `!llvm.array<i32>`).
+    /// Parse a type to a string.
+    ///
+    /// Examples:
+    /// ```mlir
+    /// !llvm.array<i32>
+    ///
+    /// !llvm.ptr
+    /// ```
     fn parse_type_text(&mut self) -> Result<String> {
         let mut typ = String::new();
         if self.check(TokenKind::Exclamation) {

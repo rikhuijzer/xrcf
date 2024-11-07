@@ -123,7 +123,7 @@ impl<T: ParserDispatch> Parser<T> {
     ) -> Result<Arc<RwLock<OpOperand>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
-        let block = parent.read().unwrap();
+        let block = parent.try_read().expect("no parent");
         let assignment = block.assignment(&name);
         let assignment = match assignment {
             Some(assignment) => assignment,
@@ -159,6 +159,15 @@ impl<T: ParserDispatch> Parser<T> {
         let operands = OpOperands {
             operands: Arc::new(RwLock::new(arguments)),
         };
+        Ok(operands)
+    }
+    pub fn parse_op_operands_into(
+        &mut self,
+        parent: Arc<RwLock<Block>>,
+        operation: &mut Operation,
+    ) -> Result<OpOperands> {
+        let operands = self.parse_op_operands(parent)?;
+        operation.set_operands(operands.clone());
         Ok(operands)
     }
 }
