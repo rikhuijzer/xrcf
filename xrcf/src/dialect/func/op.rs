@@ -68,7 +68,7 @@ pub trait Call: Op {
     ///
     /// llvm.call @printf(%0) : (!llvm.ptr) -> i32
     ///
-    /// llvm.call @prtinf(%0, %1) vararg(!llvm.func<i32 (ptr, ...)>) :
+    /// llvm.call @printf(%0, %1) vararg(!llvm.func<i32 (ptr, ...)>) :
     ///   (!llvm.ptr, i32) -> i32
     /// ```
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
