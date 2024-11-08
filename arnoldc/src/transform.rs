@@ -186,7 +186,7 @@ mod tests {
         assert!(actual.contains("define i32 @main"));
     }
 
-    // #[test]
+    #[test]
     fn test_hello_world() {
         Tester::init_tracing();
         let src = indoc! {r#"
