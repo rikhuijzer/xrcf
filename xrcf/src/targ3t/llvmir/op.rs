@@ -18,11 +18,15 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Display an operand LLVMIR style (e.g., `8`).
+/// Display an operand LLVMIR style (e.g., `i32 8`, or `i32 %0`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
     let value = operand.value();
     let value = value.try_read().unwrap();
     match &*value {
+        Value::BlockArgument(block_arg) => {
+            let name = block_arg.name().expect("Block argument has no name");
+            write!(f, "{name}")
+        }
         Value::Constant(constant) => {
             let value = constant.value();
             let value = value.value();
@@ -30,16 +34,11 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {value}")
         }
-        Value::BlockArgument(block_arg) => {
-            let name = block_arg.name().expect("Block argument has no name");
-            write!(f, "{name}")
-        }
         Value::OpResult(op_result) => {
-            let op = op_result.name().expect("Op result has no name");
-            // TODO: maybe print type value here?
+            let name = op_result.name().expect("Op result has no name");
             let typ = op_result.typ().expect("No type");
             let typ = typ.try_read().unwrap();
-            write!(f, "{typ} {op}")
+            write!(f, "{typ} {name}")
         }
         _ => panic!("Unexpected"),
     }
