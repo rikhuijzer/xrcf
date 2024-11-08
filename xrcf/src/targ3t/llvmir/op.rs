@@ -11,6 +11,7 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Type;
 use crate::ir::Value;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -147,6 +148,7 @@ impl Display for AllocaOp {
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    varargs: Option<Arc<RwLock<dyn Type>>>,
 }
 
 impl Call for CallOp {
@@ -155,6 +157,12 @@ impl Call for CallOp {
     }
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
+    }
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.varargs.clone()
+    }
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+        self.varargs = varargs;
     }
 }
 
@@ -166,6 +174,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            varargs: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -189,12 +198,13 @@ impl Op for CallOp {
         } else {
             "void".to_string()
         };
-        write!(f, "call {return_type} {}(", self.identifier().unwrap())?;
+        write!(f, "call {return_type} foo {}(", self.identifier().unwrap())?;
         let operand_types = operation.operand_types();
         if !operand_types.vec().is_empty() {
             write!(f, "{} ", operand_types)?;
         }
-        write!(f, "{})", operation.operands())?;
+        display_operands(f, &operation.operands())?;
+        write!(f, ")")?;
         Ok(())
     }
 }

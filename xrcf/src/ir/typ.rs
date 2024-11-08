@@ -232,11 +232,14 @@ impl<T: ParserDispatch> Parser<T> {
         }
         Ok(())
     }
+    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
+        T::parse_type(self)
+    }
     /// Parse types until a closing parenthesis.
     pub fn parse_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
         let mut types = vec![];
         while !self.check(TokenKind::RParen) {
-            let typ = T::parse_type(self)?;
+            let typ = self.parse_type()?;
             types.push(typ);
             if self.check(TokenKind::Comma) {
                 self.advance();

@@ -13,7 +13,9 @@ pub use op::GlobalOp;
 pub use op::ReturnOp;
 pub use op::StoreOp;
 pub use typ::ArrayType;
+pub use typ::FunctionType;
 pub use typ::PointerType;
+pub use typ::VariadicType;
 
 pub struct LLVM {}
 

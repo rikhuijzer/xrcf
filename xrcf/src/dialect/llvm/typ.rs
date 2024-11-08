@@ -2,6 +2,7 @@ use crate::dialect::llvm::LLVM;
 use crate::ir::IntegerType;
 use crate::ir::Type;
 use crate::ir::TypeParse;
+use crate::ir::Types;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -80,6 +81,59 @@ impl Display for ArrayType {
 }
 
 #[derive(Clone)]
+pub struct FunctionType {
+    return_types: Types,
+    arguments: Types,
+}
+
+impl FunctionType {
+    pub fn new(return_types: Types, arguments: Types) -> Self {
+        Self {
+            return_types,
+            arguments,
+        }
+    }
+    /// Parse `!llvm.func<i32(i32, ...)>`.
+    pub fn from_str(s: &str) -> Self {
+        println!("{}", s);
+        assert!(s.starts_with("!llvm.func<"));
+        let s = s.strip_prefix("!llvm.func<").unwrap();
+        let (return_types, arguments) = s.split_once('(').unwrap();
+
+        let return_type = IntegerType::from_str(return_types);
+        let return_type = Arc::new(RwLock::new(return_type));
+        let return_types = Types::from_vec(vec![return_type]);
+
+        let arguments_str = arguments.trim_end_matches(")>");
+        let arguments_str = arguments_str.trim_start_matches('(');
+        let mut arguments = vec![];
+        for argument in arguments_str.split(',') {
+            let argument = LLVM::parse_type(argument).unwrap();
+            arguments.push(argument);
+        }
+        let arguments = Types::from_vec(arguments);
+
+        Self {
+            return_types,
+            arguments,
+        }
+    }
+}
+
+impl Type for FunctionType {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "!llvm.func<")?;
+        write!(f, "{}", self.return_types)?;
+        write!(f, " (")?;
+        write!(f, "{}", self.arguments)?;
+        write!(f, ")>")
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
+#[derive(Clone)]
 pub struct PointerType {}
 
 impl PointerType {
@@ -100,13 +154,44 @@ impl Type for PointerType {
     }
 }
 
+#[derive(Clone)]
+pub struct VariadicType {}
+
+impl VariadicType {
+    pub fn new() -> Self {
+        Self {}
+    }
+    pub fn from_str(s: &str) -> Self {
+        assert!(s == "...", "Expected '...', but got {s}");
+        Self {}
+    }
+}
+
+impl Type for VariadicType {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "...")
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+}
+
 impl TypeParse for LLVM {
     fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
         if src.starts_with("!llvm.array") {
             return Ok(Arc::new(RwLock::new(ArrayType::parse_str(src))));
         }
+        if src.starts_with("!llvm.func") {
+            return Ok(Arc::new(RwLock::new(FunctionType::from_str(src))));
+        }
         if src.starts_with("!llvm.ptr") {
             return Ok(Arc::new(RwLock::new(PointerType::from_str(src))));
+        }
+        if src.starts_with("ptr") {
+            return Ok(Arc::new(RwLock::new(PointerType::from_str(src))));
+        }
+        if src == "..." {
+            return Ok(Arc::new(RwLock::new(VariadicType::from_str(src))));
         }
         todo!("Not yet implemented for {}", src)
     }

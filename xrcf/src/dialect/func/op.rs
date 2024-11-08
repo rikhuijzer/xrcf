@@ -32,11 +32,14 @@ use std::sync::RwLock;
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    varargs: Option<Arc<RwLock<dyn Type>>>,
 }
 
 pub trait Call: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let results = operation.results();
@@ -91,6 +94,7 @@ pub trait Call: Op {
             if parser.peek().kind == TokenKind::BareIdentifier && parser.peek().lexeme == "vararg" {
                 let _vararg = parser.advance();
                 parser.expect(TokenKind::LParen)?;
+                let varargs = parser.parse_type()?;
                 // Parsing it but ignoring the information away since it's redundant.
                 parser.expect(TokenKind::Exclamation)?;
                 parser.expect(TokenKind::BareIdentifier)?;
@@ -135,6 +139,12 @@ impl Call for CallOp {
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
     }
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.varargs.clone()
+    }
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+        self.varargs = varargs;
+    }
 }
 
 impl Op for CallOp {
@@ -145,6 +155,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            varargs: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {

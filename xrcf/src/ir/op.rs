@@ -6,6 +6,8 @@ use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::parser::Parser;
+use crate::parser::ParserDispatch;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -210,6 +212,12 @@ pub trait Op {
 impl Display for dyn Op {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
+    }
+}
+
+impl<T: ParserDispatch> Parser<T> {
+    pub fn parse_op(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Arc<RwLock<dyn Op>>> {
+        T::parse_op(self, parent)
     }
 }
 

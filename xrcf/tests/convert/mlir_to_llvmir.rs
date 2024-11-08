@@ -150,7 +150,7 @@ fn test_print_with_vararg() {
     define i32 @main() {
       %2 = alloca i8, i64 14, align 1
       store [11 x i8] c"hello, %d\0A\00", ptr %2, align 1
-      %3 = call i32 (ptr, ...) @printf(ptr %2, i32 42)
+      %4 = call i32 (ptr, ...) @printf(ptr %2, i32 42)
       ret i32 0
     }
 
