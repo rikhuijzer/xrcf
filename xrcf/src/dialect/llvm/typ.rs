@@ -101,7 +101,6 @@ impl FunctionType {
     }
     /// Parse `!llvm.func<i32(i32, ...)>`.
     pub fn from_str(s: &str) -> Self {
-        println!("{}", s);
         assert!(s.starts_with("!llvm.func<"));
         let s = s.strip_prefix("!llvm.func<").unwrap();
         let (return_types, arguments) = s.split_once('(').unwrap();

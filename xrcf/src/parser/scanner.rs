@@ -315,7 +315,7 @@ mod tests {
         assert_eq!(text, src);
 
         let text = Scanner::error(src, &tokens[4].location, "test");
-        println!("text:\n{}", text);
+        tracing::info!("text:\n{}", text);
         let lines = text.split('\n').collect::<Vec<&str>>();
         assert_eq!(lines[0], "```");
         assert_eq!(lines[1], "0  | module {");

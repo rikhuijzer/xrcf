@@ -207,16 +207,6 @@ impl Op for CallOp {
             write!(f, "({}) ", varargs.try_read().unwrap())?;
         }
         write!(f, "{}(", self.identifier().unwrap())?;
-
-        {
-            let operands = operation.operands().vec();
-            let operands = operands.try_read().unwrap();
-            for operand in operands.iter() {
-                let operand = operand.try_read().unwrap();
-                println!("{} ", operand.typ().try_read().unwrap());
-            }
-        }
-
         display_operands(f, &operation.operands())?;
         write!(f, ")")?;
         Ok(())
@@ -394,12 +384,6 @@ impl Op for ReturnOp {
         if operands.vec().try_read().unwrap().is_empty() {
             write!(f, "ret void")
         } else {
-            // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-            let operand = self.operation().operand(0).unwrap();
-            let value = operand.value();
-            let value = value.try_read().unwrap();
-            let typ = value.typ();
-            let typ = typ.try_read().unwrap();
             write!(f, "ret ")?;
             display_operands(f, &self.operation.operands())
         }
