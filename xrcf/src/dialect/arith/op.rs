@@ -1,5 +1,6 @@
 use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
+use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedOpOperand;
@@ -10,7 +11,6 @@ use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::AnyType;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;

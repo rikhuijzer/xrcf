@@ -1,3 +1,4 @@
+use crate::ir::Attribute;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -11,7 +12,6 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
-use crate::ir::Attribute;
 
 /// An argument in a block or function.
 pub struct BlockArgument {
@@ -50,7 +50,7 @@ impl Display for BlockArgument {
 }
 
 /// A constant value, for example a constant integer.
-/// 
+///
 /// This is useful for situations where a operand is replaced by a constant
 /// value. Due to [Constant] being a [Value], it can be placed inside the
 /// [Operation] `operands` field. In turn, this allows us to keep track of
@@ -229,7 +229,7 @@ impl Display for Variadic {
 
 /// Represents an instance of an SSA value in the IR, representing a computable
 /// value that has a type and a set of users.
-/// 
+///
 /// Note from MLIR: This class has value-type semantics and is just a simple
 /// wrapper around a ValueImpl that is either owner by a block(in the case of a
 /// BlockArgument) or an Operation(in the case of an OpResult).  As most IR

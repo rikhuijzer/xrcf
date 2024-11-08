@@ -4,6 +4,8 @@ use crate::ir::llvm_string_to_bytes;
 use crate::ir::unescape;
 use crate::ir::APInt;
 use crate::ir::IntegerType;
+use crate::ir::StringType;
+use crate::ir::Type;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
@@ -12,9 +14,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use crate::ir::StringType;
 use std::sync::RwLock;
-use crate::ir::Type;
 
 /// Attributes are known-constant values of operations (a variable is not allowed).
 /// Attributes belong to operations and can be used to, for example, specify

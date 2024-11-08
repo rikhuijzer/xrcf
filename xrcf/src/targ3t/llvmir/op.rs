@@ -9,14 +9,44 @@ use crate::ir::GuardedRegion;
 use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::StringAttr;
 use crate::ir::Value;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
+
+/// Display an operand LLVMIR style (e.g., `i32 42`).
+fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
+    let value = operand.value();
+    let value = value.try_read().unwrap();
+    match &*value {
+        Value::Constant(constant) => {
+            let value = constant.value();
+            let value = value.value();
+            write!(f, "{value}")
+        }
+        Value::BlockArgument(block_arg) => {
+            let name = block_arg.name().expect("Block argument has no name");
+            write!(f, "{name}")
+        }
+        _ => panic!("Unexpected"),
+    }
+}
+
+fn display_operands(f: &mut Formatter<'_>, operands: &OpOperands) -> std::fmt::Result {
+    let operands = operands.vec();
+    let operands = operands.try_read().unwrap();
+    for (i, operand) in operands.iter().enumerate() {
+        if 0 < i {
+            write!(f, ", ")?;
+        }
+        display_operand(f, operand)?;
+    }
+    Ok(())
+}
 
 pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
@@ -27,9 +57,7 @@ impl Op for AddOp {
         OperationName::new("target::llvmir::add".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        AddOp {
-            operation,
-        }
+        AddOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -45,15 +73,8 @@ impl Op for AddOp {
         let result = results[0].try_read().unwrap();
         write!(f, "{result} = add")?;
         let result_types = operation.results().types();
-        write!(f, " {result_types}")?;
-        let operands = operation.operands();
-        let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
-        let operand = operands.get(0).unwrap();
-        write!(f, " {}, ", operand.try_read().unwrap())?;
-        let const_value = self.const_value();
-        let const_value = const_value.value();
-        write!(f, "{const_value}")?;
+        write!(f, " {result_types} ")?;
+        display_operands(f, &operation.operands())?;
         write!(f, "\n")
     }
 }
@@ -71,7 +92,14 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().expect("array size not set")
+        let operand = self.operation().operand(1).unwrap();
+        let operand = operand.try_read().unwrap();
+        let value = operand.value();
+        let value = value.try_read().unwrap();
+        match &*value {
+            Value::Constant(constant) => constant.value().clone(),
+            _ => panic!("Unexpected"),
+        }
     }
     pub fn set_element_type(&mut self, element_type: String) {
         self.element_type = Some(element_type);
@@ -327,9 +355,7 @@ impl Op for ReturnOp {
         OperationName::new("target::llvmir::return".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        ReturnOp {
-            operation,
-        }
+        ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self

@@ -47,7 +47,11 @@ impl OpOperand {
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        let value = self.value.try_read().unwrap();
+        match &*value {
+            Value::Constant(constant) => write!(f, "{constant}"),
+            _ => write!(f, "{}", self.name()),
+        }
     }
 }
 

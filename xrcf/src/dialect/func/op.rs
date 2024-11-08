@@ -1,3 +1,4 @@
+use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
@@ -9,7 +10,6 @@ use crate::ir::Op;
 use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::AnyType;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;

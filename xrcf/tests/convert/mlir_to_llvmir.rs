@@ -70,7 +70,7 @@ fn test_add_one() {
     "};
     let expected = indoc! {r#"
     define i32 @add_one(i32 %arg0) {
-        %1 = add i32 %arg0, 1
+        %1 = add i32 1, %arg0
         ret i32 %1
     }
     "#};

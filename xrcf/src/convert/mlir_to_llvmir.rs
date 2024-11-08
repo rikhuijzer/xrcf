@@ -1,7 +1,8 @@
+use crate::canonicalize::CanonicalizeOp;
+use crate::canonicalize::DeadCodeElimination;
 use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
 use crate::convert::Pass;
-use crate::ir::OpOperand;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
@@ -9,20 +10,19 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir;
 use crate::ir::BlockArgument;
+use crate::ir::Constant;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
-use crate::canonicalize::CanonicalizeOp;
-use crate::canonicalize::DeadCodeElimination;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
+use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::ir::Constant;
 use crate::targ3t;
 use anyhow::Result;
 use std::sync::Arc;
@@ -247,6 +247,7 @@ impl Rewrite for StoreLowering {
         let value = op_operand.value();
         let value_typ = value.typ();
         let value_typ = value_typ.try_read().unwrap();
+        println!("{value_typ}");
         let value_typ = value_typ
             .as_any()
             .downcast_ref::<dialect::llvm::ArrayType>()
