@@ -26,7 +26,9 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
         Value::Constant(constant) => {
             let value = constant.value();
             let value = value.value();
-            write!(f, "{value}")
+            let typ = constant.typ();
+            let typ = typ.try_read().unwrap();
+            write!(f, "{typ} {value}")
         }
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name().expect("Block argument has no name");
@@ -34,7 +36,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
         }
         Value::OpResult(op_result) => {
             let op = op_result.name().expect("Op result has no name");
-            write!(f, "{op}")
+            // TODO: maybe print type value here?
+            let typ = op_result.typ().expect("No type");
+            let typ = typ.try_read().unwrap();
+            write!(f, "{typ} {op}")
         }
         _ => panic!("Unexpected"),
     }
@@ -75,9 +80,7 @@ impl Op for AddOp {
         let results = results.vec();
         let results = results.try_read().unwrap();
         let result = results[0].try_read().unwrap();
-        write!(f, "{result} = add")?;
-        let result_types = operation.results().types();
-        write!(f, " {result_types} ")?;
+        write!(f, "{result} = add ")?;
         display_operands(f, &operation.operands())?;
         write!(f, "\n")
     }
@@ -204,10 +207,16 @@ impl Op for CallOp {
             write!(f, "({}) ", varargs.try_read().unwrap())?;
         }
         write!(f, "{}(", self.identifier().unwrap())?;
-        let operand_types = operation.operand_types();
-        if !operand_types.vec().is_empty() {
-            write!(f, "{} ", operand_types)?;
+
+        {
+            let operands = operation.operands().vec();
+            let operands = operands.try_read().unwrap();
+            for operand in operands.iter() {
+                let operand = operand.try_read().unwrap();
+                println!("{} ", operand.typ().try_read().unwrap());
+            }
         }
+
         display_operands(f, &operation.operands())?;
         write!(f, ")")?;
         Ok(())
@@ -351,7 +360,7 @@ impl Op for ModuleOp {
                 block.display(f, indent)?;
             }
         }
-        write!(f, "\n\n!llvm.module.flags = {}", self.module_flags)?;
+        write!(f, "\n!llvm.module.flags = {}", self.module_flags)?;
         write!(f, "\n\n{}", self.debug_info)?;
         Ok(())
     }
@@ -391,7 +400,7 @@ impl Op for ReturnOp {
             let value = value.try_read().unwrap();
             let typ = value.typ();
             let typ = typ.try_read().unwrap();
-            write!(f, "ret {typ} ")?;
+            write!(f, "ret ")?;
             display_operands(f, &self.operation.operands())
         }
     }
