@@ -90,22 +90,15 @@ pub trait Call: Op {
         parser.expect(TokenKind::RParen)?;
 
         // vararg(!llvm.func<i32 (ptr, ...)>)
-        {
-            if parser.peek().kind == TokenKind::BareIdentifier && parser.peek().lexeme == "vararg" {
-                let _vararg = parser.advance();
-                parser.expect(TokenKind::LParen)?;
-                let varargs = parser.parse_type()?;
-                // Parsing it but ignoring the information away since it's redundant.
-                parser.expect(TokenKind::Exclamation)?;
-                parser.expect(TokenKind::BareIdentifier)?;
-                parser.expect(TokenKind::Less)?;
-                while parser.peek().kind != TokenKind::Greater {
-                    parser.advance();
-                }
-                parser.expect(TokenKind::Greater)?;
-                parser.expect(TokenKind::RParen)?;
-            }
-        }
+        let varargs = if parser.peek().lexeme == "vararg" {
+            let _vararg = parser.advance();
+            parser.expect(TokenKind::LParen)?;
+            let varargs = parser.parse_type()?;
+            parser.expect(TokenKind::RParen)?;
+            Some(varargs)
+        } else {
+            None
+        };
         parser.expect(TokenKind::Colon)?;
 
         // (i32) or (!llvm.ptr, i32)
@@ -126,6 +119,7 @@ pub trait Call: Op {
 
         let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
+        op.set_varargs(varargs);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
