@@ -1,8 +1,7 @@
-use crate::canonicalize::CanonicalizeOp;
-use crate::canonicalize::DeadCodeElimination;
 use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
 use crate::convert::Pass;
+use crate::ir::OpOperand;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
@@ -13,80 +12,46 @@ use crate::ir::BlockArgument;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
+use crate::canonicalize::CanonicalizeOp;
+use crate::canonicalize::DeadCodeElimination;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
-use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::ir::Constant;
 use crate::targ3t;
-use crate::targ3t::llvmir::OneConst;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-fn remove_operand_to_constant(new_op: &dyn OneConst, op_res: &OpResult) {
-    let operation = new_op.operation();
-    let operands = operation.operands();
-    let operands = operands.vec();
-    let mut operands = operands.try_write().unwrap();
-    let mut index = None;
-    for (i, operand) in operands.iter().enumerate() {
-        match &*operand.value().try_read().unwrap() {
-            Value::OpResult(current) => {
-                if current.name() == op_res.name() {
-                    index = Some(i);
-                    break;
-                }
-            }
-            _ => continue,
-        }
-    }
-    operands.remove(index.expect("Operand not found"));
-}
-
-fn set_constant_value(new_op: &mut dyn OneConst, value: Arc<RwLock<Value>>) {
-    let value = value.try_read().unwrap();
-    match &*value {
-        Value::BlockArgument(_) => todo!(),
-        Value::FuncResult(_) => todo!(),
-        Value::OpResult(op_res) => {
-            let op = op_res.defining_op();
-            let op = op.expect("Defining op not set for OpResult");
-            let op = op.try_read().unwrap();
-            let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
-            if let Some(op) = op {
-                let value = op.value();
-                new_op.set_const_value(value.clone());
-                remove_operand_to_constant(new_op, op_res);
-            }
-        }
-        Value::Variadic(_) => todo!(),
-    }
-}
-
 struct AddLowering;
 
-/// Find the operand that points to a constant operation.
-///
-/// This is used to find a value that can be unlinked during the lowering process.
-fn find_constant_operand(op: &dyn Op) -> Option<Arc<RwLock<Value>>> {
+/// Replace the operands that point to a constant operation by a [Constant].
+fn replace_constant_operands(op: &dyn Op) {
     let operation = op.operation();
     let operands = operation.operands().vec();
-    let operands = operands.try_read().unwrap();
-    for operand in operands.iter() {
+    let mut operands = operands.try_write().unwrap();
+    for i in 0..operands.len() {
+        let operand = &operands[i];
         let op = operand.defining_op();
         if let Some(op) = op {
             if op.is_const() {
-                let value = operand.value();
-                return Some(value.clone());
+                let op = op.try_read().unwrap();
+                let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
+                if let Some(op) = op {
+                    let value = op.value();
+                    let new_value = Constant::new(value.clone());
+                    let new_operand = Value::Constant(new_value);
+                    let new_operand = OpOperand::new(Arc::new(RwLock::new(new_operand)));
+                    operands[i] = Arc::new(RwLock::new(new_operand));
+                }
             }
         }
     }
-    None
 }
 
 impl Rewrite for AddLowering {
@@ -100,9 +65,8 @@ impl Rewrite for AddLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<dialect::llvm::AddOp>().unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
-        let value = find_constant_operand(op).unwrap();
-        set_constant_value(&mut new_op, value);
+        let new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
+        replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -131,8 +95,7 @@ impl Rewrite for AllocaLowering {
             operation.results().convert_types::<ConvertMLIRToLLVMIR>()?;
         }
         new_op.set_element_type(op.element_type().unwrap());
-        let value = find_constant_operand(op).unwrap();
-        set_constant_value(&mut new_op, value);
+        replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -155,16 +118,7 @@ impl Rewrite for CallLowering {
 
         let mut new_op = targ3t::llvmir::CallOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
-        match find_constant_operand(op) {
-            Some(value) => {
-                println!(
-                    "Found constant value: {}",
-                    value.clone().try_read().unwrap().to_string()
-                );
-                set_constant_value(&mut new_op, value)
-            }
-            None => {}
-        }
+        replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -263,12 +217,8 @@ impl Rewrite for ReturnLowering {
             .downcast_ref::<dialect::llvm::ReturnOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
-        //
-        let value = op.operand();
-        if let Some(value) = value {
-            set_constant_value(&mut new_op, value.value().clone());
-        }
+        let new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
+        replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -291,10 +241,10 @@ impl Rewrite for StoreLowering {
             .downcast_ref::<dialect::llvm::StoreOp>()
             .unwrap();
         let operation = op.operation();
+        replace_constant_operands(op);
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         let op_operand = op.value();
         let value = op_operand.value();
-        set_constant_value(&mut new_op, value.clone());
         let value_typ = value.typ();
         let value_typ = value_typ.try_read().unwrap();
         let value_typ = value_typ

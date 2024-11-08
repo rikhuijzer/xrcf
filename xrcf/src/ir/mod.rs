@@ -46,6 +46,7 @@ pub use value::BlockArgument;
 pub use value::GuardedValue;
 pub use value::OpResult;
 pub use value::ResultWithoutParent;
+pub use value::Constant;
 pub use value::ResultsWithoutParent;
 pub use value::Users;
 pub use value::Value;

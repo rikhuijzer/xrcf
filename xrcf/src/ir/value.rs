@@ -11,6 +11,7 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
+use crate::ir::Attribute;
 
 /// An argument in a block or function.
 pub struct BlockArgument {
@@ -45,6 +46,22 @@ impl Display for BlockArgument {
             Some(name) => write!(f, "{} : {}", name, typ),
             None => write!(f, "{}", typ),
         }
+    }
+}
+
+/// A constant value, for example a constant integer.
+/// 
+/// This is useful for situations where a operand is replaced by a constant
+/// value. Due to [Constant] being a [Value], it can be placed inside the
+/// [Operation] `operands` field. In turn, this allows us to keep track of
+/// the order of the operands.
+pub struct Constant {
+    value: Arc<dyn Attribute>,
+}
+
+impl Constant {
+    pub fn new(value: Arc<dyn Attribute>) -> Self {
+        Constant { value }
     }
 }
 
@@ -198,17 +215,18 @@ impl Display for Variadic {
     }
 }
 
-/// Represents an instance of an SSA value in the IR,
-/// representing a computable value that has a type and a set of users. An SSA
-/// value is either a BlockArgument or the result of an operation. Note: This
-/// class has value-type semantics and is just a simple wrapper around a
-/// ValueImpl that is either owner by a block(in the case of a BlockArgument) or
-/// an Operation(in the case of an OpResult).
-/// As most IR construct, this isn't const-correct, but we keep method
-/// consistent and as such methods that immediately modify this Value aren't
-/// marked `const` (include modifying the Value use-list).
+/// Represents an instance of an SSA value in the IR, representing a computable
+/// value that has a type and a set of users.
+/// 
+/// Note from MLIR: This class has value-type semantics and is just a simple
+/// wrapper around a ValueImpl that is either owner by a block(in the case of a
+/// BlockArgument) or an Operation(in the case of an OpResult).  As most IR
+/// construct, this isn't const-correct, but we keep method consistent and as
+/// such methods that immediately modify this Value aren't marked `const`
+/// (include modifying the Value use-list).
 pub enum Value {
     BlockArgument(BlockArgument),
+    Constant(Constant),
     FuncResult(AnonymousResult),
     OpResult(OpResult),
     Variadic(Variadic),
