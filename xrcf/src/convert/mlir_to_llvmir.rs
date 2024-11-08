@@ -21,6 +21,7 @@ use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
+use crate::ir::Types;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::targ3t;
@@ -271,8 +272,13 @@ impl Rewrite for StoreLowering {
 pub struct ConvertMLIRToLLVMIR;
 
 impl TypeConvert for ConvertMLIRToLLVMIR {
-    fn convert_str(_src: &str) -> Result<Arc<RwLock<dyn Type>>> {
-        todo!()
+    fn convert_str(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
+        let typ = if src == "..." {
+            dialect::llvm::VariadicType::new()
+        } else {
+            panic!("Not implemented for {}", src);
+        };
+        Ok(Arc::new(RwLock::new(typ)))
     }
     fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
         let from_rd = from.try_read().unwrap();
@@ -287,10 +293,15 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
             .as_any()
             .downcast_ref::<dialect::llvm::FunctionType>()
         {
-            let typ = targ3t::llvmir::FunctionType::new(
-                typ.return_types().clone(),
-                typ.arguments().clone(),
-            );
+            let arguments = typ.arguments().clone();
+            // crate a new vector of converted types, via self::convert_type
+            let converted = arguments
+                .vec()
+                .iter()
+                .map(|argument| Self::convert_type(argument))
+                .collect::<Result<Vec<_>>>()?;
+            let arguments = Types::from_vec(converted);
+            let typ = targ3t::llvmir::FunctionType::new(typ.return_types().clone(), arguments);
             return Ok(Arc::new(RwLock::new(typ)));
         }
         let typ = Self::convert_str(&from_rd.to_string())?;
