@@ -9,7 +9,7 @@ use crate::ir::Op;
 use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::PlaceholderType;
+use crate::ir::AnyType;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
@@ -370,7 +370,7 @@ impl<T: ParserDispatch> Parser<T> {
             let _arrow = self.advance();
             while self.check(TokenKind::IntType) {
                 let typ = self.advance();
-                let typ = PlaceholderType::new(&typ.lexeme);
+                let typ = AnyType::new(&typ.lexeme);
                 let typ = Arc::new(RwLock::new(typ));
                 result_types.push(typ);
             }

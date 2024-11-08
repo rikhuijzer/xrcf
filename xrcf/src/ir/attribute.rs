@@ -12,7 +12,9 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
+use crate::ir::StringType;
 use std::sync::RwLock;
+use crate::ir::Type;
 
 /// Attributes are known-constant values of operations (a variable is not allowed).
 /// Attributes belong to operations and can be used to, for example, specify
@@ -27,6 +29,7 @@ pub trait Attribute {
 
     fn as_any(&self) -> &dyn std::any::Any;
     fn value(&self) -> String;
+    fn typ(&self) -> Arc<RwLock<dyn Type>>;
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value())
     }
@@ -49,9 +52,6 @@ pub struct IntegerAttr {
 impl IntegerAttr {
     pub fn new(typ: IntegerType, value: APInt) -> Self {
         Self { typ, value }
-    }
-    pub fn typ(&self) -> &IntegerType {
-        &self.typ
     }
     pub fn i64(&self) -> i64 {
         let int = &self.value;
@@ -76,6 +76,9 @@ impl Attribute for IntegerAttr {
             typ: IntegerType::new(64),
             value: APInt::new(64, value.parse::<u64>().unwrap(), true),
         }
+    }
+    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        Arc::new(RwLock::new(self.typ))
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
@@ -129,6 +132,9 @@ impl Attribute for StringAttr {
         let value = llvm_string_to_bytes(&text);
         Self { value }
     }
+    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        Arc::new(RwLock::new(StringType::new()))
+    }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
     }
@@ -160,6 +166,9 @@ impl Attribute for AnyAttr {
         Self {
             value: value.to_string(),
         }
+    }
+    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        Arc::new(RwLock::new(StringType::new()))
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let value = parser.advance();

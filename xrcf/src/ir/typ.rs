@@ -48,13 +48,11 @@ pub trait TypeConvert {
     }
 }
 
-/// My refactoring is getting out of hand so this is a temporary type to
-/// just store the type as a string for now.
-pub struct PlaceholderType {
+pub struct AnyType {
     typ: String,
 }
 
-impl PlaceholderType {
+impl AnyType {
     pub fn new(typ: &str) -> Self {
         Self {
             typ: typ.to_string(),
@@ -68,7 +66,7 @@ impl PlaceholderType {
     }
 }
 
-impl Type for PlaceholderType {
+impl Type for AnyType {
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
     }
@@ -109,6 +107,24 @@ impl Type for IntegerType {
 impl Display for IntegerType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StringType;
+
+impl StringType {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Type for StringType {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "str")
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

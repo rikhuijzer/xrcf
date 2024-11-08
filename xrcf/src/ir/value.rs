@@ -63,6 +63,18 @@ impl Constant {
     pub fn new(value: Arc<dyn Attribute>) -> Self {
         Constant { value }
     }
+    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        self.value.typ()
+    }
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        self.value.clone()
+    }
+}
+
+impl Display for Constant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
+    }
 }
 
 /// An unnamed result of an operation, such as a function.
@@ -240,6 +252,7 @@ impl Value {
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => arg.name.clone(),
+            Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => result.name.clone(),
             Value::Variadic(_) => None,
@@ -248,6 +261,7 @@ impl Value {
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         match self {
             Value::BlockArgument(arg) => arg.typ.clone(),
+            Value::Constant(constant) => constant.typ(),
             Value::FuncResult(result) => result.typ.clone(),
             Value::OpResult(result) => result
                 .typ()
@@ -258,6 +272,7 @@ impl Value {
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
+            Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
             Value::Variadic(_) => todo!(),
@@ -266,6 +281,7 @@ impl Value {
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
+            Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
             Value::Variadic(_) => panic!("Cannot set defining op for Variadic"),
@@ -274,6 +290,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
             Value::Variadic(_) => panic!("Cannot set name for Variadic"),
@@ -316,6 +333,7 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
             Value::Variadic(_) => Users::HasNoOpResults,
@@ -331,6 +349,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
+            Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
             Value::Variadic(variadic) => write!(f, "{variadic}"),
@@ -418,6 +437,9 @@ impl Values {
             match &mut *mut_result {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
+                }
+                Value::Constant(_) => {
+                    panic!("Trying to set defining op for constant")
                 }
                 Value::FuncResult(_) => {
                     panic!("Trying to set defining op for func result")

@@ -10,7 +10,7 @@ use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::PlaceholderType;
+use crate::ir::AnyType;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
@@ -78,13 +78,12 @@ impl Parse for ConstantOp {
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         let integer = parser.parse_integer()?;
-        let typ = *integer
+        let typ = integer
             .as_any()
             .downcast_ref::<IntegerAttr>()
             .unwrap()
             .typ();
-        let result_type = Arc::new(RwLock::new(typ));
-        operation.set_result_type(0, result_type)?;
+        operation.set_result_type(0, typ)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp { operation };
@@ -214,7 +213,7 @@ impl<T: ParserDispatch> Parser<T> {
         operation.set_operands(parser.parse_op_operands(parent.unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
-        let result_type = PlaceholderType::new(&result_type.lexeme);
+        let result_type = AnyType::new(&result_type.lexeme);
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_result_type(0, result_type)?;
 

@@ -30,9 +30,10 @@ impl OpOperand {
     /// that defines it.
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
-        let value = &*value.read().unwrap();
+        let value = &*value.try_read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
+            Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
             Value::Variadic(_) => None,

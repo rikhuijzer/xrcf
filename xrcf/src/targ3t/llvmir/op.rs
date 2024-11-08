@@ -18,20 +18,8 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Interface for LLVM IR operations that have a constant value.
-///
-/// Unlike MLIR, LLVM IR does not have a separate constant operation.  So when
-/// lowering from MLIR to LLVM IR, we store the constant value in the operation
-/// itself. Next, we unset the link to the outdated constant operation, which
-/// then is cleaned up by the dead code elimination.
-pub trait OneConst: Op {
-    fn const_value(&self) -> Arc<dyn Attribute>;
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>);
-}
-
 pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
 }
 
 impl Op for AddOp {
@@ -41,7 +29,6 @@ impl Op for AddOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         AddOp {
             operation,
-            const_value: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -71,15 +58,6 @@ impl Op for AddOp {
     }
 }
 
-impl OneConst for AddOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
-}
-
 impl Display for AddOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
@@ -88,7 +66,6 @@ impl Display for AddOp {
 
 pub struct AllocaOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
     element_type: Option<String>,
 }
 
@@ -108,7 +85,6 @@ impl Op for AllocaOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         AllocaOp {
             operation,
-            const_value: None,
             element_type: None,
         }
     }
@@ -125,18 +101,10 @@ impl Op for AllocaOp {
         let array_size = self.array_size();
         let array_size = array_size.as_any().downcast_ref::<IntegerAttr>().unwrap();
         let typ = array_size.typ();
+        let typ = typ.try_read().unwrap();
         let value = array_size.value();
         write!(f, ", {typ} {value}, align 1")?;
         Ok(())
-    }
-}
-
-impl OneConst for AllocaOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
     }
 }
 
@@ -149,7 +117,6 @@ impl Display for AllocaOp {
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
-    const_value: Option<Arc<dyn Attribute>>,
 }
 
 impl Call for CallOp {
@@ -161,15 +128,6 @@ impl Call for CallOp {
     }
 }
 
-impl OneConst for CallOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
-}
-
 impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("call".to_string())
@@ -178,7 +136,6 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
-            const_value: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -363,16 +320,6 @@ impl Display for ModuleOp {
 
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
-}
-
-impl OneConst for ReturnOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
 }
 
 impl Op for ReturnOp {
@@ -382,7 +329,6 @@ impl Op for ReturnOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         ReturnOp {
             operation,
-            const_value: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -392,24 +338,17 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        if let Some(const_value) = &self.const_value {
-            let const_value = const_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
-            let typ = const_value.typ();
-            let value = const_value.value();
-            write!(f, "ret {typ} {value}")
+        let operands = self.operation().operands();
+        if operands.vec().try_read().unwrap().is_empty() {
+            write!(f, "ret void")
         } else {
-            let operands = self.operation().operands();
-            if operands.vec().try_read().unwrap().is_empty() {
-                write!(f, "ret void")
-            } else {
-                // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-                let operand = self.operation().operand(0).unwrap();
-                let value = operand.value();
-                let value = value.try_read().unwrap();
-                let typ = value.typ();
-                let typ = typ.try_read().unwrap();
-                write!(f, "ret {typ} {value}")
-            }
+            // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
+            let operand = self.operation().operand(0).unwrap();
+            let value = operand.value();
+            let value = value.try_read().unwrap();
+            let typ = value.typ();
+            let typ = typ.try_read().unwrap();
+            write!(f, "ret {typ} {value}")
         }
     }
 }
@@ -441,15 +380,6 @@ impl StoreOp {
     }
 }
 
-impl OneConst for StoreOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
-}
-
 impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("store".to_string())
@@ -469,8 +399,8 @@ impl Op for StoreOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "store ")?;
-        let const_value = self.const_value();
-        let const_value = const_value.as_any().downcast_ref::<StringAttr>().unwrap();
+        let const_value = self.operation().operand(0).unwrap();
+        let const_value = const_value.try_read().unwrap();
         let len = self.len().expect("len not set during lowering");
         write!(f, "[{len} x i8] ")?;
         write!(f, "c{const_value}, ")?;
