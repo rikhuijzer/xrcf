@@ -17,7 +17,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Display an operand LLVMIR style (e.g., `i32 42`).
+/// Display an operand LLVMIR style (e.g., `8`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
     let value = operand.value();
     let value = value.try_read().unwrap();
@@ -95,7 +95,7 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        let operand = self.operation().operand(1).unwrap();
+        let operand = self.operation().operand(0).unwrap();
         let operand = operand.try_read().unwrap();
         let value = operand.value();
         let value = value.try_read().unwrap();
@@ -396,8 +396,7 @@ pub struct StoreOp {
 impl StoreOp {
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         let operation = self.operation.try_read().unwrap();
-        // The value was removed during lowering.
-        let operand = operation.operand(0).unwrap();
+        let operand = operation.operand(1).unwrap();
         operand
     }
     pub fn set_len(&mut self, len: usize) {

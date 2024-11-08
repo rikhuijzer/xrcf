@@ -241,18 +241,19 @@ impl Rewrite for StoreLowering {
             .downcast_ref::<dialect::llvm::StoreOp>()
             .unwrap();
         let operation = op.operation();
-        replace_constant_operands(op);
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
-        let op_operand = op.value();
-        let value = op_operand.value();
-        let value_typ = value.typ();
-        let value_typ = value_typ.try_read().unwrap();
-        println!("{value_typ}");
-        let value_typ = value_typ
-            .as_any()
-            .downcast_ref::<dialect::llvm::ArrayType>()
-            .unwrap();
-        new_op.set_len(value_typ.num_elements() as usize);
+        {
+            let op_operand = op.value();
+            let value = op_operand.value();
+            let value_typ = value.typ();
+            let value_typ = value_typ.try_read().unwrap();
+            let value_typ = value_typ
+                .as_any()
+                .downcast_ref::<dialect::llvm::ArrayType>()
+                .unwrap();
+            new_op.set_len(value_typ.num_elements() as usize);
+        }
+        replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
