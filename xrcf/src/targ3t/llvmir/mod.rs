@@ -11,6 +11,7 @@ pub use op::ModuleOp;
 pub use op::ReturnOp;
 pub use op::StoreOp;
 pub use typ::ArrayType;
+pub use typ::FunctionType;
 pub use typ::PointerType;
 
 pub struct LLVMIR {}

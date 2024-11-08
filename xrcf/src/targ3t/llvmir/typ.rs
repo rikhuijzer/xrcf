@@ -1,4 +1,5 @@
 use crate::ir::Type;
+use crate::ir::Types;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -30,6 +31,35 @@ impl Type for ArrayType {
 impl Display for ArrayType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
+    }
+}
+
+pub struct FunctionType {
+    return_types: Types,
+    arguments: Types,
+}
+
+impl FunctionType {
+    pub fn new(return_types: Types, arguments: Types) -> Self {
+        Self {
+            return_types,
+            arguments,
+        }
+    }
+    pub fn return_types(&self) -> &Types {
+        &self.return_types
+    }
+    pub fn arguments(&self) -> &Types {
+        &self.arguments
+    }
+}
+
+impl Type for FunctionType {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.arguments)
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 

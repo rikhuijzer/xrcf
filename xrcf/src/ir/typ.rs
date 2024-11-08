@@ -41,7 +41,7 @@ pub trait TypeConvert {
     ///
     /// This method can be reimplemented to compare types directly instead of
     /// converting to a string first.
-    fn convert(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
+    fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
         let from = from.try_read().unwrap();
         let typ = Self::convert_str(&from.to_string())?;
         Ok(typ)

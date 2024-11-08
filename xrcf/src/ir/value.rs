@@ -462,7 +462,7 @@ impl Values {
         for value in values.iter() {
             let mut value = value.try_write().unwrap();
             let typ = value.typ();
-            let typ = T::convert(&typ)?;
+            let typ = T::convert_type(&typ)?;
             value.set_type(typ);
         }
         Ok(())

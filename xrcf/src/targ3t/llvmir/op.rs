@@ -198,7 +198,12 @@ impl Op for CallOp {
         } else {
             "void".to_string()
         };
-        write!(f, "call {return_type} foo {}(", self.identifier().unwrap())?;
+        write!(f, "call {return_type} ")?;
+        let varargs = self.varargs();
+        if let Some(varargs) = varargs {
+            write!(f, "({}) ", varargs.try_read().unwrap())?;
+        }
+        write!(f, "{}(", self.identifier().unwrap())?;
         let operand_types = operation.operand_types();
         if !operand_types.vec().is_empty() {
             write!(f, "{} ", operand_types)?;

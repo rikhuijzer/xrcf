@@ -93,6 +93,12 @@ impl FunctionType {
             arguments,
         }
     }
+    pub fn return_types(&self) -> &Types {
+        &self.return_types
+    }
+    pub fn arguments(&self) -> &Types {
+        &self.arguments
+    }
     /// Parse `!llvm.func<i32(i32, ...)>`.
     pub fn from_str(s: &str) -> Self {
         println!("{}", s);

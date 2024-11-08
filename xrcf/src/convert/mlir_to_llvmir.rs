@@ -118,6 +118,14 @@ impl Rewrite for CallLowering {
 
         let mut new_op = targ3t::llvmir::CallOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
+        let varargs = match op.varargs() {
+            Some(varargs) => {
+                let varargs = ConvertMLIRToLLVMIR::convert_type(&varargs)?;
+                Some(varargs)
+            }
+            None => None,
+        };
+        new_op.set_varargs(varargs);
         replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
@@ -266,16 +274,26 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
     fn convert_str(_src: &str) -> Result<Arc<RwLock<dyn Type>>> {
         todo!()
     }
-    fn convert(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
-        let from_read = from.try_read().unwrap();
-        if from_read.as_any().is::<IntegerType>() {
+    fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
+        let from_rd = from.try_read().unwrap();
+        if from_rd.as_any().is::<IntegerType>() {
             return Ok(from.clone());
         }
-        if from_read.as_any().is::<dialect::llvm::PointerType>() {
+        if from_rd.as_any().is::<dialect::llvm::PointerType>() {
             let typ = targ3t::llvmir::PointerType::new();
             return Ok(Arc::new(RwLock::new(typ)));
         }
-        let typ = Self::convert_str(&from_read.to_string())?;
+        if let Some(typ) = from_rd
+            .as_any()
+            .downcast_ref::<dialect::llvm::FunctionType>()
+        {
+            let typ = targ3t::llvmir::FunctionType::new(
+                typ.return_types().clone(),
+                typ.arguments().clone(),
+            );
+            return Ok(Arc::new(RwLock::new(typ)));
+        }
+        let typ = Self::convert_str(&from_rd.to_string())?;
         Ok(typ)
     }
 }
