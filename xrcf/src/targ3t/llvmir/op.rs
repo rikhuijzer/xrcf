@@ -149,6 +149,7 @@ impl Display for AllocaOp {
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    const_value: Option<Arc<dyn Attribute>>,
 }
 
 impl Call for CallOp {
@@ -160,6 +161,15 @@ impl Call for CallOp {
     }
 }
 
+impl OneConst for CallOp {
+    fn const_value(&self) -> Arc<dyn Attribute> {
+        self.const_value.clone().unwrap()
+    }
+    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
+        self.const_value = Some(const_value);
+    }
+}
+
 impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("call".to_string())
@@ -168,6 +178,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            const_value: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {

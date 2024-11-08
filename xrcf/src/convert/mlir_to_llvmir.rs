@@ -16,6 +16,7 @@ use crate::ir::GuardedOperation;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
+use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -27,12 +28,24 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-fn remove_operand_to_constant(new_op: &dyn OneConst) {
+fn remove_operand_to_constant(new_op: &dyn OneConst, op_res: &OpResult) {
     let operation = new_op.operation();
     let operands = operation.operands();
     let operands = operands.vec();
     let mut operands = operands.try_write().unwrap();
-    operands.remove(0);
+    let mut index = None;
+    for (i, operand) in operands.iter().enumerate() {
+        match &*operand.value().try_read().unwrap() {
+            Value::OpResult(current) => {
+                if current.name() == op_res.name() {
+                    index = Some(i);
+                    break;
+                }
+            }
+            _ => continue,
+        }
+    }
+    operands.remove(index.expect("Operand not found"));
 }
 
 fn set_constant_value(new_op: &mut dyn OneConst, value: Arc<RwLock<Value>>) {
@@ -48,7 +61,7 @@ fn set_constant_value(new_op: &mut dyn OneConst, value: Arc<RwLock<Value>>) {
             if let Some(op) = op {
                 let value = op.value();
                 new_op.set_const_value(value.clone());
-                remove_operand_to_constant(new_op);
+                remove_operand_to_constant(new_op, op_res);
             }
         }
         Value::Variadic(_) => todo!(),
@@ -139,8 +152,19 @@ impl Rewrite for CallLowering {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<dialect::llvm::CallOp>().unwrap();
         let operation = op.operation();
+
         let mut new_op = targ3t::llvmir::CallOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
+        match find_constant_operand(op) {
+            Some(value) => {
+                println!(
+                    "Found constant value: {}",
+                    value.clone().try_read().unwrap().to_string()
+                );
+                set_constant_value(&mut new_op, value)
+            }
+            None => {}
+        }
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
