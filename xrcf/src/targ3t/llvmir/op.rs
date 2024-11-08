@@ -6,7 +6,6 @@ use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
 use crate::ir::GuardedRegion;
-use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -31,6 +30,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name().expect("Block argument has no name");
             write!(f, "{name}")
+        }
+        Value::OpResult(op_result) => {
+            let op = op_result.name().expect("Op result has no name");
+            write!(f, "{op}")
         }
         _ => panic!("Unexpected"),
     }
@@ -127,7 +130,6 @@ impl Op for AllocaOp {
         write!(f, "{} ", AllocaOp::operation_name())?;
         write!(f, "{}", self.element_type.as_ref().unwrap())?;
         let array_size = self.array_size();
-        let array_size = array_size.as_any().downcast_ref::<IntegerAttr>().unwrap();
         let typ = array_size.typ();
         let typ = typ.try_read().unwrap();
         let value = array_size.value();
@@ -374,7 +376,8 @@ impl Op for ReturnOp {
             let value = value.try_read().unwrap();
             let typ = value.typ();
             let typ = typ.try_read().unwrap();
-            write!(f, "ret {typ} {value}")
+            write!(f, "ret {typ} ")?;
+            display_operands(f, &self.operation.operands())
         }
     }
 }
@@ -387,7 +390,6 @@ impl Display for ReturnOp {
 
 pub struct StoreOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
     len: Option<usize>,
 }
 
@@ -413,7 +415,6 @@ impl Op for StoreOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         StoreOp {
             operation,
-            const_value: None,
             len: None,
         }
     }
