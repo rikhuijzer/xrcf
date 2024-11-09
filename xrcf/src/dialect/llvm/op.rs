@@ -14,6 +14,7 @@ use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StringAttr;
+use crate::ir::Type;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -158,6 +159,7 @@ impl Parse for AllocaOp {
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    varargs: Option<Arc<RwLock<dyn Type>>>,
 }
 
 impl Call for CallOp {
@@ -166,6 +168,12 @@ impl Call for CallOp {
     }
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
+    }
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.varargs.clone()
+    }
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+        self.varargs = varargs;
     }
 }
 
@@ -177,6 +185,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            varargs: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {

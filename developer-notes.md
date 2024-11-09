@@ -5,6 +5,9 @@
 In case of doubt, prefer verbosity over complexity.
 For example, prefer some duplication over things like macros, declarative code, or DSLs.
 The main aim is to keep things easy to understand; for both humans as well as tooling.
+I prefer "boilerplate" code over complex things like macros.
+Especially with LLMs built into the editor, it's still reasonably easy to refactor boilerplate code.
+This can't be said for macros; it's usually very hard to refactor them.
 
 For example, in my experience, declarative code is a beautiful idea, but in practice it's often hard to learn and understand.
 

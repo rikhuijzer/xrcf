@@ -1,3 +1,4 @@
+use crate::ir::Attribute;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -45,6 +46,34 @@ impl Display for BlockArgument {
             Some(name) => write!(f, "{} : {}", name, typ),
             None => write!(f, "{}", typ),
         }
+    }
+}
+
+/// A constant value, for example a constant integer.
+///
+/// This is useful for situations where a operand is replaced by a constant
+/// value. Due to [Constant] being a [Value], it can be placed inside the
+/// [Operation] `operands` field. In turn, this allows us to keep track of
+/// the order of the operands.
+pub struct Constant {
+    value: Arc<dyn Attribute>,
+}
+
+impl Constant {
+    pub fn new(value: Arc<dyn Attribute>) -> Self {
+        Constant { value }
+    }
+    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        self.value.typ()
+    }
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        self.value.clone()
+    }
+}
+
+impl Display for Constant {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.value)
     }
 }
 
@@ -190,19 +219,25 @@ impl Users {
     }
 }
 
-/// Represents an instance of an SSA value in the IR,
-/// representing a computable value that has a type and a set of users. An SSA
-/// value is either a BlockArgument or the result of an operation. Note: This
-/// class has value-type semantics and is just a simple wrapper around a
-/// ValueImpl that is either owner by a block(in the case of a BlockArgument) or
-/// an Operation(in the case of an OpResult).
-/// As most IR construct, this isn't const-correct, but we keep method
-/// consistent and as such methods that immediately modify this Value aren't
-/// marked `const` (include modifying the Value use-list).
+pub struct Variadic;
+
+impl Display for Variadic {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "...")
+    }
+}
+
+/// An instance of a value (SSA, variadic, or constant) in the IR.
+///
+/// The benefit of also expressing a [Constant] as a [Value] is that it allows
+/// us to keep track of the order of the operands in the [Operation] `operands`
+/// field.
 pub enum Value {
     BlockArgument(BlockArgument),
+    Constant(Constant),
     FuncResult(AnonymousResult),
     OpResult(OpResult),
+    Variadic(Variadic),
 }
 
 impl Value {
@@ -213,38 +248,48 @@ impl Value {
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => arg.name.clone(),
+            Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => result.name.clone(),
+            Value::Variadic(_) => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         match self {
             Value::BlockArgument(arg) => arg.typ.clone(),
+            Value::Constant(constant) => constant.typ(),
             Value::FuncResult(result) => result.typ.clone(),
             Value::OpResult(result) => result
                 .typ()
                 .expect(&format!("Type was not set for OpResult {}", self)),
+            Value::Variadic(_) => todo!(),
         }
     }
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
+            Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
+            Value::Variadic(_) => todo!(),
         }
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
+            Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
+            Value::Variadic(_) => panic!("Cannot set defining op for Variadic"),
         }
     }
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
+            Value::Variadic(_) => panic!("Cannot set name for Variadic"),
         }
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
@@ -284,8 +329,10 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
+            Value::Variadic(_) => Users::HasNoOpResults,
         }
     }
     /// Rename the value, and all its users.
@@ -298,8 +345,10 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
+            Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
+            Value::Variadic(variadic) => write!(f, "{variadic}"),
         }
     }
 }
@@ -385,10 +434,16 @@ impl Values {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
                 }
+                Value::Constant(_) => {
+                    panic!("Trying to set defining op for constant")
+                }
                 Value::FuncResult(_) => {
                     panic!("Trying to set defining op for func result")
                 }
                 Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
+                Value::Variadic(_) => {
+                    panic!("Trying to set defining op for variadic")
+                }
             }
         }
     }
@@ -403,7 +458,7 @@ impl Values {
         for value in values.iter() {
             let mut value = value.try_write().unwrap();
             let typ = value.typ();
-            let typ = T::convert(&typ)?;
+            let typ = T::convert_type(&typ)?;
             value.set_type(typ);
         }
         Ok(())
@@ -434,7 +489,7 @@ impl Display for Values {
 
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
-    /// Parse `%arg0 : i64,`, or `i64,`.
+    /// Parse `%arg0 : i64,`, `i64,`, or `...`.
     pub fn parse_function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
         if self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
@@ -458,6 +513,13 @@ impl<T: ParserDispatch> Parser<T> {
             }
             return Ok(operand);
         }
+        if self.check(TokenKind::Dot) {
+            self.expect(TokenKind::Dot)?;
+            self.expect(TokenKind::Dot)?;
+            self.expect(TokenKind::Dot)?;
+            let variadic = Value::Variadic(Variadic);
+            return Ok(Arc::new(RwLock::new(variadic)));
+        }
         Err(anyhow::anyhow!("Expected function argument"))
     }
     pub fn is_function_argument(&mut self) -> bool {
@@ -467,7 +529,9 @@ impl<T: ParserDispatch> Parser<T> {
         let int = self.check(TokenKind::IntType);
         // For example, `@printf(!llvm.ptr)`.
         let excl = self.check(TokenKind::Exclamation);
-        perc || int || excl
+        // For example, `@printf(ptr, ...)`.
+        let dot = self.check(TokenKind::Dot);
+        perc || int || excl || dot
     }
     /// Parse %0, %1.
     fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {

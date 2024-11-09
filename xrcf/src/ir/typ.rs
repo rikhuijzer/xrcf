@@ -1,6 +1,8 @@
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
+use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -39,20 +41,18 @@ pub trait TypeConvert {
     ///
     /// This method can be reimplemented to compare types directly instead of
     /// converting to a string first.
-    fn convert(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
+    fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
         let from = from.try_read().unwrap();
         let typ = Self::convert_str(&from.to_string())?;
         Ok(typ)
     }
 }
 
-/// My refactoring is getting out of hand so this is a temporary type to
-/// just store the type as a string for now.
-pub struct PlaceholderType {
+pub struct AnyType {
     typ: String,
 }
 
-impl PlaceholderType {
+impl AnyType {
     pub fn new(typ: &str) -> Self {
         Self {
             typ: typ.to_string(),
@@ -66,7 +66,7 @@ impl PlaceholderType {
     }
 }
 
-impl Type for PlaceholderType {
+impl Type for AnyType {
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
     }
@@ -107,6 +107,24 @@ impl Type for IntegerType {
 impl Display for IntegerType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StringType;
+
+impl StringType {
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl Type for StringType {
+    fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "str")
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
     }
 }
 
@@ -211,6 +229,47 @@ impl<T: ParserDispatch> Parser<T> {
             );
             let msg = self.error(&token, &msg);
             return Err(anyhow::anyhow!(msg));
+        }
+        Ok(())
+    }
+    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
+        T::parse_type(self)
+    }
+    /// Parse types until a closing parenthesis.
+    pub fn parse_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
+        let mut types = vec![];
+        while !self.check(TokenKind::RParen) {
+            let typ = self.parse_type()?;
+            types.push(typ);
+            if self.check(TokenKind::Comma) {
+                self.advance();
+            }
+        }
+        Ok(types)
+    }
+    /// Parse types and verify that they match the given operands.
+    ///
+    /// For example, can be used to verify that `%0` has type `i32` in:
+    ///
+    /// ```mlir
+    /// %0 = arith.constant 42 : i32
+    /// llvm.call @printf(%0) : (i32) -> (i32)
+    /// ```
+    pub fn parse_types_for_op_operands(&mut self, operands: OpOperands) -> Result<()> {
+        let types = self.parse_types()?;
+        if types.len() != operands.vec().try_read().unwrap().len() {
+            let msg = format!(
+                "Expected {} types but got {}",
+                operands.vec().try_read().unwrap().len(),
+                types.len()
+            );
+            return Err(anyhow::anyhow!(msg));
+        }
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
+        for x in operands.iter().zip(types.iter()) {
+            let (operand, typ) = x;
+            self.verify_type(operand.clone(), typ.clone())?;
         }
         Ok(())
     }

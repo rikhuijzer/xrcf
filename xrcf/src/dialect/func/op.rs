@@ -1,3 +1,4 @@
+use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
@@ -9,7 +10,6 @@ use crate::ir::Op;
 use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::PlaceholderType;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
@@ -32,11 +32,14 @@ use std::sync::RwLock;
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    varargs: Option<Arc<RwLock<dyn Type>>>,
 }
 
 pub trait Call: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let results = operation.results();
@@ -59,6 +62,18 @@ pub trait Call: Op {
         }
         Ok(())
     }
+    /// Parse a call op such as `llvm.call`.
+    ///
+    /// Examples:
+    ///
+    /// ```mlir
+    /// llvm.call @hello() : () -> ()
+    ///
+    /// llvm.call @printf(%0) : (!llvm.ptr) -> i32
+    ///
+    /// llvm.call @printf(%0, %1) vararg(!llvm.func<i32 (ptr, ...)>) :
+    ///   (!llvm.ptr, i32) -> i32
+    /// ```
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -71,24 +86,30 @@ pub trait Call: Op {
         let identifier = identifier.lexeme.clone();
 
         parser.expect(TokenKind::LParen)?;
-        let has_operand = !parser.check(TokenKind::RParen);
-        let operand = if has_operand {
-            Some(parser.parse_op_operand_into(parent.unwrap(), &mut operation)?)
+        let operands = parser.parse_op_operands_into(parent.unwrap(), &mut operation)?;
+        parser.expect(TokenKind::RParen)?;
+
+        // vararg(!llvm.func<i32 (ptr, ...)>)
+        let varargs = if parser.peek().lexeme == "vararg" {
+            let _vararg = parser.advance();
+            parser.expect(TokenKind::LParen)?;
+            let varargs = parser.parse_type()?;
+            parser.expect(TokenKind::RParen)?;
+            Some(varargs)
         } else {
             None
         };
-        parser.expect(TokenKind::RParen)?;
-
         parser.expect(TokenKind::Colon)?;
 
+        // (i32) or (!llvm.ptr, i32)
         parser.expect(TokenKind::LParen)?;
-        if let Some(operand) = operand {
-            let operand_type = T::parse_type(parser)?;
-            parser.verify_type(operand, operand_type)?;
+        if !operands.vec().try_read().unwrap().is_empty() {
+            parser.parse_types_for_op_operands(operands)?;
         }
         parser.expect(TokenKind::RParen)?;
 
         parser.expect(TokenKind::Arrow)?;
+
         if parser.empty_type() {
             parser.parse_empty_type()?;
         } else {
@@ -98,6 +119,7 @@ pub trait Call: Op {
 
         let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
+        op.set_varargs(varargs);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
@@ -111,6 +133,12 @@ impl Call for CallOp {
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
     }
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.varargs.clone()
+    }
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+        self.varargs = varargs;
+    }
 }
 
 impl Op for CallOp {
@@ -121,6 +149,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            varargs: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -346,7 +375,7 @@ impl<T: ParserDispatch> Parser<T> {
             let _arrow = self.advance();
             while self.check(TokenKind::IntType) {
                 let typ = self.advance();
-                let typ = PlaceholderType::new(&typ.lexeme);
+                let typ = AnyType::new(&typ.lexeme);
                 let typ = Arc::new(RwLock::new(typ));
                 result_types.push(typ);
             }

@@ -8,10 +8,10 @@ pub use op::AllocaOp;
 pub use op::CallOp;
 pub use op::FuncOp;
 pub use op::ModuleOp;
-pub use op::OneConst;
 pub use op::ReturnOp;
 pub use op::StoreOp;
 pub use typ::ArrayType;
+pub use typ::FunctionType;
 pub use typ::PointerType;
 
 pub struct LLVMIR {}

@@ -86,9 +86,9 @@ impl Block {
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
-        let ops = ops.read().unwrap();
+        let ops = ops.try_read().unwrap();
         for op in ops.iter() {
-            let op = op.read().unwrap();
+            let op = op.try_read().unwrap();
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
@@ -101,12 +101,14 @@ impl Block {
                         // assignment in ops.
                         return None;
                     }
+                    Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
                         if op_result.name().expect("OpResult has no name") == name {
                             return Some(value.clone());
                         }
                     }
+                    Value::Variadic(_) => continue,
                 }
             }
         }
@@ -197,7 +199,9 @@ impl Block {
                 let name = match &*result {
                     Value::OpResult(res) => res.name().expect("failed to get name"),
                     Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
+                    Value::Constant(_) => continue,
                     Value::FuncResult(_) => continue,
+                    Value::Variadic(_) => continue,
                 };
                 used_names.push(name);
             }

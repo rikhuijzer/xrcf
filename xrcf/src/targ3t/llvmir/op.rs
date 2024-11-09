@@ -6,32 +6,58 @@ use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
 use crate::ir::GuardedRegion;
-use crate::ir::IntegerAttr;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::StringAttr;
+use crate::ir::Type;
 use crate::ir::Value;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Interface for LLVM IR operations that have a constant value.
-///
-/// Unlike MLIR, LLVM IR does not have a separate constant operation.  So when
-/// lowering from MLIR to LLVM IR, we store the constant value in the operation
-/// itself. Next, we unset the link to the outdated constant operation, which
-/// then is cleaned up by the dead code elimination.
-pub trait OneConst: Op {
-    fn const_value(&self) -> Arc<dyn Attribute>;
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>);
+/// Display an operand LLVMIR style (e.g., `i32 8`, or `i32 %0`).
+fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
+    let value = operand.value();
+    let value = value.try_read().unwrap();
+    match &*value {
+        Value::BlockArgument(block_arg) => {
+            let name = block_arg.name().expect("Block argument has no name");
+            write!(f, "{name}")
+        }
+        Value::Constant(constant) => {
+            let value = constant.value();
+            let value = value.value();
+            let typ = constant.typ();
+            let typ = typ.try_read().unwrap();
+            write!(f, "{typ} {value}")
+        }
+        Value::OpResult(op_result) => {
+            let name = op_result.name().expect("Op result has no name");
+            let typ = op_result.typ().expect("No type");
+            let typ = typ.try_read().unwrap();
+            write!(f, "{typ} {name}")
+        }
+        _ => panic!("Unexpected"),
+    }
+}
+
+fn display_operands(f: &mut Formatter<'_>, operands: &OpOperands) -> std::fmt::Result {
+    let operands = operands.vec();
+    let operands = operands.try_read().unwrap();
+    for (i, operand) in operands.iter().enumerate() {
+        if 0 < i {
+            write!(f, ", ")?;
+        }
+        display_operand(f, operand)?;
+    }
+    Ok(())
 }
 
 pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
 }
 
 impl Op for AddOp {
@@ -39,10 +65,7 @@ impl Op for AddOp {
         OperationName::new("target::llvmir::add".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        AddOp {
-            operation,
-            const_value: None,
-        }
+        AddOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -56,27 +79,9 @@ impl Op for AddOp {
         let results = results.vec();
         let results = results.try_read().unwrap();
         let result = results[0].try_read().unwrap();
-        write!(f, "{result} = add")?;
-        let result_types = operation.results().types();
-        write!(f, " {result_types}")?;
-        let operands = operation.operands();
-        let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
-        let operand = operands.get(0).unwrap();
-        write!(f, " {}, ", operand.try_read().unwrap())?;
-        let const_value = self.const_value();
-        let const_value = const_value.value();
-        write!(f, "{const_value}")?;
+        write!(f, "{result} = add ")?;
+        display_operands(f, &operation.operands())?;
         write!(f, "\n")
-    }
-}
-
-impl OneConst for AddOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
     }
 }
 
@@ -88,13 +93,19 @@ impl Display for AddOp {
 
 pub struct AllocaOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
     element_type: Option<String>,
 }
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().expect("array size not set")
+        let operand = self.operation().operand(0).unwrap();
+        let operand = operand.try_read().unwrap();
+        let value = operand.value();
+        let value = value.try_read().unwrap();
+        match &*value {
+            Value::Constant(constant) => constant.value().clone(),
+            _ => panic!("Unexpected"),
+        }
     }
     pub fn set_element_type(&mut self, element_type: String) {
         self.element_type = Some(element_type);
@@ -108,7 +119,6 @@ impl Op for AllocaOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         AllocaOp {
             operation,
-            const_value: None,
             element_type: None,
         }
     }
@@ -123,20 +133,11 @@ impl Op for AllocaOp {
         write!(f, "{} ", AllocaOp::operation_name())?;
         write!(f, "{}", self.element_type.as_ref().unwrap())?;
         let array_size = self.array_size();
-        let array_size = array_size.as_any().downcast_ref::<IntegerAttr>().unwrap();
         let typ = array_size.typ();
+        let typ = typ.try_read().unwrap();
         let value = array_size.value();
         write!(f, ", {typ} {value}, align 1")?;
         Ok(())
-    }
-}
-
-impl OneConst for AllocaOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
     }
 }
 
@@ -149,6 +150,7 @@ impl Display for AllocaOp {
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
+    varargs: Option<Arc<RwLock<dyn Type>>>,
 }
 
 impl Call for CallOp {
@@ -157,6 +159,12 @@ impl Call for CallOp {
     }
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
+    }
+    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+        self.varargs.clone()
+    }
+    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+        self.varargs = varargs;
     }
 }
 
@@ -168,6 +176,7 @@ impl Op for CallOp {
         CallOp {
             operation,
             identifier: None,
+            varargs: None,
         }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -191,12 +200,14 @@ impl Op for CallOp {
         } else {
             "void".to_string()
         };
-        write!(f, "call {return_type} {}(", self.identifier().unwrap())?;
-        let operand_types = operation.operand_types();
-        if !operand_types.vec().is_empty() {
-            write!(f, "{} ", operand_types)?;
+        write!(f, "call {return_type} ")?;
+        let varargs = self.varargs();
+        if let Some(varargs) = varargs {
+            write!(f, "({}) ", varargs.try_read().unwrap())?;
         }
-        write!(f, "{})", operation.operands())?;
+        write!(f, "{}(", self.identifier().unwrap())?;
+        display_operands(f, &operation.operands())?;
+        write!(f, ")")?;
         Ok(())
     }
 }
@@ -259,17 +270,24 @@ impl Op for FuncOp {
         let arguments = self.arguments().unwrap();
         let arguments = arguments.vec();
         let arguments = arguments.try_read().unwrap();
-        for argument in arguments.iter() {
+        for (i, argument) in arguments.iter().enumerate() {
+            if 0 < i {
+                write!(f, ", ")?;
+            }
             let argument = argument.try_read().unwrap();
-            if let Value::BlockArgument(arg) = &*argument {
-                let typ = arg.typ();
-                let typ = typ.try_read().unwrap();
-                match arg.name() {
-                    Some(name) => write!(f, "{} {}", typ, name),
-                    None => write!(f, "{}", typ),
-                }?;
-            } else {
-                panic!("Expected BlockArgument");
+            match &*argument {
+                Value::BlockArgument(arg) => {
+                    let typ = arg.typ();
+                    let typ = typ.try_read().unwrap();
+                    match arg.name() {
+                        Some(name) => write!(f, "{} {}", typ, name),
+                        None => write!(f, "{}", typ),
+                    }?;
+                }
+                Value::Variadic(variadic) => {
+                    write!(f, "{variadic}")?;
+                }
+                _ => panic!("Unexpected"),
             }
         }
         write!(f, ")")?;
@@ -331,7 +349,7 @@ impl Op for ModuleOp {
                 block.display(f, indent)?;
             }
         }
-        write!(f, "\n\n!llvm.module.flags = {}", self.module_flags)?;
+        write!(f, "\n!llvm.module.flags = {}", self.module_flags)?;
         write!(f, "\n\n{}", self.debug_info)?;
         Ok(())
     }
@@ -345,16 +363,6 @@ impl Display for ModuleOp {
 
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
-}
-
-impl OneConst for ReturnOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
 }
 
 impl Op for ReturnOp {
@@ -362,10 +370,7 @@ impl Op for ReturnOp {
         OperationName::new("target::llvmir::return".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        ReturnOp {
-            operation,
-            const_value: None,
-        }
+        ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -374,24 +379,12 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        if let Some(const_value) = &self.const_value {
-            let const_value = const_value.as_any().downcast_ref::<IntegerAttr>().unwrap();
-            let typ = const_value.typ();
-            let value = const_value.value();
-            write!(f, "ret {typ} {value}")
+        let operands = self.operation().operands();
+        if operands.vec().try_read().unwrap().is_empty() {
+            write!(f, "ret void")
         } else {
-            let operands = self.operation().operands();
-            if operands.vec().try_read().unwrap().is_empty() {
-                write!(f, "ret void")
-            } else {
-                // Return is allowed to be a non-constant operand (for example, `ret i32 %1`).
-                let operand = self.operation().operand(0).unwrap();
-                let value = operand.value();
-                let value = value.try_read().unwrap();
-                let typ = value.typ();
-                let typ = typ.try_read().unwrap();
-                write!(f, "ret {typ} {value}")
-            }
+            write!(f, "ret ")?;
+            display_operands(f, &self.operation.operands())
         }
     }
 }
@@ -404,15 +397,13 @@ impl Display for ReturnOp {
 
 pub struct StoreOp {
     operation: Arc<RwLock<Operation>>,
-    const_value: Option<Arc<dyn Attribute>>,
     len: Option<usize>,
 }
 
 impl StoreOp {
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         let operation = self.operation.try_read().unwrap();
-        // The value was removed during lowering.
-        let operand = operation.operand(0).unwrap();
+        let operand = operation.operand(1).unwrap();
         operand
     }
     pub fn set_len(&mut self, len: usize) {
@@ -423,15 +414,6 @@ impl StoreOp {
     }
 }
 
-impl OneConst for StoreOp {
-    fn const_value(&self) -> Arc<dyn Attribute> {
-        self.const_value.clone().unwrap()
-    }
-    fn set_const_value(&mut self, const_value: Arc<dyn Attribute>) {
-        self.const_value = Some(const_value);
-    }
-}
-
 impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("store".to_string())
@@ -439,7 +421,6 @@ impl Op for StoreOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         StoreOp {
             operation,
-            const_value: None,
             len: None,
         }
     }
@@ -451,8 +432,8 @@ impl Op for StoreOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "store ")?;
-        let const_value = self.const_value();
-        let const_value = const_value.as_any().downcast_ref::<StringAttr>().unwrap();
+        let const_value = self.operation().operand(0).unwrap();
+        let const_value = const_value.try_read().unwrap();
         let len = self.len().expect("len not set during lowering");
         write!(f, "[{len} x i8] ")?;
         write!(f, "c{const_value}, ")?;

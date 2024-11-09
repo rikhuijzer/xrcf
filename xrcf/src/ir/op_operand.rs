@@ -30,11 +30,13 @@ impl OpOperand {
     /// that defines it.
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
-        let value = &*value.read().unwrap();
+        let value = &*value.try_read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
+            Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
+            Value::Variadic(_) => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
@@ -45,7 +47,11 @@ impl OpOperand {
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        let value = self.value.try_read().unwrap();
+        match &*value {
+            Value::Constant(constant) => write!(f, "{constant}"),
+            _ => write!(f, "{}", self.name()),
+        }
     }
 }
 
@@ -122,7 +128,7 @@ impl<T: ParserDispatch> Parser<T> {
     ) -> Result<Arc<RwLock<OpOperand>>> {
         let identifier = self.expect(TokenKind::PercentIdentifier)?;
         let name = identifier.lexeme.clone();
-        let block = parent.read().unwrap();
+        let block = parent.try_read().expect("no parent");
         let assignment = block.assignment(&name);
         let assignment = match assignment {
             Some(assignment) => assignment,
@@ -158,6 +164,15 @@ impl<T: ParserDispatch> Parser<T> {
         let operands = OpOperands {
             operands: Arc::new(RwLock::new(arguments)),
         };
+        Ok(operands)
+    }
+    pub fn parse_op_operands_into(
+        &mut self,
+        parent: Arc<RwLock<Block>>,
+        operation: &mut Operation,
+    ) -> Result<OpOperands> {
+        let operands = self.parse_op_operands(parent)?;
+        operation.set_operands(operands.clone());
         Ok(operands)
     }
 }

@@ -174,7 +174,9 @@ impl Scanner {
             '{' => self.add_token(TokenKind::LBrace),
             '}' => self.add_token(TokenKind::RBrace),
             ':' => self.add_token(TokenKind::Colon),
+            '\'' => self.add_token(TokenKind::SingleQuote),
             ',' => self.add_token(TokenKind::Comma),
+            '.' => self.add_token(TokenKind::Dot),
             '=' => self.add_token(TokenKind::Equal),
             '!' => self.add_token(TokenKind::Exclamation),
             '>' => self.add_token(TokenKind::Greater),
@@ -313,7 +315,7 @@ mod tests {
         assert_eq!(text, src);
 
         let text = Scanner::error(src, &tokens[4].location, "test");
-        println!("text:\n{}", text);
+        tracing::info!("text:\n{}", text);
         let lines = text.split('\n').collect::<Vec<&str>>();
         assert_eq!(lines[0], "```");
         assert_eq!(lines[1], "0  | module {");
