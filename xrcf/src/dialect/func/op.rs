@@ -77,6 +77,7 @@ pub trait Call: Op {
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
+        allow_varargs: bool,
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
@@ -90,7 +91,7 @@ pub trait Call: Op {
         parser.expect(TokenKind::RParen)?;
 
         // vararg(!llvm.func<i32 (ptr, ...)>)
-        let varargs = if parser.peek().lexeme == "vararg" {
+        let varargs = if allow_varargs && parser.peek().lexeme == "vararg" {
             let _vararg = parser.advance();
             parser.expect(TokenKind::LParen)?;
             let varargs = parser.parse_type()?;
@@ -174,7 +175,8 @@ impl Parse for CallOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent)?;
+        let allow_varargs = false;
+        let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(call_op)
     }
 }

@@ -210,7 +210,8 @@ impl Parse for CallOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let op = func::CallOp::parse_call_op::<T, CallOp>(parser, parent)?;
+        let allow_varargs = true;
+        let op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(op)
     }
 }

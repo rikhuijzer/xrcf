@@ -22,7 +22,7 @@ fn test_constant() {
     "#};
 
     let expected = indoc! {r#"
-    func.func private @printf(!llvm.ptr) -> i32
+    llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
 
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
@@ -30,7 +30,7 @@ fn test_constant() {
       %2 = arith.constant 14 : i16
       %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
       llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr
-      %4 = func.call @printf(%3) : (!llvm.ptr) -> i32
+      %4 = llvm.call @printf(%3) : (!llvm.ptr) -> i32
       return %0 : i32
     }
     "#};
@@ -78,13 +78,13 @@ fn test_hello_world() {
     .trim();
     let expected = indoc! {r#"
     module {
-      func.func private @printf(!llvm.ptr) -> i32
+      llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
       func.func @hello() {
         %0 = llvm.mlir.constant("Hello, World!\00") : !llvm.array<14 x i8>
         %1 = arith.constant 14 : i16
         %2 = llvm.alloca %1 x i8 : (i16) -> !llvm.ptr
         llvm.store %0, %2 : !llvm.array<14 x i8>, !llvm.ptr
-        %3 = func.call @printf(%2) : (!llvm.ptr) -> i32
+        %3 = llvm.call @printf(%2) : (!llvm.ptr) -> i32
         return
       }
       func.func @main() -> i32 {

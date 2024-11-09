@@ -110,7 +110,9 @@ impl PrintLowering {
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
 
-        let mut op = func::CallOp::from_operation(operation);
+        // Going straight to llvm::CallOp instead of func::CallOp because func
+        // does not support varargs.
+        let mut op = llvm::CallOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         let op = Arc::new(RwLock::new(op));
         result.set_defining_op(Some(op.clone()));
@@ -152,7 +154,9 @@ impl PrintLowering {
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_anonymous_result(result_type)?;
 
-        let mut op = func::FuncOp::from_operation(operation);
+        // Going straight to llvm::FuncOp instead of func::FuncOp because func
+        // does not support varargs.
+        let mut op = llvm::FuncOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         op.set_sym_visibility(Some("private".to_string()));
         {
