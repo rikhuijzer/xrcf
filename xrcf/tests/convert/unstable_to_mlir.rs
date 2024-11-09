@@ -22,7 +22,7 @@ fn test_constant() {
     "#};
 
     let expected = indoc! {r#"
-    func.func private @printf(!llvm.ptr) -> i32
+    llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
 
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
@@ -30,7 +30,7 @@ fn test_constant() {
       %2 = arith.constant 14 : i16
       %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
       llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr
-      %4 = func.call @printf(%3) : (!llvm.ptr) -> i32
+      %4 = llvm.call @printf(%3) : (!llvm.ptr) -> i32
       return %0 : i32
     }
     "#};
@@ -56,7 +56,7 @@ fn test_two_constants() {
     Tester::init_tracing();
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
-    assert_eq!(actual.matches("func.func private @printf").count(), 1);
+    assert_eq!(actual.matches("llvm.func @printf").count(), 1);
 }
 
 #[test]
@@ -78,13 +78,13 @@ fn test_hello_world() {
     .trim();
     let expected = indoc! {r#"
     module {
-      func.func private @printf(!llvm.ptr) -> i32
+      llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
       func.func @hello() {
         %0 = llvm.mlir.constant("Hello, World!\00") : !llvm.array<14 x i8>
         %1 = arith.constant 14 : i16
         %2 = llvm.alloca %1 x i8 : (i16) -> !llvm.ptr
         llvm.store %0, %2 : !llvm.array<14 x i8>, !llvm.ptr
-        %3 = func.call @printf(%2) : (!llvm.ptr) -> i32
+        %3 = llvm.call @printf(%2) : (!llvm.ptr) -> i32
         return
       }
       func.func @main() -> i32 {
@@ -94,8 +94,9 @@ fn test_hello_world() {
       }
     }
     "#};
-    let (_module, actual) = Tester::transform(flags(), src);
+    let (module, actual) = Tester::transform(flags(), src);
     Tester::check_lines_exact(&actual, expected, Location::caller());
+    Tester::verify(module);
 
     let src = indoc! {r#"
     func.func @hello() {
@@ -108,4 +109,36 @@ fn test_hello_world() {
     "#};
     let (_module, actual) = Tester::transform(flags(), src);
     Tester::check_lines_contain(&actual, expected, Location::caller());
+}
+
+#[test]
+fn test_hello_world_with_arg() {
+    Tester::init_tracing();
+    let src = indoc! {r#"
+    func.func @main() -> i32 {
+      %0 = arith.constant 42 : i32
+      unstable.printf("hello, %d\n", %0)
+      %1 = arith.constant 0 : i32
+      return %1 : i32
+    }
+    "#}
+    .trim();
+    let expected = indoc! {r#"
+    module {
+      llvm.func @printf(!llvm.ptr, ...) -> i32 attributes {sym_visibility = "private"}
+      func.func @main() -> i32 {
+        %0 = arith.constant 42 : i32
+        %2 = llvm.mlir.constant("hello, %d\0A\00") : !llvm.array<11 x i8>
+        %3 = arith.constant 11 : i16
+        %4 = llvm.alloca %3 x i8 : (i16) -> !llvm.ptr
+        llvm.store %2, %4 : !llvm.array<11 x i8>, !llvm.ptr
+        %5 = llvm.call @printf(%4, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
+        %1 = arith.constant 0 : i32
+        return %1 : i32
+      }
+    }
+    "#};
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_exact(&actual, expected, Location::caller());
+    Tester::verify(module);
 }

@@ -144,7 +144,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
         let mut new_arguments = vec![];
         for argument in arguments.iter() {
             let argument_rd = argument.try_read().unwrap();
-            if let Value::Variadic(_) = &*argument_rd {
+            if let Value::Variadic = &*argument_rd {
                 new_arguments.push(argument.clone());
             } else {
                 let typ = argument.typ();

@@ -5,7 +5,6 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::dialect::arith;
-use crate::dialect::func;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm;
@@ -21,6 +20,7 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::StringAttr;
+use crate::ir::Value;
 use anyhow::Result;
 use dialect::unstable::PrintfOp;
 use std::sync::Arc;
@@ -33,7 +33,7 @@ impl PrintLowering {
     fn text_constant(parent: &Arc<RwLock<Block>>, op: &PrintfOp) -> (Arc<RwLock<dyn Op>>, usize) {
         let mut const_operation = Operation::default();
         const_operation.set_parent(Some(parent.clone()));
-        let text = op.text().clone().unwrap();
+        let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
         let name = parent.try_read().unwrap().unique_value_name();
@@ -71,7 +71,8 @@ impl PrintLowering {
         let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.result(0);
         let array_size = OpOperand::new(array_size);
-        operation.set_operand(Arc::new(RwLock::new(array_size)));
+        let array_size = Arc::new(RwLock::new(array_size));
+        operation.set_operand(0, array_size);
 
         let mut op = llvm::AllocaOp::from_operation(operation);
         op.set_element_type("i8".to_string());
@@ -98,20 +99,40 @@ impl PrintLowering {
         op.set_addr(Arc::new(RwLock::new(addr)));
         Arc::new(RwLock::new(op))
     }
-    fn call_op(parent: &Arc<RwLock<Block>>, alloca: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+    fn call_op(
+        parent: &Arc<RwLock<Block>>,
+        op: &PrintfOp,
+        alloca: Arc<RwLock<dyn Op>>,
+        set_varargs: bool,
+    ) -> Arc<RwLock<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        let addr = alloca.result(0);
-        let addr = OpOperand::new(addr);
-        operation.set_operand(Arc::new(RwLock::new(addr)));
-
+        {
+            let text_addr = alloca.result(0);
+            let text_addr = OpOperand::new(text_addr);
+            let text_addr = Arc::new(RwLock::new(text_addr));
+            operation.set_operand(0, text_addr);
+        }
+        if set_varargs {
+            let var = op.operation().operand(1);
+            let var = var.expect("expected vararg");
+            operation.set_operand(1, var);
+        }
         let typ = IntegerType::from_str("i32");
         let name = parent.unique_value_name();
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
 
-        let mut op = func::CallOp::from_operation(operation);
+        // Going straight to llvm::CallOp instead of func::CallOp because func
+        // does not support varargs.
+        let mut op = llvm::CallOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
+        if set_varargs {
+            let varargs = "!llvm.func<i32 (!llvm.ptr, ...)>";
+            let varargs = llvm::FunctionType::from_str(varargs);
+            let varargs = Arc::new(RwLock::new(varargs));
+            op.set_varargs(Some(varargs));
+        }
         let op = Arc::new(RwLock::new(op));
         result.set_defining_op(Some(op.clone()));
         op
@@ -136,7 +157,10 @@ impl PrintLowering {
         for op in ops {
             let op = op.try_read().unwrap();
             if op.is_func() {
-                let func = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+                let func = match op.as_any().downcast_ref::<llvm::FuncOp>() {
+                    Some(func) => func,
+                    None => continue,
+                };
                 if func.identifier() == Some("@printf".to_string()) {
                     return true;
                 }
@@ -145,32 +169,42 @@ impl PrintLowering {
         false
     }
     /// Return an [Op] which defines (declares) the `printf` function.
-    fn printf_func_def(parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<dyn Op>>> {
+    fn printf_func_def(
+        parent: Arc<RwLock<Block>>,
+        set_varargs: bool,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let result_type = crate::ir::IntegerType::from_str("i32");
         let result_type = Arc::new(RwLock::new(result_type));
         operation.set_anonymous_result(result_type)?;
 
-        let mut op = func::FuncOp::from_operation(operation);
+        // Going straight to llvm::FuncOp instead of func::FuncOp because func
+        // does not support varargs.
+        let mut op = llvm::FuncOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         op.set_sym_visibility(Some("private".to_string()));
         {
             let arg_type = PointerType::new();
             let arg_type = Arc::new(RwLock::new(arg_type));
-            op.set_argument_from_type(arg_type)?;
+            op.set_argument_from_type(0, arg_type)?;
+        }
+        if set_varargs {
+            let value = Value::Variadic;
+            let value = Arc::new(RwLock::new(value));
+            op.operation().set_argument(1, value);
         }
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }
     /// Define the printf function if it is not already defined.
-    fn define_printf(op: Arc<RwLock<dyn Op>>) -> Result<()> {
+    fn define_printf(op: Arc<RwLock<dyn Op>>, set_varargs: bool) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
         if !Self::contains_printf(top_level_op.clone()) {
             let ops = top_level_op.ops();
             let op = ops[0].clone();
             let parent = op.operation().parent().unwrap();
-            op.insert_before(Self::printf_func_def(parent)?);
+            op.insert_before(Self::printf_func_def(parent, set_varargs)?);
         }
         Ok(())
     }
@@ -185,6 +219,11 @@ impl Rewrite for PrintLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op_clone = op.clone();
+        let set_varargs = {
+            let operands = op.operation().operands().vec();
+            let operands = operands.try_read().unwrap();
+            1 < operands.len()
+        };
         let op_rd = op_clone.try_read().unwrap();
         let op_rd = op_rd
             .as_any()
@@ -200,8 +239,8 @@ impl Rewrite for PrintLowering {
         op_rd.insert_before(alloca.clone());
         let store = PrintLowering::store_op(&parent, text.clone(), alloca.clone());
         op_rd.insert_before(store);
-        PrintLowering::define_printf(op)?;
-        let call = PrintLowering::call_op(&parent, alloca);
+        PrintLowering::define_printf(op, set_varargs)?;
+        let call = PrintLowering::call_op(&parent, op_rd, alloca, set_varargs);
         op_rd.insert_before(call.clone());
         op_rd.remove();
 

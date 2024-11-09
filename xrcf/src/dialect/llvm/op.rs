@@ -210,7 +210,8 @@ impl Parse for CallOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let op = func::CallOp::parse_call_op::<T, CallOp>(parser, parent)?;
+        let allow_varargs = true;
+        let op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(op)
     }
 }
@@ -505,7 +506,7 @@ impl StoreOp {
         self.operation().operand(0).expect("no value set")
     }
     pub fn set_value(&mut self, value: Arc<RwLock<OpOperand>>) {
-        self.operation().set_operand(value);
+        self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         let operation = self.operation.try_read().unwrap();

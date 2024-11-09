@@ -284,9 +284,7 @@ impl Op for FuncOp {
                         None => write!(f, "{}", typ),
                     }?;
                 }
-                Value::Variadic(variadic) => {
-                    write!(f, "{variadic}")?;
-                }
+                Value::Variadic => write!(f, "...")?,
                 _ => panic!("Unexpected"),
             }
         }

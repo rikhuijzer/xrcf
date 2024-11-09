@@ -50,6 +50,10 @@ pub trait Call: Op {
         write!(f, "{}", operation.name())?;
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
+        if let Some(varargs) = self.varargs() {
+            let varargs = varargs.try_read().unwrap();
+            write!(f, " vararg({})", varargs)?;
+        }
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
@@ -77,6 +81,7 @@ pub trait Call: Op {
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
+        allow_varargs: bool,
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
@@ -90,7 +95,7 @@ pub trait Call: Op {
         parser.expect(TokenKind::RParen)?;
 
         // vararg(!llvm.func<i32 (ptr, ...)>)
-        let varargs = if parser.peek().lexeme == "vararg" {
+        let varargs = if allow_varargs && parser.peek().lexeme == "vararg" {
             let _vararg = parser.advance();
             parser.expect(TokenKind::LParen)?;
             let varargs = parser.parse_type()?;
@@ -174,7 +179,8 @@ impl Parse for CallOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent)?;
+        let allow_varargs = false;
+        let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(call_op)
     }
 }
@@ -182,12 +188,12 @@ impl Parse for CallOp {
 pub trait Func: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
-    fn set_argument_from_type(&mut self, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
+    fn set_argument_from_type(&mut self, index: usize, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
         let argument = crate::ir::BlockArgument::new(None, typ);
         let value = Value::BlockArgument(argument);
         let value = Arc::new(RwLock::new(value));
         let operation = self.operation();
-        operation.set_argument(value);
+        operation.set_argument(index, value);
         Ok(())
     }
     fn sym_visibility(&self) -> Option<String> {

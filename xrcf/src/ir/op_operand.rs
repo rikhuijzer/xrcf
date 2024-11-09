@@ -1,4 +1,5 @@
 use crate::ir::Block;
+use crate::ir::Constant;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Type;
@@ -12,7 +13,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 pub struct OpOperand {
-    pub value: Arc<RwLock<Value>>,
+    value: Arc<RwLock<Value>>,
 }
 
 impl OpOperand {
@@ -21,10 +22,13 @@ impl OpOperand {
     }
     pub fn name(&self) -> String {
         let value = self.value.try_read().unwrap();
-        value.name().unwrap()
+        value.name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
+    }
+    pub fn set_value(&mut self, value: Arc<RwLock<Value>>) {
+        self.value = value;
     }
     /// If this `OpOperand` is the result of an operation, return the operation
     /// that defines it.
@@ -36,7 +40,7 @@ impl OpOperand {
             Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
-            Value::Variadic(_) => None,
+            Value::Variadic => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
@@ -59,6 +63,7 @@ pub trait GuardedOpOperand {
     fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
     fn typ(&self) -> Arc<RwLock<dyn Type>>;
     fn value(&self) -> Arc<RwLock<Value>>;
+    fn set_value(&mut self, value: Arc<RwLock<Value>>);
 }
 
 impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
@@ -71,6 +76,9 @@ impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
     }
     fn value(&self) -> Arc<RwLock<Value>> {
         self.try_read().unwrap().value()
+    }
+    fn set_value(&mut self, value: Arc<RwLock<Value>>) {
+        self.try_write().unwrap().set_value(value);
     }
 }
 
@@ -113,7 +121,7 @@ impl Display for OpOperands {
             .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.try_read().unwrap().name())
+            .map(|o| o.try_read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)
@@ -121,25 +129,44 @@ impl Display for OpOperands {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    /// Parse %0.
+    /// Parse an OpOperand like %0 or "hello".
     pub fn parse_op_operand(
         &mut self,
         parent: Arc<RwLock<Block>>,
     ) -> Result<Arc<RwLock<OpOperand>>> {
-        let identifier = self.expect(TokenKind::PercentIdentifier)?;
-        let name = identifier.lexeme.clone();
-        let block = parent.try_read().expect("no parent");
-        let assignment = block.assignment(&name);
-        let assignment = match assignment {
-            Some(assignment) => assignment,
-            None => {
-                let msg = "Expected assignment before use.";
-                let msg = self.error(&identifier, msg);
+        let next = self.peek();
+        match next.kind {
+            TokenKind::PercentIdentifier => {
+                let identifier = self.expect(TokenKind::PercentIdentifier)?;
+                let name = identifier.lexeme.clone();
+                let block = parent.try_read().expect("no parent");
+                let assignment = block.assignment(&name);
+                let assignment = match assignment {
+                    Some(assignment) => assignment,
+                    None => {
+                        let msg = "Expected assignment before use.";
+                        let msg = self.error(&identifier, msg);
+                        return Err(anyhow::anyhow!(msg));
+                    }
+                };
+                let operand = OpOperand::new(assignment);
+                Ok(Arc::new(RwLock::new(operand)))
+            }
+            TokenKind::String => {
+                let text = self.parse_string()?;
+                let text = Arc::new(text);
+                let text = Constant::new(text);
+                let text = Value::Constant(text);
+                let text = Arc::new(RwLock::new(text));
+                let operand = OpOperand::new(text);
+                Ok(Arc::new(RwLock::new(operand)))
+            }
+            _ => {
+                let msg = "Expected operand.";
+                let msg = self.error(&next, msg);
                 return Err(anyhow::anyhow!(msg));
             }
-        };
-        let operand = OpOperand::new(assignment);
-        Ok(Arc::new(RwLock::new(operand)))
+        }
     }
     /// Parse %0 into an operand of the given operation.
     pub fn parse_op_operand_into(
@@ -148,13 +175,15 @@ impl<T: ParserDispatch> Parser<T> {
         operation: &mut Operation,
     ) -> Result<Arc<RwLock<OpOperand>>> {
         let operand = self.parse_op_operand(parent)?;
-        operation.set_operand(operand.clone());
+        operation.set_operand(0, operand.clone());
         Ok(operand)
     }
-    /// Parse %0, %1.
+    /// Parse %0, %1, or %0, "hello".
     pub fn parse_op_operands(&mut self, parent: Arc<RwLock<Block>>) -> Result<OpOperands> {
         let mut arguments = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
+        while self.peek().kind == TokenKind::PercentIdentifier
+            || self.peek().kind == TokenKind::String
+        {
             let operand = self.parse_op_operand(parent.clone())?;
             arguments.push(operand);
             if self.check(TokenKind::Comma) {
