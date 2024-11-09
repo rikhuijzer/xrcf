@@ -237,7 +237,7 @@ pub enum Value {
     Constant(Constant),
     FuncResult(AnonymousResult),
     OpResult(OpResult),
-    Variadic(Variadic),
+    Variadic,
 }
 
 impl Value {
@@ -251,7 +251,7 @@ impl Value {
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => result.name.clone(),
-            Value::Variadic(_) => None,
+            Value::Variadic => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
@@ -262,7 +262,7 @@ impl Value {
             Value::OpResult(result) => result
                 .typ()
                 .expect(&format!("Type was not set for OpResult {}", self)),
-            Value::Variadic(_) => todo!(),
+            Value::Variadic => todo!(),
         }
     }
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
@@ -271,7 +271,7 @@ impl Value {
             Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
-            Value::Variadic(_) => todo!(),
+            Value::Variadic => todo!(),
         }
     }
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
@@ -280,7 +280,7 @@ impl Value {
             Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
-            Value::Variadic(_) => panic!("Cannot set defining op for Variadic"),
+            Value::Variadic => panic!("Cannot set defining op for Variadic"),
         }
     }
     pub fn set_name(&mut self, name: &str) {
@@ -289,7 +289,7 @@ impl Value {
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
-            Value::Variadic(_) => panic!("Cannot set name for Variadic"),
+            Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
@@ -332,7 +332,7 @@ impl Value {
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
-            Value::Variadic(_) => Users::HasNoOpResults,
+            Value::Variadic => Users::HasNoOpResults,
         }
     }
     /// Rename the value, and all its users.
@@ -348,7 +348,7 @@ impl Display for Value {
             Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
-            Value::Variadic(variadic) => write!(f, "{variadic}"),
+            Value::Variadic => write!(f, "..."),
         }
     }
 }
@@ -441,9 +441,7 @@ impl Values {
                     panic!("Trying to set defining op for func result")
                 }
                 Value::OpResult(res) => res.set_defining_op(Some(op.clone())),
-                Value::Variadic(_) => {
-                    panic!("Trying to set defining op for variadic")
-                }
+                Value::Variadic => panic!("Trying to set defining op for variadic"),
             }
         }
     }
@@ -517,7 +515,7 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Dot)?;
             self.expect(TokenKind::Dot)?;
             self.expect(TokenKind::Dot)?;
-            let variadic = Value::Variadic(Variadic);
+            let variadic = Value::Variadic;
             return Ok(Arc::new(RwLock::new(variadic)));
         }
         Err(anyhow::anyhow!("Expected function argument"))

@@ -40,7 +40,7 @@ impl OpOperand {
             Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
-            Value::Variadic(_) => None,
+            Value::Variadic => None,
         }
     }
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {

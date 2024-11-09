@@ -184,12 +184,12 @@ impl Parse for CallOp {
 pub trait Func: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
-    fn set_argument_from_type(&mut self, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
+    fn set_argument_from_type(&mut self, index: usize, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
         let argument = crate::ir::BlockArgument::new(None, typ);
         let value = Value::BlockArgument(argument);
         let value = Arc::new(RwLock::new(value));
         let operation = self.operation();
-        operation.set_argument(0, value);
+        operation.set_argument(index, value);
         Ok(())
     }
     fn sym_visibility(&self) -> Option<String> {

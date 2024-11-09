@@ -20,6 +20,7 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::StringAttr;
+use crate::ir::Value;
 use anyhow::Result;
 use dialect::unstable::PrintfOp;
 use std::sync::Arc;
@@ -151,7 +152,10 @@ impl PrintLowering {
         false
     }
     /// Return an [Op] which defines (declares) the `printf` function.
-    fn printf_func_def(parent: Arc<RwLock<Block>>) -> Result<Arc<RwLock<dyn Op>>> {
+    fn printf_func_def(
+        parent: Arc<RwLock<Block>>,
+        set_varargs: bool,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let result_type = crate::ir::IntegerType::from_str("i32");
@@ -166,7 +170,12 @@ impl PrintLowering {
         {
             let arg_type = PointerType::new();
             let arg_type = Arc::new(RwLock::new(arg_type));
-            op.set_argument_from_type(arg_type)?;
+            op.set_argument_from_type(0, arg_type)?;
+        }
+        if set_varargs {
+            let value = Value::Variadic;
+            let value = Arc::new(RwLock::new(value));
+            op.operation().set_argument(1, value);
         }
         let op = Arc::new(RwLock::new(op));
         Ok(op)
@@ -174,11 +183,16 @@ impl PrintLowering {
     /// Define the printf function if it is not already defined.
     fn define_printf(op: Arc<RwLock<dyn Op>>) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
+        let set_varargs = {
+            let operands = op.operation().operands().vec();
+            let operands = operands.try_read().unwrap();
+            1 < operands.len()
+        };
         if !Self::contains_printf(top_level_op.clone()) {
             let ops = top_level_op.ops();
             let op = ops[0].clone();
             let parent = op.operation().parent().unwrap();
-            op.insert_before(Self::printf_func_def(parent)?);
+            op.insert_before(Self::printf_func_def(parent, set_varargs)?);
         }
         Ok(())
     }
