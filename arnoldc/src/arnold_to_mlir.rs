@@ -117,7 +117,8 @@ impl ModuleLowering {
         ret.set_anonymous_result(result_type).unwrap();
         let value = constant.result(0);
         let operand = OpOperand::new(value);
-        ret.set_operand(Arc::new(RwLock::new(operand)));
+        let operand = Arc::new(RwLock::new(operand));
+        ret.set_operand(0, operand);
         let ret = func::ReturnOp::from_operation(ret);
         let ret = Arc::new(RwLock::new(ret));
         ret

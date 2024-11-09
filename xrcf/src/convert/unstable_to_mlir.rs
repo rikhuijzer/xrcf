@@ -32,7 +32,7 @@ impl PrintLowering {
     fn text_constant(parent: &Arc<RwLock<Block>>, op: &PrintfOp) -> (Arc<RwLock<dyn Op>>, usize) {
         let mut const_operation = Operation::default();
         const_operation.set_parent(Some(parent.clone()));
-        let text = op.text().clone().unwrap();
+        let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
         let name = parent.try_read().unwrap().unique_value_name();
@@ -70,7 +70,8 @@ impl PrintLowering {
         let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.result(0);
         let array_size = OpOperand::new(array_size);
-        operation.set_operand(Arc::new(RwLock::new(array_size)));
+        let array_size = Arc::new(RwLock::new(array_size));
+        operation.set_operand(0, array_size);
 
         let mut op = llvm::AllocaOp::from_operation(operation);
         op.set_element_type("i8".to_string());
@@ -102,7 +103,8 @@ impl PrintLowering {
         operation.set_parent(Some(parent.clone()));
         let addr = alloca.result(0);
         let addr = OpOperand::new(addr);
-        operation.set_operand(Arc::new(RwLock::new(addr)));
+        let addr = Arc::new(RwLock::new(addr));
+        operation.set_operand(0, addr);
 
         let typ = IntegerType::from_str("i32");
         let name = parent.unique_value_name();

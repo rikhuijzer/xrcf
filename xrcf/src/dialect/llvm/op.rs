@@ -506,7 +506,7 @@ impl StoreOp {
         self.operation().operand(0).expect("no value set")
     }
     pub fn set_value(&mut self, value: Arc<RwLock<OpOperand>>) {
-        self.operation().set_operand(value);
+        self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         let operation = self.operation.try_read().unwrap();

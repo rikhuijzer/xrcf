@@ -107,6 +107,22 @@ pub fn display_region_inside_func(
     }
 }
 
+/// Set the value at `index` or grow the vector by one if `index` equals the
+/// length of the vector.
+fn set_or_grow_by_one<T>(vec: &mut Vec<T>, index: usize, value: T) {
+    if index < vec.len() {
+        vec[index] = value;
+    } else if index == vec.len() {
+        vec.push(value);
+    } else {
+        panic!(
+            "tried to set value at index {} but length is {}",
+            index,
+            vec.len()
+        );
+    }
+}
+
 impl Operation {
     pub fn new(
         name: OperationName,
@@ -207,16 +223,15 @@ impl Operation {
     pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn set_argument(&mut self, argument: Arc<RwLock<Value>>) {
-        let arguments = vec![argument];
-        self.arguments = Values::from_vec(arguments);
+    pub fn set_argument(&mut self, index: usize, argument: Arc<RwLock<Value>>) {
+        let arguments = self.arguments.vec();
+        let mut arguments = arguments.try_write().unwrap();
+        set_or_grow_by_one(&mut arguments, index, argument);
     }
-    /// Set the operand of the operation.
-    ///
-    /// This overrides any previously set operands.
-    pub fn set_operand(&mut self, operand: Arc<RwLock<OpOperand>>) {
-        let operands = vec![operand];
-        self.operands = OpOperands::from_vec(operands);
+    pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
+        let operands = self.operands.vec();
+        let mut operands = operands.try_write().unwrap();
+        set_or_grow_by_one(&mut operands, index, operand);
     }
     pub fn set_operands(&mut self, operands: OpOperands) {
         self.operands = operands;
@@ -373,10 +388,10 @@ pub trait GuardedOperation {
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
     fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
-    fn set_argument(&self, argument: Arc<RwLock<Value>>);
+    fn set_argument(&self, index: usize, argument: Arc<RwLock<Value>>);
     fn set_attributes(&self, attributes: Attributes);
     fn set_name(&self, name: OperationName);
-    fn set_operand(&self, operand: Arc<RwLock<OpOperand>>);
+    fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
 }
@@ -419,8 +434,8 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
         self.try_write().unwrap().set_anonymous_result(result_type)
     }
-    fn set_argument(&self, argument: Arc<RwLock<Value>>) {
-        self.try_write().unwrap().set_argument(argument);
+    fn set_argument(&self, index: usize, argument: Arc<RwLock<Value>>) {
+        self.try_write().unwrap().set_argument(index, argument);
     }
     fn set_attributes(&self, attributes: Attributes) {
         self.try_write().unwrap().set_attributes(attributes);
@@ -428,8 +443,8 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn set_name(&self, name: OperationName) {
         self.try_write().unwrap().set_name(name);
     }
-    fn set_operand(&self, operand: Arc<RwLock<OpOperand>>) {
-        self.try_write().unwrap().set_operand(operand);
+    fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>) {
+        self.try_write().unwrap().set_operand(index, operand);
     }
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>) {
         self.try_write().unwrap().set_region(region);

@@ -189,7 +189,7 @@ pub trait Func: Op {
         let value = Value::BlockArgument(argument);
         let value = Arc::new(RwLock::new(value));
         let operation = self.operation();
-        operation.set_argument(value);
+        operation.set_argument(0, value);
         Ok(())
     }
     fn sym_visibility(&self) -> Option<String> {
