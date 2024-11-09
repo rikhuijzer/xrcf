@@ -42,13 +42,13 @@ Arguments:
   [INPUT]  The input file (- is interpreted as stdin) [default: -]
 
 Options:
-      --convert-unstable-to-mlir  Convert unstable operations to MLIR
-      --convert-func-to-llvm      Convert function operations to LLVM IR
-      --convert-mlir-to-llvmir    Convert MLIR to LLVM IR
-      --convert-arnold-to-mlir    Convert ArnoldC operations to MLIR
-      --compile                   Compile the code
-  -h, --help                      Print help
-  -V, --version                   Print version
+      --convert-experimental-to-mlir  Convert experimental operations to MLIR
+      --convert-func-to-llvm          Convert function operations to LLVM IR
+      --convert-mlir-to-llvmir        Convert MLIR to LLVM IR
+      --convert-arnold-to-mlir        Convert ArnoldC operations to MLIR
+      --compile                       Compile the code
+  -h, --help                          Print help
+  -V, --version                       Print version
 ```
 
 To compile ArnoldC, let's create a file called `tmp.arnoldc` with the hello world program:
@@ -70,7 +70,7 @@ This prints:
 ```mlir
 module {
   func.func @main() -> i32 {
-    unstable.printf("Hello, World!\0A")
+    experimental.printf("Hello, World!\0A")
     %0 = arith.constant 0 : i32
     return %0 : i32
   }
@@ -85,7 +85,7 @@ Although this MLIR code looks nice (or at least more so than ArnoldC), let's get
 To do so, let's convert the MLIR code to LLVM IR by running all the required passes in order:
 
 ```sh
-$ arnoldc --convert-arnold-to-mlir --convert-unstable-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.arnoldc
+$ arnoldc --convert-arnold-to-mlir --convert-experimental-to-mlir --convert-func-to-llvm --convert-mlir-to-llvmir tmp.arnoldc
 ```
 
 This prints:

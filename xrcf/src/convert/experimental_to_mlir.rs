@@ -22,7 +22,7 @@ use crate::ir::Operation;
 use crate::ir::StringAttr;
 use crate::ir::Value;
 use anyhow::Result;
-use dialect::unstable::PrintfOp;
+use dialect::experimental::PrintfOp;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -212,10 +212,10 @@ impl PrintLowering {
 
 impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
-        "unstable_to_mlir::PrintLowering"
+        "experimental_to_mlir::PrintLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::unstable::PrintfOp>())
+        Ok(op.as_any().is::<dialect::experimental::PrintfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op_clone = op.clone();
@@ -227,7 +227,7 @@ impl Rewrite for PrintLowering {
         let op_rd = op_clone.try_read().unwrap();
         let op_rd = op_rd
             .as_any()
-            .downcast_ref::<dialect::unstable::PrintfOp>()
+            .downcast_ref::<dialect::experimental::PrintfOp>()
             .unwrap();
         let parent = op_rd.operation().parent();
         let parent = parent.expect("no parent");
@@ -248,10 +248,10 @@ impl Rewrite for PrintLowering {
     }
 }
 
-pub struct ConvertUnstableToMLIR;
+pub struct ConvertExperimentalToMLIR;
 
-impl Pass for ConvertUnstableToMLIR {
-    const NAME: &'static str = "convert-unstable-to-mlir";
+impl Pass for ConvertExperimentalToMLIR {
+    const NAME: &'static str = "convert-experimental-to-mlir";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&PrintLowering];
         apply_rewrites(op, &rewrites)

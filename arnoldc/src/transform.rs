@@ -198,7 +198,7 @@ mod tests {
         let expected = indoc! {r#"
         module {
           func.func @main() -> i32 {
-            unstable.printf("Hello, World!\0A")
+            experimental.printf("Hello, World!\0A")
             %0 = arith.constant 0 : i32
             return %0 : i32
           }
@@ -212,7 +212,7 @@ mod tests {
 
         let passes = vec![
             "--convert-arnold-to-mlir",
-            "--convert-unstable-to-mlir",
+            "--convert-experimental-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];

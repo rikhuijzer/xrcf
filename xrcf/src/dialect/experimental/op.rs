@@ -16,7 +16,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// `unstable.printf`
+/// `experimental.printf`
 ///
 /// This operation is lowered to LLVM IR by default, so might not be usable on
 /// all platforms.
@@ -51,7 +51,7 @@ impl PrintfOp {
 
 impl Op for PrintfOp {
     fn operation_name() -> OperationName {
-        OperationName::new("unstable.printf".to_string())
+        OperationName::new("experimental.printf".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         PrintfOp { operation }

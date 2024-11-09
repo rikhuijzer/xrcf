@@ -14,11 +14,11 @@ use tracing::debug;
 
 mod func_to_llvm;
 mod mlir_to_llvmir;
-mod unstable_to_mlir;
+mod experimental_to_mlir;
 
 pub use func_to_llvm::ConvertFuncToLLVM;
 pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
-pub use unstable_to_mlir::ConvertUnstableToMLIR;
+pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 
 pub struct ChangedOp(pub Arc<RwLock<dyn Op>>);
 

@@ -11,7 +11,7 @@ use xrcf::dialect::arith;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
-use xrcf::dialect::unstable;
+use xrcf::dialect::experimental;
 use xrcf::ir::APInt;
 use xrcf::ir::Block;
 use xrcf::ir::GuardedOp;
@@ -194,7 +194,7 @@ impl Rewrite for PrintLowering {
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
         let text = op.text().unwrap();
         let operation = op.operation();
-        let mut new_op = unstable::PrintfOp::from_operation_arc(operation.clone());
+        let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
         new_op.set_text(text);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());

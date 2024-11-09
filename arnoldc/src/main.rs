@@ -38,7 +38,7 @@ fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
         let args = vec![
             "--convert-arnold-to-mlir",
-            "--convert-unstable-to-mlir",
+            "--convert-experimental-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];

@@ -1,7 +1,7 @@
 use crate::canonicalize::Canonicalize;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
-use crate::convert::ConvertUnstableToMLIR;
+use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
@@ -120,7 +120,7 @@ impl TransformDispatch for DefaultTransformDispatch {
             Canonicalize::NAME => Canonicalize::convert(op.clone()),
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
-            ConvertUnstableToMLIR::NAME => ConvertUnstableToMLIR::convert(op.clone()),
+            ConvertExperimentalToMLIR::NAME => ConvertExperimentalToMLIR::convert(op.clone()),
             _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
     }
@@ -128,9 +128,9 @@ impl TransformDispatch for DefaultTransformDispatch {
 
 pub fn default_passes() -> Vec<Arg> {
     vec![
-        Arg::new("convert-unstable-to-mlir")
-            .long("convert-unstable-to-mlir")
-            .help("Convert unstable operations to MLIR")
+        Arg::new("convert-experimental-to-mlir")
+            .long("convert-experimental-to-mlir")
+            .help("Convert experimental operations to MLIR")
             .action(ArgAction::SetTrue),
         Arg::new("convert-func-to-llvm")
             .long("convert-func-to-llvm")

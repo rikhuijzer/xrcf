@@ -1,4 +1,4 @@
-//! Dialect containing unstable operations.
+//! Dialect containing experimental operations.
 //!
 //! This module contains operations that are not yet stable and may change in
 //! the future.

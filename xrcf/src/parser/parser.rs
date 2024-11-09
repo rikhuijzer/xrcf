@@ -2,7 +2,7 @@ use crate::dialect::arith;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
-use crate::dialect::unstable;
+use crate::dialect::experimental;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -69,7 +69,7 @@ pub fn default_dispatch<T: ParserDispatch>(
         "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
-        "unstable.printf" => <unstable::PrintfOp as Parse>::op(parser, parent),
+        "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));

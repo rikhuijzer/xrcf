@@ -6,7 +6,7 @@ use xrcf::ir::ModuleOp;
 use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
-    vec!["--convert-unstable-to-mlir"]
+    vec!["--convert-experimental-to-mlir"]
 }
 
 #[test]
@@ -16,7 +16,7 @@ fn test_constant() {
     let src = indoc! {r#"
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
-      unstable.printf("hello, world\n")
+      experimental.printf("hello, world\n")
       return %0 : i32
     }
     "#};
@@ -48,8 +48,8 @@ fn test_two_constants() {
     let src = indoc! {r#"
     func.func @main() -> i32 {
       %0 = arith.constant 0 : i32
-      unstable.printf("hello, world\n")
-      unstable.printf("hello 2\n")
+      experimental.printf("hello, world\n")
+      experimental.printf("hello 2\n")
       return %0 : i32
     }
     "#};
@@ -65,7 +65,7 @@ fn test_hello_world() {
     let src = indoc! {r#"
     module {
       func.func @hello() {
-        unstable.printf("Hello, World!")
+        experimental.printf("Hello, World!")
         return
       }
       func.func @main() -> i32 {
@@ -100,7 +100,7 @@ fn test_hello_world() {
 
     let src = indoc! {r#"
     func.func @hello() {
-      unstable.printf("Hello, World!\n")
+      experimental.printf("Hello, World!\n")
       return
     }
     "#};
@@ -117,7 +117,7 @@ fn test_hello_world_with_arg() {
     let src = indoc! {r#"
     func.func @main() -> i32 {
       %0 = arith.constant 42 : i32
-      unstable.printf("hello, %d\n", %0)
+      experimental.printf("hello, %d\n", %0)
       %1 = arith.constant 0 : i32
       return %1 : i32
     }
