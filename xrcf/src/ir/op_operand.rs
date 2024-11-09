@@ -22,7 +22,7 @@ impl OpOperand {
     }
     pub fn name(&self) -> String {
         let value = self.value.try_read().unwrap();
-        value.name().unwrap()
+        value.name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
@@ -121,7 +121,7 @@ impl Display for OpOperands {
             .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.try_read().unwrap().name())
+            .map(|o| o.try_read().unwrap().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)

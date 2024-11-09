@@ -63,7 +63,7 @@ impl Op for PrintfOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())?;
+        write!(f, "{}", self.operation().name())?;
         write!(f, "({})", self.operation().operands())?;
         Ok(())
     }
