@@ -128,7 +128,7 @@ impl PrintLowering {
         let mut op = llvm::CallOp::from_operation(operation);
         op.set_identifier("@printf".to_string());
         if set_varargs {
-            let varargs = "!llvm.func<i32 (ptr, ...)>";
+            let varargs = "!llvm.func<i32 (!llvm.ptr, ...)>";
             let varargs = llvm::FunctionType::from_str(varargs);
             let varargs = Arc::new(RwLock::new(varargs));
             op.set_varargs(Some(varargs));

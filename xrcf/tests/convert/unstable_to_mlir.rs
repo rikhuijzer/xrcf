@@ -132,7 +132,7 @@ fn test_hello_world_with_arg() {
         %3 = arith.constant 11 : i16
         %4 = llvm.alloca %3 x i8 : (i16) -> !llvm.ptr
         llvm.store %2, %4 : !llvm.array<11 x i8>, !llvm.ptr
-        %5 = llvm.call @printf(%4, %0) vararg(!llvm.func<i32 (ptr, ...)>) : (!llvm.ptr, i32) -> i32
+        %5 = llvm.call @printf(%4, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
         %1 = arith.constant 0 : i32
         return %1 : i32
       }

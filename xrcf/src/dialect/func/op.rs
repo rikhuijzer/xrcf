@@ -50,6 +50,10 @@ pub trait Call: Op {
         write!(f, "{}", operation.name())?;
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
+        if let Some(varargs) = self.varargs() {
+            let varargs = varargs.try_read().unwrap();
+            write!(f, " vararg({})", varargs)?;
+        }
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
