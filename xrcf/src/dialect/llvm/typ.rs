@@ -105,7 +105,7 @@ impl FunctionType {
         let s = s.strip_prefix("!llvm.func<").unwrap();
         let (return_types, arguments) = s.split_once('(').unwrap();
 
-        let return_type = IntegerType::from_str(return_types);
+        let return_type = IntegerType::from_str(return_types.trim());
         let return_type = Arc::new(RwLock::new(return_type));
         let return_types = Types::from_vec(vec![return_type]);
 
@@ -113,7 +113,7 @@ impl FunctionType {
         let arguments_str = arguments_str.trim_start_matches('(');
         let mut arguments = vec![];
         for argument in arguments_str.split(',') {
-            let argument = LLVM::parse_type(argument).unwrap();
+            let argument = LLVM::parse_type(argument.trim()).unwrap();
             arguments.push(argument);
         }
         let arguments = Types::from_vec(arguments);
