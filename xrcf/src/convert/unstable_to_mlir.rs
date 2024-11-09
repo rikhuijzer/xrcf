@@ -5,7 +5,6 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::dialect::arith;
-use crate::dialect::func;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm;
@@ -138,7 +137,10 @@ impl PrintLowering {
         for op in ops {
             let op = op.try_read().unwrap();
             if op.is_func() {
-                let func = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+                let func = match op.as_any().downcast_ref::<llvm::FuncOp>() {
+                    Some(func) => func,
+                    None => continue,
+                };
                 if func.identifier() == Some("@printf".to_string()) {
                     return true;
                 }

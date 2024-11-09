@@ -56,7 +56,7 @@ fn test_two_constants() {
     Tester::init_tracing();
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
-    assert_eq!(actual.matches("func.func private @printf").count(), 1);
+    assert_eq!(actual.matches("llvm.func @printf").count(), 1);
 }
 
 #[test]
