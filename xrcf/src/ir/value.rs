@@ -227,15 +227,11 @@ impl Display for Variadic {
     }
 }
 
-/// Represents an instance of an SSA value in the IR, representing a computable
-/// value that has a type and a set of users.
+/// An instance of a value (SSA, variadic, or constant) in the IR.
 ///
-/// Note from MLIR: This class has value-type semantics and is just a simple
-/// wrapper around a ValueImpl that is either owner by a block(in the case of a
-/// BlockArgument) or an Operation(in the case of an OpResult).  As most IR
-/// construct, this isn't const-correct, but we keep method consistent and as
-/// such methods that immediately modify this Value aren't marked `const`
-/// (include modifying the Value use-list).
+/// The benefit of also expressing a [Constant] as a [Value] is that it allows
+/// us to keep track of the order of the operands in the [Operation] `operands`
+/// field.
 pub enum Value {
     BlockArgument(BlockArgument),
     Constant(Constant),

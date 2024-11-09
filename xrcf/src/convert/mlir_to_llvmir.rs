@@ -294,7 +294,6 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
             .downcast_ref::<dialect::llvm::FunctionType>()
         {
             let arguments = typ.arguments().clone();
-            // crate a new vector of converted types, via self::convert_type
             let converted = arguments
                 .vec()
                 .iter()
