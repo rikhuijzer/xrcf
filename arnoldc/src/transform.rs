@@ -51,6 +51,7 @@ impl ParserDispatch for ArnoldParserDispatch {
         let second = parser.peek_n(1).unwrap();
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
         let op = match first_two.as_str() {
+            "ITS SHOWTIME" => Some(<arnold::BeginMainOp as Parse>::op(parser, parent.clone())),
             "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
             "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
             "YOU SET" => Some(<arnold::SetInitialValueOp as Parse>::op(
@@ -103,7 +104,7 @@ impl TransformDispatch for ArnoldTransformDispatch {
 /// ```
 /// to
 /// ```mlir
-/// func.func @main() {
+/// IT'S SHOWTIME {
 ///   TALK TO THE HAND "Hello, World!"
 /// }
 /// ```
@@ -112,7 +113,8 @@ fn replace_begin_and_end(src: &str) -> String {
     let mut indent = 0;
     for line in src.lines() {
         if line.contains("IT'S SHOWTIME") {
-            result.push_str(&format!("{}func.func @main() -> i32 {{", spaces(indent)));
+            // Removing the single quote to make it easier to handle.
+            result.push_str(&format!("{}ITS SHOWTIME {{", spaces(indent)));
             indent += 1;
         } else if line.contains("YOU HAVE BEEN TERMINATED") {
             indent -= 1;
@@ -151,7 +153,7 @@ mod tests {
         "#}
         .trim();
         let expected = indoc! {r#"
-        func.func @main() -> i32 {
+        IT'S SHOWTIME {
           TALK TO THE HAND "Hello, World!\n"
         }
         "#}

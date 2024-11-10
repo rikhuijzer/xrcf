@@ -201,9 +201,9 @@ impl Parse for DeclareIntOp {
 /// apply a rewrite first:
 ///
 /// ```arnoldc
-/// IT'S SHOWTIME
-/// TALK TO THE HAND "Hello, world!"
-/// YOU HAVE BEEN TERMINATED
+/// ITS SHOWTIME {
+///   TALK TO THE HAND "Hello, world!"
+/// }
 /// ```
 /// will be rewritten to
 /// ```mlir
@@ -215,27 +215,15 @@ impl Parse for DeclareIntOp {
 /// ```
 pub struct BeginMainOp {
     operation: Arc<RwLock<Operation>>,
-    identifier: Option<String>,
-}
-
-impl Func for BeginMainOp {
-    fn identifier(&self) -> Option<String> {
-        self.identifier.clone()
-    }
-    fn set_identifier(&mut self, identifier: String) {
-        self.identifier = Some(identifier);
-    }
 }
 
 impl Op for BeginMainOp {
     fn operation_name() -> OperationName {
-        OperationName::new("IT'S SHOWTIME".to_string())
+        // Removed the single quote to make it easier to handle.
+        OperationName::new("ITS SHOWTIME".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BeginMainOp {
-            operation,
-            identifier: None,
-        }
+        BeginMainOp { operation }
     }
     fn is_func(&self) -> bool {
         true
@@ -249,7 +237,6 @@ impl Op for BeginMainOp {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation.try_read().unwrap();
         write!(f, "{} ", operation.name())?;
-        write!(f, "{}", self.identifier().unwrap())?;
         let region = operation.region().unwrap();
         let region = region.try_read().unwrap();
         write!(f, "()")?;
@@ -266,18 +253,14 @@ impl Parse for BeginMainOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
 
-        parser.parse_operation_name_into::<BeginMainOp>(&mut operation)?;
-        let identifier = parser.expect(TokenKind::BareIdentifier)?;
-        let identifier = identifier.lexeme.clone();
+        let name = BeginMainOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = BeginMainOp {
             operation: operation.clone(),
-            identifier: Some(identifier),
         };
         let op = Arc::new(RwLock::new(op));
-        parser.expect(TokenKind::LParen)?;
-        parser.expect(TokenKind::RParen)?;
         let region = parser.region(op.clone())?;
         let mut operation = operation.write().unwrap();
         operation.set_region(Some(region.clone()));

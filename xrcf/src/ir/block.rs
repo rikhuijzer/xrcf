@@ -138,16 +138,6 @@ impl Block {
         let mut ops = ops.try_write().unwrap();
         ops.insert(index, op);
     }
-    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
-        let index = self.index_of(later);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Could not find op in block");
-            }
-        };
-        self.insert_op(earlier, index);
-    }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         let index = self.index_of(earlier);
         let index = match index {
@@ -157,6 +147,16 @@ impl Block {
             }
         };
         self.insert_op(later, index + 1);
+    }
+    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+        let index = self.index_of(later);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find op in block");
+            }
+        };
+        self.insert_op(earlier, index);
     }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
         let index = self.index_of(old.clone());
@@ -277,6 +277,7 @@ impl BlockWithoutParent {
 
 pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
+    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
@@ -286,6 +287,9 @@ pub trait GuardedBlock {
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
+    }
+    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
+        self.try_write().unwrap().insert_after(earlier, later);
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()

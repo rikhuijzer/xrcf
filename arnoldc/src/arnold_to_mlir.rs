@@ -81,9 +81,12 @@ impl Rewrite for DeclareIntLowering {
 struct FuncLowering;
 
 impl FuncLowering {
-    /// Python code does not require a return statement, but MLIR does.
+    /// ArnoldC does not require a return statement, but LLVM does.
     fn ensure_return(&self, op: &mut func::FuncOp) {
         let ops = op.ops();
+        for op in ops.iter() {
+            println!(": {}", op.name());
+        }
         let last = ops.last().unwrap();
         let last = last.try_read().unwrap();
         if last.as_any().is::<func::ReturnOp>() {
@@ -107,11 +110,10 @@ impl Rewrite for FuncLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
-        let identifier = op.identifier().unwrap();
-        let identifier = format!("@{}", identifier);
+        let identifier = "@main";
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
-        new_op.set_identifier(identifier);
+        new_op.set_identifier(identifier.to_string());
         self.ensure_return(&mut new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
@@ -229,6 +231,7 @@ impl Rewrite for PrintLowering {
         operation.set_name(experimental::PrintfOp::operation_name());
         let operation = Arc::new(RwLock::new(operation));
         let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
+        new_op.set_parent(op.operation().parent().clone().unwrap());
 
         let operand = op.text();
         let value = operand.value();
