@@ -2,6 +2,7 @@ use crate::convert::ChangedOp;
 use crate::convert::RewriteResult;
 use crate::ir::AnyType;
 use crate::ir::Attribute;
+use std::fmt::Display;
 use crate::ir::Block;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -94,6 +95,12 @@ impl Parse for ConstantOp {
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
+    }
+}
+
+impl Display for ConstantOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.operation.read().unwrap())
     }
 }
 

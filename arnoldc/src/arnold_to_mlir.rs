@@ -58,9 +58,21 @@ impl Rewrite for DeclareIntLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::DeclareIntOp>())
     }
+    /// Rewrite `HEY CHRISTMAS TREE` (declare integer).
+    ///
+    /// Example:
+    /// ```arnold
+    /// HEY CHRISTMAS TREE x
+    /// YOU SET US UP @NO PROBLEMO
+    /// ```
+    /// is rewritten to:
+    /// ```mlir
+    /// %x = arith.constant 1 : i16
+    /// ```
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
+        // need to rename OpResult from `x` to `%x`.
 
         let successors = op.operation().successors();
         let set_initial_value = successors.first().unwrap();
@@ -68,12 +80,13 @@ impl Rewrite for DeclareIntLowering {
         let set_initial_value = set_initial_value
             .as_any()
             .downcast_ref::<arnold::SetInitialValueOp>()
-            .unwrap();
+            .expect("Expected SetInitialValueOp after DeclareIntOp");
 
         let operation = Operation::default();
         let new_op = arith::ConstantOp::from_operation(operation);
         new_op.set_parent(op.operation().parent().clone().unwrap());
         new_op.set_value(set_initial_value.value());
+        println!("new_op: {}", new_op);
         set_initial_value.remove();
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
