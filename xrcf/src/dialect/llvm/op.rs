@@ -122,7 +122,8 @@ impl Parse for AllocaOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let token_kind = TokenKind::PercentIdentifier;
+        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<AllocaOp>(&mut operation)?;
         operation.set_parent(parent.clone());
@@ -282,7 +283,8 @@ impl Parse for ConstantOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let token_kind = TokenKind::PercentIdentifier;
+        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 

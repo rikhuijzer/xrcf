@@ -73,7 +73,8 @@ impl Parse for ConstantOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let token_kind = TokenKind::PercentIdentifier;
+        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
@@ -207,7 +208,8 @@ impl<T: ParserDispatch> Parser<T> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let token_kind = TokenKind::PercentIdentifier;
+        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
         operation.set_operands(parser.parse_op_operands(parent.unwrap())?);

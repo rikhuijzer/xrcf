@@ -531,11 +531,15 @@ impl<T: ParserDispatch> Parser<T> {
         let dot = self.check(TokenKind::Dot);
         perc || int || excl || dot
     }
-    /// Parse %0, %1.
-    fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {
+    /// Parse operation results.
+    ///
+    /// Can parse `%0` in `%0 = ...` when `token_kind` is
+    /// `TokenKind::PercentIdentifier`, or `x` in `x = ...` when `token_kind` is
+    /// `TokenKind::BareIdentifier`.
+    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<ResultsWithoutParent> {
         let mut results = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
-            let identifier = self.expect(TokenKind::PercentIdentifier)?;
+        while self.check(token_kind) {
+            let identifier = self.advance();
             let name = identifier.lexeme.clone();
             let mut op_result = OpResult::default();
             op_result.set_name(&name);
@@ -554,9 +558,10 @@ impl<T: ParserDispatch> Parser<T> {
     /// This returns the results to allow setting the defining op on them.
     pub fn parse_op_results_into(
         &mut self,
+        token_kind: TokenKind,
         operation: &mut Operation,
     ) -> Result<ResultsWithoutParent> {
-        let results = self.parse_op_results()?;
+        let results = self.parse_op_results(token_kind)?;
         let values = results.values();
         operation.set_results(values.clone());
         Ok(results)

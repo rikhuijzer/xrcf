@@ -1,7 +1,5 @@
 use anyhow::Result;
 use std::fmt::Formatter;
-use std::ops::Deref;
-use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::RwLock;
 use xrcf::dialect::func::Func;
@@ -15,6 +13,7 @@ use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::ResultsWithoutParent;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
@@ -40,20 +39,37 @@ fn arnold_attribute(value: u64) -> IntegerAttr {
 /// parser.parse_arnold_op_operand(parent)
 /// ```
 trait ArnoldParse {
+    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
+    fn parse_arnold_op_operand(
+        &mut self,
+        parent: Arc<RwLock<Block>>,
+    ) -> Result<Arc<RwLock<OpOperand>>>;
     fn parse_arnold_operation_name_into(
         &mut self,
         name: OperationName,
         operation: &mut Operation,
     ) -> Result<()>;
-    fn parse_arnold_op_operand(
-        &mut self,
-        parent: Arc<RwLock<Block>>,
-    ) -> Result<Arc<RwLock<OpOperand>>>;
-    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
 }
 
 impl<T: ParserDispatch> ArnoldParse for Parser<T> {
-    /// Parse an operand like `x` or `myvar`.
+    /// Parse a constant like `@NO PROBLEMO` into the [Operation].
+    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
+        let next = self.expect(TokenKind::AtIdentifier)?;
+        assert!(next.lexeme.starts_with('@'));
+        let next_next = self.advance();
+        let constant = format!("{} {}", next.lexeme, next_next.lexeme);
+        let constant = if constant == "@NO PROBLEMO" {
+            arnold_attribute(0)
+        } else if constant == "@I LIED" {
+            arnold_attribute(1)
+        } else {
+            return Err(anyhow::anyhow!("Unknown constant: {}", constant));
+        };
+        let constant: Arc<dyn Attribute> = Arc::new(constant);
+        operation.attributes().insert("value", constant);
+        Ok(())
+    }
+    /// Parse an operand like `x` in `TALK TO THE HAND x`.
     fn parse_arnold_op_operand(
         &mut self,
         parent: Arc<RwLock<Block>>,
@@ -88,23 +104,6 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
             self.advance();
         }
         operation.set_name(name);
-        Ok(())
-    }
-    /// Parse a constant like `@NO PROBLEMO` into the [Operation].
-    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
-        let next = self.expect(TokenKind::AtIdentifier)?;
-        assert!(next.lexeme.starts_with('@'));
-        let next_next = self.advance();
-        let constant = format!("{} {}", next.lexeme, next_next.lexeme);
-        let constant = if constant == "@NO PROBLEMO" {
-            arnold_attribute(0)
-        } else if constant == "@I LIED" {
-            arnold_attribute(1)
-        } else {
-            return Err(anyhow::anyhow!("Unknown constant: {}", constant));
-        };
-        let constant: Arc<dyn Attribute> = Arc::new(constant);
-        operation.attributes().insert("value", constant);
         Ok(())
     }
 }
@@ -163,7 +162,6 @@ impl Parse for CallOp {
 
 pub struct DeclareIntOp {
     operation: Arc<RwLock<Operation>>,
-    identifier: Option<String>,
 }
 
 impl Op for DeclareIntOp {
@@ -171,10 +169,7 @@ impl Op for DeclareIntOp {
         OperationName::new("HEY CHRISTMAS TREE".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        DeclareIntOp {
-            operation,
-            identifier: None,
-        }
+        DeclareIntOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -184,7 +179,7 @@ impl Op for DeclareIntOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.identifier.clone().unwrap())?;
+        write!(f, " {}", self.operation().read().unwrap().results())?;
         Ok(())
     }
 }
@@ -198,13 +193,10 @@ impl Parse for DeclareIntOp {
         operation.set_parent(parent.clone());
         let name = DeclareIntOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-        let identifier = parser.expect(TokenKind::BareIdentifier)?;
-        let identifier = identifier.lexeme.clone();
+        let token_kind = TokenKind::BareIdentifier;
+        parser.parse_op_results_into(token_kind, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
-        let op = DeclareIntOp {
-            operation: operation.clone(),
-            identifier: Some(identifier),
-        };
+        let op = DeclareIntOp { operation };
         Ok(Arc::new(RwLock::new(op)))
     }
 }

@@ -85,7 +85,8 @@ pub trait Call: Op {
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let token_kind = TokenKind::PercentIdentifier;
+        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
         if parser.check(TokenKind::Equal) {
             parser.advance();
         }
