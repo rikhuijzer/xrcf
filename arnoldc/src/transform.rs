@@ -112,7 +112,7 @@ fn replace_begin_and_end(src: &str) -> String {
     let mut indent = 0;
     for line in src.lines() {
         if line.contains("IT'S SHOWTIME") {
-            result.push_str(&format!("{}func.func @main() {{", spaces(indent)));
+            result.push_str(&format!("{}func.func @main() -> i32 {{", spaces(indent)));
             indent += 1;
         } else if line.contains("YOU HAVE BEEN TERMINATED") {
             indent -= 1;
@@ -151,7 +151,7 @@ mod tests {
         "#}
         .trim();
         let expected = indoc! {r#"
-        func.func @main() {
+        func.func @main() -> i32 {
           TALK TO THE HAND "Hello, World!\n"
         }
         "#}

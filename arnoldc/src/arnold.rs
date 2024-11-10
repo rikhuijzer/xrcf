@@ -195,12 +195,30 @@ impl Parse for DeclareIntOp {
     }
 }
 
-pub struct FuncOp {
+/// `IT'S SHOWTIME`
+///
+/// We do not immediately parse this into some `arnold::FuncOp` in order to
+/// apply a rewrite first:
+///
+/// ```arnoldc
+/// IT'S SHOWTIME
+/// TALK TO THE HAND "Hello, world!"
+/// YOU HAVE BEEN TERMINATED
+/// ```
+/// will be rewritten to
+/// ```mlir
+/// func.func @main() -> i32 {
+///   TALK TO THE HAND "Hello, world!"
+///   %0 = arith.constant 0 : i32
+///   return %0 : i32
+/// }
+/// ```
+pub struct BeginMainOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
 }
 
-impl Func for FuncOp {
+impl Func for BeginMainOp {
     fn identifier(&self) -> Option<String> {
         self.identifier.clone()
     }
@@ -209,12 +227,12 @@ impl Func for FuncOp {
     }
 }
 
-impl Op for FuncOp {
+impl Op for BeginMainOp {
     fn operation_name() -> OperationName {
-        OperationName::new("def".to_string())
+        OperationName::new("IT'S SHOWTIME".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        FuncOp {
+        BeginMainOp {
             operation,
             identifier: None,
         }
@@ -240,7 +258,7 @@ impl Op for FuncOp {
     }
 }
 
-impl Parse for FuncOp {
+impl Parse for BeginMainOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -248,12 +266,12 @@ impl Parse for FuncOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
 
-        parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
+        parser.parse_operation_name_into::<BeginMainOp>(&mut operation)?;
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
         let identifier = identifier.lexeme.clone();
 
         let operation = Arc::new(RwLock::new(operation));
-        let op = FuncOp {
+        let op = BeginMainOp {
             operation: operation.clone(),
             identifier: Some(identifier),
         };

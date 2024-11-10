@@ -102,11 +102,11 @@ impl Rewrite for FuncLowering {
         "example_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == arnold::FuncOp::operation_name())
+        Ok(op.name() == arnold::BeginMainOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<arnold::FuncOp>().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let identifier = format!("@{}", identifier);
         let operation = op.operation();
