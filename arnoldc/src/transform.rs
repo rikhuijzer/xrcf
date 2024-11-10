@@ -20,7 +20,7 @@ use xrcf::Passes;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
 
-struct ExampleParserDispatch;
+pub struct ArnoldParserDispatch;
 
 fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     let syntax_matches = parser.peek().kind == TokenKind::BareIdentifier
@@ -39,7 +39,7 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     syntax_matches && !known_keyword
 }
 
-impl ParserDispatch for ExampleParserDispatch {
+impl ParserDispatch for ArnoldParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -52,6 +52,20 @@ impl ParserDispatch for ExampleParserDispatch {
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
         if first_two == "TALK TO" {
             return <arnold::PrintOp as Parse>::op(parser, parent);
+        } else if first_two == "HEY CHRISTMAS" {
+            return <arnold::DeclareIntOp as Parse>::op(parser, parent);
+        }
+        let op = match first_two.as_str() {
+            "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
+            "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
+            "YOU SET" => Some(<arnold::SetInitialValueOp as Parse>::op(
+                parser,
+                parent.clone(),
+            )),
+            _ => None,
+        };
+        if let Some(op) = op {
+            return op;
         }
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
@@ -71,9 +85,9 @@ impl ParserDispatch for ExampleParserDispatch {
     }
 }
 
-struct ExampleTransformDispatch;
+pub struct ArnoldTransformDispatch;
 
-impl TransformDispatch for ExampleTransformDispatch {
+impl TransformDispatch for ArnoldTransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
             ConvertArnoldToMLIR::NAME => ConvertArnoldToMLIR::convert(op),
@@ -118,8 +132,8 @@ fn replace_begin_and_end(src: &str) -> String {
 
 pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
     let src = replace_begin_and_end(src);
-    let op = Parser::<ExampleParserDispatch>::parse(&src)?;
-    let result = transform::<ExampleTransformDispatch>(op, passes)?;
+    let op = Parser::<ArnoldParserDispatch>::parse(&src)?;
+    let result = transform::<ArnoldTransformDispatch>(op, passes)?;
     Ok(result)
 }
 
@@ -220,5 +234,38 @@ mod tests {
         Tester::verify(module);
         assert!(actual.contains("declare i32 @printf(ptr)"));
         assert!(actual.contains("define i32 @main()"));
+    }
+
+    #[test]
+    fn test_print_digit() {
+        Tester::init_tracing();
+        let src = indoc! {r#"
+        IT'S SHOWTIME
+
+        HEY CHRISTMAS TREE x
+        YOU SET US UP @NO PROBLEMO
+
+        TALK TO THE HAND "x: "
+        TALK TO THE HAND x
+
+        YOU HAVE BEEN TERMINATED
+        "#}
+        .trim();
+        let expected = indoc! {r#"
+        module {
+          func.func @main() -> i32 {
+            %0 = arith.constant 1 : i16
+            experimental.printf("x: ")
+            experimental.printf("%d", %0)
+            %1 = arith.constant 0 : i32
+            return %1 : i32
+          }
+        }
+        "#}
+        .trim();
+        let passes = vec!["--convert-arnold-to-mlir"];
+        let (module, actual) = test_transform(src, passes);
+        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
+        Tester::verify(module);
     }
 }

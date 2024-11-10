@@ -78,7 +78,7 @@ impl Block {
             }
         } else {
             panic!(
-                "Expected parent op to be FuncOp, but got {}",
+                "Expected parent op to be a function, but got {}",
                 operation.name()
             );
         }

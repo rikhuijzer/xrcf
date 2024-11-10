@@ -8,10 +8,10 @@ use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
 use xrcf::dialect::arith;
+use xrcf::dialect::experimental;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
-use xrcf::dialect::experimental;
 use xrcf::ir::APInt;
 use xrcf::ir::Block;
 use xrcf::ir::GuardedOp;
@@ -21,6 +21,8 @@ use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
+use xrcf::ir::StringAttr;
+use xrcf::ir::Value;
 
 struct CallLowering;
 
@@ -192,9 +194,21 @@ impl Rewrite for PrintLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
-        let text = op.text().unwrap();
         let operation = op.operation();
         let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
+        let text = op.text();
+        let text = text.try_read().unwrap();
+        let text = text.value();
+        let text = match &*text.try_read().unwrap() {
+            Value::Constant(constant) => {
+                let text = constant.value();
+                let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
+                text.clone()
+            }
+            _ => {
+                todo!()
+            }
+        };
         new_op.set_text(text);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());

@@ -129,44 +129,52 @@ impl Display for OpOperands {
 }
 
 impl<T: ParserDispatch> Parser<T> {
+    /// Parse an OpOperand like %0, x, or "hello".
+    ///
+    /// `variable_token_kind` is [TokenKind::PercentIdentifier] by default in
+    /// MLIR (e.g., `%x`), but other languages may use different syntax (e.g.,
+    /// Python would use `x`).
+    pub fn parse_op_operand_with_tokenkind(
+        &mut self,
+        parent: Arc<RwLock<Block>>,
+        variable_token_kind: TokenKind,
+    ) -> Result<Arc<RwLock<OpOperand>>> {
+        let next = self.peek();
+        if next.kind == variable_token_kind {
+            let identifier = self.expect(variable_token_kind)?;
+            let name = identifier.lexeme.clone();
+            let block = parent.try_read().expect("no parent");
+            let assignment = block.assignment(&name);
+            let assignment = match assignment {
+                Some(assignment) => assignment,
+                None => {
+                    let msg = "Expected assignment before use.";
+                    let msg = self.error(&identifier, msg);
+                    return Err(anyhow::anyhow!(msg));
+                }
+            };
+            let operand = OpOperand::new(assignment);
+            Ok(Arc::new(RwLock::new(operand)))
+        } else if next.kind == TokenKind::String {
+            let text = self.parse_string()?;
+            let text = Arc::new(text);
+            let text = Constant::new(text);
+            let text = Value::Constant(text);
+            let text = Arc::new(RwLock::new(text));
+            let operand = OpOperand::new(text);
+            Ok(Arc::new(RwLock::new(operand)))
+        } else {
+            let msg = "Expected operand.";
+            let msg = self.error(&next, msg);
+            return Err(anyhow::anyhow!(msg));
+        }
+    }
     /// Parse an OpOperand like %0 or "hello".
     pub fn parse_op_operand(
         &mut self,
         parent: Arc<RwLock<Block>>,
     ) -> Result<Arc<RwLock<OpOperand>>> {
-        let next = self.peek();
-        match next.kind {
-            TokenKind::PercentIdentifier => {
-                let identifier = self.expect(TokenKind::PercentIdentifier)?;
-                let name = identifier.lexeme.clone();
-                let block = parent.try_read().expect("no parent");
-                let assignment = block.assignment(&name);
-                let assignment = match assignment {
-                    Some(assignment) => assignment,
-                    None => {
-                        let msg = "Expected assignment before use.";
-                        let msg = self.error(&identifier, msg);
-                        return Err(anyhow::anyhow!(msg));
-                    }
-                };
-                let operand = OpOperand::new(assignment);
-                Ok(Arc::new(RwLock::new(operand)))
-            }
-            TokenKind::String => {
-                let text = self.parse_string()?;
-                let text = Arc::new(text);
-                let text = Constant::new(text);
-                let text = Value::Constant(text);
-                let text = Arc::new(RwLock::new(text));
-                let operand = OpOperand::new(text);
-                Ok(Arc::new(RwLock::new(operand)))
-            }
-            _ => {
-                let msg = "Expected operand.";
-                let msg = self.error(&next, msg);
-                return Err(anyhow::anyhow!(msg));
-            }
-        }
+        self.parse_op_operand_with_tokenkind(parent, TokenKind::PercentIdentifier)
     }
     /// Parse %0 into an operand of the given operation.
     pub fn parse_op_operand_into(

@@ -12,13 +12,13 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::debug;
 
+mod experimental_to_mlir;
 mod func_to_llvm;
 mod mlir_to_llvmir;
-mod experimental_to_mlir;
 
+pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 pub use func_to_llvm::ConvertFuncToLLVM;
 pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
-pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 
 pub struct ChangedOp(pub Arc<RwLock<dyn Op>>);
 
