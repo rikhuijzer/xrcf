@@ -74,7 +74,7 @@ impl Parse for ConstantOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(&mut operation)?;
-
+        parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         let integer = parser.parse_integer()?;
@@ -208,7 +208,7 @@ impl<T: ParserDispatch> Parser<T> {
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(&mut operation)?;
-
+        parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
         operation.set_operands(parser.parse_op_operands(parent.unwrap())?);
         let _colon = parser.expect(TokenKind::Colon)?;

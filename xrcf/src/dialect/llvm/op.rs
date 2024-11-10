@@ -123,6 +123,7 @@ impl Parse for AllocaOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         let results = parser.parse_op_results_into(&mut operation)?;
+        parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<AllocaOp>(&mut operation)?;
         operation.set_parent(parent.clone());
 
@@ -282,7 +283,7 @@ impl Parse for ConstantOp {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         let results = parser.parse_op_results_into(&mut operation)?;
-
+        parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
         parser.expect(TokenKind::LParen)?;
