@@ -41,6 +41,7 @@ impl PrintfOp {
         let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
         text.clone()
     }
+    /// Set the first operand to `printf`.
     pub fn set_text(&mut self, text: StringAttr) {
         let value = Constant::new(Arc::new(text));
         let value = Value::Constant(value);

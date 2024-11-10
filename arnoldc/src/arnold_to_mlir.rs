@@ -13,8 +13,10 @@ use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
 use xrcf::ir::APInt;
+use xrcf::ir::Attribute;
 use xrcf::ir::Block;
 use xrcf::ir::GuardedOp;
+use xrcf::ir::GuardedOpOperand;
 use xrcf::ir::GuardedOperation;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
@@ -194,22 +196,29 @@ impl Rewrite for PrintLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
-        let operation = op.operation();
+        let mut operation = Operation::default();
+        operation.set_name(experimental::PrintfOp::operation_name());
+        let operation = Arc::new(RwLock::new(operation));
         let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
-        let text = op.text();
-        let text = text.try_read().unwrap();
-        let text = text.value();
-        let text = match &*text.try_read().unwrap() {
+
+        let operand = op.text();
+        let value = operand.value();
+        match &*value.try_read().unwrap() {
+            // printf("some text")
             Value::Constant(constant) => {
                 let text = constant.value();
                 let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
-                text.clone()
+                new_op.set_text(text.clone());
             }
-            _ => {
-                todo!()
+            // printf("%d", variable)
+            Value::OpResult(_) => {
+                let text = StringAttr::from_str("%d");
+                new_op.set_text(text);
+                new_op.operation().set_operand(1, operand);
             }
+            _ => panic!("expected constant or op result"),
         };
-        new_op.set_text(text);
+
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
