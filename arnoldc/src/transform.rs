@@ -50,11 +50,6 @@ impl ParserDispatch for ArnoldParserDispatch {
         let first = parser.peek();
         let second = parser.peek_n(1).unwrap();
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
-        if first_two == "TALK TO" {
-            return <arnold::PrintOp as Parse>::op(parser, parent);
-        } else if first_two == "HEY CHRISTMAS" {
-            return <arnold::DeclareIntOp as Parse>::op(parser, parent);
-        }
         let op = match first_two.as_str() {
             "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
             "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
@@ -67,6 +62,9 @@ impl ParserDispatch for ArnoldParserDispatch {
         if let Some(op) = op {
             return op;
         }
+
+        // If the syntax doesn't look like ArnoldC, fallback to the default
+        // parser that can parse MLIR syntax.
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
             parser.peek_n(2).unwrap().clone()
@@ -75,8 +73,6 @@ impl ParserDispatch for ArnoldParserDispatch {
             parser.peek().clone()
         };
         match name.lexeme.clone().as_str() {
-            "def" => <arnold::FuncOp as Parse>::op(parser, parent),
-            "print" => <arnold::PrintOp as Parse>::op(parser, parent),
             _ => default_dispatch(name, parser, parent),
         }
     }
@@ -107,7 +103,7 @@ impl TransformDispatch for ArnoldTransformDispatch {
 /// ```
 /// to
 /// ```mlir
-/// def @main() {
+/// func.func @main() {
 ///   TALK TO THE HAND "Hello, World!"
 /// }
 /// ```
@@ -116,8 +112,8 @@ fn replace_begin_and_end(src: &str) -> String {
     let mut indent = 0;
     for line in src.lines() {
         if line.contains("IT'S SHOWTIME") {
+            result.push_str(&format!("{}func.func @main() {{", spaces(indent)));
             indent += 1;
-            result.push_str(&format!("{}def main() {{", spaces(indent)));
         } else if line.contains("YOU HAVE BEEN TERMINATED") {
             indent -= 1;
             result.push_str(&format!("{}}}", spaces(indent)));
@@ -155,7 +151,7 @@ mod tests {
         "#}
         .trim();
         let expected = indoc! {r#"
-        def main() {
+        func.func @main() {
           TALK TO THE HAND "Hello, World!\n"
         }
         "#}

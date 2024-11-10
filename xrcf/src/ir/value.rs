@@ -186,6 +186,7 @@ impl ResultWithoutParent {
     }
 }
 
+#[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
 pub struct ResultsWithoutParent {
     results: Values,
 }
@@ -379,6 +380,14 @@ pub struct Values {
     values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
 }
 
+use std::sync::RwLockReadGuard;
+
+impl Values {
+    pub fn read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
+        self.values.try_read().unwrap()
+    }
+}
+
 impl Values {
     pub fn from_vec(values: Vec<Arc<RwLock<Value>>>) -> Self {
         Values {
@@ -395,6 +404,16 @@ impl Values {
             .iter()
             .map(|value| value.try_read().unwrap().name().unwrap())
             .collect()
+    }
+    /// The number of values.
+    ///
+    /// At some point, this preferably is replaced by some collection trait.
+    /// But this seems to not be available yet?
+    pub fn len(&self) -> usize {
+        self.values.try_read().unwrap().len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
     pub fn types(&self) -> Types {
         let values = self.values.try_read().unwrap();
@@ -531,6 +550,25 @@ impl<T: ParserDispatch> Parser<T> {
         let dot = self.check(TokenKind::Dot);
         perc || int || excl || dot
     }
+    /// Parse operation result.
+    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<ResultWithoutParent> {
+        let identifier = self.expect(token_kind)?;
+        let name = identifier.lexeme.clone();
+        let mut op_result = OpResult::default();
+        op_result.set_name(&name);
+        let result = Value::OpResult(op_result);
+        Ok(ResultWithoutParent::new(Arc::new(RwLock::new(result))))
+    }
+    pub fn parse_op_result_into(
+        &mut self,
+        token_kind: TokenKind,
+        operation: &mut Operation,
+    ) -> Result<ResultWithoutParent> {
+        let result = self.parse_op_result(token_kind)?.result;
+        let results = Values::from_vec(vec![result.clone()]);
+        operation.set_results(results.clone());
+        Ok(ResultWithoutParent::new(result))
+    }
     /// Parse operation results.
     ///
     /// Can parse `%0` in `%0 = ...` when `token_kind` is
@@ -539,12 +577,8 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<ResultsWithoutParent> {
         let mut results = vec![];
         while self.check(token_kind) {
-            let identifier = self.advance();
-            let name = identifier.lexeme.clone();
-            let mut op_result = OpResult::default();
-            op_result.set_name(&name);
-            let result = Value::OpResult(op_result);
-            results.push(Arc::new(RwLock::new(result)));
+            let result = self.parse_op_result(token_kind)?.result;
+            results.push(result);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
             }

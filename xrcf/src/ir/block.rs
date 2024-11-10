@@ -256,6 +256,7 @@ impl Display for Block {
     }
 }
 
+#[must_use = "the object inside `BlockWithoutParent` should receive a parent"]
 pub struct BlockWithoutParent {
     block: Arc<RwLock<Block>>,
 }

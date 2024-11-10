@@ -186,10 +186,12 @@ impl Parse for DeclareIntOp {
         operation.set_parent(parent.clone());
         let name = DeclareIntOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-        parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
+        let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
         let op = DeclareIntOp { operation };
-        Ok(Arc::new(RwLock::new(op)))
+        let op = Arc::new(RwLock::new(op));
+        result.set_defining_op(Some(op.clone()));
+        Ok(op)
     }
 }
 
