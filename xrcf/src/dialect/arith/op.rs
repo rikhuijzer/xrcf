@@ -31,7 +31,8 @@ pub struct ConstantOp {
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
         let attributes = self.operation.attributes();
-        let value = attributes.get("value").unwrap();
+        let value = attributes.get("value");
+        let value = value.expect("no value for ConstantOp");
         value.clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {

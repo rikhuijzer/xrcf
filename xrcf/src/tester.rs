@@ -123,7 +123,7 @@ impl Tester {
         let passes = Passes::from_convert_vec(arguments.clone());
         let result = transform::<DefaultTransformDispatch>(module.clone(), &passes).unwrap();
         let new_root_op = match result {
-            RewriteResult::Changed(changed_op) => changed_op.0,
+            RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
                 panic!("Expected changes");
             }

@@ -2,7 +2,6 @@ use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
-use xrcf::dialect::func::Func;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
@@ -333,6 +332,12 @@ impl Parse for PrintOp {
 
 pub struct SetInitialValueOp {
     operation: Arc<RwLock<Operation>>,
+}
+
+impl SetInitialValueOp {
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        self.operation.attributes().get("value").unwrap()
+    }
 }
 
 impl Op for SetInitialValueOp {

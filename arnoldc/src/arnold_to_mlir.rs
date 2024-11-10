@@ -61,17 +61,20 @@ impl Rewrite for DeclareIntLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
-        // let name = op.identifier().unwrap();
+
         let successors = op.operation().successors();
-        let successor = successors.first().unwrap();
-        let successor = successor.try_read().unwrap();
-        let successor = successor
+        let set_initial_value = successors.first().unwrap();
+        let set_initial_value = set_initial_value.try_read().unwrap();
+        let set_initial_value = set_initial_value
             .as_any()
             .downcast_ref::<arnold::SetInitialValueOp>()
             .unwrap();
 
         let operation = Operation::default();
         let new_op = arith::ConstantOp::from_operation(operation);
+        new_op.set_parent(op.operation().parent().clone().unwrap());
+        new_op.set_value(set_initial_value.value());
+        set_initial_value.remove();
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -177,7 +180,8 @@ impl ModuleLowering {
         }
         let first = ops.first().unwrap();
         let block = first.operation().parent();
-        let block = block.unwrap();
+        println!("first: {}", first.name());
+        let block = block.expect("no parent for operation");
 
         let constant = Self::constant_op(&block);
         first.insert_after(constant.clone());

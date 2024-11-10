@@ -66,7 +66,7 @@ fn main() {
 
     let result = parse_and_transform(&input_text, &passes).unwrap();
     let result = match result {
-        RewriteResult::Changed(op) => op.0.try_read().unwrap().to_string(),
+        RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
         RewriteResult::Unchanged => input_text.to_string(),
     };
     println!("{result}");
@@ -124,7 +124,7 @@ mod tests {
         assert!(result.is_ok());
         let actual = match result.unwrap() {
             RewriteResult::Changed(op) => {
-                let op = op.0.try_read().unwrap();
+                let op = op.op.try_read().unwrap();
                 op.to_string()
             }
             RewriteResult::Unchanged => panic!("Expected a change"),

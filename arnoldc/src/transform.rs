@@ -174,7 +174,7 @@ mod tests {
         print_heading("Before", src, &passes);
         let result = parse_and_transform(src, &passes).unwrap();
         let new_root_op = match result {
-            RewriteResult::Changed(changed_op) => changed_op.0,
+            RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
                 panic!("Expected changes");
             }
