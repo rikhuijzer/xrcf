@@ -153,7 +153,7 @@ mod tests {
         "#}
         .trim();
         let expected = indoc! {r#"
-        IT'S SHOWTIME {
+        ITS SHOWTIME {
           TALK TO THE HAND "Hello, World!\n"
         }
         "#}
