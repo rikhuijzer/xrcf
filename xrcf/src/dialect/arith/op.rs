@@ -22,6 +22,8 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
+
 pub struct ConstantOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -73,8 +75,7 @@ impl Parse for ConstantOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let token_kind = TokenKind::PercentIdentifier;
-        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
@@ -208,11 +209,10 @@ impl<T: ParserDispatch> Parser<T> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        let token_kind = TokenKind::PercentIdentifier;
-        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
-        operation.set_operands(parser.parse_op_operands(parent.unwrap())?);
+        operation.set_operands(parser.parse_op_operands(parent.unwrap(), TOKEN_KIND)?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);

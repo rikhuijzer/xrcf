@@ -24,6 +24,8 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
+
 /// `func.call`
 ///
 /// ```ebnf
@@ -85,8 +87,7 @@ pub trait Call: Op {
     ) -> Result<Arc<RwLock<O>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let token_kind = TokenKind::PercentIdentifier;
-        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         if parser.check(TokenKind::Equal) {
             parser.advance();
         }
@@ -95,7 +96,8 @@ pub trait Call: Op {
         let identifier = identifier.lexeme.clone();
 
         parser.expect(TokenKind::LParen)?;
-        let operands = parser.parse_op_operands_into(parent.unwrap(), &mut operation)?;
+        let operands =
+            parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::RParen)?;
 
         // vararg(!llvm.func<i32 (ptr, ...)>)
@@ -487,7 +489,7 @@ impl<T: ParserDispatch> Parser<T> {
         self.parse_operation_name_into::<O>(&mut operation)?;
         let has_operands = !self.check(TokenKind::RBrace);
         if has_operands {
-            operation.set_operands(self.parse_op_operands(parent.clone().unwrap())?);
+            operation.set_operands(self.parse_op_operands(parent.clone().unwrap(), TOKEN_KIND)?);
             self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
             let return_type = IntegerType::from_str(&return_type.lexeme);

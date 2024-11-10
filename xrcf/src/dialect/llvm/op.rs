@@ -25,6 +25,8 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
+
 pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -122,13 +124,13 @@ impl Parse for AllocaOp {
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
-        let token_kind = TokenKind::PercentIdentifier;
-        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<AllocaOp>(&mut operation)?;
         operation.set_parent(parent.clone());
 
-        let array_size = parser.parse_op_operand_into(parent.unwrap(), &mut operation)?;
+        let array_size =
+            parser.parse_op_operand_into(parent.unwrap(), TOKEN_KIND, &mut operation)?;
         parser.parse_keyword("x")?;
         let element_type = T::parse_type(parser)?;
         let element_type = element_type.try_read().unwrap();
@@ -283,8 +285,7 @@ impl Parse for ConstantOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
-        let token_kind = TokenKind::PercentIdentifier;
-        let results = parser.parse_op_results_into(token_kind, &mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
@@ -562,11 +563,11 @@ impl Parse for StoreOp {
         operation.set_parent(parent.clone());
 
         let mut operands = vec![];
-        let value = parser.parse_op_operand(parent.clone().unwrap())?;
+        let value = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
         operands.push(value.clone());
 
         parser.expect(TokenKind::Comma)?;
-        let addr = parser.parse_op_operand(parent.unwrap())?;
+        let addr = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
         operands.push(addr.clone());
         operation.set_operands(OpOperands::from_vec(operands));
         parser.expect(TokenKind::Colon)?;

@@ -13,11 +13,16 @@ use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
-use xrcf::ir::ResultsWithoutParent;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
+
+/// The token kind used for variables in ArnoldC.
+///
+/// In ArnoldC variables are always bare identifiers meaning `x` is a valid
+/// variable. For example, percent identifiers like `%x` are not valid.
+const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
 
 /// Variables are always 16-bit signed integers in ArnoldC.
 fn arnold_integer(value: u64) -> APInt {
@@ -40,10 +45,6 @@ fn arnold_attribute(value: u64) -> IntegerAttr {
 /// ```
 trait ArnoldParse {
     fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
-    fn parse_arnold_op_operand(
-        &mut self,
-        parent: Arc<RwLock<Block>>,
-    ) -> Result<Arc<RwLock<OpOperand>>>;
     fn parse_arnold_operation_name_into(
         &mut self,
         name: OperationName,
@@ -68,14 +69,6 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
         let constant: Arc<dyn Attribute> = Arc::new(constant);
         operation.attributes().insert("value", constant);
         Ok(())
-    }
-    /// Parse an operand like `x` in `TALK TO THE HAND x`.
-    fn parse_arnold_op_operand(
-        &mut self,
-        parent: Arc<RwLock<Block>>,
-    ) -> Result<Arc<RwLock<OpOperand>>> {
-        let token_kind = TokenKind::BareIdentifier;
-        self.parse_op_operand_with_tokenkind(parent, token_kind)
     }
     /// Parse an operation name like `TALK TO THE HAND` into the [Operation].
     fn parse_arnold_operation_name_into(
@@ -193,8 +186,7 @@ impl Parse for DeclareIntOp {
         operation.set_parent(parent.clone());
         let name = DeclareIntOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-        let token_kind = TokenKind::BareIdentifier;
-        parser.parse_op_results_into(token_kind, &mut operation)?;
+        parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
         let op = DeclareIntOp { operation };
         Ok(Arc::new(RwLock::new(op)))
@@ -327,7 +319,7 @@ impl Parse for PrintOp {
         let name = PrintOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
-        let text = parser.parse_arnold_op_operand(parent.clone().unwrap())?;
+        let text = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
         let mut op = PrintOp {
             operation: operation.clone(),
         };

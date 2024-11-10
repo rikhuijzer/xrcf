@@ -16,6 +16,8 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
+
 /// `experimental.printf`
 ///
 /// This operation is lowered to LLVM IR by default, so might not be usable on
@@ -79,7 +81,7 @@ impl Parse for PrintfOp {
         operation.set_parent(parent.clone());
 
         parser.expect(TokenKind::LParen)?;
-        parser.parse_op_operands_into(parent.expect("no parent"), &mut operation)?;
+        parser.parse_op_operands_into(parent.expect("no parent"), TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::RParen)?;
         let operation = Arc::new(RwLock::new(operation));
         let op = PrintfOp { operation };
