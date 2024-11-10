@@ -1,6 +1,8 @@
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
+use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -87,6 +89,15 @@ pub struct Operation {
     /// parsing (for example, the parent of a top-level function will be a
     /// `ModuleOp` that is created after parsing of the `FuncOp`).
     parent: Option<Arc<RwLock<Block>>>,
+}
+
+/// Two operations are equal if they point to the same object.
+///
+/// This is used for things liking finding `successors`.
+impl PartialEq for Operation {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
 }
 
 pub fn display_region_inside_func(
@@ -272,6 +283,28 @@ impl Operation {
         let result_types = vec![result_type];
         self.set_anonymous_results(result_types)
     }
+    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let parent = self.parent();
+        let parent = parent.expect("expected parent");
+        let ops = parent.ops();
+        for op in ops.try_read().unwrap().iter() {
+            println!("{}", op.operation().name());
+        }
+        let mut successors = vec![];
+        let mut is_after = false;
+        for op in ops.try_read().unwrap().iter() {
+            let operation = op.operation();
+            let operation = operation.try_read().unwrap();
+            if *operation == *self {
+                is_after = true;
+                continue;
+            }
+            if is_after {
+                successors.push(op.clone());
+            }
+        }
+        successors
+    }
     pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
         let mut results = self.results();
         if results.vec().try_read().unwrap().is_empty() {
@@ -394,6 +427,7 @@ pub trait GuardedOperation {
     fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
+    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
 }
 
 impl GuardedOperation for Arc<RwLock<Operation>> {
@@ -451,5 +485,8 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
         self.try_write().unwrap().set_parent(parent);
+    }
+    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        self.try_read().unwrap().successors()
     }
 }

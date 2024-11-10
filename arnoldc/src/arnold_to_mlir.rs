@@ -49,6 +49,35 @@ impl Rewrite for CallLowering {
     }
 }
 
+struct DeclareIntLowering;
+
+impl Rewrite for DeclareIntLowering {
+    fn name(&self) -> &'static str {
+        "example_to_mlir::DeclareIntLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arnold::DeclareIntOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
+        // let name = op.identifier().unwrap();
+        let successors = op.operation().successors();
+        let successor = successors.first().unwrap();
+        let successor = successor.try_read().unwrap();
+        let successor = successor
+            .as_any()
+            .downcast_ref::<arnold::SetInitialValueOp>()
+            .unwrap();
+
+        let operation = Operation::default();
+        let new_op = arith::ConstantOp::from_operation(operation);
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
 struct FuncLowering;
 
 impl FuncLowering {
@@ -232,6 +261,7 @@ impl Pass for ConvertArnoldToMLIR {
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CallLowering,
+            &DeclareIntLowering,
             &FuncLowering,
             &ModuleLowering,
             &PrintLowering,
