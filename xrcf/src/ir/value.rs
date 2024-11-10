@@ -541,8 +541,8 @@ impl<T: ParserDispatch> Parser<T> {
             op_result.set_name(&name);
             let result = Value::OpResult(op_result);
             results.push(Arc::new(RwLock::new(result)));
-            if self.check(TokenKind::Equal) {
-                let _equal = self.advance();
+            if self.check(TokenKind::Comma) {
+                let _comma = self.advance();
             }
         }
         let results = Arc::new(RwLock::new(results));

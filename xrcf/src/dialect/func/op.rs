@@ -86,6 +86,9 @@ pub trait Call: Op {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(&mut operation)?;
+        if parser.check(TokenKind::Equal) {
+            parser.advance();
+        }
         parser.parse_operation_name_into::<O>(&mut operation)?;
         let identifier = parser.expect(TokenKind::AtIdentifier)?;
         let identifier = identifier.lexeme.clone();
