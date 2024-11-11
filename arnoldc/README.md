@@ -150,7 +150,7 @@ It is split into three parts:
 
 All other passes such as `--convert-func-to-llvm` are implemented in the `xrcf` crate.
 
-If you want to build your own compiler, here are some modern compiler projects that could serve as inspiration:
+Although the compiler framework is not yet feature complete, if you want to build your own compiler, here are some modern compiler projects that could serve as inspiration:
 
 - [jax](https://github.com/jax-ml/jax): A Python library for accelerator-oriented computing
 - [triton](https://github.com/triton-lang/triton): A Python library for high-performance computation on GPUs by OpenAI.
@@ -160,3 +160,7 @@ If you want to build your own compiler, here are some modern compiler projects t
 - [Flang](https://flang.llvm.org/docs/): A LLVM-based Fortran compiler.
 - [circt](https://github.com/llvm/circt): A compiler for hardware design.
 - [mojo](https://www.modular.com/mojo): A new programming language for AI by Modular.
+
+Or, you could also build a language for a different movie star.
+Or your favorite sports team.
+It's up to you.
