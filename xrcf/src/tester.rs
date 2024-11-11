@@ -137,13 +137,13 @@ impl Tester {
         if !op.name().to_string().contains("module") {
             assert!(
                 op.operation().parent().is_some(),
-                "op without parent:\n{}",
+                "parent was not set for:\n{}",
                 op.try_read().unwrap()
             );
             let results = op.operation().results();
             for result in results.try_read().iter() {
                 let value = result.try_read().unwrap();
-                assert!(value.typ().is_ok());
+                assert!(value.typ().is_ok(), "type was not set for {value}");
             }
         }
     }

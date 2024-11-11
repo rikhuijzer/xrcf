@@ -172,31 +172,35 @@ impl Display for OpResult {
     }
 }
 
-pub struct ResultWithoutParent {
+#[must_use = "the object inside `UnsetOpResult` should be further initialized, see the setter methods"]
+pub struct UnsetOpResult {
     result: Arc<RwLock<Value>>,
 }
 
-impl ResultWithoutParent {
+impl UnsetOpResult {
     pub fn new(result: Arc<RwLock<Value>>) -> Self {
         assert!(
             matches!(&*result.try_read().unwrap(), Value::OpResult(_)),
             "Expected OpResult"
         );
-        ResultWithoutParent { result }
+        UnsetOpResult { result }
     }
     pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.result.try_write().unwrap().set_defining_op(op);
     }
+    pub fn set_typ(&self, typ: Arc<RwLock<dyn Type>>) {
+        self.result.try_write().unwrap().set_type(typ);
+    }
 }
 
 #[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
-pub struct ResultsWithoutParent {
+pub struct UnsetOpResults {
     results: Values,
 }
 
-impl ResultsWithoutParent {
+impl UnsetOpResults {
     pub fn new(results: Values) -> Self {
-        ResultsWithoutParent { results }
+        UnsetOpResults { results }
     }
     pub fn values(&self) -> Values {
         self.results.clone()
@@ -204,6 +208,9 @@ impl ResultsWithoutParent {
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
         let values = self.values();
         values.set_defining_op(op);
+    }
+    pub fn set_types(&self, _types: Vec<Arc<RwLock<dyn Type>>>) {
+        todo!("Not implemented")
     }
 }
 
@@ -548,30 +555,30 @@ impl<T: ParserDispatch> Parser<T> {
         perc || int || excl || dot
     }
     /// Parse operation result.
-    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<ResultWithoutParent> {
+    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
         let mut op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
-        Ok(ResultWithoutParent::new(Arc::new(RwLock::new(result))))
+        Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))
     }
     pub fn parse_op_result_into(
         &mut self,
         token_kind: TokenKind,
         operation: &mut Operation,
-    ) -> Result<ResultWithoutParent> {
+    ) -> Result<UnsetOpResult> {
         let result = self.parse_op_result(token_kind)?.result;
         let results = Values::from_vec(vec![result.clone()]);
         operation.set_results(results.clone());
-        Ok(ResultWithoutParent::new(result))
+        Ok(UnsetOpResult::new(result))
     }
     /// Parse operation results.
     ///
     /// Can parse `%0` in `%0 = ...` when `token_kind` is
     /// `TokenKind::PercentIdentifier`, or `x` in `x = ...` when `token_kind` is
     /// `TokenKind::BareIdentifier`.
-    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<ResultsWithoutParent> {
+    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<UnsetOpResults> {
         let mut results = vec![];
         while self.check(token_kind) {
             let result = self.parse_op_result(token_kind)?.result;
@@ -582,7 +589,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         let results = Arc::new(RwLock::new(results));
         let values = Values { values: results };
-        Ok(ResultsWithoutParent::new(values))
+        Ok(UnsetOpResults::new(values))
     }
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
@@ -591,7 +598,7 @@ impl<T: ParserDispatch> Parser<T> {
         &mut self,
         token_kind: TokenKind,
         operation: &mut Operation,
-    ) -> Result<ResultsWithoutParent> {
+    ) -> Result<UnsetOpResults> {
         let results = self.parse_op_results(token_kind)?;
         let values = results.values();
         operation.set_results(values.clone());
