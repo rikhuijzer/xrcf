@@ -1,3 +1,5 @@
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -123,9 +125,13 @@ impl Block {
     }
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
-        let ops = ops.read().unwrap();
+        let ops = ops.try_read().unwrap();
+        println!("trying to find index of {}", op.name());
+        for op in ops.iter() {
+            println!("looking at index of {}", op.name());
+        }
         for (i, current) in (&ops).iter().enumerate() {
-            let current = current.read().unwrap();
+            let current = current.try_read().unwrap();
             let current = current.operation();
             let current = current.try_read().unwrap();
             if *current == *op {
@@ -143,13 +149,15 @@ impl Block {
         ops.insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of_arc(earlier);
+        let index = self.index_of_arc(earlier.clone());
+        println!("index: {:?}", index);
         let index = match index {
             Some(index) => index,
             None => {
                 panic!("Could not find op in block during insert_after");
             }
         };
+        println!("inserting after {} at index {}", earlier.name(), index + 1);
         self.insert_op(later, index + 1);
     }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
@@ -157,7 +165,7 @@ impl Block {
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Could not find op in block");
+                panic!("Could not find op in block during insert_before");
             }
         };
         self.insert_op(earlier, index);
@@ -167,7 +175,7 @@ impl Block {
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Replace could not find op in block");
+                panic!("Replace could not find op in block during replace");
             }
         };
         let ops = self.ops();

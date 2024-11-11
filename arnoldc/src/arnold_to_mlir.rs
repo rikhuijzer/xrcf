@@ -99,27 +99,6 @@ impl Rewrite for DeclareIntLowering {
 
 struct FuncLowering;
 
-impl FuncLowering {
-    /// ArnoldC does not require a return statement, but LLVM does.
-    fn ensure_return(&self, op: &mut func::FuncOp) {
-        let ops = op.ops();
-        for op in ops.iter() {
-            println!(": {}", op.name());
-        }
-        let last = ops.last().unwrap();
-        let last = last.try_read().unwrap();
-        if last.as_any().is::<func::ReturnOp>() {
-            return;
-        }
-        let mut operation = Operation::default();
-        operation.set_parent(last.operation().parent().clone());
-        let ret = func::ReturnOp::from_operation(operation);
-        let ret = Arc::new(RwLock::new(ret));
-        println!("inserting return after {}", last.name());
-        last.insert_after(ret);
-    }
-}
-
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::FuncLowering"
@@ -134,7 +113,6 @@ impl Rewrite for FuncLowering {
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(identifier.to_string());
-        self.ensure_return(&mut new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -186,22 +164,15 @@ impl ModuleLowering {
             .unwrap();
 
         let ops = func.ops();
-        for op in &ops {
-            let op = op.try_read().unwrap();
-            if op.as_any().is::<func::ReturnOp>() {
-                op.remove();
-            }
-        }
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
-        let first = ops.first().unwrap();
-        let block = first.operation().parent();
-        println!("first: {}", first.name());
+        let last = ops.last().unwrap();
+        let block = last.operation().parent();
         let block = block.expect("no parent for operation");
 
         let constant = Self::constant_op(&block);
-        first.insert_after(constant.clone());
+        last.insert_after(constant.clone());
 
         let ret = Self::return_op(&block, constant.clone());
         constant.insert_after(ret.clone());
