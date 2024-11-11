@@ -260,12 +260,12 @@ impl Display for Block {
     }
 }
 
-#[must_use = "the object inside `BlockWithoutParent` should receive a parent"]
-pub struct BlockWithoutParent {
+#[must_use = "the object inside `UnsetBlock` should be further initialized, see the setter methods"]
+pub struct UnsetBlock {
     block: Arc<RwLock<Block>>,
 }
 
-impl BlockWithoutParent {
+impl UnsetBlock {
     pub fn new(block: Arc<RwLock<Block>>) -> Self {
         Self { block }
     }

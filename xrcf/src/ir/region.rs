@@ -1,6 +1,6 @@
 use crate::ir::block::Block;
-use crate::ir::BlockWithoutParent;
 use crate::ir::Op;
+use crate::ir::UnsetBlock;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -36,11 +36,11 @@ impl Region {
     pub fn set_blocks(&mut self, blocks: Vec<Arc<RwLock<Block>>>) {
         self.blocks = blocks;
     }
-    pub fn add_new_block(&mut self) -> BlockWithoutParent {
+    pub fn add_new_block(&mut self) -> UnsetBlock {
         let block = Block::default();
         let block = Arc::new(RwLock::new(block));
         self.blocks_mut().push(block.clone());
-        BlockWithoutParent::new(block)
+        UnsetBlock::new(block)
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
         self.parent = parent;
