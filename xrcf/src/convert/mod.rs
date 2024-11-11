@@ -57,6 +57,7 @@ impl RewriteResult {
 }
 
 pub trait Rewrite {
+    /// The name of the rewrite; is used for logging.
     fn name(&self) -> &'static str;
     /// Returns true if the rewrite can be applied to the given operation.
     ///

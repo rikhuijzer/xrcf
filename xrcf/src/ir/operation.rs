@@ -307,25 +307,11 @@ impl Operation {
     }
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent();
-        let parent = parent.expect("expected parent");
+        let parent = parent.expect(&format!("no parent for operation:\n{self}"));
+        let index = parent.index_of(self).expect("expected index");
         let ops = parent.ops();
-        for op in ops.try_read().unwrap().iter() {
-            println!("{}", op.operation().name());
-        }
-        let mut successors = vec![];
-        let mut is_after = false;
-        for op in ops.try_read().unwrap().iter() {
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            if *operation == *self {
-                is_after = true;
-                continue;
-            }
-            if is_after {
-                successors.push(op.clone());
-            }
-        }
-        successors
+        let ops = ops.try_read().unwrap();
+        ops[index + 1..].to_vec()
     }
     pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
         let mut results = self.results();

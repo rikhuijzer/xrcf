@@ -59,9 +59,9 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
         let next_next = self.advance();
         let constant = format!("{} {}", next.lexeme, next_next.lexeme);
         let constant = if constant == "@NO PROBLEMO" {
-            arnold_attribute(0)
-        } else if constant == "@I LIED" {
             arnold_attribute(1)
+        } else if constant == "@I LIED" {
+            arnold_attribute(0)
         } else {
             return Err(anyhow::anyhow!("Unknown constant: {}", constant));
         };

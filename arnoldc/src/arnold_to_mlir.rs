@@ -26,7 +26,6 @@ use xrcf::ir::Operation;
 use xrcf::ir::RenameBareToPercent;
 use xrcf::ir::StringAttr;
 use xrcf::ir::Value;
-use xrcf::ir::VariableRenamer;
 
 const RENAMER: RenameBareToPercent = RenameBareToPercent;
 
@@ -116,6 +115,7 @@ impl FuncLowering {
         operation.set_parent(last.operation().parent().clone());
         let ret = func::ReturnOp::from_operation(operation);
         let ret = Arc::new(RwLock::new(ret));
+        println!("inserting return after {}", last.name());
         last.insert_after(ret);
     }
 }

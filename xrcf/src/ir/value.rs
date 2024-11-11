@@ -1,6 +1,8 @@
 use crate::ir::Attribute;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::GuardedOperation;
+use crate::ir::GuardedOp;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -297,21 +299,9 @@ impl Value {
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.expect("Defining op not set for OpResult");
-        let op = op.try_read().unwrap();
-        let parent = {
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            let parent = operation.parent();
-            parent.expect(&format!("no parent for operation:\n{operation}"))
-        };
-        let block = parent.try_read().unwrap();
-        let index = block.index_of(op.operation().clone());
-        let index = index.unwrap();
-        let ops = block.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = op.operation().successors();
         let mut out = Vec::new();
-        for i in index..ops.len() {
-            let op = ops[i].try_read().unwrap();
+        for op in ops.iter() {
             let operation = op.operation();
             let operation = operation.try_read().unwrap();
             let operands = operation.operands().vec();

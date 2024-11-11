@@ -121,17 +121,21 @@ impl Block {
             None => self.assignment_in_ops(name),
         }
     }
-    pub fn index_of(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+    pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
         let ops = ops.read().unwrap();
         for (i, current) in (&ops).iter().enumerate() {
             let current = current.read().unwrap();
             let current = current.operation();
-            if Arc::ptr_eq(current, &op) {
+            let current = current.try_read().unwrap();
+            if *current == *op {
                 return Some(i);
             }
         }
         None
+    }
+    pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+        self.index_of(&*op.try_read().unwrap())
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
@@ -139,7 +143,7 @@ impl Block {
         ops.insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of(earlier);
+        let index = self.index_of_arc(earlier);
         let index = match index {
             Some(index) => index,
             None => {
@@ -149,7 +153,7 @@ impl Block {
         self.insert_op(later, index + 1);
     }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
-        let index = self.index_of(later);
+        let index = self.index_of_arc(later);
         let index = match index {
             Some(index) => index,
             None => {
@@ -159,7 +163,7 @@ impl Block {
         self.insert_op(earlier, index);
     }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of(old.clone());
+        let index = self.index_of_arc(old);
         let index = match index {
             Some(index) => index,
             None => {
@@ -171,7 +175,7 @@ impl Block {
         ops[index] = new;
     }
     pub fn remove(&self, op: Arc<RwLock<Operation>>) {
-        let index = self.index_of(op);
+        let index = self.index_of_arc(op);
         match index {
             Some(index) => {
                 let ops = self.ops();
@@ -277,6 +281,8 @@ impl BlockWithoutParent {
 
 pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
+    fn index_of(&self, op: &Operation) -> Option<usize>;
+    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
@@ -287,6 +293,12 @@ pub trait GuardedBlock {
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
+    }
+    fn index_of(&self, op: &Operation) -> Option<usize> {
+        self.try_read().unwrap().index_of(op)
+    }
+    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+        self.try_read().unwrap().index_of_arc(op)
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
