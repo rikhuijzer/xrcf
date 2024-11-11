@@ -245,7 +245,7 @@ impl Operation {
         };
         Some(parent)
     }
-    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+    pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         let results = self.results();
         results.rename_variables(renamer)
     }
