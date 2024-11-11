@@ -1,6 +1,7 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -116,8 +117,10 @@ pub trait Op {
     /// Insert `later` after `self` inside `self`'s parent block.
     fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
         let operation = self.operation().try_read().unwrap();
-        let block = operation.parent().expect("no parent");
-        let block = block.try_read().unwrap();
+        let block = match operation.parent() {
+            Some(block) => block,
+            None => panic!("no parent for {}", self.name()),
+        };
         let earlier = self.operation().clone();
         block.insert_after(earlier, later);
     }

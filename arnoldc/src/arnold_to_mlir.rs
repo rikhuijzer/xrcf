@@ -8,19 +8,26 @@ use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
 use xrcf::dialect::arith;
+use xrcf::dialect::experimental;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
-use xrcf::dialect::experimental;
 use xrcf::ir::APInt;
+use xrcf::ir::Attribute;
 use xrcf::ir::Block;
 use xrcf::ir::GuardedOp;
+use xrcf::ir::GuardedOpOperand;
 use xrcf::ir::GuardedOperation;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
+use xrcf::ir::RenameBareToPercent;
+use xrcf::ir::StringAttr;
+use xrcf::ir::Value;
+
+const RENAMER: RenameBareToPercent = RenameBareToPercent;
 
 struct CallLowering;
 
@@ -45,41 +52,66 @@ impl Rewrite for CallLowering {
     }
 }
 
-struct FuncLowering;
+struct DeclareIntLowering;
 
-impl FuncLowering {
-    /// Python code does not require a return statement, but MLIR does.
-    fn ensure_return(&self, op: &mut func::FuncOp) {
-        let ops = op.ops();
-        let last = ops.last().unwrap();
-        let last = last.try_read().unwrap();
-        if last.as_any().is::<func::ReturnOp>() {
-            return;
-        }
-        let mut operation = Operation::default();
-        operation.set_parent(last.operation().parent().clone());
-        let ret = func::ReturnOp::from_operation(operation);
-        let ret = Arc::new(RwLock::new(ret));
-        last.insert_after(ret);
+impl Rewrite for DeclareIntLowering {
+    fn name(&self) -> &'static str {
+        "example_to_mlir::DeclareIntLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arnold::DeclareIntOp>())
+    }
+    /// Rewrite `HEY CHRISTMAS TREE` (declare integer).
+    ///
+    /// Example:
+    /// ```arnold
+    /// HEY CHRISTMAS TREE x
+    /// YOU SET US UP @NO PROBLEMO
+    /// ```
+    /// is rewritten to:
+    /// ```mlir
+    /// %x = arith.constant 1 : i16
+    /// ```
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
+        op.operation().rename_variables(&RENAMER)?;
+
+        let successors = op.operation().successors();
+        let set_initial_value = successors.first().unwrap();
+        let set_initial_value = set_initial_value.try_read().unwrap();
+        let set_initial_value = set_initial_value
+            .as_any()
+            .downcast_ref::<arnold::SetInitialValueOp>()
+            .expect("Expected SetInitialValueOp after DeclareIntOp");
+
+        let operation = Operation::default();
+        let new_op = arith::ConstantOp::from_operation(operation);
+        new_op.set_parent(op.operation().parent().clone().unwrap());
+        new_op.set_value(set_initial_value.value());
+        set_initial_value.remove();
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
 }
+
+struct FuncLowering;
 
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == arnold::FuncOp::operation_name())
+        Ok(op.name() == arnold::BeginMainOp::operation_name())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<arnold::FuncOp>().unwrap();
-        let identifier = op.identifier().unwrap();
-        let identifier = format!("@{}", identifier);
+        let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
+        let identifier = "@main";
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
-        new_op.set_identifier(identifier);
-        self.ensure_return(&mut new_op);
+        new_op.set_identifier(identifier.to_string());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -131,21 +163,15 @@ impl ModuleLowering {
             .unwrap();
 
         let ops = func.ops();
-        for op in &ops {
-            let op = op.try_read().unwrap();
-            if op.as_any().is::<func::ReturnOp>() {
-                op.remove();
-            }
-        }
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
-        let first = ops.first().unwrap();
-        let block = first.operation().parent();
-        let block = block.unwrap();
+        let last = ops.last().unwrap();
+        let block = last.operation().parent();
+        let block = block.expect("no parent for operation");
 
         let constant = Self::constant_op(&block);
-        first.insert_after(constant.clone());
+        last.insert_after(constant.clone());
 
         let ret = Self::return_op(&block, constant.clone());
         constant.insert_after(ret.clone());
@@ -192,10 +218,30 @@ impl Rewrite for PrintLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
-        let text = op.text().unwrap();
-        let operation = op.operation();
+        let mut operation = Operation::default();
+        operation.set_name(experimental::PrintfOp::operation_name());
+        let operation = Arc::new(RwLock::new(operation));
         let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
-        new_op.set_text(text);
+        new_op.set_parent(op.operation().parent().clone().unwrap());
+
+        let operand = op.text();
+        let value = operand.value();
+        match &*value.try_read().unwrap() {
+            // printf("some text")
+            Value::Constant(constant) => {
+                let text = constant.value();
+                let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
+                new_op.set_text(text.clone());
+            }
+            // printf("%d", variable)
+            Value::OpResult(_) => {
+                let text = StringAttr::from_str("%d");
+                new_op.set_text(text);
+                new_op.operation().set_operand(1, operand);
+            }
+            _ => panic!("expected constant or op result"),
+        };
+
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -209,6 +255,7 @@ impl Pass for ConvertArnoldToMLIR {
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CallLowering,
+            &DeclareIntLowering,
             &FuncLowering,
             &ModuleLowering,
             &PrintLowering,

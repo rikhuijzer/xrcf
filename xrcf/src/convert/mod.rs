@@ -12,25 +12,27 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use tracing::debug;
 
+mod experimental_to_mlir;
 mod func_to_llvm;
 mod mlir_to_llvmir;
-mod experimental_to_mlir;
 
+pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 pub use func_to_llvm::ConvertFuncToLLVM;
 pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
-pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 
-pub struct ChangedOp(pub Arc<RwLock<dyn Op>>);
+pub struct ChangedOp {
+    pub op: Arc<RwLock<dyn Op>>,
+}
 
 impl ChangedOp {
     pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
-        ChangedOp(op)
+        ChangedOp { op }
     }
 }
 
 impl PartialEq for ChangedOp {
     fn eq(&self, other: &Self) -> bool {
-        Arc::ptr_eq(&self.0, &other.0)
+        Arc::ptr_eq(&self.op, &other.op)
     }
 }
 
@@ -46,12 +48,16 @@ pub enum RewriteResult {
 }
 
 impl RewriteResult {
-    pub fn is_changed(&self) -> bool {
-        matches!(self, RewriteResult::Changed(_))
+    pub fn is_changed(&self) -> Option<&ChangedOp> {
+        match self {
+            RewriteResult::Changed(op) => Some(&op),
+            RewriteResult::Unchanged => None,
+        }
     }
 }
 
 pub trait Rewrite {
+    /// The name of the rewrite; is used for logging.
     fn name(&self) -> &'static str;
     /// Returns true if the rewrite can be applied to the given operation.
     ///
@@ -74,7 +80,7 @@ fn apply_rewrites_helper(
         for nested_op in ops.iter() {
             let indent = indent + 1;
             let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
-            if result.is_changed() {
+            if let Some(_) = result.is_changed() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
                 return Ok(root_passthrough);
@@ -91,7 +97,7 @@ fn apply_rewrites_helper(
         if rewrite.is_match(&*root_read)? {
             debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;
-            if root_rewrite.is_changed() {
+            if let Some(_) = root_rewrite.is_changed() {
                 debug!("{}----> Changed", spaces(indent));
                 return Ok(root_rewrite);
             }
@@ -112,7 +118,7 @@ pub fn apply_rewrites(
         match result {
             RewriteResult::Changed(changed) => {
                 has_changed = true;
-                root = changed.0;
+                root = changed.op;
             }
             RewriteResult::Unchanged => {
                 if has_changed {

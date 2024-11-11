@@ -1,8 +1,8 @@
 use crate::dialect::arith;
+use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
-use crate::dialect::experimental;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -190,7 +190,6 @@ impl<T: ParserDispatch> Parser<T> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
-        // println!("label: {}", label);
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = Arc::new(vec![]);
         let ops = vec![];

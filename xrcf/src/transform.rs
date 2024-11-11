@@ -1,7 +1,7 @@
 use crate::canonicalize::Canonicalize;
+use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
-use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;

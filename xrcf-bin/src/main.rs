@@ -33,7 +33,7 @@ fn parse_and_transform(src: &str, passes: &Passes) -> String {
     let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
     let result = transform::<DefaultTransformDispatch>(module, &passes).unwrap();
     let result = match result {
-        RewriteResult::Changed(op) => op.0.try_read().unwrap().to_string(),
+        RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
         RewriteResult::Unchanged => src.to_string(),
     };
     result

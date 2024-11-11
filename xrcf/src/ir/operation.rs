@@ -1,6 +1,7 @@
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
+use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -89,6 +90,15 @@ pub struct Operation {
     parent: Option<Arc<RwLock<Block>>>,
 }
 
+/// Two operations are equal if they point to the same object.
+///
+/// This is used for things liking finding `successors`.
+impl PartialEq for Operation {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
 pub fn display_region_inside_func(
     f: &mut Formatter<'_>,
     operation: &Operation,
@@ -120,6 +130,24 @@ fn set_or_grow_by_one<T>(vec: &mut Vec<T>, index: usize, value: T) {
             index,
             vec.len()
         );
+    }
+}
+
+pub trait VariableRenamer {
+    fn rename(&self, name: &str) -> String;
+}
+
+/// Rename bare variables `x` to percent variables `%x`.
+///
+/// This step is necessary when going from programming languages like Python to
+/// MLIR. This object can be passed to [Operation::rename_variables] during a
+/// conversion pass.
+pub struct RenameBareToPercent;
+
+impl VariableRenamer for RenameBareToPercent {
+    fn rename(&self, name: &str) -> String {
+        assert!(!name.starts_with('%'));
+        format!("%{}", name)
     }
 }
 
@@ -217,6 +245,10 @@ impl Operation {
         };
         Some(parent)
     }
+    pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        let results = self.results();
+        results.rename_variables(renamer)
+    }
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
     }
@@ -271,6 +303,14 @@ impl Operation {
     pub fn set_anonymous_result(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
         let result_types = vec![result_type];
         self.set_anonymous_results(result_types)
+    }
+    pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let parent = self.parent();
+        let parent = parent.expect("no parent");
+        let index = parent.index_of(self).expect("expected index");
+        let ops = parent.ops();
+        let ops = ops.try_read().unwrap();
+        ops[index + 1..].to_vec()
     }
     pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
         let mut results = self.results();
@@ -385,6 +425,7 @@ pub trait GuardedOperation {
     fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>>;
+    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()>;
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
     fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
@@ -394,6 +435,7 @@ pub trait GuardedOperation {
     fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
+    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
 }
 
 impl GuardedOperation for Arc<RwLock<Operation>> {
@@ -425,6 +467,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.try_read().unwrap().region()
     }
+    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        self.try_read().unwrap().rename_variables(renamer)
+    }
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
         self.try_read().unwrap().result_type(index)
     }
@@ -451,5 +496,8 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
         self.try_write().unwrap().set_parent(parent);
+    }
+    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        self.try_read().unwrap().successors()
     }
 }

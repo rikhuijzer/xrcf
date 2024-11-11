@@ -2,16 +2,103 @@ use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
-use xrcf::dialect::func::Func;
+use xrcf::ir::APInt;
+use xrcf::ir::Attribute;
 use xrcf::ir::Block;
+use xrcf::ir::GuardedOperation;
+use xrcf::ir::IntegerAttr;
+use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
+use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
-use xrcf::ir::StringAttr;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
+
+/// The token kind used for variables in ArnoldC.
+///
+/// In ArnoldC variables are always bare identifiers meaning `x` is a valid
+/// variable. For example, percent identifiers like `%x` are not valid.
+const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
+
+/// Variables are always 16-bit signed integers in ArnoldC.
+fn arnold_integer(value: u64) -> APInt {
+    APInt::new(16, value, true)
+}
+
+fn arnold_attribute(value: u64) -> IntegerAttr {
+    let typ = IntegerType::new(16);
+    let value = arnold_integer(value);
+    IntegerAttr::new(typ, value)
+}
+
+/// Arnold-specific parsing methods.
+///
+/// This makes the methods available on the `parser` object.
+///
+/// Example:
+/// ```rust
+/// parser.parse_arnold_op_operand(parent)
+/// ```
+trait ArnoldParse {
+    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
+    fn parse_arnold_operation_name_into(
+        &mut self,
+        name: OperationName,
+        operation: &mut Operation,
+    ) -> Result<()>;
+}
+
+impl<T: ParserDispatch> ArnoldParse for Parser<T> {
+    /// Parse a constant like `@NO PROBLEMO` into the [Operation].
+    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
+        let next = self.expect(TokenKind::AtIdentifier)?;
+        assert!(next.lexeme.starts_with('@'));
+        let next_next = self.advance();
+        let constant = format!("{} {}", next.lexeme, next_next.lexeme);
+        let constant = if constant == "@NO PROBLEMO" {
+            arnold_attribute(1)
+        } else if constant == "@I LIED" {
+            arnold_attribute(0)
+        } else {
+            return Err(anyhow::anyhow!("Unknown constant: {}", constant));
+        };
+        let constant: Arc<dyn Attribute> = Arc::new(constant);
+        operation.attributes().insert("value", constant);
+        Ok(())
+    }
+    /// Parse an operation name like `TALK TO THE HAND` into the [Operation].
+    fn parse_arnold_operation_name_into(
+        &mut self,
+        name: OperationName,
+        operation: &mut Operation,
+    ) -> Result<()> {
+        let text = name.to_string();
+        let parts = text.split_whitespace().collect::<Vec<&str>>();
+        for part in parts {
+            let next = self.peek();
+            if next.kind != TokenKind::BareIdentifier {
+                return Err(anyhow::anyhow!(
+                    "Expected part {} but got {:?}",
+                    part,
+                    next.kind
+                ));
+            }
+            if next.lexeme != part {
+                return Err(anyhow::anyhow!(
+                    "Expected part {} but got {}",
+                    part,
+                    next.lexeme
+                ));
+            }
+            self.advance();
+        }
+        operation.set_name(name);
+        Ok(())
+    }
+}
 
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
@@ -65,29 +152,80 @@ impl Parse for CallOp {
     }
 }
 
-pub struct FuncOp {
+pub struct DeclareIntOp {
     operation: Arc<RwLock<Operation>>,
-    identifier: Option<String>,
 }
 
-impl Func for FuncOp {
-    fn identifier(&self) -> Option<String> {
-        self.identifier.clone()
-    }
-    fn set_identifier(&mut self, identifier: String) {
-        self.identifier = Some(identifier);
-    }
-}
-
-impl Op for FuncOp {
+impl Op for DeclareIntOp {
     fn operation_name() -> OperationName {
-        OperationName::new("def".to_string())
+        OperationName::new("HEY CHRISTMAS TREE".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        FuncOp {
-            operation,
-            identifier: None,
-        }
+        DeclareIntOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{}", Self::operation_name())?;
+        write!(f, " {}", self.operation().read().unwrap().results())?;
+        Ok(())
+    }
+}
+
+impl Parse for DeclareIntOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        let name = DeclareIntOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
+        let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
+        let operation = Arc::new(RwLock::new(operation));
+        let op = DeclareIntOp { operation };
+        let op = Arc::new(RwLock::new(op));
+        result.set_defining_op(Some(op.clone()));
+        Ok(op)
+    }
+}
+
+/// `IT'S SHOWTIME`
+///
+/// We do not immediately parse this into some `arnold::FuncOp` in order to
+/// apply a rewrite first:
+///
+/// ```arnoldc
+/// ITS SHOWTIME {
+///   TALK TO THE HAND "Hello, world!"
+/// }
+/// ```
+/// will be rewritten to
+/// ```mlir
+/// func.func @main() -> i32 {
+///   TALK TO THE HAND "Hello, world!"
+///   %0 = arith.constant 0 : i32
+///   return %0 : i32
+/// }
+/// ```
+pub struct BeginMainOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for BeginMainOp {
+    fn operation_name() -> OperationName {
+        // Removed the single quote to make it easier to handle.
+        OperationName::new("ITS SHOWTIME".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        BeginMainOp { operation }
+    }
+    fn is_func(&self) -> bool {
+        true
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -98,7 +236,6 @@ impl Op for FuncOp {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation.try_read().unwrap();
         write!(f, "{} ", operation.name())?;
-        write!(f, "{}", self.identifier().unwrap())?;
         let region = operation.region().unwrap();
         let region = region.try_read().unwrap();
         write!(f, "()")?;
@@ -107,7 +244,7 @@ impl Op for FuncOp {
     }
 }
 
-impl Parse for FuncOp {
+impl Parse for BeginMainOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
@@ -115,18 +252,14 @@ impl Parse for FuncOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
 
-        parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
-        let identifier = parser.expect(TokenKind::BareIdentifier)?;
-        let identifier = identifier.lexeme.clone();
+        let name = BeginMainOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
 
         let operation = Arc::new(RwLock::new(operation));
-        let op = FuncOp {
+        let op = BeginMainOp {
             operation: operation.clone(),
-            identifier: Some(identifier),
         };
         let op = Arc::new(RwLock::new(op));
-        parser.expect(TokenKind::LParen)?;
-        parser.expect(TokenKind::RParen)?;
         let region = parser.region(op.clone())?;
         let mut operation = operation.write().unwrap();
         operation.set_region(Some(region.clone()));
@@ -134,14 +267,27 @@ impl Parse for FuncOp {
     }
 }
 
+/// `TALK TO THE HAND`
+///
+/// Examples:
+/// ```arnoldc
+/// TALK TO THE HAND "Hello, world!"
+///
+/// TALK TO THE HAND x
+/// ```
 pub struct PrintOp {
     operation: Arc<RwLock<Operation>>,
-    text: Option<StringAttr>,
 }
 
 impl PrintOp {
-    pub fn text(&self) -> Option<StringAttr> {
-        self.text.clone()
+    const TEXT_INDEX: usize = 0;
+    pub fn text(&self) -> Arc<RwLock<OpOperand>> {
+        self.operation
+            .operand(Self::TEXT_INDEX)
+            .expect("Operand not set")
+    }
+    pub fn set_text(&mut self, text: Arc<RwLock<OpOperand>>) {
+        self.operation.set_operand(Self::TEXT_INDEX, text);
     }
 }
 
@@ -150,10 +296,7 @@ impl Op for PrintOp {
         OperationName::new("TALK TO THE HAND".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        PrintOp {
-            operation,
-            text: None,
-        }
+        PrintOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -162,8 +305,8 @@ impl Op for PrintOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "TALK TO THE HAND")?;
-        write!(f, " {}", self.text().unwrap())?;
+        write!(f, "{}", Self::operation_name())?;
+        write!(f, " {}", self.text().try_read().unwrap())?;
         Ok(())
     }
 }
@@ -175,18 +318,62 @@ impl Parse for PrintOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        operation.set_name(PrintOp::operation_name());
-        let _talk = parser.expect(TokenKind::BareIdentifier)?;
-        let _to = parser.expect(TokenKind::BareIdentifier)?;
-        let _the = parser.expect(TokenKind::BareIdentifier)?;
-        let _hand = parser.expect(TokenKind::BareIdentifier)?;
+        let name = PrintOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
-        let text = parser.parse_string()?;
-        let op = PrintOp {
+        let text = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
+        let mut op = PrintOp {
             operation: operation.clone(),
-            text: Some(text),
         };
+        op.set_text(text);
+        Ok(Arc::new(RwLock::new(op)))
+    }
+}
 
+pub struct SetInitialValueOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl SetInitialValueOp {
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        self.operation.attributes().get("value").unwrap()
+    }
+}
+
+impl Op for SetInitialValueOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("YOU SET US UP".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        SetInitialValueOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+}
+
+impl Parse for SetInitialValueOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        let name = SetInitialValueOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
+
+        let next = parser.peek();
+        if next.lexeme.starts_with('@') {
+            parser.parse_arnold_constant_into(&mut operation)?;
+        }
+
+        let operation = Arc::new(RwLock::new(operation));
+        let op = SetInitialValueOp {
+            operation: operation.clone(),
+        };
         Ok(Arc::new(RwLock::new(op)))
     }
 }

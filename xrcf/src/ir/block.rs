@@ -78,7 +78,7 @@ impl Block {
             }
         } else {
             panic!(
-                "Expected parent op to be FuncOp, but got {}",
+                "Expected parent op to be a function, but got {}",
                 operation.name()
             );
         }
@@ -121,35 +121,29 @@ impl Block {
             None => self.assignment_in_ops(name),
         }
     }
-    pub fn index_of(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+    pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
-        let ops = ops.read().unwrap();
+        let ops = ops.try_read().unwrap();
         for (i, current) in (&ops).iter().enumerate() {
-            let current = current.read().unwrap();
+            let current = current.try_read().unwrap();
             let current = current.operation();
-            if Arc::ptr_eq(current, &op) {
+            let current = current.try_read().unwrap();
+            if *current == *op {
                 return Some(i);
             }
         }
         None
+    }
+    pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+        self.index_of(&*op.try_read().unwrap())
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
         let mut ops = ops.try_write().unwrap();
         ops.insert(index, op);
     }
-    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
-        let index = self.index_of(later);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Could not find op in block");
-            }
-        };
-        self.insert_op(earlier, index);
-    }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of(earlier);
+        let index = self.index_of_arc(earlier.clone());
         let index = match index {
             Some(index) => index,
             None => {
@@ -158,12 +152,22 @@ impl Block {
         };
         self.insert_op(later, index + 1);
     }
-    pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of(old.clone());
+    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+        let index = self.index_of_arc(later);
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Replace could not find op in block");
+                panic!("Could not find op in block during insert_before");
+            }
+        };
+        self.insert_op(earlier, index);
+    }
+    pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
+        let index = self.index_of_arc(old);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Replace could not find op in block during replace");
             }
         };
         let ops = self.ops();
@@ -171,7 +175,7 @@ impl Block {
         ops[index] = new;
     }
     pub fn remove(&self, op: Arc<RwLock<Operation>>) {
-        let index = self.index_of(op);
+        let index = self.index_of_arc(op);
         match index {
             Some(index) => {
                 let ops = self.ops();
@@ -256,6 +260,7 @@ impl Display for Block {
     }
 }
 
+#[must_use = "the object inside `BlockWithoutParent` should receive a parent"]
 pub struct BlockWithoutParent {
     block: Arc<RwLock<Block>>,
 }
@@ -276,6 +281,9 @@ impl BlockWithoutParent {
 
 pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
+    fn index_of(&self, op: &Operation) -> Option<usize>;
+    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
+    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
@@ -285,6 +293,15 @@ pub trait GuardedBlock {
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
+    }
+    fn index_of(&self, op: &Operation) -> Option<usize> {
+        self.try_read().unwrap().index_of(op)
+    }
+    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
+        self.try_read().unwrap().index_of_arc(op)
+    }
+    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
+        self.try_write().unwrap().insert_after(earlier, later);
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()

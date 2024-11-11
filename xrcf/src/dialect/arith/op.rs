@@ -18,9 +18,12 @@ use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use anyhow::Result;
+use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
+
+const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 pub struct ConstantOp {
     operation: Arc<RwLock<Operation>>,
@@ -29,7 +32,8 @@ pub struct ConstantOp {
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
         let attributes = self.operation.attributes();
-        let value = attributes.get("value").unwrap();
+        let value = attributes.get("value");
+        let value = value.expect("no value for ConstantOp");
         value.clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {
@@ -73,7 +77,7 @@ impl Parse for ConstantOp {
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
@@ -91,6 +95,12 @@ impl Parse for ConstantOp {
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)
+    }
+}
+
+impl Display for ConstantOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.operation.read().unwrap())
     }
 }
 
@@ -207,10 +217,10 @@ impl<T: ParserDispatch> Parser<T> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(&mut operation)?;
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
-        operation.set_operands(parser.parse_op_operands(parent.unwrap())?);
+        operation.set_operands(parser.parse_op_operands(parent.unwrap(), TOKEN_KIND)?);
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);

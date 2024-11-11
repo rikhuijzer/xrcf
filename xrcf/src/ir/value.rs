@@ -1,10 +1,13 @@
 use crate::ir::Attribute;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Types;
+use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
@@ -186,6 +189,7 @@ impl ResultWithoutParent {
     }
 }
 
+#[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
 pub struct ResultsWithoutParent {
     results: Values,
 }
@@ -295,21 +299,9 @@ impl Value {
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.expect("Defining op not set for OpResult");
-        let op = op.try_read().unwrap();
-        let parent = {
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            let parent = operation.parent();
-            parent.expect(&format!("no parent for operation:\n{operation}"))
-        };
-        let block = parent.try_read().unwrap();
-        let index = block.index_of(op.operation().clone());
-        let index = index.unwrap();
-        let ops = block.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = op.operation().successors();
         let mut out = Vec::new();
-        for i in index..ops.len() {
-            let op = ops[i].try_read().unwrap();
+        for op in ops.iter() {
             let operation = op.operation();
             let operation = operation.try_read().unwrap();
             let operands = operation.operands().vec();
@@ -335,10 +327,6 @@ impl Value {
             Value::Variadic => Users::HasNoOpResults,
         }
     }
-    /// Rename the value, and all its users.
-    pub fn rename(&mut self, new_name: &str) {
-        self.set_name(new_name);
-    }
 }
 
 impl Display for Value {
@@ -361,7 +349,7 @@ pub trait GuardedValue {
 impl GuardedValue for Arc<RwLock<Value>> {
     fn rename(&self, new_name: &str) {
         let mut value = self.try_write().unwrap();
-        value.rename(new_name);
+        value.set_name(new_name);
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
         let value = self.try_read().unwrap();
@@ -377,6 +365,14 @@ impl GuardedValue for Arc<RwLock<Value>> {
 #[derive(Clone)]
 pub struct Values {
     values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
+}
+
+use std::sync::RwLockReadGuard;
+
+impl Values {
+    pub fn read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
+        self.values.try_read().unwrap()
+    }
 }
 
 impl Values {
@@ -395,6 +391,25 @@ impl Values {
             .iter()
             .map(|value| value.try_read().unwrap().name().unwrap())
             .collect()
+    }
+    /// The number of values.
+    ///
+    /// At some point, this preferably is replaced by some collection trait.
+    /// But this seems to not be available yet?
+    pub fn len(&self) -> usize {
+        self.values.try_read().unwrap().len()
+    }
+    pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        let values = self.values.try_read().unwrap();
+        for value in values.iter() {
+            let mut value = value.try_write().unwrap();
+            let name = value.name().unwrap();
+            value.set_name(&renamer.rename(&name));
+        }
+        Ok(())
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
     pub fn types(&self) -> Types {
         let values = self.values.try_read().unwrap();
@@ -531,16 +546,35 @@ impl<T: ParserDispatch> Parser<T> {
         let dot = self.check(TokenKind::Dot);
         perc || int || excl || dot
     }
-    /// Parse %0, %1.
-    fn parse_op_results(&mut self) -> Result<ResultsWithoutParent> {
+    /// Parse operation result.
+    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<ResultWithoutParent> {
+        let identifier = self.expect(token_kind)?;
+        let name = identifier.lexeme.clone();
+        let mut op_result = OpResult::default();
+        op_result.set_name(&name);
+        let result = Value::OpResult(op_result);
+        Ok(ResultWithoutParent::new(Arc::new(RwLock::new(result))))
+    }
+    pub fn parse_op_result_into(
+        &mut self,
+        token_kind: TokenKind,
+        operation: &mut Operation,
+    ) -> Result<ResultWithoutParent> {
+        let result = self.parse_op_result(token_kind)?.result;
+        let results = Values::from_vec(vec![result.clone()]);
+        operation.set_results(results.clone());
+        Ok(ResultWithoutParent::new(result))
+    }
+    /// Parse operation results.
+    ///
+    /// Can parse `%0` in `%0 = ...` when `token_kind` is
+    /// `TokenKind::PercentIdentifier`, or `x` in `x = ...` when `token_kind` is
+    /// `TokenKind::BareIdentifier`.
+    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<ResultsWithoutParent> {
         let mut results = vec![];
-        while self.check(TokenKind::PercentIdentifier) {
-            let identifier = self.expect(TokenKind::PercentIdentifier)?;
-            let name = identifier.lexeme.clone();
-            let mut op_result = OpResult::default();
-            op_result.set_name(&name);
-            let result = Value::OpResult(op_result);
-            results.push(Arc::new(RwLock::new(result)));
+        while self.check(token_kind) {
+            let result = self.parse_op_result(token_kind)?.result;
+            results.push(result);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
             }
@@ -554,9 +588,10 @@ impl<T: ParserDispatch> Parser<T> {
     /// This returns the results to allow setting the defining op on them.
     pub fn parse_op_results_into(
         &mut self,
+        token_kind: TokenKind,
         operation: &mut Operation,
     ) -> Result<ResultsWithoutParent> {
-        let results = self.parse_op_results()?;
+        let results = self.parse_op_results(token_kind)?;
         let values = results.values();
         operation.set_results(values.clone());
         Ok(results)
