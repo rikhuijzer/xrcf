@@ -78,6 +78,7 @@ mod tests {
     use anyhow::Result;
     use indoc::indoc;
     use xrcf::convert::RewriteResult;
+    use xrcf::tester::Tester;
 
     fn run_app(args: Vec<&str>, input_text: &str) -> Result<RewriteResult> {
         let cli = cli();
@@ -110,6 +111,7 @@ mod tests {
 
     #[test]
     fn test_pass_order() {
+        Tester::init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 1 : i32
@@ -119,7 +121,7 @@ mod tests {
         };
         // The order of these passes is important.
         let args = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
-        println!("\nBefore {args:?}:\n{src}");
+        tracing::info!("\nBefore {args:?}:\n{src}");
         let result = run_app(args.clone(), src);
         assert!(result.is_ok());
         let actual = match result.unwrap() {
@@ -129,7 +131,7 @@ mod tests {
             }
             RewriteResult::Unchanged => panic!("Expected a change"),
         };
-        println!("\nAfter {args:?}:\n{actual}");
+        tracing::info!("\nAfter {args:?}:\n{actual}");
         assert!(actual.contains("define i32 @main"));
     }
 }

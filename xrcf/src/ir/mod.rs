@@ -74,13 +74,11 @@ pub fn llvm_string_to_bytes(src: &str) -> Vec<u8> {
 fn test_llvm_string_to_bytes() {
     let src = "hello\n";
     let bytes = llvm_string_to_bytes(src);
-    println!("hello\\n: {:?}", bytes);
     assert_eq!(bytes.len(), 6);
     assert_eq!(bytes.last(), Some(&10));
 
     let src = "hello\n\\00";
     let bytes = llvm_string_to_bytes(src);
-    println!("hello\\n\\00: {:?}", bytes);
     assert_eq!(bytes.len(), 7);
     assert_eq!(bytes.get(5), Some(&10));
     assert_eq!(bytes.last(), Some(&0));

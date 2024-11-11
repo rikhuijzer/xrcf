@@ -89,7 +89,6 @@ impl Rewrite for DeclareIntLowering {
         let new_op = arith::ConstantOp::from_operation(operation);
         new_op.set_parent(op.operation().parent().clone().unwrap());
         new_op.set_value(set_initial_value.value());
-        println!("new_op: {}", new_op);
         set_initial_value.remove();
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());

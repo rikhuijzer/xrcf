@@ -190,7 +190,6 @@ impl<T: ParserDispatch> Parser<T> {
         // Not all blocks have a label.
         // let label = self.expect(TokenKind::PercentIdentifier)?;
         // let label = label.lexeme.clone();
-        // println!("label: {}", label);
         // let _equal = self.expect(TokenKind::Equal)?;
         let arguments = Arc::new(vec![]);
         let ops = vec![];

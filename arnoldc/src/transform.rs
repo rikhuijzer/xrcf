@@ -254,7 +254,7 @@ mod tests {
           func.func @main() -> i32 {
             %x = arith.constant 1 : i16
             experimental.printf("x: ")
-            experimental.printf("%d", %0)
+            experimental.printf("%d", %x)
             %0 = arith.constant 0 : i32
             return %0 : i32
           }
