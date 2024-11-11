@@ -190,6 +190,9 @@ impl Parse for DeclareIntOp {
         let op = DeclareIntOp { operation };
         let op = Arc::new(RwLock::new(op));
         result.set_defining_op(Some(op.clone()));
+        let typ = IntegerType::new(16);
+        let typ = Arc::new(RwLock::new(typ));
+        result.set_typ(typ);
         Ok(op)
     }
 }
