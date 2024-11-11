@@ -185,7 +185,7 @@ impl Operation {
         let operands = operands.try_read().unwrap();
         let operand_types = operands
             .iter()
-            .map(|o| o.try_read().unwrap().typ())
+            .map(|o| o.try_read().unwrap().typ().unwrap())
             .collect();
         Types::from_vec(operand_types)
     }
@@ -217,7 +217,7 @@ impl Operation {
         let results = results.try_read().unwrap();
         let result = results.get(index).unwrap();
         let result = result.try_read().unwrap();
-        Some(result.typ())
+        Some(result.typ().unwrap())
     }
     pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()

@@ -218,7 +218,7 @@ impl<T: ParserDispatch> Parser<T> {
         typ: Arc<RwLock<dyn Type>>,
     ) -> Result<()> {
         let operand = operand.try_read().unwrap();
-        let operand_typ = operand.typ();
+        let operand_typ = operand.typ()?;
         let operand_typ = operand_typ.try_read().unwrap();
         let token = self.previous().clone();
         let typ = typ.try_read().unwrap();

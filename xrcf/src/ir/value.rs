@@ -258,14 +258,15 @@ impl Value {
             Value::Variadic => None,
         }
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         match self {
-            Value::BlockArgument(arg) => arg.typ.clone(),
-            Value::Constant(constant) => constant.typ(),
-            Value::FuncResult(result) => result.typ.clone(),
-            Value::OpResult(result) => result
-                .typ()
-                .expect(&format!("Type was not set for OpResult {}", self)),
+            Value::BlockArgument(arg) => Ok(arg.typ.clone()),
+            Value::Constant(constant) => Ok(constant.typ()),
+            Value::FuncResult(result) => Ok(result.typ.clone()),
+            Value::OpResult(result) => match result.typ() {
+                Some(typ) => Ok(typ),
+                None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
+            },
             Value::Variadic => todo!(),
         }
     }
@@ -343,7 +344,7 @@ impl Display for Value {
 
 pub trait GuardedValue {
     fn rename(&self, new_name: &str);
-    fn typ(&self) -> Arc<RwLock<dyn Type>>;
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
 }
 
 impl GuardedValue for Arc<RwLock<Value>> {
@@ -351,7 +352,7 @@ impl GuardedValue for Arc<RwLock<Value>> {
         let mut value = self.try_write().unwrap();
         value.set_name(new_name);
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.try_read().unwrap();
         value.typ()
     }
@@ -370,7 +371,7 @@ pub struct Values {
 use std::sync::RwLockReadGuard;
 
 impl Values {
-    pub fn read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
+    pub fn try_read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
         self.values.try_read().unwrap()
     }
 }
@@ -415,7 +416,7 @@ impl Values {
         let values = self.values.try_read().unwrap();
         let types = values
             .iter()
-            .map(|value| value.try_read().unwrap().typ())
+            .map(|value| value.typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
@@ -470,7 +471,7 @@ impl Values {
         let values = self.values.try_read().unwrap();
         for value in values.iter() {
             let mut value = value.try_write().unwrap();
-            let typ = value.typ();
+            let typ = value.typ().unwrap();
             let typ = T::convert_type(&typ)?;
             value.set_type(typ);
         }

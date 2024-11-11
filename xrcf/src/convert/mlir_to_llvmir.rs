@@ -147,7 +147,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
             if let Value::Variadic = &*argument_rd {
                 new_arguments.push(argument.clone());
             } else {
-                let typ = argument.typ();
+                let typ = argument.typ().unwrap();
                 let typ = typ.try_read().unwrap();
                 if typ.as_any().is::<dialect::llvm::PointerType>() {
                     let typ = targ3t::llvmir::PointerType::from_str("ptr");
@@ -254,7 +254,7 @@ impl Rewrite for StoreLowering {
         {
             let op_operand = op.value();
             let value = op_operand.value();
-            let value_typ = value.typ();
+            let value_typ = value.typ().unwrap();
             let value_typ = value_typ.try_read().unwrap();
             let value_typ = value_typ
                 .as_any()
