@@ -2,7 +2,6 @@ use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -307,7 +306,7 @@ impl Operation {
     }
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent();
-        let parent = parent.expect(&format!("no parent for operation:\n{self}"));
+        let parent = parent.expect("no parent");
         let index = parent.index_of(self).expect("expected index");
         let ops = parent.ops();
         let ops = ops.try_read().unwrap();

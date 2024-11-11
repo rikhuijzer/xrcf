@@ -1,8 +1,8 @@
 use crate::ir::Attribute;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedOp;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
