@@ -7,9 +7,9 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::OpResult;
 use crate::ir::Region;
-use crate::ir::ResultWithoutParent;
 use crate::ir::Type;
 use crate::ir::Types;
+use crate::ir::UnsetOpResult;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
@@ -185,7 +185,7 @@ impl Operation {
         let operands = operands.try_read().unwrap();
         let operand_types = operands
             .iter()
-            .map(|o| o.try_read().unwrap().typ())
+            .map(|o| o.try_read().unwrap().typ().unwrap())
             .collect();
         Types::from_vec(operand_types)
     }
@@ -217,7 +217,7 @@ impl Operation {
         let results = results.try_read().unwrap();
         let result = results.get(index).unwrap();
         let result = result.try_read().unwrap();
-        Some(result.typ())
+        Some(result.typ().unwrap())
     }
     pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.region.clone()
@@ -321,7 +321,7 @@ impl Operation {
         Ok(())
     }
     /// Add a new op result with given name.
-    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> ResultWithoutParent {
+    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> UnsetOpResult {
         let results = self.results();
         let vec = results.vec();
         let mut vec = vec.try_write().unwrap();
@@ -332,7 +332,7 @@ impl Operation {
         let op_result = Value::OpResult(result);
         let op_result = Arc::new(RwLock::new(op_result));
         vec.push(op_result.clone());
-        ResultWithoutParent::new(op_result)
+        UnsetOpResult::new(op_result)
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
         self.region = region;

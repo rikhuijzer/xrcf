@@ -107,7 +107,7 @@ impl Op for AllocaOp {
         write!(f, " x ")?;
         write!(f, "{}", self.element_type().expect("no element type"))?;
         write!(f, " : ")?;
-        let array_size_type = array_size.typ();
+        let array_size_type = array_size.typ().unwrap();
         let array_size_type = array_size_type.try_read().unwrap();
         write!(f, "({})", array_size_type)?;
         write!(f, " -> ")?;
@@ -543,10 +543,10 @@ impl Op for StoreOp {
         write!(f, " {}", operation.operands())?;
         write!(f, " : ")?;
         let value = self.value();
-        write!(f, "{}", value.typ().try_read().unwrap())?;
+        write!(f, "{}", value.typ().unwrap().try_read().unwrap())?;
         write!(f, ", ")?;
         let addr = self.addr();
-        write!(f, "{}", addr.typ().try_read().unwrap())?;
+        write!(f, "{}", addr.typ().unwrap().try_read().unwrap())?;
         Ok(())
     }
 }

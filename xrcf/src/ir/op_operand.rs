@@ -43,7 +43,7 @@ impl OpOperand {
             Value::Variadic => None,
         }
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.value.try_read().unwrap();
         value.typ()
     }
@@ -61,7 +61,7 @@ impl Display for OpOperand {
 
 pub trait GuardedOpOperand {
     fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
-    fn typ(&self) -> Arc<RwLock<dyn Type>>;
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
     fn value(&self) -> Arc<RwLock<Value>>;
     fn set_value(&mut self, value: Arc<RwLock<Value>>);
 }
@@ -71,7 +71,7 @@ impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
         let op = self.try_read().unwrap();
         op.defining_op()
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         self.try_read().unwrap().typ()
     }
     fn value(&self) -> Arc<RwLock<Value>> {

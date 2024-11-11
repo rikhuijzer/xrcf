@@ -172,31 +172,35 @@ impl Display for OpResult {
     }
 }
 
-pub struct ResultWithoutParent {
+#[must_use = "the object inside `UnsetOpResult` should be further initialized, see the setter methods"]
+pub struct UnsetOpResult {
     result: Arc<RwLock<Value>>,
 }
 
-impl ResultWithoutParent {
+impl UnsetOpResult {
     pub fn new(result: Arc<RwLock<Value>>) -> Self {
         assert!(
             matches!(&*result.try_read().unwrap(), Value::OpResult(_)),
             "Expected OpResult"
         );
-        ResultWithoutParent { result }
+        UnsetOpResult { result }
     }
     pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.result.try_write().unwrap().set_defining_op(op);
     }
+    pub fn set_typ(&self, typ: Arc<RwLock<dyn Type>>) {
+        self.result.try_write().unwrap().set_type(typ);
+    }
 }
 
 #[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
-pub struct ResultsWithoutParent {
+pub struct UnsetOpResults {
     results: Values,
 }
 
-impl ResultsWithoutParent {
+impl UnsetOpResults {
     pub fn new(results: Values) -> Self {
-        ResultsWithoutParent { results }
+        UnsetOpResults { results }
     }
     pub fn values(&self) -> Values {
         self.results.clone()
@@ -204,6 +208,9 @@ impl ResultsWithoutParent {
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
         let values = self.values();
         values.set_defining_op(op);
+    }
+    pub fn set_types(&self, _types: Vec<Arc<RwLock<dyn Type>>>) {
+        todo!("Not implemented")
     }
 }
 
@@ -258,14 +265,15 @@ impl Value {
             Value::Variadic => None,
         }
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         match self {
-            Value::BlockArgument(arg) => arg.typ.clone(),
-            Value::Constant(constant) => constant.typ(),
-            Value::FuncResult(result) => result.typ.clone(),
-            Value::OpResult(result) => result
-                .typ()
-                .expect(&format!("Type was not set for OpResult {}", self)),
+            Value::BlockArgument(arg) => Ok(arg.typ.clone()),
+            Value::Constant(constant) => Ok(constant.typ()),
+            Value::FuncResult(result) => Ok(result.typ.clone()),
+            Value::OpResult(result) => match result.typ() {
+                Some(typ) => Ok(typ),
+                None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
+            },
             Value::Variadic => todo!(),
         }
     }
@@ -343,7 +351,7 @@ impl Display for Value {
 
 pub trait GuardedValue {
     fn rename(&self, new_name: &str);
-    fn typ(&self) -> Arc<RwLock<dyn Type>>;
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
 }
 
 impl GuardedValue for Arc<RwLock<Value>> {
@@ -351,7 +359,7 @@ impl GuardedValue for Arc<RwLock<Value>> {
         let mut value = self.try_write().unwrap();
         value.set_name(new_name);
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.try_read().unwrap();
         value.typ()
     }
@@ -370,7 +378,7 @@ pub struct Values {
 use std::sync::RwLockReadGuard;
 
 impl Values {
-    pub fn read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
+    pub fn try_read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
         self.values.try_read().unwrap()
     }
 }
@@ -415,7 +423,7 @@ impl Values {
         let values = self.values.try_read().unwrap();
         let types = values
             .iter()
-            .map(|value| value.try_read().unwrap().typ())
+            .map(|value| value.typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
@@ -470,7 +478,7 @@ impl Values {
         let values = self.values.try_read().unwrap();
         for value in values.iter() {
             let mut value = value.try_write().unwrap();
-            let typ = value.typ();
+            let typ = value.typ().unwrap();
             let typ = T::convert_type(&typ)?;
             value.set_type(typ);
         }
@@ -547,30 +555,30 @@ impl<T: ParserDispatch> Parser<T> {
         perc || int || excl || dot
     }
     /// Parse operation result.
-    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<ResultWithoutParent> {
+    pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
         let mut op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
-        Ok(ResultWithoutParent::new(Arc::new(RwLock::new(result))))
+        Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))
     }
     pub fn parse_op_result_into(
         &mut self,
         token_kind: TokenKind,
         operation: &mut Operation,
-    ) -> Result<ResultWithoutParent> {
+    ) -> Result<UnsetOpResult> {
         let result = self.parse_op_result(token_kind)?.result;
         let results = Values::from_vec(vec![result.clone()]);
         operation.set_results(results.clone());
-        Ok(ResultWithoutParent::new(result))
+        Ok(UnsetOpResult::new(result))
     }
     /// Parse operation results.
     ///
     /// Can parse `%0` in `%0 = ...` when `token_kind` is
     /// `TokenKind::PercentIdentifier`, or `x` in `x = ...` when `token_kind` is
     /// `TokenKind::BareIdentifier`.
-    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<ResultsWithoutParent> {
+    pub fn parse_op_results(&mut self, token_kind: TokenKind) -> Result<UnsetOpResults> {
         let mut results = vec![];
         while self.check(token_kind) {
             let result = self.parse_op_result(token_kind)?.result;
@@ -581,7 +589,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         let results = Arc::new(RwLock::new(results));
         let values = Values { values: results };
-        Ok(ResultsWithoutParent::new(values))
+        Ok(UnsetOpResults::new(values))
     }
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
@@ -590,7 +598,7 @@ impl<T: ParserDispatch> Parser<T> {
         &mut self,
         token_kind: TokenKind,
         operation: &mut Operation,
-    ) -> Result<ResultsWithoutParent> {
+    ) -> Result<UnsetOpResults> {
         let results = self.parse_op_results(token_kind)?;
         let values = results.values();
         operation.set_results(values.clone());

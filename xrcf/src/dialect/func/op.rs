@@ -7,12 +7,12 @@ use crate::ir::GuardedOperation;
 use crate::ir::GuardedRegion;
 use crate::ir::IntegerType;
 use crate::ir::Op;
-use crate::ir::OpWithoutParent;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
+use crate::ir::UnsetOp;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
@@ -254,7 +254,7 @@ pub struct FuncOp {
 
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
-    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> OpWithoutParent {
+    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
         let read = op.try_read().unwrap();
         let ops = read.ops();
         if ops.is_empty() {
@@ -275,7 +275,7 @@ impl FuncOp {
             let last = ops.last().unwrap();
             last.insert_after(op.clone());
         }
-        OpWithoutParent::new(op.clone())
+        UnsetOp::new(op.clone())
     }
 }
 

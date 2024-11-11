@@ -137,12 +137,17 @@ impl Tester {
         if !op.name().to_string().contains("module") {
             assert!(
                 op.operation().parent().is_some(),
-                "op without parent:\n{}",
+                "parent was not set for:\n{}",
                 op.try_read().unwrap()
             );
+            let results = op.operation().results();
+            for result in results.try_read().iter() {
+                let value = result.try_read().unwrap();
+                assert!(value.typ().is_ok(), "type was not set for {value}");
+            }
         }
     }
-    /// Run some extra verification on the IR (usually on a module).
+    /// Run some extra verification on the IR.
     ///
     /// This method can be used to run some extra verification on generated IR.
     /// MLIR runs verification inside the production code, but XRCF has more

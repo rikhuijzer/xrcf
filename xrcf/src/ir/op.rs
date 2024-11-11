@@ -224,12 +224,12 @@ impl<T: ParserDispatch> Parser<T> {
     }
 }
 
-#[must_use = "the object inside `OpWithoutParent` should receive a parent"]
-pub struct OpWithoutParent(Arc<RwLock<dyn Op>>);
+#[must_use = "the object inside `UnsetOp` should be further initialized, see the setter methods"]
+pub struct UnsetOp(Arc<RwLock<dyn Op>>);
 
-impl OpWithoutParent {
+impl UnsetOp {
     pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
-        OpWithoutParent(op)
+        UnsetOp(op)
     }
     pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
         let op = self.0.try_read().unwrap();
