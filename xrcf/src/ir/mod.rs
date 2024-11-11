@@ -32,6 +32,8 @@ pub use operation::display_region_inside_func;
 pub use operation::GuardedOperation;
 pub use operation::Operation;
 pub use operation::OperationName;
+pub use operation::RenameBareToPercent;
+pub use operation::VariableRenamer;
 pub use region::GuardedRegion;
 pub use region::Region;
 pub use typ::APInt;

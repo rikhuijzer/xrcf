@@ -134,6 +134,24 @@ fn set_or_grow_by_one<T>(vec: &mut Vec<T>, index: usize, value: T) {
     }
 }
 
+pub trait VariableRenamer {
+    fn rename(&self, name: &str) -> String;
+}
+
+/// Rename bare variables `x` to percent variables `%x`.
+///
+/// This step is necessary when going from programming languages like Python to
+/// MLIR. This object can be passed to [Operation::rename_variables] during a
+/// conversion pass.
+pub struct RenameBareToPercent;
+
+impl VariableRenamer for RenameBareToPercent {
+    fn rename(&self, name: &str) -> String {
+        assert!(!name.starts_with('%'));
+        format!("%{}", name)
+    }
+}
+
 impl Operation {
     pub fn new(
         name: OperationName,
@@ -227,6 +245,10 @@ impl Operation {
             None => return None,
         };
         Some(parent)
+    }
+    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        let results = self.results();
+        results.rename_variables(renamer)
     }
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
@@ -418,6 +440,7 @@ pub trait GuardedOperation {
     fn operands(&self) -> OpOperands;
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>>;
+    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()>;
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
     fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
@@ -458,6 +481,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
         self.try_read().unwrap().region()
+    }
+    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        self.try_read().unwrap().rename_variables(renamer)
     }
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
         self.try_read().unwrap().result_type(index)

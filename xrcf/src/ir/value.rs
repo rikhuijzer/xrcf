@@ -5,6 +5,7 @@ use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Types;
+use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
@@ -336,10 +337,6 @@ impl Value {
             Value::Variadic => Users::HasNoOpResults,
         }
     }
-    /// Rename the value, and all its users.
-    pub fn rename(&mut self, new_name: &str) {
-        self.set_name(new_name);
-    }
 }
 
 impl Display for Value {
@@ -362,7 +359,7 @@ pub trait GuardedValue {
 impl GuardedValue for Arc<RwLock<Value>> {
     fn rename(&self, new_name: &str) {
         let mut value = self.try_write().unwrap();
-        value.rename(new_name);
+        value.set_name(new_name);
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
         let value = self.try_read().unwrap();
@@ -411,6 +408,15 @@ impl Values {
     /// But this seems to not be available yet?
     pub fn len(&self) -> usize {
         self.values.try_read().unwrap().len()
+    }
+    pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
+        let values = self.values.try_read().unwrap();
+        for value in values.iter() {
+            let mut value = value.try_write().unwrap();
+            let name = value.name().unwrap();
+            value.set_name(&renamer.rename(&name));
+        }
+        Ok(())
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0

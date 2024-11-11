@@ -23,8 +23,12 @@ use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
+use xrcf::ir::RenameBareToPercent;
 use xrcf::ir::StringAttr;
 use xrcf::ir::Value;
+use xrcf::ir::VariableRenamer;
+
+const RENAMER: RenameBareToPercent = RenameBareToPercent;
 
 struct CallLowering;
 
@@ -72,7 +76,7 @@ impl Rewrite for DeclareIntLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
-        // need to rename OpResult from `x` to `%x`.
+        op.operation().rename_variables(&RENAMER)?;
 
         let successors = op.operation().successors();
         let set_initial_value = successors.first().unwrap();
