@@ -304,7 +304,7 @@ impl Operation {
         let result_types = vec![result_type];
         self.set_anonymous_results(result_types)
     }
-    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent();
         let parent = parent.expect("no parent");
         let index = parent.index_of(self).expect("expected index");
