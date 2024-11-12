@@ -134,8 +134,8 @@ fn test_if_else() {
     let src = indoc! {r#"
     module {
       func.func @main() -> i32 {
-        %false = arith.constant false
-        cf.cond_br %false, ^bb1, ^bb2
+        %0 = arith.constant false
+        cf.cond_br %0, ^bb1, ^bb2
       ^bb1:  // pred: ^bb0
         %c3_i32 = arith.constant 3 : i32
         cf.br ^bb3(%c3_i32 : i32)

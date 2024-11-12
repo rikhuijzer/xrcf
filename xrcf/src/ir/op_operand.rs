@@ -187,9 +187,7 @@ impl<T: ParserDispatch> Parser<T> {
         token_kind: TokenKind,
     ) -> Result<OpOperands> {
         let mut arguments = vec![];
-        while self.peek().kind == TokenKind::PercentIdentifier
-            || self.peek().kind == TokenKind::String
-        {
+        while self.peek().kind == token_kind || self.peek().kind == TokenKind::String {
             let operand = self.parse_op_operand(parent.clone(), token_kind)?;
             arguments.push(operand);
             if self.check(TokenKind::Comma) {
