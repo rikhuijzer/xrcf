@@ -161,6 +161,6 @@ Although the compiler framework is not yet feature complete, if you want to buil
 - [circt](https://github.com/llvm/circt): A compiler for hardware design.
 - [mojo](https://www.modular.com/mojo): A new programming language for AI by Modular.
 
-Or, you could also build a language for a different movie star.
-Or your favorite sports team.
+Or you could build a compiler for a different movie star.
+Or your favorite tensor processing unit.
 It's up to you.

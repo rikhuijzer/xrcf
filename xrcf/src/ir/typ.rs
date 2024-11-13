@@ -232,9 +232,6 @@ impl<T: ParserDispatch> Parser<T> {
         }
         Ok(())
     }
-    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
-        T::parse_type(self)
-    }
     /// Parse types until a closing parenthesis.
     pub fn parse_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
         let mut types = vec![];

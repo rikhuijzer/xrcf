@@ -16,6 +16,7 @@ mod value;
 pub use attribute::AnyAttr;
 pub use attribute::Attribute;
 pub use attribute::Attributes;
+pub use attribute::BooleanAttr;
 pub use attribute::IntegerAttr;
 pub use attribute::StringAttr;
 pub use block::Block;

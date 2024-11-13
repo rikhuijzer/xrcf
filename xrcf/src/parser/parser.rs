@@ -3,7 +3,9 @@ use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
+use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -24,9 +26,9 @@ use std::sync::RwLock;
 
 /// Interface to add custom operations to the parser.
 ///
-/// Downstream crates can implement this trait to support custom parsing. The
-/// default implementation can only know about operations defined in this crate.
-/// To support custom operations, implement this trait with custom logic, see
+/// Clients can implement this trait to support custom parsing. The default
+/// implementation can only know about operations defined in this crate.  To
+/// support custom operations, implement this trait with custom logic, see
 /// `DefaultParserDispatch` for an example.
 pub trait ParserDispatch {
     /// Parse an operation.
@@ -40,11 +42,26 @@ pub trait ParserDispatch {
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>>
     where
         Self: Sized;
+    /// Return true if the next token is a boolean.
+    ///
+    /// Clients can implement this trait to support custom boolean parsing.
+    fn is_boolean<T: ParserDispatch>(parser: &mut Parser<T>) -> bool {
+        let peek = parser.peek();
+        peek.kind == TokenKind::BareIdentifier && (peek.lexeme == "true" || peek.lexeme == "false")
+    }
+    /// Parse a MLIR-style boolean such as `true : i1` or `false : i1`.
+    ///
+    /// Clients can implement this trait to support custom boolean parsing.
+    fn parse_boolean<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<Arc<dyn Attribute>> {
+        let token = parser.expect(TokenKind::BareIdentifier)?;
+        let value = BooleanAttr::from_str(&token.lexeme);
+        Ok(Arc::new(value))
+    }
 }
 
 /// Default operation parser.
 ///
-/// This parser knows about all operations defined in this crate.  For
+/// This parser knows about all operations defined in this crate. For
 /// operations in external dialects, define another parser dispatcher and use
 /// it.
 pub struct DefaultParserDispatch;
@@ -316,7 +333,20 @@ impl<T: ParserDispatch> Parser<T> {
         };
         Ok(op)
     }
+    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
+        T::parse_type(self)
+    }
+    pub fn is_boolean(&mut self) -> bool {
+        T::is_boolean(self)
+    }
+    pub fn parse_boolean(&mut self) -> Result<Arc<dyn Attribute>> {
+        T::parse_boolean(self)
+    }
     /// Parse a type to a string.
+    ///
+    /// This is used to parse types without having to backtrack or do multiple
+    /// peeks. Instead, this method provides a full string which then can be
+    /// passed around.
     ///
     /// Examples:
     /// ```mlir
