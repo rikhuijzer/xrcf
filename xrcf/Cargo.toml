@@ -3,12 +3,12 @@ name = "xrcf"
 description = "eXtensible and Reusable Compiler Framework"
 keywords = ["compiler", "framework"]
 categories = ["compilers"]
-version = "0.2.0"
-authors = ["xrcf contributors"]
-edition = "2021"
-license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://git.huijzer.xyz/xrcf/xrcf"
-homepage = "https://xrcf.org"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [dependencies]
 anyhow = "1.0.86"

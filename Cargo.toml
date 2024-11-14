@@ -7,9 +7,9 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0"
+version = "1.0.0"
 authors = ["xrcf contributors"]
 edition = "2021"
 license = "Apache-2.0 WITH LLVM-exception"
-repository = "https://git.huijzer.xyz/xrcf/xrcf"
+repository = "https://github.com/rikhuijzer/xrcf"
 homepage = "https://xrcf.org"
