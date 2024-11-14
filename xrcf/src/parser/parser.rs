@@ -1,4 +1,5 @@
 use crate::dialect::arith;
+use crate::dialect::cf;
 use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
@@ -74,6 +75,8 @@ pub fn default_dispatch<T: ParserDispatch>(
     match name.lexeme.clone().as_str() {
         "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
         "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+        "cf.cond_br" => <cf::CondBranchOp as Parse>::op(parser, parent),
+        "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
         "func.call" => <func::CallOp as Parse>::op(parser, parent),
         "func.func" => <func::FuncOp as Parse>::op(parser, parent),
         "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
@@ -86,7 +89,6 @@ pub fn default_dispatch<T: ParserDispatch>(
         "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
-        "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));
