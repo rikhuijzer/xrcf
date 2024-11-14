@@ -17,6 +17,7 @@ use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
 
+/// A transformation pass (e.g., `--convert-func-to-llvm`).
 pub struct SinglePass {
     pass: String,
 }
@@ -43,6 +44,7 @@ impl SinglePass {
     }
 }
 
+/// A collection of [SinglePass]es.
 pub struct Passes {
     passes: Vec<SinglePass>,
 }
@@ -103,6 +105,7 @@ pub trait TransformDispatch {
 /// This default implementation knows only passes that are implemented in xrcf.
 pub struct DefaultTransformDispatch;
 
+/// Initialize logging with the given level.
 pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(level)
@@ -126,6 +129,9 @@ impl TransformDispatch for DefaultTransformDispatch {
     }
 }
 
+/// Collection of passes that are available in xrcf.
+///
+/// For an example on how to use this, see the usage in the `arnoldc/` directory.
 pub fn default_passes() -> Vec<Arg> {
     vec![
         Arg::new("convert-experimental-to-mlir")

@@ -2,7 +2,7 @@
 //!
 //! Below is a a high-level overview of xrcf.
 //! To instead see the code in action, see the example compiler in the
-//! [`xr-example` directory](https://github.com/rikhuijzer/xrcf/tree/main/xr-example).
+//! [`arnoldc` directory](https://github.com/rikhuijzer/xrcf/tree/main/arnoldc).
 //!
 //! This project provides tools to build your own compiler.
 //! What follows is some background on compilers and how this project can help you:
@@ -23,10 +23,10 @@
 //! This is where passes come in.
 //! A pass is a group of transformations that are applied to the IR.
 //! For example, to compile to CPU via LLVM, you would use the passes `--convert-func-to-llvm` and `--convert-llvm-to-llvm-ir`.
-//! And to compile to GPU, you would use the passes `--convert-func-to-gpu`.
+//! And to compile to GPU, you would use `--convert-func-to-gpu`.
 //!
 //! This project gives you these building blocks.
-//! It already includes some default IR and default passes, but more importantly you can also add your own.
+//! It contains some default IR and default passes, but more importantly you can also add your own.
 //! This means that if you want to write your own compiler for your language, you only have to convert your code into the default IR that is inside this project, and then you can choose which passes you want to use in which situation.
 //!
 //! ## Long-term Goal

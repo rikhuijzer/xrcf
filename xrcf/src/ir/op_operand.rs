@@ -130,7 +130,9 @@ impl Display for OpOperands {
 
 impl<T: ParserDispatch> Parser<T> {
     fn valid_op_operand(&mut self, var_token_kind: TokenKind) -> bool {
-        self.peek().kind == var_token_kind || self.peek().kind == TokenKind::String || self.peek().kind == TokenKind::CaretIdentifier
+        self.peek().kind == var_token_kind
+            || self.peek().kind == TokenKind::String
+            || self.peek().kind == TokenKind::CaretIdentifier
     }
     /// Parse an OpOperand like %0, x, or "hello".
     ///
@@ -159,7 +161,6 @@ impl<T: ParserDispatch> Parser<T> {
             let operand = OpOperand::new(assignment);
             Ok(Arc::new(RwLock::new(operand)))
         } else if next.kind == TokenKind::CaretIdentifier {
-
             // TODO MAYBE LETS JUST PARSE THEM DIFFERENT.
             // ITs not an op operand, it's a pointer to a region.
             // nah it's an op operand. If it's placed there, a lot of code

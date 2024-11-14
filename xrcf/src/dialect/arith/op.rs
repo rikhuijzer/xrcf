@@ -25,7 +25,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 /// The token kind used for variables in this dialect.
-/// 
+///
 /// We have to set this variable in each dialect separately because different
 /// dialects may use different token kinds for variables.
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;

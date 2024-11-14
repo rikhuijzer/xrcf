@@ -239,22 +239,22 @@ impl Display for Variadic {
 }
 
 /// An instance of a value (SSA, variadic, or constant) in the IR.
-/// 
+///
 /// The primary purpose of a [Value] is to be pointed to by operands. This means
 /// that a [Value] is typically an [OpResult]. Next, [OpOperand]s point to this
 /// [Value]. So, in the following example:
-/// 
+///
 /// ```mlir
 /// %x = arith.constant 1 : i64
 /// %y = arith.constant 2 : i64
 /// %z = arith.addi %x, %y
 /// ```
-/// 
+///
 /// The [OpOperand] `%x` in the last line points to the [OpResult] defined by
 /// the [Operation] in the first line. There are multiple reasons for pointing
 /// directly to the place where the SSA variable is created, one of which is to
 /// verify during parsing that the SSA variable is created before it is used.
-/// 
+///
 /// We also express a [Constant] as a [Value] because it allows us to keep track
 /// of the order of the operands in the [Operation] `operands` field.
 pub enum Value {
