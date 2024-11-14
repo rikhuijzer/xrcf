@@ -239,10 +239,22 @@ impl Display for Variadic {
 }
 
 /// An instance of a value (SSA, variadic, or constant) in the IR.
-///
-/// The benefit of also expressing a [Constant] as a [Value] is that it allows
-/// us to keep track of the order of the operands in the [Operation] `operands`
-/// field.
+/// 
+/// The primary purpose of a [Value] is to express operands. This means that a
+/// [Value] is typically an [OpResult], which means it typically points to a
+/// result of an [Operation].
+/// 
+/// ```mlir
+/// %x = arith.constant 1 : i64
+/// %y = arith.constant 2 : i64
+/// %z = arith.addi %x, %y
+/// ```
+/// 
+/// The [Value] `%x` in the last line points to the [OpResult] defined by the
+/// [Operation] in the first line.
+/// 
+/// We also express a [Constant] as a [Value] because it allows us to keep track
+/// of the order of the operands in the [Operation] `operands` field.
 pub enum Value {
     BlockArgument(BlockArgument),
     Constant(Constant),

@@ -129,19 +129,22 @@ impl Display for OpOperands {
 }
 
 impl<T: ParserDispatch> Parser<T> {
+    fn valid_op_operand(&mut self, var_token_kind: TokenKind) -> bool {
+        self.peek().kind == var_token_kind || self.peek().kind == TokenKind::String || self.peek().kind == TokenKind::CaretIdentifier
+    }
     /// Parse an OpOperand like %0, x, or "hello".
     ///
-    /// `variable_token_kind` should be [TokenKind::PercentIdentifier] in MLIR
+    /// `var_token_kind` should be [TokenKind::PercentIdentifier] in MLIR
     /// (e.g., `%x` in `%c = arith.addi %x, %y`), but other languages may use
     /// different syntax (e.g., Python would use `x` in `c = x + y`).
     pub fn parse_op_operand(
         &mut self,
         parent: Arc<RwLock<Block>>,
-        token_kind: TokenKind,
+        var_token_kind: TokenKind,
     ) -> Result<Arc<RwLock<OpOperand>>> {
         let next = self.peek();
-        if next.kind == token_kind {
-            let identifier = self.expect(token_kind)?;
+        if next.kind == var_token_kind {
+            let identifier = self.expect(var_token_kind)?;
             let name = identifier.lexeme.clone();
             let block = parent.try_read().expect("no parent");
             let assignment = block.assignment(&name);
@@ -163,6 +166,13 @@ impl<T: ParserDispatch> Parser<T> {
             let text = Arc::new(RwLock::new(text));
             let operand = OpOperand::new(text);
             Ok(Arc::new(RwLock::new(operand)))
+        } else if next.kind == TokenKind::CaretIdentifier {
+            let identifier = self.expect(TokenKind::CaretIdentifier)?;
+            // let text = Value::Constant(text);
+            // let text = Arc::new(RwLock::new(text));
+            // let operand = OpOperand::new(text);
+            // Ok(Arc::new(RwLock::new(operand)))
+            todo!()
         } else {
             let msg = "Expected operand.";
             let msg = self.error(&next, msg);
@@ -173,10 +183,10 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_operand_into(
         &mut self,
         parent: Arc<RwLock<Block>>,
-        token_kind: TokenKind,
+        var_token_kind: TokenKind,
         operation: &mut Operation,
     ) -> Result<Arc<RwLock<OpOperand>>> {
-        let operand = self.parse_op_operand(parent, token_kind)?;
+        let operand = self.parse_op_operand(parent, var_token_kind)?;
         operation.set_operand(0, operand.clone());
         Ok(operand)
     }
@@ -184,11 +194,11 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_operands(
         &mut self,
         parent: Arc<RwLock<Block>>,
-        token_kind: TokenKind,
+        var_token_kind: TokenKind,
     ) -> Result<OpOperands> {
         let mut arguments = vec![];
-        while self.peek().kind == token_kind || self.peek().kind == TokenKind::String {
-            let operand = self.parse_op_operand(parent.clone(), token_kind)?;
+        while self.valid_op_operand(var_token_kind) {
+            let operand = self.parse_op_operand(parent.clone(), var_token_kind)?;
             arguments.push(operand);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
@@ -202,10 +212,10 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_operands_into(
         &mut self,
         parent: Arc<RwLock<Block>>,
-        token_kind: TokenKind,
+        var_token_kind: TokenKind,
         operation: &mut Operation,
     ) -> Result<OpOperands> {
-        let operands = self.parse_op_operands(parent, token_kind)?;
+        let operands = self.parse_op_operands(parent, var_token_kind)?;
         operation.set_operands(operands.clone());
         Ok(operands)
     }

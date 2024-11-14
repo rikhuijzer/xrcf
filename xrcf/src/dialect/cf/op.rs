@@ -61,11 +61,12 @@ impl Parse for CondBranchOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
+        parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = CondBranchOp { operation };
         let op = Arc::new(RwLock::new(op));
-        todo!()
+        Ok(op)
     }
 }
 
