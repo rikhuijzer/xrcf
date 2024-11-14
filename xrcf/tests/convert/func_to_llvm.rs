@@ -135,16 +135,16 @@ fn test_if_else() {
     module {
       func.func @main() -> i32 {
         %0 = arith.constant false
-        cf.cond_br %0, ^bb1, ^bb2
-      ^bb1:  // pred: ^bb0
+        cf.cond_br %0, ^then, ^else
+      ^then:  // pred: ^bb0
         %c3_i32 = arith.constant 3 : i32
         cf.br ^bb3(%c3_i32 : i32)
-      ^bb2:  // pred: ^bb0
+      ^else:  // pred: ^bb0
         %c4_i32 = arith.constant 4 : i32
-        cf.br ^bb3(%c4_i32 : i32)
-      ^bb3(%0: i32):  // 2 preds: ^bb1, ^bb2
-        cf.br ^bb4
-      ^bb4:  // pred: ^bb3
+        cf.br ^merge(%c4_i32 : i32)
+      ^merge(%0: i32):  // 2 preds: ^then, ^else
+        cf.br ^exit
+      ^exit:  // pred: ^merge
         return %0 : i32
       }
     }
