@@ -158,6 +158,19 @@ impl<T: ParserDispatch> Parser<T> {
             };
             let operand = OpOperand::new(assignment);
             Ok(Arc::new(RwLock::new(operand)))
+        } else if next.kind == TokenKind::CaretIdentifier {
+
+            // TODO MAYBE LETS JUST PARSE THEM DIFFERENT.
+            // ITs not an op operand, it's a pointer to a region.
+            // nah it's an op operand. If it's placed there, a lot of code
+            // can be re-used.
+
+            let identifier = self.expect(TokenKind::CaretIdentifier)?;
+            // let text = Value::Constant(text);
+            // let text = Arc::new(RwLock::new(text));
+            // let operand = OpOperand::new(text);
+            // Ok(Arc::new(RwLock::new(operand)))
+            todo!()
         } else if next.kind == TokenKind::String {
             let text = self.parse_string()?;
             let text = Arc::new(text);
@@ -166,13 +179,6 @@ impl<T: ParserDispatch> Parser<T> {
             let text = Arc::new(RwLock::new(text));
             let operand = OpOperand::new(text);
             Ok(Arc::new(RwLock::new(operand)))
-        } else if next.kind == TokenKind::CaretIdentifier {
-            let identifier = self.expect(TokenKind::CaretIdentifier)?;
-            // let text = Value::Constant(text);
-            // let text = Arc::new(RwLock::new(text));
-            // let operand = OpOperand::new(text);
-            // Ok(Arc::new(RwLock::new(operand)))
-            todo!()
         } else {
             let msg = "Expected operand.";
             let msg = self.error(&next, msg);
