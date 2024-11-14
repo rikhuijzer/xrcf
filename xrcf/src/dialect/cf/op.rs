@@ -1,19 +1,7 @@
-use crate::convert::ChangedOp;
-use crate::convert::RewriteResult;
-use crate::ir::AnyType;
-use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedValue;
-use crate::ir::IntegerAttr;
-use crate::ir::IntegerType;
 use crate::ir::Op;
-use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::Value;
-use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -64,6 +52,7 @@ impl Parse for CondBranchOp {
         parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
         let operation = Arc::new(RwLock::new(operation));
+        println!("Parsed cond_br op: {}", operation.read().unwrap());
         let op = CondBranchOp { operation };
         let op = Arc::new(RwLock::new(op));
         Ok(op)

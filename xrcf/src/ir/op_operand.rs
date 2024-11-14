@@ -2,6 +2,7 @@ use crate::ir::Block;
 use crate::ir::Constant;
 use crate::ir::Op;
 use crate::ir::Operation;
+use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parser;
@@ -161,17 +162,15 @@ impl<T: ParserDispatch> Parser<T> {
             let operand = OpOperand::new(assignment);
             Ok(Arc::new(RwLock::new(operand)))
         } else if next.kind == TokenKind::CaretIdentifier {
-            // TODO MAYBE LETS JUST PARSE THEM DIFFERENT.
-            // ITs not an op operand, it's a pointer to a region.
-            // nah it's an op operand. If it's placed there, a lot of code
-            // can be re-used.
-
+            // TEMPORARY CODE TO CONTINUE INTO PARSING THE BLOCK.
             let identifier = self.expect(TokenKind::CaretIdentifier)?;
-            // let text = Value::Constant(text);
-            // let text = Arc::new(RwLock::new(text));
-            // let operand = OpOperand::new(text);
-            // Ok(Arc::new(RwLock::new(operand)))
-            todo!()
+            let text = StringAttr::new(identifier.lexeme.into());
+            let text = Arc::new(text);
+            let text = Constant::new(text);
+            let text = Value::Constant(text);
+            let text = Arc::new(RwLock::new(text));
+            let operand = OpOperand::new(text);
+            Ok(Arc::new(RwLock::new(operand)))
         } else if next.kind == TokenKind::String {
             let text = self.parse_string()?;
             let text = Arc::new(text);
@@ -204,11 +203,14 @@ impl<T: ParserDispatch> Parser<T> {
         var_token_kind: TokenKind,
     ) -> Result<OpOperands> {
         let mut arguments = vec![];
-        while self.valid_op_operand(var_token_kind) {
+        loop {
             let operand = self.parse_op_operand(parent.clone(), var_token_kind)?;
             arguments.push(operand);
             if self.check(TokenKind::Comma) {
                 let _comma = self.advance();
+                continue;
+            } else {
+                break;
             }
         }
         let operands = OpOperands {

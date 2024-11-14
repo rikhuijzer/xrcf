@@ -201,24 +201,33 @@ impl<T: ParserDispatch> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
+    fn is_block_definition(&self) -> bool {
+        self.peek().kind == TokenKind::CaretIdentifier
+    }
+    fn is_region_end(&self) -> bool {
+        self.peek().kind == TokenKind::RBrace
+    }
     pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"
         );
-        // Not all blocks have a label.
-        // let label = self.expect(TokenKind::PercentIdentifier)?;
-        // let label = label.lexeme.clone();
-        // let _equal = self.expect(TokenKind::Equal)?;
+
+        let label = if self.is_block_definition() {
+            let label = self.expect(TokenKind::CaretIdentifier)?;
+            let label = label.lexeme.to_string();
+            self.expect(TokenKind::Colon)?;
+            Some(label)
+        } else {
+            None
+        };
+
         let arguments = Arc::new(vec![]);
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
-        let block = Block::new(None, arguments, ops.clone(), parent);
+        let block = Block::new(label, arguments, ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
-        loop {
-            if self.peek().kind == TokenKind::RBrace {
-                break;
-            }
+        while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
             let mut ops = ops.write().unwrap();
@@ -250,10 +259,13 @@ impl<T: ParserDispatch> Parser<T> {
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
         let _lbrace = self.expect(TokenKind::LBrace)?;
-        let block = self.block(Some(region.clone()))?;
-        let blocks = vec![block];
+        let mut blocks = vec![];
+        while !self.is_region_end() {
+            let block = self.block(Some(region.clone()))?;
+            blocks.push(block);
+        }
+        let _rbrace = self.expect(TokenKind::RBrace)?;
         region.set_blocks(blocks);
-        self.advance();
         Ok(region)
     }
     /// Return true if the next token could be the start of an operation.
