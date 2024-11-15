@@ -18,6 +18,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::TypeParse;
+use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
@@ -214,16 +215,21 @@ impl<T: ParserDispatch> Parser<T> {
             "Expected parent region to be passed when parsing a block"
         );
 
-        let label = if self.is_block_definition() {
+        let (label, arguments) = if self.is_block_definition() {
             let label = self.expect(TokenKind::CaretIdentifier)?;
             let label = label.lexeme.to_string();
+            let arguments = if self.check(TokenKind::LParen) {
+                self.parse_function_arguments()?
+            } else {
+                Values::default()
+            };
             self.expect(TokenKind::Colon)?;
-            Some(label)
+            (Some(label), arguments)
         } else {
-            None
+            let values = Values::default();
+            (None, values)
         };
 
-        let arguments = Arc::new(vec![]);
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
         let block = Block::new(label, arguments, ops.clone(), parent);
@@ -324,7 +330,7 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             }
             let ops = Arc::new(RwLock::new(ops));
-            let arguments = Arc::new(vec![]);
+            let arguments = Values::default();
             let block = Block::new(None, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {

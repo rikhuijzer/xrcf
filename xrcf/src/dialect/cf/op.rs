@@ -1,7 +1,7 @@
 use crate::ir::Block;
+use crate::ir::BlockDest;
 use crate::ir::Op;
 use crate::ir::Operation;
-use crate::ir::BlockDest;
 use crate::ir::OperationName;
 use crate::parser::Parse;
 use crate::parser::Parser;

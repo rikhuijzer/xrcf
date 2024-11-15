@@ -64,12 +64,12 @@ impl<T: ParserDispatch> Parser<T> {
 }
 
 /// A generic representation of an operation.
-/// 
+///
 /// An [Operation] generically models all operations and is wrapped by an [Op].
 /// The benefit of this is that [Operation] can contain many generic fields and
 /// methods that are useful for most operations. At the same time, more specific
 /// data and methods can be stored in the [Op].
-/// 
+///
 /// For example, a very simple operation is `arith.addi`:
 /// ```mlir
 /// %x = arith.addi %a, %b : i32
@@ -79,10 +79,10 @@ impl<T: ParserDispatch> Parser<T> {
 /// [Operation]. Furthermore, some helper functions such as
 /// `parser.parse_op_operands_into` can take a parser and parse the operands
 /// straight into the [Operation]. This makes it easier to write parsers.
-/// 
+///
 /// Also, [Operation] has a default printer that can correctly print most simple
 /// operations.
-/// 
+///
 /// An operation that needs more specific fields is, for example, `func.func`:
 /// ```mlir
 /// func.func @some_name() {

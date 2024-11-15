@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::sync::RwLock;
 
 /// A specific operation.
-/// 
+///
 /// See [Operation] for more information about the relationship between
 /// [Operation] and [Op].
 pub trait Op {

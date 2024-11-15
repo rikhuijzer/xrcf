@@ -2,6 +2,7 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
+use crate::ir::Values;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -9,7 +10,7 @@ use std::sync::RwLock;
 
 pub struct Block {
     label: Option<String>,
-    arguments: Arc<Vec<Value>>,
+    arguments: Values,
     ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
     /// the `Block` is shared via `Arc<RwLock<..>>`.
@@ -19,7 +20,7 @@ pub struct Block {
 impl Block {
     pub fn new(
         label: Option<String>,
-        arguments: Arc<Vec<Value>>,
+        arguments: Values,
         ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
         parent: Option<Arc<RwLock<Region>>>,
     ) -> Self {
@@ -30,7 +31,7 @@ impl Block {
             parent,
         }
     }
-    pub fn arguments(&self) -> Arc<Vec<Value>> {
+    pub fn arguments(&self) -> Values {
         self.arguments.clone()
     }
     pub fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
@@ -247,7 +248,7 @@ impl Block {
 impl Default for Block {
     fn default() -> Self {
         let label = None;
-        let arguments: Arc<Vec<Value>> = Arc::new(Vec::new());
+        let arguments = Values::default();
         let ops = Arc::new(RwLock::new(vec![]));
         let parent = None;
         Self::new(label, arguments, ops, parent)
