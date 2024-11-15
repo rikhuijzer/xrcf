@@ -47,6 +47,7 @@ pub use typ::TypeParse;
 pub use typ::Types;
 pub use value::AnonymousResult;
 pub use value::BlockArgument;
+pub use value::BlockDest;
 pub use value::Constant;
 pub use value::GuardedValue;
 pub use value::OpResult;

@@ -1,8 +1,8 @@
 use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
+use crate::ir::BlockDest;
 use crate::ir::OperationName;
-use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -31,9 +31,6 @@ impl Op for CondBranchOp {
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
-    }
-    fn is_const(&self) -> bool {
-        false
     }
     fn is_pure(&self) -> bool {
         true
@@ -66,44 +63,6 @@ impl Display for CondBranchOp {
     }
 }
 
-/// Call to a destination of type block.
-///
-/// For example, `^merge(%c4: i32)` in:
-///
-/// ```mlir
-/// cr.br ^merge(%c4: i32)
-/// ```
-///
-/// This data structure is needed since ops such as `cf.cond_br` can have
-/// multiple destinations.
-pub struct BlockDest {
-    name: String,
-    operands: Values,
-}
-
-impl BlockDest {
-    /// The name of the destination block (e.g., `^merge`).
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-    /// The operands of the destination block (e.g., `(%c4: i32)`).
-    pub fn operands(&self) -> Values {
-        self.operands.clone()
-    }
-    /// Parse `^merge(%c4: i32)` when it represents a block destination.
-    ///
-    /// Example:
-    /// ```mlir
-    /// cr.br ^merge(%c4: i32)
-    /// ```
-    pub fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<BlockDest> {
-        let name = parser.expect(TokenKind::CaretIdentifier)?;
-        let name = name.lexeme.clone();
-        let operands = parser.parse_function_arguments()?;
-        Ok(BlockDest { name, operands })
-    }
-}
-
 /// `cf.br`
 ///
 /// ```ebnf
@@ -133,9 +92,6 @@ impl Op for BranchOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn is_const(&self) -> bool {
-        false
-    }
     fn is_pure(&self) -> bool {
         true
     }
@@ -154,7 +110,7 @@ impl Parse for BranchOp {
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
 
         let operation = Arc::new(RwLock::new(operation));
-        let dest = BlockDest::parse(parser)?;
+        let dest = parser.parse_block_dest()?;
         let dest = Some(Arc::new(RwLock::new(dest)));
         let op = BranchOp { operation, dest };
         let op = Arc::new(RwLock::new(op));

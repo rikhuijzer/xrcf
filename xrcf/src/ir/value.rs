@@ -522,6 +522,32 @@ impl Display for Values {
     }
 }
 
+/// Call to a destination of type block.
+///
+/// For example, `^merge(%c4: i32)` in:
+///
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+///
+/// This data structure is used by ops such as `cf.cond_br` to keep track of
+/// multiple destinations.
+pub struct BlockDest {
+    name: String,
+    operands: Values,
+}
+
+impl BlockDest {
+    /// The name of the destination block (e.g., `^merge`).
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    /// The operands of the destination block (e.g., `(%c4: i32)`).
+    pub fn operands(&self) -> Values {
+        self.operands.clone()
+    }
+}
+
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
     /// Parse `%arg0 : i64,`, `i64,`, or `...`.
@@ -628,5 +654,25 @@ impl<T: ParserDispatch> Parser<T> {
         let _rparen = self.expect(TokenKind::RParen);
         let values = Values::from_vec(operands);
         Ok(values)
+    }
+    /// Parse a destination of type block (e.g., `^merge(%c4: i32)`).
+    ///
+    /// Example:
+    /// ```mlir
+    /// cr.br ^merge(%c4: i32)
+    /// ```
+    /// or
+    /// ```mlir
+    /// cr.br ^exit
+    /// ```
+    pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
+        let name = self.expect(TokenKind::CaretIdentifier)?;
+        let name = name.lexeme.clone();
+        let operands = if self.check(TokenKind::LParen) {
+            self.parse_function_arguments()?
+        } else {
+            Values::default()
+        };
+        Ok(BlockDest { name, operands })
     }
 }
