@@ -138,7 +138,7 @@ fn test_if_else() {
         cf.cond_br %0, ^then, ^else
       ^then:  // pred: ^bb0
         %c3_i32 = arith.constant 3 : i32
-        cf.br ^bb3(%c3_i32 : i32)
+        cf.br ^merge(%c3_i32 : i32)
       ^else:  // pred: ^bb0
         %c4_i32 = arith.constant 4 : i32
         cf.br ^merge(%c4_i32 : i32)

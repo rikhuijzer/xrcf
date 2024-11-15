@@ -2,6 +2,7 @@ mod op;
 
 use crate::Dialect;
 
+pub use op::BranchOp;
 pub use op::CondBranchOp;
 
 pub struct Cf;

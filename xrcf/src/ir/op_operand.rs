@@ -197,7 +197,7 @@ impl<T: ParserDispatch> Parser<T> {
             || self.peek().kind == TokenKind::CaretIdentifier
     }
     /// Parse %0, %1, %0, "hello", or nothing.
-    /// 
+    ///
     /// Nothing is allowed because `hello()` is a valid function definition in
     /// most languages. Verifying that the number of operands is correct is a
     /// task for the caller.
