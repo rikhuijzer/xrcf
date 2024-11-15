@@ -63,17 +63,33 @@ impl<T: ParserDispatch> Parser<T> {
     }
 }
 
-/// Note that MLIR distinguishes between Operation and Op.
-/// Operation generically models all operations.
-/// Op is an interface for more specific operations.
-/// For example, `ConstantOp` does not take inputs and gives one output.
-/// `ConstantOp` does also not specify fields apart from `operation` since
-/// they are accessed via a pointer to the `Operation`.
-/// In MLIR, a specific Op can be casted from an Operation.
-/// The operation also represents functions and modules.
-///
-/// Note that this type requires many methods. I guess this is a bit
-/// inherent to the fact that an `Operation` aims to be very generic.
+/// A generic representation of an operation.
+/// 
+/// An [Operation] generically models all operations and is wrapped by an [Op].
+/// The benefit of this is that [Operation] can contain many generic fields and
+/// methods that are useful for most operations. At the same time, more specific
+/// data and methods can be stored in the [Op].
+/// 
+/// For example, a very simple operation is `arith.addi`:
+/// ```mlir
+/// %x = arith.addi %a, %b : i32
+/// ```
+/// This operation has an operation name (`arith.addi`), two operands (`%a` and
+/// `%b`) and one result (`%x`). These can all be stored in fields of
+/// [Operation]. Furthermore, some helper functions such as
+/// `parser.parse_op_operands_into` can take a parser and parse the operands
+/// straight into the [Operation]. This makes it easier to write parsers.
+/// 
+/// Also, [Operation] has a default printer that can correctly print most simple
+/// operations.
+/// 
+/// An operation that needs more specific fields is, for example, `func.func`:
+/// ```mlir
+/// func.func @some_name() {
+///     return
+/// }
+/// ```
+/// Here, [Op] contains a field `identifier` that contains "@some_name".
 #[derive(Clone)]
 pub struct Operation {
     name: OperationName,
