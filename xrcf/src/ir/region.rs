@@ -30,6 +30,16 @@ impl Region {
     pub fn blocks_mut(&mut self) -> &mut Vec<Arc<RwLock<Block>>> {
         &mut self.blocks
     }
+    pub fn index_of(&self, block: &Block) -> Option<usize> {
+        let blocks = self.blocks();
+        for (i, current) in (&blocks).iter().enumerate() {
+            let current = current.try_read().unwrap();
+            if *current == *block {
+                return Some(i);
+            }
+        }
+        None
+    }
     pub fn is_empty(&self) -> bool {
         self.blocks.is_empty()
     }

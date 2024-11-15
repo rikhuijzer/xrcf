@@ -134,18 +134,18 @@ fn test_if_else() {
     let src = indoc! {r#"
     module {
       func.func @main() -> i32 {
-        %0 = arith.constant false
-        cf.cond_br %0, ^then, ^else
+        %false = arith.constant false
+        cf.cond_br %false, ^then, ^else
       ^then:  // pred: ^bb0
         %c3_i32 = arith.constant 3 : i32
         cf.br ^merge(%c3_i32 : i32)
       ^else:  // pred: ^bb0
         %c4_i32 = arith.constant 4 : i32
         cf.br ^merge(%c4_i32 : i32)
-      ^merge(%0: i32):  // 2 preds: ^then, ^else
+      ^merge(%result: i32):  // 2 preds: ^then, ^else
         cf.br ^exit
       ^exit:  // pred: ^merge
-        return %0 : i32
+        return %result : i32
       }
     }
     "#};

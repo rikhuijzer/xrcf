@@ -17,6 +17,15 @@ pub struct Block {
     parent: Option<Arc<RwLock<Region>>>,
 }
 
+/// Two blocks are equal if they point to the same object.
+///
+/// This is used for things liking finding `successors`.
+impl PartialEq for Block {
+    fn eq(&self, other: &Self) -> bool {
+        std::ptr::eq(self, other)
+    }
+}
+
 impl Block {
     pub fn new(
         label: Option<String>,
@@ -48,6 +57,23 @@ impl Block {
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
+    }
+    /// Predecessors of the current block.
+    ///
+    /// Returns `None` if the current block cannot be found in the parent
+    /// region.
+    pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        let region = self.parent();
+        let region = region.expect("no parent");
+        let region = region.try_read().unwrap();
+        let index = region.index_of(self);
+        let index = index.expect(&format!(
+            "could not find the following block in parent region: {}",
+            self
+        ));
+        let predecessors = region.blocks();
+        let predecessors = predecessors[..index].to_vec();
+        Some(predecessors)
     }
     pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let region = self.parent();
@@ -116,11 +142,46 @@ impl Block {
         None
     }
     pub fn assignment(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+        // Check the current block first because it is most likely to contain
+        // the assignment.
         let from_arguments = self.assignment_in_func_arguments(name);
         match from_arguments {
-            Some(value) => Some(value),
-            None => self.assignment_in_ops(name),
+            Some(value) => return Some(value),
+            None => match self.assignment_in_ops(name) {
+                Some(value) => return Some(value),
+                None => (),
+            },
+        };
+
+        // Check the predecessors.
+        //
+        // Taking dominance into account is not implemented yet. Dominance will
+        // be necessary later in order to verify whether an operand dominates
+        // the use. "dominate" in LLVM/MLIR essentially means whether the code
+        // that assigns a variable was executed before the use of the variable.
+        // An exception to this is during an if-else statement where the
+        // assignment is in the "then" block and the use is after the end of the
+        // if-else statement. In this case, the value should not be used since
+        // it is not guaranteed to have been initialized.
+        //
+        // A talk with much more details is called "(Correctly) Extending
+        // Dominance to MLIR Regions" and is available at
+        // https://www.youtube.com/watch?v=VJORFvHJKWE.
+        let predecessors = self.predecessors();
+        let predecessors = predecessors.expect("expected predecessors");
+        // Ignore the last block since we already checked it.
+        for predecessor in predecessors.iter().take(predecessors.len() - 1) {
+            let predecessor = predecessor.try_read().unwrap();
+            let from_arguments = predecessor.assignment_in_func_arguments(name);
+            match from_arguments {
+                Some(value) => return Some(value),
+                None => match self.assignment_in_ops(name) {
+                    Some(value) => return Some(value),
+                    None => continue,
+                },
+            }
         }
+        None
     }
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
