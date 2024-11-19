@@ -265,14 +265,16 @@ impl<T: ParserDispatch> Parser<T> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
-        let _lbrace = self.expect(TokenKind::LBrace)?;
-        let mut blocks = vec![];
+        self.expect(TokenKind::LBrace)?;
+        let blocks = vec![];
+        let blocks = Arc::new(RwLock::new(blocks));
+        region.set_blocks(blocks.clone());
         while !self.is_region_end() {
             let block = self.block(Some(region.clone()))?;
+            let mut blocks = blocks.try_write().unwrap();
             blocks.push(block);
         }
-        let _rbrace = self.expect(TokenKind::RBrace)?;
-        region.set_blocks(blocks);
+        self.expect(TokenKind::RBrace)?;
         Ok(region)
     }
     /// Return true if the next token could be the start of an operation.
@@ -342,7 +344,9 @@ impl<T: ParserDispatch> Parser<T> {
             module_region
                 .write()
                 .unwrap()
-                .blocks_mut()
+                .blocks()
+                .try_write()
+                .unwrap()
                 .push(block.clone());
             let mut module_operation = Operation::default();
             module_operation.set_name(ModuleOp::operation_name());

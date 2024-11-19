@@ -60,19 +60,21 @@ impl Block {
     }
     /// Predecessors of the current block.
     ///
-    /// Returns `None` if the current block cannot be found in the parent
-    /// region.
+    /// Returns all known blocks if the current block cannot be found in the
+    /// parent region. This is because the current block may currently be in the
+    /// process of being parsed (i.e., not yet ready to be added to the
+    /// collection of blocks).
     pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
-        let index = index.expect(&format!(
-            "could not find the following block in parent region: {}",
-            self
-        ));
-        let predecessors = region.blocks();
-        let predecessors = predecessors[..index].to_vec();
+        let blocks = region.blocks();
+        let predecessors = blocks.try_read().unwrap();
+        let predecessors = match index {
+            Some(index) => predecessors[..index].to_vec(),
+            None => predecessors.clone(),
+        };
         Some(predecessors)
     }
     pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {

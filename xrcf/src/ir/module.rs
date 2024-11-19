@@ -1,4 +1,5 @@
 use crate::ir::Block;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
@@ -56,7 +57,8 @@ impl ModuleOp {
             Some(region) => region,
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
         };
-        let blocks = region.read().unwrap().blocks();
+        let blocks = region.blocks();
+        let blocks = blocks.try_read().unwrap();
         let block = match blocks.first() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),

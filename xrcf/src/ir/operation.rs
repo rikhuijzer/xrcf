@@ -122,8 +122,10 @@ pub fn display_region_inside_func(
 ) -> std::fmt::Result {
     let region = operation.region();
     if let Some(region) = region {
-        let region = region.read().unwrap();
-        if region.blocks().is_empty() {
+        let region = region.try_read().unwrap();
+        let blocks = region.blocks();
+        let blocks = blocks.try_read().unwrap();
+        if blocks.is_empty() {
             write!(f, "\n")
         } else {
             region.display(f, indent)

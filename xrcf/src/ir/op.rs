@@ -2,6 +2,7 @@ use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
+use crate::ir::GuardedRegion;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -168,7 +169,9 @@ pub trait Op {
         let mut result = Vec::new();
         let region = self.region();
         if let Some(region) = region {
-            for block in region.read().unwrap().blocks() {
+            let blocks = region.blocks();
+            let blocks = blocks.try_read().unwrap();
+            for block in blocks.iter() {
                 let block = block.read().unwrap();
                 let ops = block.ops();
                 let ops = ops.read().unwrap();
