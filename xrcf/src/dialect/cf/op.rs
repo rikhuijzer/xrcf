@@ -38,14 +38,6 @@ impl Op for CondBranchOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().try_read().unwrap();
-        write!(f, "{} ", operation.name())?;
-        for operand in operation.operands().vec().try_read().unwrap().iter() {
-            write!(f, "{} ", operand.try_read().unwrap())?;
-        }
-        Ok(())
-    }
 }
 
 impl Parse for CondBranchOp {

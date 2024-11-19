@@ -206,9 +206,9 @@ pub trait Op {
     /// which then calls `display` with `indent` 0.  Next, this method calls
     /// `display` recursively while continuously increasing the indentation
     /// level.
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().try_read().unwrap();
-        operation.display(f, indent)
+        operation.display(f, 0)
     }
 }
 
