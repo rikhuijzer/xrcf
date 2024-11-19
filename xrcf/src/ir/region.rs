@@ -42,7 +42,6 @@ impl Region {
         }
         for (i, current) in (&blocks).iter().enumerate() {
             let current = current.try_read().unwrap();
-            println!("current: {current}");
             if *current == *block {
                 return Some(i);
             }

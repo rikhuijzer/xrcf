@@ -207,9 +207,7 @@ pub trait Op {
     /// `display` recursively while continuously increasing the indentation
     /// level.
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}")?;
+        let operation = self.operation().try_read().unwrap();
         operation.display(f, indent)
     }
 }

@@ -77,6 +77,11 @@ impl Block {
         };
         Some(predecessors)
     }
+    /// Return assignment of a value in the parent op's function arguments.
+    ///
+    /// Returns a [Value] if the parent operation is a function and contains an
+    /// assignment for the given `name`. Return `None` if no assignment is
+    /// found.
     pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let region = self.parent();
         assert!(region.is_some());
@@ -88,9 +93,9 @@ impl Block {
             "Found no parent for region {region} when searching for assignment of {name}"
         );
         let op = parent.unwrap();
-        let op = &*op.read().unwrap();
+        let op = &*op.try_read().unwrap();
         let operation = op.operation();
-        let operation = operation.read().unwrap();
+        let operation = operation.try_read().unwrap();
         if op.is_func() {
             let arguments = operation.arguments();
             let arguments = arguments.vec();
@@ -102,7 +107,7 @@ impl Block {
                             return Some(argument.clone());
                         }
                     }
-                    _ => panic!("Expected BlockArgument, but got OpResult"),
+                    _ => panic!("Expected BlockArgument"),
                 }
             }
         } else {
@@ -143,17 +148,38 @@ impl Block {
         }
         None
     }
+    /// Return assignment of a value in the block arguments.
+    ///
+    /// Returns a [Value] if the block contains an assignment for the given
+    /// `name`. Return `None` if no assignment is found.
+    pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+        let arguments = self.arguments();
+        let arguments = arguments.vec();
+        let arguments = arguments.try_read().unwrap();
+        for argument in arguments.iter() {
+            match &*argument.try_read().unwrap() {
+                Value::BlockArgument(block_argument) => {
+                    if block_argument.name() == Some(name.to_string()) {
+                        return Some(argument.clone());
+                    }
+                }
+                _ => panic!("Expected BlockArgument"),
+            }
+        }
+        None
+    }
     pub fn assignment(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         // Check the current block first because it is most likely to contain
         // the assignment.
-        let from_arguments = self.assignment_in_func_arguments(name);
-        match from_arguments {
-            Some(value) => return Some(value),
-            None => match self.assignment_in_ops(name) {
-                Some(value) => return Some(value),
-                None => (),
-            },
-        };
+        if let Some(value) = self.assignment_in_func_arguments(name) {
+            return Some(value);
+        }
+        if let Some(value) = self.assignment_in_ops(name) {
+            return Some(value);
+        }
+        if let Some(value) = self.assignment_in_block_arguments(name) {
+            return Some(value);
+        }
 
         // Check the predecessors.
         //
@@ -171,16 +197,16 @@ impl Block {
         // https://www.youtube.com/watch?v=VJORFvHJKWE.
         let predecessors = self.predecessors();
         let predecessors = predecessors.expect("expected predecessors");
-        // Ignore the last block since we already checked it.
-        for predecessor in predecessors.iter().take(predecessors.len() - 1) {
+        for predecessor in predecessors.iter() {
             let predecessor = predecessor.try_read().unwrap();
-            let from_arguments = predecessor.assignment_in_func_arguments(name);
-            match from_arguments {
-                Some(value) => return Some(value),
-                None => match self.assignment_in_ops(name) {
-                    Some(value) => return Some(value),
-                    None => continue,
-                },
+            if let Some(value) = predecessor.assignment_in_func_arguments(name) {
+                return Some(value)
+            }
+            if let Some(value) = predecessor.assignment_in_ops(name) {
+                return Some(value);
+            }
+            if let Some(value) = predecessor.assignment_in_block_arguments(name) {
+                return Some(value);
             }
         }
         None
@@ -293,14 +319,16 @@ impl Block {
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
-            write!(f, "{} ", label)?;
+            let label_indent = if indent > 0 { indent - 1 } else { 0 };
+            let spaces = crate::ir::spaces(label_indent);
+            write!(f, "{spaces}{label}:\n")?;
         }
         let ops = self.ops();
-        let ops = ops.read().unwrap();
+        let ops = ops.try_read().unwrap();
         for op in ops.iter() {
             let spaces = crate::ir::spaces(indent);
             write!(f, "{spaces}")?;
-            let op = op.read().unwrap();
+            let op = op.try_read().unwrap();
             op.display(f, indent)?;
             write!(f, "\n")?;
         }
