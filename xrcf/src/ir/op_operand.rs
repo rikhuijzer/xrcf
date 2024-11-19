@@ -1,8 +1,8 @@
 use crate::ir::Block;
+use crate::ir::BlockLabel;
 use crate::ir::Constant;
 use crate::ir::Op;
 use crate::ir::Operation;
-use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::parser::Parser;
@@ -38,6 +38,7 @@ impl OpOperand {
         let value = &*value.try_read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
+            Value::BlockLabel(_) => None,
             Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
@@ -157,14 +158,11 @@ impl<T: ParserDispatch> Parser<T> {
             let operand = OpOperand::new(assignment);
             Ok(Arc::new(RwLock::new(operand)))
         } else if next.kind == TokenKind::CaretIdentifier {
-            // TEMPORARY CODE TO CONTINUE INTO PARSING THE BLOCK.
             let identifier = self.expect(TokenKind::CaretIdentifier)?;
-            let text = StringAttr::new(identifier.lexeme.into());
-            let text = Arc::new(text);
-            let text = Constant::new(text);
-            let text = Value::Constant(text);
-            let text = Arc::new(RwLock::new(text));
-            let operand = OpOperand::new(text);
+            let label = BlockLabel::new(identifier.lexeme.clone());
+            let label = Value::BlockLabel(label);
+            let label = Arc::new(RwLock::new(label));
+            let operand = OpOperand::new(label);
             Ok(Arc::new(RwLock::new(operand)))
         } else if next.kind == TokenKind::String {
             let text = self.parse_string()?;
