@@ -103,7 +103,7 @@ impl Rewrite for FuncLowering {
         "example_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == arnold::BeginMainOp::operation_name())
+        Ok(op.as_any().is::<arnold::BeginMainOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
@@ -199,7 +199,7 @@ impl Rewrite for ModuleLowering {
         "example_to_mlir::ModuleLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == xrcf::ir::ModuleOp::operation_name())
+        Ok(op.as_any().is::<xrcf::ir::ModuleOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         Self::ensure_main_returns_zero(op.clone())
@@ -213,7 +213,7 @@ impl Rewrite for PrintLowering {
         "example_to_mlir::PrintLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.name() == arnold::PrintOp::operation_name())
+        Ok(op.as_any().is::<arnold::PrintOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();

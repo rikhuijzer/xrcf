@@ -62,6 +62,14 @@ pub trait Rewrite {
     /// Returns true if the rewrite can be applied to the given operation.
     ///
     /// This method is not allowed to mutate the IR.
+    ///
+    /// Note that this implementation usually will look like
+    /// ```mlir
+    /// Ok(op.as_any().is::<MyOp>())
+    /// ```
+    /// If weird behavior is encountered, ensure that the new type has set the
+    /// correct operation name. Otherwise, an object might look like is a
+    /// different type than it really is.
     fn is_match(&self, op: &dyn Op) -> Result<bool>;
     /// Applies the rewrite to the given operation.
     ///
