@@ -66,7 +66,7 @@ impl Rewrite for AddLowering {
         let op = op.as_any().downcast_ref::<dialect::llvm::AddOp>().unwrap();
         let operation = op.operation();
         let new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
-        replace_constant_operands(op);
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -95,7 +95,7 @@ impl Rewrite for AllocaLowering {
             operation.results().convert_types::<ConvertMLIRToLLVMIR>()?;
         }
         new_op.set_element_type(op.element_type().unwrap());
-        replace_constant_operands(op);
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -126,7 +126,7 @@ impl Rewrite for CallLowering {
             None => None,
         };
         new_op.set_varargs(varargs);
-        replace_constant_operands(op);
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -149,8 +149,8 @@ impl Rewrite for CondBranchLowering {
             .downcast_ref::<dialect::llvm::CondBranchOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
-        replace_constant_operands(op);
+        let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -250,7 +250,7 @@ impl Rewrite for ReturnLowering {
             .unwrap();
         let operation = op.operation();
         let new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
-        replace_constant_operands(op);
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -285,7 +285,7 @@ impl Rewrite for StoreLowering {
                 .unwrap();
             new_op.set_len(value_typ.num_elements() as usize);
         }
-        replace_constant_operands(op);
+        replace_constant_operands(&new_op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

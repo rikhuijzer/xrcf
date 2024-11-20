@@ -18,7 +18,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Display an operand LLVMIR style (e.g., `i32 8`, or `i32 %0`).
+/// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
     let value = operand.value();
     let value = value.try_read().unwrap();
@@ -35,7 +35,9 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "{typ} {value}")
         }
         Value::BlockLabel(label) => {
-            write!(f, "{label}")
+            let label = label.name();
+            let label = label.split_once('^').unwrap().1;
+            write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
             let name = op_result.name().expect("Op result has no name");
