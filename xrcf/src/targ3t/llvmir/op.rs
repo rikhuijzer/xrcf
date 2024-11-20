@@ -34,13 +34,16 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {value}")
         }
+        Value::BlockLabel(label) => {
+            write!(f, "{label}")
+        }
         Value::OpResult(op_result) => {
             let name = op_result.name().expect("Op result has no name");
             let typ = op_result.typ().expect("No type");
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {name}")
         }
-        _ => panic!("Unexpected"),
+        _ => panic!("Unexpected operand value type for {value}"),
     }
 }
 
@@ -213,6 +216,36 @@ impl Op for CallOp {
 }
 
 impl Display for CallOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+pub struct BranchOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for BranchOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("branch".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        BranchOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "br ")?;
+        display_operands(f, &self.operation().operands())?;
+        Ok(())
+    }
+}
+
+impl Display for BranchOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
     }

@@ -215,19 +215,19 @@ fn test_if_else() {
     source_filename = "LLVMDialectModule"
 
     define i32 @main() {
-      br i1 false, label %1, label %2
+      br i1 false, label %then, label %else
 
-    1:
-      br label %3
+    then:
+      br label %merge
 
-    2:
-      br label %3
+    else:
+      br label %merge
 
-    3:
-      %4 = phi i32 [ 4, %2 ], [ 3, %1 ]
-      br label %5
+    merge:
+      %4 = phi i32 [ 4, %else ], [ 3, %then ]
+      br label %exit
 
-    5:
+    exit:
       ret i32 %4
     }
 

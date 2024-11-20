@@ -1,4 +1,3 @@
-use crate::canonicalize::CanonicalizeOp;
 use crate::canonicalize::DeadCodeElimination;
 use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
@@ -127,6 +126,30 @@ impl Rewrite for CallLowering {
             None => None,
         };
         new_op.set_varargs(varargs);
+        replace_constant_operands(op);
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+struct CondBranchLowering;
+
+impl Rewrite for CondBranchLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::CondBranchLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<dialect::llvm::CondBranchOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op
+            .as_any()
+            .downcast_ref::<dialect::llvm::CondBranchOp>()
+            .unwrap();
+        let operation = op.operation();
+        let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         replace_constant_operands(op);
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
@@ -315,7 +338,7 @@ impl Pass for ConvertMLIRToLLVMIR {
             &AddLowering,
             &AllocaLowering,
             &CallLowering,
-            &CanonicalizeOp,
+            &CondBranchLowering,
             &DeadCodeElimination,
             &FuncLowering,
             &ModuleLowering,

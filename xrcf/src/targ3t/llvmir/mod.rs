@@ -5,6 +5,7 @@ use crate::Dialect;
 
 pub use op::AddOp;
 pub use op::AllocaOp;
+pub use op::BranchOp;
 pub use op::CallOp;
 pub use op::FuncOp;
 pub use op::ModuleOp;
