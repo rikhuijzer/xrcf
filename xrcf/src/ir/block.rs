@@ -19,7 +19,7 @@ pub struct Block {
 
 /// Two blocks are equal if they point to the same object.
 ///
-/// This is used for things liking finding `successors`.
+/// This is used for things like finding `successors`.
 impl PartialEq for Block {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(self, other)
