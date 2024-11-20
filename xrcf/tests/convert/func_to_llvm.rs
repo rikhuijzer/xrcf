@@ -142,7 +142,7 @@ fn test_if_else() {
       ^else:
         %c4_i32 = arith.constant 4 : i32
         cf.br ^merge(%c4_i32 : i32)
-      ^merge(%result: i32):
+      ^merge(%result : i32):
         cf.br ^exit
       ^exit:
         return %result : i32
@@ -160,7 +160,7 @@ fn test_if_else() {
       ^bb2:  // pred: ^bb0
         %2 = llvm.mlir.constant(4 : i32) : i32
         llvm.br ^bb3(%2 : i32)
-      ^bb3(%3: i32):
+      ^bb3(%3 : i32):
         llvm.br ^bb4
       ^bb4:
         llvm.return %3 : i32

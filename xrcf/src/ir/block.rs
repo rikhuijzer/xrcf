@@ -323,7 +323,12 @@ impl Block {
         if let Some(label) = &self.label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             let spaces = crate::ir::spaces(label_indent);
-            write!(f, "{spaces}{label}:\n")?;
+            write!(f, "{spaces}{label}")?;
+            let arguments = self.arguments();
+            if !arguments.is_empty() {
+                write!(f, "({arguments})")?;
+            }
+            write!(f, ":\n")?;
         }
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
