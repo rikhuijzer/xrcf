@@ -2,6 +2,7 @@ use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
+use crate::ir::GuardedRegion;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -15,11 +16,10 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// This is the trait that is implemented by all operations.
-/// FuncOp, for example, will be implemented by various dialects.
-/// Note that the parser will parse the tokens into an `Operation`
-/// and MLIR would cast the `Operation` into a specific `Op` variant
-/// such as `FuncOp`.
+/// A specific operation.
+///
+/// See [Operation] for more information about the relationship between
+/// [Operation] and [Op].
 pub trait Op {
     fn operation_name() -> OperationName
     where
@@ -169,7 +169,9 @@ pub trait Op {
         let mut result = Vec::new();
         let region = self.region();
         if let Some(region) = region {
-            for block in region.read().unwrap().blocks() {
+            let blocks = region.blocks();
+            let blocks = blocks.try_read().unwrap();
+            for block in blocks.iter() {
                 let block = block.read().unwrap();
                 let ops = block.ops();
                 let ops = ops.read().unwrap();
@@ -204,11 +206,9 @@ pub trait Op {
     /// which then calls `display` with `indent` 0.  Next, this method calls
     /// `display` recursively while continuously increasing the indentation
     /// level.
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}")?;
-        operation.display(f, indent)
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let operation = self.operation().try_read().unwrap();
+        operation.display(f, 0)
     }
 }
 

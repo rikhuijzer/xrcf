@@ -41,7 +41,41 @@ impl Display for dyn Attribute {
     }
 }
 
-/// An attribute containing an integer value.
+pub struct BooleanAttr {
+    value: bool,
+}
+
+/// MLIR-style boolean attribute (e.g., `true : i1`).
+impl BooleanAttr {
+    pub fn new(value: bool) -> Self {
+        Self { value }
+    }
+}
+
+impl Attribute for BooleanAttr {
+    fn from_str(value: &str) -> Self {
+        let value = match value {
+            "true" => true,
+            "false" => false,
+            _ => panic!("invalid boolean value: {value}"),
+        };
+        Self { value }
+    }
+    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        Arc::new(RwLock::new(IntegerType::from_str("i1")))
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn value(&self) -> String {
+        self.value.to_string()
+    }
+    fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
+        Some(Self::from_str(&parser.peek().lexeme))
+    }
+}
+
+/// Integer attribute (e.g., `42 : i64`).
 pub struct IntegerAttr {
     // The type of the integer: specifies the precision.
     typ: IntegerType,

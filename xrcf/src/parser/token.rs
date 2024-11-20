@@ -15,6 +15,8 @@ pub enum TokenKind {
     AtIdentifier,
     /// %foo
     PercentIdentifier,
+    /// ^foo
+    CaretIdentifier,
 
     // Literals
     /// 1.0

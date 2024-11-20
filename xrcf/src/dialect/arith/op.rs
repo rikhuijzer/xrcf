@@ -7,6 +7,7 @@ use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerAttr;
+use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
@@ -23,6 +24,10 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// The token kind used for variables in this dialect.
+///
+/// We have to set this variable in each dialect separately because different
+/// dialects may use different token kinds for variables.
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 pub struct ConstantOp {
@@ -81,17 +86,25 @@ impl Parse for ConstantOp {
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
 
-        let integer = parser.parse_integer()?;
-        let typ = integer
-            .as_any()
-            .downcast_ref::<IntegerAttr>()
-            .unwrap()
-            .typ();
-        operation.set_result_type(0, typ)?;
+        let value = if parser.is_boolean() {
+            let typ = IntegerType::new(1);
+            let typ = Arc::new(RwLock::new(typ));
+            operation.set_result_type(0, typ)?;
+            parser.parse_boolean()?
+        } else {
+            let integer = parser.parse_integer()?;
+            let typ = integer
+                .as_any()
+                .downcast_ref::<IntegerAttr>()
+                .unwrap()
+                .typ();
+            operation.set_result_type(0, typ)?;
+            Arc::new(integer)
+        };
 
         let operation = Arc::new(RwLock::new(operation));
         let op = ConstantOp { operation };
-        op.set_value(Arc::new(integer));
+        op.set_value(value);
         let op = Arc::new(RwLock::new(op));
         results.set_defining_op(op.clone());
         Ok(op)

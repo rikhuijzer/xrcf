@@ -127,3 +127,46 @@ fn test_empty_return() {
     Tester::verify(module);
     Tester::check_lines_exact(&actual, expected, Location::caller());
 }
+
+#[test]
+fn test_if_else() {
+    Tester::init_tracing();
+    let src = indoc! {r#"
+    module {
+      func.func @main() -> i32 {
+        %false = arith.constant false
+        cf.cond_br %false, ^then, ^else
+      ^then:
+        %c3_i32 = arith.constant 3 : i32
+        cf.br ^merge(%c3_i32 : i32)
+      ^else:
+        %c4_i32 = arith.constant 4 : i32
+        cf.br ^merge(%c4_i32 : i32)
+      ^merge(%result : i32):
+        cf.br ^exit
+      ^exit:
+        return %result : i32
+      }
+    }
+    "#};
+    let _expected = indoc! {r#"
+    module {
+      llvm.func @main() -> i32 {
+        %0 = llvm.mlir.constant(false) : i1
+        llvm.cond_br %0, ^bb1, ^bb2
+      ^bb1:  // pred: ^bb0
+        %1 = llvm.mlir.constant(3 : i32) : i32
+        llvm.br ^bb3(%1 : i32)
+      ^bb2:  // pred: ^bb0
+        %2 = llvm.mlir.constant(4 : i32) : i32
+        llvm.br ^bb3(%2 : i32)
+      ^bb3(%3 : i32):
+        llvm.br ^bb4
+      ^bb4:
+        llvm.return %3 : i32
+      }
+    }
+    "#};
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_exact(&actual, &src, Location::caller());
+}

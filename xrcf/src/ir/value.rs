@@ -52,6 +52,28 @@ impl Display for BlockArgument {
     }
 }
 
+pub struct BlockLabel {
+    name: String,
+}
+
+impl BlockLabel {
+    pub fn new(name: String) -> Self {
+        BlockLabel { name }
+    }
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+}
+
+impl Display for BlockLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
 /// A constant value, for example a constant integer.
 ///
 /// This is useful for situations where a operand is replaced by a constant
@@ -240,11 +262,26 @@ impl Display for Variadic {
 
 /// An instance of a value (SSA, variadic, or constant) in the IR.
 ///
-/// The benefit of also expressing a [Constant] as a [Value] is that it allows
-/// us to keep track of the order of the operands in the [Operation] `operands`
-/// field.
+/// The primary purpose of a [Value] is to be pointed to by operands. This means
+/// that a [Value] is typically an [OpResult]. Next, [OpOperand]s point to this
+/// [Value]. So, in the following example:
+///
+/// ```mlir
+/// %x = arith.constant 1 : i64
+/// %y = arith.constant 2 : i64
+/// %z = arith.addi %x, %y
+/// ```
+///
+/// The [OpOperand] `%x` in the last line points to the [OpResult] defined by
+/// the [Operation] in the first line. There are multiple reasons for pointing
+/// directly to the place where the SSA variable is created, one of which is to
+/// verify during parsing that the SSA variable is created before it is used.
+///
+/// We also express a [Constant] as a [Value] because it allows us to keep track
+/// of the order of the operands in the [Operation] `operands` field.
 pub enum Value {
     BlockArgument(BlockArgument),
+    BlockLabel(BlockLabel),
     Constant(Constant),
     FuncResult(AnonymousResult),
     OpResult(OpResult),
@@ -259,6 +296,7 @@ impl Value {
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => arg.name.clone(),
+            Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => result.name.clone(),
@@ -268,6 +306,7 @@ impl Value {
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         match self {
             Value::BlockArgument(arg) => Ok(arg.typ.clone()),
+            Value::BlockLabel(_) => todo!(),
             Value::Constant(constant) => Ok(constant.typ()),
             Value::FuncResult(result) => Ok(result.typ.clone()),
             Value::OpResult(result) => match result.typ() {
@@ -280,6 +319,7 @@ impl Value {
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
+            Value::BlockLabel(_) => todo!(),
             Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
@@ -289,6 +329,7 @@ impl Value {
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
+            Value::BlockLabel(_) => todo!("Cannot set defining op for BlockLabel"),
             Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
@@ -298,6 +339,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
@@ -329,6 +371,7 @@ impl Value {
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::BlockLabel(_) => todo!(),
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
@@ -341,6 +384,7 @@ impl Display for Value {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
+            Value::BlockLabel(label) => write!(f, "{label}"),
             Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
@@ -457,6 +501,9 @@ impl Values {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
                 }
+                Value::BlockLabel(_) => {
+                    panic!("Trying to set defining op for block label")
+                }
                 Value::Constant(_) => {
                     panic!("Trying to set defining op for constant")
                 }
@@ -505,6 +552,50 @@ impl Display for Values {
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{joined}")
+    }
+}
+
+/// Call to a destination of type block.
+///
+/// For example, `^merge(%c4: i32)` in:
+///
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+///
+/// This data structure is used by ops such as `cf.cond_br` to keep track of
+/// multiple destinations.
+///
+/// Unlike variables ([OpResult]s), block destinations do not contain a pointer
+/// to the block. The reason is that the block definition may appear after the
+/// block destination. Put differently, whereas functions and variables have to
+/// be defined before calling them, blocks don't have to. This means that in
+/// order to parse a block destination, we would need two passes. This is
+/// currently not implemented. The solution would probably to add an
+/// `Option<Arc<RwLock<Block>>>` to this struct and set it later.
+pub struct BlockDest {
+    name: String,
+    operands: Values,
+}
+
+impl BlockDest {
+    /// The name of the destination block (e.g., `^merge`).
+    pub fn name(&self) -> String {
+        self.name.clone()
+    }
+    /// The operands of the destination block (e.g., `(%c4: i32)`).
+    pub fn operands(&self) -> Values {
+        self.operands.clone()
+    }
+}
+
+impl Display for BlockDest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        if !self.operands.is_empty() {
+            write!(f, "({})", self.operands)?;
+        }
+        Ok(())
     }
 }
 
@@ -614,5 +705,25 @@ impl<T: ParserDispatch> Parser<T> {
         let _rparen = self.expect(TokenKind::RParen);
         let values = Values::from_vec(operands);
         Ok(values)
+    }
+    /// Parse a destination of type block (e.g., `^merge(%c4: i32)`).
+    ///
+    /// Example:
+    /// ```mlir
+    /// cr.br ^merge(%c4: i32)
+    /// ```
+    /// or
+    /// ```mlir
+    /// cr.br ^exit
+    /// ```
+    pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
+        let name = self.expect(TokenKind::CaretIdentifier)?;
+        let name = name.lexeme.clone();
+        let operands = if self.check(TokenKind::LParen) {
+            self.parse_function_arguments()?
+        } else {
+            Values::default()
+        };
+        Ok(BlockDest { name, operands })
     }
 }

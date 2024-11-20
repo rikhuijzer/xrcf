@@ -104,7 +104,7 @@ impl Scanner {
     }
     // Whether the character is a valid identifier start character.
     fn is_identifier_start(c: char) -> bool {
-        c.is_alphabetic() || c == '_' || c == '@' || c == '%'
+        c.is_alphabetic() || c == '_' || c == '@' || c == '%' || c == '^'
     }
     // Whether the character is a valid identifier character.
     fn is_identifier(c: char) -> bool {
@@ -121,6 +121,7 @@ impl Scanner {
             "true" => TokenKind::KwTrue,
             s if s.starts_with('@') => TokenKind::AtIdentifier,
             s if s.starts_with('%') => TokenKind::PercentIdentifier,
+            s if s.starts_with('^') => TokenKind::CaretIdentifier,
             _ => TokenKind::BareIdentifier,
         };
         self.add_token(kind);
@@ -166,6 +167,21 @@ impl Scanner {
         }
         Ok(())
     }
+    fn is_comment(&mut self, c: char) -> bool {
+        // This hardcodes the comment syntax. This could be a configuration
+        // option, but for now isn't because clients can always strip or replace
+        // comments in a preprocessing step. Computationally, preprocessing
+        // shouldn't be too bad since many front-end languages will need a
+        // preprocessor step anyway for things like missing opening and closing
+        // braces around functions.
+        c == '/' && self.peek() == '/'
+    }
+    fn comment(&mut self) -> Result<()> {
+        while self.peek() != '\n' && self.peek() != '\r' && !self.is_at_end() {
+            self.advance();
+        }
+        Ok(())
+    }
     fn scan_token(&mut self) -> Result<()> {
         let c = self.advance();
         match c {
@@ -181,8 +197,8 @@ impl Scanner {
             '!' => self.add_token(TokenKind::Exclamation),
             '>' => self.add_token(TokenKind::Greater),
             '<' => self.add_token(TokenKind::Less),
-            ' ' | '\r' | '\t' => (),
-            '\n' => {
+            ' ' | '\t' => (),
+            '\n' | '\r' => {
                 self.line += 1;
                 self.column = 0;
             }
@@ -191,6 +207,7 @@ impl Scanner {
             s if self.is_int_type_start(s) => self.int_type(s)?,
             s if s.is_digit(10) => self.number()?,
             s if Scanner::is_identifier_start(s) => self.identifier()?,
+            s if self.is_comment(s) => self.comment()?,
             _ => {
                 let column = if self.column == 0 { 0 } else { self.column - 1 };
                 let location = Location::new(self.line, column, self.start);

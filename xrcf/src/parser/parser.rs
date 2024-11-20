@@ -1,9 +1,12 @@
 use crate::dialect::arith;
+use crate::dialect::cf;
 use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
+use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -15,6 +18,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::TypeParse;
+use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
@@ -24,9 +28,9 @@ use std::sync::RwLock;
 
 /// Interface to add custom operations to the parser.
 ///
-/// Downstream crates can implement this trait to support custom parsing. The
-/// default implementation can only know about operations defined in this crate.
-/// To support custom operations, implement this trait with custom logic, see
+/// Clients can implement this trait to support custom parsing. The default
+/// implementation can only know about operations defined in this crate.  To
+/// support custom operations, implement this trait with custom logic, see
 /// `DefaultParserDispatch` for an example.
 pub trait ParserDispatch {
     /// Parse an operation.
@@ -40,11 +44,26 @@ pub trait ParserDispatch {
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>>
     where
         Self: Sized;
+    /// Return true if the next token is a boolean.
+    ///
+    /// Clients can implement this trait to support custom boolean parsing.
+    fn is_boolean<T: ParserDispatch>(parser: &mut Parser<T>) -> bool {
+        let peek = parser.peek();
+        peek.kind == TokenKind::BareIdentifier && (peek.lexeme == "true" || peek.lexeme == "false")
+    }
+    /// Parse a MLIR-style boolean such as `true : i1` or `false : i1`.
+    ///
+    /// Clients can implement this trait to support custom boolean parsing.
+    fn parse_boolean<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<Arc<dyn Attribute>> {
+        let token = parser.expect(TokenKind::BareIdentifier)?;
+        let value = BooleanAttr::from_str(&token.lexeme);
+        Ok(Arc::new(value))
+    }
 }
 
 /// Default operation parser.
 ///
-/// This parser knows about all operations defined in this crate.  For
+/// This parser knows about all operations defined in this crate. For
 /// operations in external dialects, define another parser dispatcher and use
 /// it.
 pub struct DefaultParserDispatch;
@@ -57,6 +76,9 @@ pub fn default_dispatch<T: ParserDispatch>(
     match name.lexeme.clone().as_str() {
         "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
         "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+        "cf.br" => <cf::BranchOp as Parse>::op(parser, parent),
+        "cf.cond_br" => <cf::CondBranchOp as Parse>::op(parser, parent),
+        "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
         "func.call" => <func::CallOp as Parse>::op(parser, parent),
         "func.func" => <func::FuncOp as Parse>::op(parser, parent),
         "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
@@ -69,7 +91,6 @@ pub fn default_dispatch<T: ParserDispatch>(
         "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
-        "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));
@@ -182,24 +203,38 @@ impl<T: ParserDispatch> Parser<T> {
             self.report_token_error(self.peek(), kind)
         }
     }
+    fn is_block_definition(&self) -> bool {
+        self.peek().kind == TokenKind::CaretIdentifier
+    }
+    fn is_region_end(&self) -> bool {
+        self.peek().kind == TokenKind::RBrace
+    }
     pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"
         );
-        // Not all blocks have a label.
-        // let label = self.expect(TokenKind::PercentIdentifier)?;
-        // let label = label.lexeme.clone();
-        // let _equal = self.expect(TokenKind::Equal)?;
-        let arguments = Arc::new(vec![]);
+
+        let (label, arguments) = if self.is_block_definition() {
+            let label = self.expect(TokenKind::CaretIdentifier)?;
+            let label = label.lexeme.to_string();
+            let arguments = if self.check(TokenKind::LParen) {
+                self.parse_function_arguments()?
+            } else {
+                Values::default()
+            };
+            self.expect(TokenKind::Colon)?;
+            (Some(label), arguments)
+        } else {
+            let values = Values::default();
+            (None, values)
+        };
+
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
-        let block = Block::new(None, arguments, ops.clone(), parent);
+        let block = Block::new(label, arguments, ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
-        loop {
-            if self.peek().kind == TokenKind::RBrace {
-                break;
-            }
+        while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
             let mut ops = ops.write().unwrap();
@@ -230,11 +265,16 @@ impl<T: ParserDispatch> Parser<T> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
-        let _lbrace = self.expect(TokenKind::LBrace)?;
-        let block = self.block(Some(region.clone()))?;
-        let blocks = vec![block];
-        region.set_blocks(blocks);
-        self.advance();
+        self.expect(TokenKind::LBrace)?;
+        let blocks = vec![];
+        let blocks = Arc::new(RwLock::new(blocks));
+        region.set_blocks(blocks.clone());
+        while !self.is_region_end() {
+            let block = self.block(Some(region.clone()))?;
+            let mut blocks = blocks.try_write().unwrap();
+            blocks.push(block);
+        }
+        self.expect(TokenKind::RBrace)?;
         Ok(region)
     }
     /// Return true if the next token could be the start of an operation.
@@ -292,7 +332,7 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             }
             let ops = Arc::new(RwLock::new(ops));
-            let arguments = Arc::new(vec![]);
+            let arguments = Values::default();
             let block = Block::new(None, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
@@ -304,7 +344,9 @@ impl<T: ParserDispatch> Parser<T> {
             module_region
                 .write()
                 .unwrap()
-                .blocks_mut()
+                .blocks()
+                .try_write()
+                .unwrap()
                 .push(block.clone());
             let mut module_operation = Operation::default();
             module_operation.set_name(ModuleOp::operation_name());
@@ -316,7 +358,20 @@ impl<T: ParserDispatch> Parser<T> {
         };
         Ok(op)
     }
+    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
+        T::parse_type(self)
+    }
+    pub fn is_boolean(&mut self) -> bool {
+        T::is_boolean(self)
+    }
+    pub fn parse_boolean(&mut self) -> Result<Arc<dyn Attribute>> {
+        T::parse_boolean(self)
+    }
     /// Parse a type to a string.
+    ///
+    /// This is used to parse types without having to backtrack or do multiple
+    /// peeks. Instead, this method provides a full string which then can be
+    /// passed around.
     ///
     /// Examples:
     /// ```mlir

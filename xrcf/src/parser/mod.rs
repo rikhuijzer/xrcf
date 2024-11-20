@@ -9,4 +9,5 @@ pub use parser::DefaultParserDispatch;
 pub use parser::Parse;
 pub use parser::Parser;
 pub use parser::ParserDispatch;
+pub use token::Token;
 pub use token::TokenKind;
