@@ -14,60 +14,6 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-struct FuncLowering;
-
-impl Rewrite for FuncLowering {
-    fn name(&self) -> &'static str {
-        "func_to_llvm::FuncLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::FuncOp>())
-    }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
-        let operation = op.operation();
-        {
-            let name = operation.name();
-            assert!(name == func::FuncOp::operation_name());
-            operation.set_name(name.clone());
-
-            let parent = operation.parent();
-            assert!(
-                parent.is_some(),
-                "maybe parent was not set during parsing for {name}?",
-            );
-        }
-
-        let mut new_op = llvm::FuncOp::from_operation_arc(operation.clone());
-        new_op.set_identifier(op.identifier().unwrap());
-        new_op.set_sym_visibility(op.sym_visibility().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
-        op.replace(new_op.clone());
-
-        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
-    }
-}
-
-struct ConstantOpLowering;
-
-impl Rewrite for ConstantOpLowering {
-    fn name(&self) -> &'static str {
-        "func_to_llvm::ConstantOpLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arith::ConstantOp>())
-    }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
-        let lowered = llvm::ConstantOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(lowered));
-        op.replace(new_op.clone());
-
-        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
-    }
-}
-
 struct AddLowering;
 
 impl Rewrite for AddLowering {
@@ -108,6 +54,60 @@ impl Rewrite for CallLowering {
     }
 }
 
+struct ConstantOpLowering;
+
+impl Rewrite for ConstantOpLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::ConstantOpLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arith::ConstantOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let lowered = llvm::ConstantOp::from_operation_arc(op.operation().clone());
+        let new_op = Arc::new(RwLock::new(lowered));
+        op.replace(new_op.clone());
+
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+struct FuncLowering;
+
+impl Rewrite for FuncLowering {
+    fn name(&self) -> &'static str {
+        "func_to_llvm::FuncLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<func::FuncOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+        let operation = op.operation();
+        {
+            let name = operation.name();
+            assert!(name == func::FuncOp::operation_name());
+            operation.set_name(name.clone());
+
+            let parent = operation.parent();
+            assert!(
+                parent.is_some(),
+                "maybe parent was not set during parsing for {name}?",
+            );
+        }
+
+        let mut new_op = llvm::FuncOp::from_operation_arc(operation.clone());
+        new_op.set_identifier(op.identifier().unwrap());
+        new_op.set_sym_visibility(op.sym_visibility().clone());
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
 struct ReturnLowering;
 
 impl Rewrite for ReturnLowering {
@@ -134,10 +134,10 @@ impl Pass for ConvertFuncToLLVM {
     const NAME: &'static str = "convert-func-to-llvm";
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
-            &FuncLowering,
-            &ConstantOpLowering,
             &AddLowering,
             &CallLowering,
+            &ConstantOpLowering,
+            &FuncLowering,
             &ReturnLowering,
         ];
         apply_rewrites(op, &rewrites)
