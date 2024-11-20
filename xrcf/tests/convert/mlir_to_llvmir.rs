@@ -188,3 +188,54 @@ fn test_call_hello() {
     Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
 }
+
+#[test]
+fn test_if_else() {
+    Tester::init_tracing();
+    let src = indoc! {r#"
+    module {
+      llvm.func @main() -> i32 {
+        %false = llvm.mlir.constant(false) : i1
+        llvm.cond_br %false, ^then, ^else
+      ^then:
+        %c3_i32 = llvm.mlir.constant(3 : i32) : i32
+        llvm.br ^merge(%c3_i32 : i32)
+      ^else:
+        %c4_i32 = llvm.mlir.constant(4 : i32) : i32
+        llvm.br ^merge(%c4_i32 : i32)
+      ^merge(%result : i32):
+        llvm.br ^exit
+      ^exit:
+        llvm.return %result : i32
+      }
+    }
+    "#};
+    let expected = indoc! {r#"
+    ; ModuleID = 'LLVMDialectModule'
+    source_filename = "LLVMDialectModule"
+
+    define i32 @main() {
+      br i1 false, label %1, label %2
+
+    1:
+      br label %3
+
+    2:
+      br label %3
+
+    3:
+      %4 = phi i32 [ 4, %2 ], [ 3, %1 ]
+      br label %5
+
+    5:
+      ret i32 %4
+    }
+
+    !llvm.module.flags = !{!0}
+
+    !0 = !{i32 2, !"Debug Info Version", i32 3}
+    "#};
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::verify(module);
+    Tester::check_lines_exact(&actual, expected, Location::caller());
+}
