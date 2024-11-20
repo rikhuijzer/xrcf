@@ -59,7 +59,7 @@ impl Parse for CondBranchOp {
 
 impl Display for CondBranchOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation.try_read().unwrap())
+        self.display(f, 0)
     }
 }
 
@@ -98,6 +98,12 @@ impl Op for BranchOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{} ", self.operation.try_read().unwrap())?;
+        let dest = self.dest.as_ref().unwrap();
+        let dest = dest.try_read().unwrap();
+        write!(f, "{}", dest)
+    }
 }
 
 impl Parse for BranchOp {
@@ -120,6 +126,6 @@ impl Parse for BranchOp {
 
 impl Display for BranchOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation.try_read().unwrap())
+        self.display(f, 0)
     }
 }

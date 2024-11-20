@@ -581,6 +581,16 @@ impl BlockDest {
     }
 }
 
+impl Display for BlockDest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name)?;
+        if !self.operands.is_empty() {
+            write!(f, "({})", self.operands)?;
+        }
+        Ok(())
+    }
+}
+
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
     /// Parse `%arg0 : i64,`, `i64,`, or `...`.

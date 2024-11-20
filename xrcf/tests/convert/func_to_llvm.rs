@@ -136,15 +136,15 @@ fn test_if_else() {
       func.func @main() -> i32 {
         %false = arith.constant false
         cf.cond_br %false, ^then, ^else
-      ^then:  // pred: ^bb0
+      ^then:
         %c3_i32 = arith.constant 3 : i32
         cf.br ^merge(%c3_i32 : i32)
-      ^else:  // pred: ^bb0
+      ^else:
         %c4_i32 = arith.constant 4 : i32
         cf.br ^merge(%c4_i32 : i32)
-      ^merge(%result: i32):  // 2 preds: ^then, ^else
+      ^merge(%result: i32):
         cf.br ^exit
-      ^exit:  // pred: ^merge
+      ^exit:
         return %result : i32
       }
     }
@@ -160,9 +160,9 @@ fn test_if_else() {
       ^bb2:  // pred: ^bb0
         %2 = llvm.mlir.constant(4 : i32) : i32
         llvm.br ^bb3(%2 : i32)
-      ^bb3(%3: i32):  // 2 preds: ^bb1, ^bb2
+      ^bb3(%3: i32):
         llvm.br ^bb4
-      ^bb4:  // pred: ^bb3
+      ^bb4:
         llvm.return %3 : i32
       }
     }
