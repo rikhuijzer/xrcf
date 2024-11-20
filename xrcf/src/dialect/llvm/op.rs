@@ -400,6 +400,8 @@ impl Parse for ConstantOp {
         parser.expect(TokenKind::LParen)?;
         let value: Arc<dyn Attribute> = if parser.check(TokenKind::Integer) {
             Arc::new(parser.parse_integer()?)
+        } else if parser.is_boolean() {
+            parser.parse_boolean()?
         } else {
             Arc::new(parser.parse_string()?)
         };
