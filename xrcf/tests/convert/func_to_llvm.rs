@@ -149,24 +149,28 @@ fn test_if_else() {
       }
     }
     "#};
-    let _expected = indoc! {r#"
+    let expected = indoc! {r#"
     module {
       llvm.func @main() -> i32 {
-        %0 = llvm.mlir.constant(false) : i1
-        llvm.cond_br %0, ^bb1, ^bb2
-      ^bb1:  // pred: ^bb0
-        %1 = llvm.mlir.constant(3 : i32) : i32
-        llvm.br ^bb3(%1 : i32)
-      ^bb2:  // pred: ^bb0
-        %2 = llvm.mlir.constant(4 : i32) : i32
-        llvm.br ^bb3(%2 : i32)
-      ^bb3(%3 : i32):
-        llvm.br ^bb4
-      ^bb4:
-        llvm.return %3 : i32
+        %false = llvm.mlir.constant(false) : i1
+        llvm.cond_br %false, ^then, ^else
+      ^then:
+        %c3_i32 = llvm.mlir.constant(3 : i32) : i32
+        llvm.br ^merge(%c3_i32 : i32)
+      ^else:
+        %c4_i32 = llvm.mlir.constant(4 : i32) : i32
+        llvm.br ^merge(%c4_i32 : i32)
+      ^merge(%result : i32):
+        llvm.br ^exit
+      ^exit:
+        llvm.return %result : i32
       }
     }
     "#};
-    let (_module, actual) = Tester::parse(src);
+    let (module, actual) = Tester::parse(src);
     Tester::check_lines_exact(&actual, &src, Location::caller());
+    Tester::verify(module);
+    let (module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_exact(&actual, expected, Location::caller());
+    Tester::verify(module);
 }
