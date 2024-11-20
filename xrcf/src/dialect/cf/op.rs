@@ -15,54 +15,6 @@ use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
-/// `cf.cond_br`
-pub struct CondBranchOp {
-    operation: Arc<RwLock<Operation>>,
-}
-
-impl CondBranchOp {}
-
-impl Op for CondBranchOp {
-    fn operation_name() -> OperationName {
-        OperationName::new("cf.cond_br".to_string())
-    }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        CondBranchOp { operation }
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn is_pure(&self) -> bool {
-        true
-    }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
-        &self.operation
-    }
-}
-
-impl Parse for CondBranchOp {
-    fn op<T: ParserDispatch>(
-        parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
-        let mut operation = Operation::default();
-        operation.set_parent(parent.clone());
-        parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
-        parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
-
-        let operation = Arc::new(RwLock::new(operation));
-        let op = CondBranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
-        Ok(op)
-    }
-}
-
-impl Display for CondBranchOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f, 0)
-    }
-}
-
 /// `cf.br`
 ///
 /// ```ebnf
@@ -76,6 +28,9 @@ pub struct BranchOp {
 impl BranchOp {
     pub fn dest(&self) -> Option<Arc<RwLock<BlockDest>>> {
         self.dest.clone()
+    }
+    pub fn set_dest(&mut self, dest: Option<Arc<RwLock<BlockDest>>>) {
+        self.dest = dest;
     }
 }
 
@@ -125,6 +80,52 @@ impl Parse for BranchOp {
 }
 
 impl Display for BranchOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+/// `cf.cond_br`
+pub struct CondBranchOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for CondBranchOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("cf.cond_br".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        CondBranchOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_pure(&self) -> bool {
+        true
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+}
+
+impl Parse for CondBranchOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
+        parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
+
+        let operation = Arc::new(RwLock::new(operation));
+        let op = CondBranchOp { operation };
+        let op = Arc::new(RwLock::new(op));
+        Ok(op)
+    }
+}
+
+impl Display for CondBranchOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
     }
