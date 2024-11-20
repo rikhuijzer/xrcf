@@ -565,7 +565,7 @@ impl Display for Values {
 ///
 /// This data structure is used by ops such as `cf.cond_br` to keep track of
 /// multiple destinations.
-/// 
+///
 /// Unlike variables ([OpResult]s), block destinations do not contain a pointer
 /// to the block. The reason is that the block definition may appear after the
 /// block destination. Put differently, whereas functions and variables have to
