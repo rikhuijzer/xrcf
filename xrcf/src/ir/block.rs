@@ -55,6 +55,12 @@ impl Block {
     pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
+    pub fn label(&self) -> Option<String> {
+        self.label.clone()
+    }
+    pub fn set_label(&mut self, label: Option<String>) {
+        self.label = label;
+    }
     pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
     }
@@ -383,8 +389,10 @@ pub trait GuardedBlock {
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
+    fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
+    fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn unique_value_name(&self) -> String;
 }
@@ -402,11 +410,17 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
     }
+    fn label(&self) -> Option<String> {
+        self.try_read().unwrap().label()
+    }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.try_write().unwrap().remove(op);
+    }
+    fn set_label(&self, label: Option<String>) {
+        self.try_write().unwrap().set_label(label);
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);

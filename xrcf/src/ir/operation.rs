@@ -198,6 +198,14 @@ impl Operation {
     pub fn operands(&self) -> OpOperands {
         self.operands.clone()
     }
+    pub fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        let region = self.region();
+        let region = region.expect("expected region");
+        let region = region.try_read().unwrap();
+        let blocks = region.blocks();
+        let blocks = blocks.try_read().unwrap();
+        blocks.to_vec()
+    }
     pub fn operand_types(&self) -> Types {
         let operands = self.operands.vec();
         let operands = operands.try_read().unwrap();
@@ -436,6 +444,7 @@ impl Display for Operation {
 pub trait GuardedOperation {
     fn arguments(&self) -> Values;
     fn attributes(&self) -> Attributes;
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
@@ -462,6 +471,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn attributes(&self) -> Attributes {
         self.try_read().unwrap().attributes()
+    }
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        self.try_read().unwrap().blocks()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)

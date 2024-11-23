@@ -10,9 +10,11 @@ use crate::dialect::func::Func;
 use crate::ir;
 use crate::ir::BlockArgument;
 use crate::ir::Constant;
+use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -99,6 +101,63 @@ impl Rewrite for AllocaLowering {
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+struct BlockLowering;
+
+impl Rewrite for BlockLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::BlockLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        if !op.is_func() {
+            return Ok(false);
+        }
+        let region = op.operation().region();
+        if let Some(region) = region {
+            let blocks = region.blocks();
+            let blocks = blocks.try_read().unwrap();
+            for block in blocks.iter() {
+                let label = block.label();
+                if let Some(label) = label {
+                    if label.starts_with("^") {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+        Ok(false)
+    }
+    /// Lower blocks by removing `^` from the label and removing arguments.
+    ///
+    /// ```mlir
+    /// func.func @some_name() {
+    ///   ...
+    /// ^merge(%result : i32):
+    ///   br label %exit
+    /// }
+    /// ```
+    /// becomes
+    /// ```mlir
+    /// func.func @some_name() {
+    ///   ...
+    /// merge:
+    ///   br label %exit
+    /// }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let blocks = op.operation().blocks();
+        for block in blocks.iter() {
+            let mut block = block.try_write().unwrap();
+            let label = block.label();
+            if let Some(label) = label {
+                if label.starts_with("^") {
+                    let new_label = label[1..].to_string();
+                    block.set_label(Some(new_label));
+                }
+            }
+        }
+        Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }
 }
 
@@ -337,6 +396,7 @@ impl Pass for ConvertMLIRToLLVMIR {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &AddLowering,
             &AllocaLowering,
+            &BlockLowering,
             &CallLowering,
             &CondBranchLowering,
             &DeadCodeElimination,
