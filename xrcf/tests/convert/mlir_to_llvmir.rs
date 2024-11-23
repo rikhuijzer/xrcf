@@ -216,17 +216,13 @@ fn test_if_else() {
 
     define i32 @main() {
       br i1 false, label %then, label %else
-
     then:
       br label %merge
-
     else:
       br label %merge
-
     merge:
       %4 = phi i32 [ 4, %else ], [ 3, %then ]
       br label %exit
-
     exit:
       ret i32 %4
     }
