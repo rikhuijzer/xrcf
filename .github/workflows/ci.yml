@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  RUST_TOOLCHAIN: '1.81'
+  RUST_TOOLCHAIN: '1.82'
 
 jobs:
   test:
