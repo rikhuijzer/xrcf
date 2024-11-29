@@ -1,6 +1,7 @@
 use crate::canonicalize::DeadCodeElimination;
 use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
+use crate::ir::Block;
 use crate::convert::Pass;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
@@ -298,15 +299,54 @@ impl Rewrite for FuncLowering {
 /// ```
 struct MergeLowering;
 
+fn insert_phi(block: &Block) {
+    let arguments = block.arguments().vec();
+    let arguments = arguments.try_read().unwrap();
+    assert!(arguments.len() == 1, "Not implemented for multiple arguments");
+    let argument = arguments.get(0).unwrap();
+    let typ = argument.typ().unwrap();
+    let typ = typ.try_read().unwrap();
+
+    let operation = Operation::default();
+    let operation = Arc::new(RwLock::new(operation));
+    let phi = targ3t::llvmir::PhiOp::new(operation);
+}
+
 impl Rewrite for MergeLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::MergeLowering"
     }
+    /// Return true if the operation is a function where one of the children
+    /// blocks has an argument.
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        if !op.is_func() {
+            return Ok(false);
+        }
+        let operation = op.operation();
+        if operation.region().is_none() {
+            return Ok(false);
+        }
+        let blocks = operation.blocks();
+        for block in blocks.iter() {
+            let block = block.try_read().unwrap();
+            let has_argument = !block.arguments().vec().try_read().unwrap().is_empty();
+            if has_argument {
+                return Ok(true);
+            }
+        }
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        todo!()
+        let blocks = op.operation().region().unwrap().blocks();
+        let blocks = blocks.try_read().unwrap();
+        for block in blocks.iter() {
+            let block = block.try_read().unwrap();
+            let has_argument = !block.arguments().vec().try_read().unwrap().is_empty();
+            if has_argument {
+                insert_phi(&block);
+            }
+        }
+        Ok(RewriteResult::Unchanged)
     }
 }
 

@@ -396,13 +396,36 @@ impl Display for ModuleOp {
     }
 }
 
+pub struct PhiOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for PhiOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("phi".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        PhiOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "phi foo")?;
+        display_operands(f, &self.operation().operands())
+    }
+}
+
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::llvmir::return".to_string())
+        OperationName::new("ret".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         ReturnOp { operation }
@@ -415,10 +438,11 @@ impl Op for ReturnOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operands = self.operation().operands();
+        let name = Self::operation_name();
         if operands.vec().try_read().unwrap().is_empty() {
-            write!(f, "ret void")
+            write!(f, "{name} void")
         } else {
-            write!(f, "ret ")?;
+            write!(f, "{name} ")?;
             display_operands(f, &self.operation.operands())
         }
     }
