@@ -560,11 +560,25 @@ impl Display for Values {
 /// For example, `^merge(%c4: i32)` in:
 ///
 /// ```mlir
+/// %c4 = arith.constant 4 : i32
 /// cr.br ^merge(%c4: i32)
+/// ```
+///
+/// or `^then, ^else` in:
+///
+/// ```mlir
+/// cr.cond_br %cond, ^then, ^else
 /// ```
 ///
 /// This data structure is used by ops such as `cf.cond_br` to keep track of
 /// multiple destinations.
+///
+/// To allow other parts of the codebase to still recognize uses of some
+/// [OpResult] (like `%c4` in the first example), block destinations do not
+/// contain the [OpOperand]s. The operands are instead stored as operands of the
+/// operation. This is possible because the block desitions in `cr.cond_br` do
+/// not take arguments (let's hope this assumption keeps standing over time or
+/// we need to rewrite this).
 ///
 /// Unlike variables ([OpResult]s), block destinations do not contain a pointer
 /// to the block. The reason is that the block definition may appear after the
@@ -575,7 +589,6 @@ impl Display for Values {
 /// `Option<Arc<RwLock<Block>>>` to this struct and set it later.
 pub struct BlockDest {
     name: String,
-    operands: Values,
 }
 
 impl BlockDest {
@@ -583,19 +596,11 @@ impl BlockDest {
     pub fn name(&self) -> String {
         self.name.clone()
     }
-    /// The operands of the destination block (e.g., `(%c4: i32)`).
-    pub fn operands(&self) -> Values {
-        self.operands.clone()
-    }
 }
 
 impl Display for BlockDest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)?;
-        if !self.operands.is_empty() {
-            write!(f, "({})", self.operands)?;
-        }
-        Ok(())
+        write!(f, "{}", self.name)
     }
 }
 
@@ -719,11 +724,6 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
-        let operands = if self.check(TokenKind::LParen) {
-            self.parse_function_arguments()?
-        } else {
-            Values::default()
-        };
-        Ok(BlockDest { name, operands })
+        Ok(BlockDest { name })
     }
 }

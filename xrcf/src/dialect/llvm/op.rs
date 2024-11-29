@@ -192,10 +192,17 @@ impl Op for BranchOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} ", self.operation.try_read().unwrap())?;
+        write!(f, "{} ", self.operation.name())?;
         let dest = self.dest.as_ref().unwrap();
         let dest = dest.try_read().unwrap();
-        write!(f, "{}", dest)
+        write!(f, "{}", dest)?;
+        let operands = self.operation().operands();
+        if !operands.vec().try_read().unwrap().is_empty() {
+            write!(f, "(")?;
+            operands.display_with_types(f)?;
+            write!(f, ")")?;
+        }
+        Ok(())
     }
 }
 
@@ -210,6 +217,21 @@ impl Parse for BranchOp {
 
         let operation = Arc::new(RwLock::new(operation));
         let dest = parser.parse_block_dest()?;
+        if parser.check(TokenKind::LParen) {
+            parser.expect(TokenKind::LParen)?;
+            let operands = operation.operands().vec();
+            let mut operands = operands.try_write().unwrap();
+            loop {
+                let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
+                operands.push(operand);
+                parser.expect(TokenKind::Colon)?;
+                let _typ = parser.advance();
+                if !parser.check(TokenKind::Comma) {
+                    break;
+                }
+            }
+            parser.expect(TokenKind::RParen)?;
+        }
         let dest = Some(Arc::new(RwLock::new(dest)));
         let op = BranchOp { operation, dest };
         let op = Arc::new(RwLock::new(op));
