@@ -1,6 +1,5 @@
 use crate::ir::Block;
 use crate::ir::BlockLabel;
-use std::fmt::Formatter;
 use crate::ir::Constant;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -11,6 +10,7 @@ use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 

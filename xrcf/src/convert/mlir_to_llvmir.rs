@@ -104,6 +104,22 @@ impl Rewrite for AllocaLowering {
     }
 }
 
+/// Lower blocks by removing `^` from the label and removing arguments.
+///
+/// ```mlir
+/// func.func @some_name() {
+///   ...
+/// ^merge(%result : i32):
+///   br label %exit
+/// }
+/// ```
+/// becomes
+/// ```mlir
+/// func.func @some_name() {
+///   ...
+/// merge:
+///   br label %exit
+/// }
 struct BlockLowering;
 
 impl Rewrite for BlockLowering {
@@ -129,22 +145,6 @@ impl Rewrite for BlockLowering {
         }
         Ok(false)
     }
-    /// Lower blocks by removing `^` from the label and removing arguments.
-    ///
-    /// ```mlir
-    /// func.func @some_name() {
-    ///   ...
-    /// ^merge(%result : i32):
-    ///   br label %exit
-    /// }
-    /// ```
-    /// becomes
-    /// ```mlir
-    /// func.func @some_name() {
-    ///   ...
-    /// merge:
-    ///   br label %exit
-    /// }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let blocks = op.operation().blocks();
         for block in blocks.iter() {
@@ -271,6 +271,42 @@ impl Rewrite for FuncLowering {
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+/// Replace a merge point by a `phi` instruction.
+///
+/// Example:
+/// ```mlir
+/// then:
+///   %0 = llvm.mlir.constant(3 : i32) : i32
+///   llvm.br ^merge(%0 : i32)
+/// else:
+///   %1 = llvm.mlir.constant(4 : i32) : i32
+///   llvm.br ^merge(%1 : i32)
+/// merge(%result : i32):
+///   br label %exit
+/// ```
+/// becomes
+/// ```mlir
+/// then:
+///   br label %merge
+/// else:
+///   br label %merge
+/// merge:
+///   %2 = phi i32 [ 4, %else ], [ 3, %then ]
+/// ```
+struct MergeLowering;
+
+impl Rewrite for MergeLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::MergeLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(false)
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        todo!()
     }
 }
 
@@ -401,6 +437,7 @@ impl Pass for ConvertMLIRToLLVMIR {
             &CondBranchLowering,
             &DeadCodeElimination,
             &FuncLowering,
+            &MergeLowering,
             &ModuleLowering,
             &ReturnLowering,
             &StoreLowering,
