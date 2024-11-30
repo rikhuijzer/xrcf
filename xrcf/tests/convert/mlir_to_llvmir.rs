@@ -221,10 +221,10 @@ fn test_if_else() {
     else:
       br label %merge
     merge:
-      %4 = phi i32 [ 3, %then ], [ 4, %else ]
+      %result = phi i32 [ 3, %then ], [ 4, %else ]
       br label %exit
     exit:
-      ret i32 %4
+      ret i32 %result
     }
 
     !llvm.module.flags = !{!0}

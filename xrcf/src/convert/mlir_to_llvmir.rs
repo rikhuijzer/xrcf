@@ -21,6 +21,7 @@ use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
+use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -418,6 +419,29 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
     }
 }
 
+/// Set the result of phi given the block argument.
+///
+/// This is part of rewriting `%result` as a block argument:
+/// ```mlir
+/// ^merge(%result : i32):
+/// ```
+/// to `%result` as a operation result:
+/// ```mlir
+/// merge:
+///   %result = phi i32 [ 3, %then ], [ 4, %else ]
+/// ```
+fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
+    let operation = phi.operation();
+    let argument = argument.try_read().unwrap();
+    if let Value::BlockArgument(arg) = &*argument {
+        let typ = Some(arg.typ());
+        let defining_op = Some(phi.clone());
+        let res = OpResult::new(arg.name(), typ, defining_op);
+        let new = Value::OpResult(res);
+        operation.set_results(Values::from_vec(vec![Arc::new(RwLock::new(new))]));
+    }
+}
+
 /// Replace the only argument of the block by a `phi` instruction.
 fn insert_phi(block: Arc<RwLock<Block>>) {
     let block_read = block.try_read().unwrap();
@@ -429,16 +453,16 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     );
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
-    let argument = arguments.get(0).unwrap();
-    operation.set_results(Values::from_vec(vec![argument.clone()]));
+
     let operation = Arc::new(RwLock::new(operation));
     let mut phi = targ3t::llvmir::PhiOp::new(operation);
     let mut argument_pairs = determine_argument_pairs(&block);
     replace_constant_argument_pairs(&mut argument_pairs);
     verify_argument_pairs(&argument_pairs);
     phi.set_argument_pairs(Some(argument_pairs));
+    let argument = arguments.get(0).unwrap();
     let phi = Arc::new(RwLock::new(phi));
-    println!("{}", arguments.get(0).unwrap().try_read().unwrap());
+    set_phi_result(phi.clone(), argument);
     arguments.clear();
     block_read.insert_op(phi, 0);
 }

@@ -455,6 +455,7 @@ pub trait GuardedOperation {
     fn set_operands(&self, operands: OpOperands);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
+    fn set_results(&self, results: Values);
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
 }
 
@@ -519,6 +520,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
         self.try_write().unwrap().set_parent(parent);
+    }
+    fn set_results(&self, results: Values) {
+        self.try_write().unwrap().set_results(results);
     }
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         self.try_read().unwrap().successors()
