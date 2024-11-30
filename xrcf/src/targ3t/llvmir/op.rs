@@ -3,6 +3,7 @@ use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockDest;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -226,6 +227,13 @@ impl Display for CallOp {
 
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
+    dest: Option<Arc<RwLock<BlockDest>>>,
+}
+
+impl BranchOp {
+    pub fn set_dest(&mut self, dest: Arc<RwLock<BlockDest>>) {
+        self.dest = Some(dest);
+    }
 }
 
 impl Op for BranchOp {
@@ -233,7 +241,10 @@ impl Op for BranchOp {
         OperationName::new("branch".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BranchOp { operation }
+        BranchOp {
+            operation,
+            dest: None,
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -243,7 +254,12 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "br ")?;
-        display_operands(f, &self.operation().operands())?;
+        if let Some(dest) = &self.dest {
+            write!(f, "label {}", dest.try_read().unwrap())?;
+        } else {
+            // Conditional branch (e.g., `br i1 %cond, label %then, label %else`).
+            display_operands(f, &self.operation().operands())?;
+        }
         Ok(())
     }
 }

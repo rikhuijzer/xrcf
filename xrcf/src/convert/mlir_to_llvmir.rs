@@ -20,6 +20,7 @@ use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -170,6 +171,39 @@ impl Rewrite for BlockLowering {
             }
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
+    }
+}
+
+/// Replace `llvm.br` by `br`.
+struct BranchLowering;
+
+impl Rewrite for BranchLowering {
+    fn name(&self) -> &'static str {
+        "mlir_to_llvmir::BranchLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        if op.as_any().is::<dialect::llvm::BranchOp>() {
+            let operands = op.operation().operands().vec();
+            let operands = operands.try_read().unwrap();
+            // Check whether [MergeLowering] has already removed the operands.
+            if operands.is_empty() {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op
+            .as_any()
+            .downcast_ref::<dialect::llvm::BranchOp>()
+            .unwrap();
+        let operation = op.operation();
+        let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
+        new_op.set_dest(op.dest().unwrap());
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
 }
 
@@ -328,8 +362,7 @@ struct MergeLowering;
 fn determine_argument_pairs(
     block: &Arc<RwLock<Block>>,
 ) -> Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)> {
-    let block_read = block.try_read().unwrap();
-    let callers = block_read.callers();
+    let callers = block.callers();
     if callers.is_none() {
         return vec![];
     }
@@ -338,11 +371,8 @@ fn determine_argument_pairs(
     for caller in callers.iter() {
         let caller = caller.try_read().unwrap();
         let caller_operand = caller.operation().operand(0).unwrap();
-        let value = caller_operand.value();
         let caller_block = caller.operation().parent().unwrap();
-        let op_operand = OpOperand::new(value.clone());
-        let op_operand = Arc::new(RwLock::new(op_operand));
-        argument_pairs.push((op_operand, caller_block.clone()));
+        argument_pairs.push((caller_operand, caller_block.clone()));
     }
     argument_pairs
 }
@@ -390,10 +420,6 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
         arguments.len() == 1,
         "Not implemented for multiple arguments"
     );
-    // let argument = arguments.get(0).unwrap();
-    // let typ = argument.typ().unwrap();
-    // let typ = typ.try_read().unwrap();
-
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
     let operation = Arc::new(RwLock::new(operation));
@@ -405,6 +431,29 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     let phi = Arc::new(RwLock::new(phi));
     arguments.clear();
     block_read.insert_op(phi, 0);
+}
+
+/// Remove the operands of the callers that call given block.
+///
+/// For example, in
+/// ```mlir
+/// ^then:
+///   %1 = llvm.mlir.constant(3 : i32) : i32
+///   llvm.br ^merge(%1 : i32)
+/// ^merge(%result : i32):
+///   llvm.br ^exit
+/// ```
+/// on line 3, `%1 : i32` in `llvm.br ^merge(%1 : i32)` will be removed.
+fn remove_caller_operands(block: Arc<RwLock<Block>>) {
+    let callers = block.callers();
+    if callers.is_none() {
+        return;
+    }
+    let callers = callers.unwrap();
+    for caller in callers.iter() {
+        let caller = caller.operation();
+        caller.set_operands(OpOperands::default());
+    }
 }
 
 impl Rewrite for MergeLowering {
@@ -439,6 +488,7 @@ impl Rewrite for MergeLowering {
             let has_argument = !block_read.arguments().vec().try_read().unwrap().is_empty();
             if has_argument {
                 insert_phi(block.clone());
+                remove_caller_operands(block.clone());
             }
         }
         Ok(RewriteResult::Unchanged)
@@ -568,6 +618,7 @@ impl Pass for ConvertMLIRToLLVMIR {
             &AddLowering,
             &AllocaLowering,
             &BlockLowering,
+            &BranchLowering,
             &CallLowering,
             &CondBranchLowering,
             &DeadCodeElimination,

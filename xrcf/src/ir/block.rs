@@ -426,6 +426,7 @@ impl UnsetBlock {
 }
 
 pub trait GuardedBlock {
+    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
@@ -439,6 +440,9 @@ pub trait GuardedBlock {
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
+        self.try_read().unwrap().callers()
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
     }
