@@ -399,7 +399,7 @@ impl Display for ModuleOp {
 
 pub struct PhiOp {
     operation: Arc<RwLock<Operation>>,
-    argument_pairs: Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>>,
+    argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
 }
 
 impl Op for PhiOp {
@@ -419,7 +419,7 @@ impl Op for PhiOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "phi foo ")?;
+        write!(f, "phi <TYPE> ")?;
         let pairs = self.argument_pairs().unwrap();
         let mut texts = vec![];
         for (value, block) in pairs {
@@ -437,12 +437,12 @@ impl Op for PhiOp {
 }
 
 impl PhiOp {
-    pub fn argument_pairs(&self) -> Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>> {
+    pub fn argument_pairs(&self) -> Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>> {
         self.argument_pairs.clone()
     }
     pub fn set_argument_pairs(
         &mut self,
-        argument_pairs: Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>>,
+        argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
     ) {
         self.argument_pairs = argument_pairs;
     }

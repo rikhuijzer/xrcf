@@ -33,6 +33,27 @@ use std::sync::RwLock;
 
 struct AddLowering;
 
+/// Return an [OpOperand] containing a [Constant].
+///
+/// Otherwise, return `None`.
+fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpOperand>>> {
+    let op = operand.defining_op();
+    if let Some(op) = op {
+        if op.is_const() {
+            let op = op.try_read().unwrap();
+            let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
+            if let Some(op) = op {
+                let value = op.value();
+                let new_value = Constant::new(value.clone());
+                let new_operand = Value::Constant(new_value);
+                let new_operand = OpOperand::new(Arc::new(RwLock::new(new_operand)));
+                return Some(Arc::new(RwLock::new(new_operand)));
+            }
+        }
+    }
+    None
+}
+
 /// Replace the operands that point to a constant operation by a [Constant].
 fn replace_constant_operands(op: &dyn Op) {
     let operation = op.operation();
@@ -40,19 +61,9 @@ fn replace_constant_operands(op: &dyn Op) {
     let mut operands = operands.try_write().unwrap();
     for i in 0..operands.len() {
         let operand = &operands[i];
-        let op = operand.defining_op();
-        if let Some(op) = op {
-            if op.is_const() {
-                let op = op.try_read().unwrap();
-                let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
-                if let Some(op) = op {
-                    let value = op.value();
-                    let new_value = Constant::new(value.clone());
-                    let new_operand = Value::Constant(new_value);
-                    let new_operand = OpOperand::new(Arc::new(RwLock::new(new_operand)));
-                    operands[i] = Arc::new(RwLock::new(new_operand));
-                }
-            }
+        let new_operand = constant_op_operand(operand.clone());
+        if let Some(new_operand) = new_operand {
+            operands[i] = new_operand;
         }
     }
 }
@@ -316,7 +327,7 @@ struct MergeLowering;
 /// (%c4_i32, ^else)]`.
 fn determine_argument_pairs(
     block: &Arc<RwLock<Block>>,
-) -> Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)> {
+) -> Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)> {
     let block_read = block.try_read().unwrap();
     let callers = block_read.callers();
     if callers.is_none() {
@@ -329,9 +340,22 @@ fn determine_argument_pairs(
         let caller_operand = caller.operation().operand(0).unwrap();
         let value = caller_operand.value();
         let caller_block = caller.operation().parent().unwrap();
-        argument_pairs.push((value.clone(), caller_block.clone()));
+        let op_operand = OpOperand::new(value.clone());
+        let op_operand = Arc::new(RwLock::new(op_operand));
+        argument_pairs.push((op_operand, caller_block.clone()));
     }
     argument_pairs
+}
+
+/// Replace the operands of the argument pairs by constants if possible.
+fn replace_constant_argument_pairs(pairs: &mut Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>) {
+    for i in 0..pairs.len() {
+        let (op_operand, block) = pairs[i].clone();
+        let new = constant_op_operand(op_operand);
+        if let Some(new) = new {
+            pairs[i] = (new, block);
+        }
+    }
 }
 
 /// Replace the only argument of the block by a `phi` instruction.
@@ -351,7 +375,8 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     operation.set_parent(Some(block.clone()));
     let operation = Arc::new(RwLock::new(operation));
     let mut phi = targ3t::llvmir::PhiOp::new(operation);
-    let argument_pairs = determine_argument_pairs(&block);
+    let mut argument_pairs = determine_argument_pairs(&block);
+    replace_constant_argument_pairs(&mut argument_pairs);
     assert!(argument_pairs.len() == 2, "Expected two callers");
     phi.set_argument_pairs(Some(argument_pairs));
     let phi = Arc::new(RwLock::new(phi));
