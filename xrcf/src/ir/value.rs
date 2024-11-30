@@ -346,6 +346,9 @@ impl Value {
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
+    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
+        todo!("BlockArgument users")
+    }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
         let op = op.expect("Defining op not set for OpResult");
@@ -370,7 +373,7 @@ impl Value {
     }
     pub fn users(&self) -> Users {
         match self {
-            Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::BlockArgument(arg) => Users::OpOperands(self.block_arg_users(arg)),
             Value::BlockLabel(_) => todo!(),
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),

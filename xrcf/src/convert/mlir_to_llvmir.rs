@@ -431,6 +431,8 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
 ///   %result = phi i32 [ 3, %then ], [ 4, %else ]
 /// ```
 fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
+    todo!("find the users here and after the change update them");
+
     let operation = phi.operation();
     let argument = argument.try_read().unwrap();
     if let Value::BlockArgument(arg) = &*argument {
