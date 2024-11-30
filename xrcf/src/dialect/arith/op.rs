@@ -67,7 +67,7 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        self.operation.display_results(f)?;
+        write!(f, "{} = ", self.operation.results())?;
         write!(f, "{}", self.operation.name())?;
         let value = self.value();
         write!(f, " {value}")?;
@@ -113,7 +113,7 @@ impl Parse for ConstantOp {
 
 impl Display for ConstantOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation.read().unwrap())
+        self.display(f, 0)
     }
 }
 
@@ -216,9 +216,6 @@ impl Op for AddiOp {
     }
     fn canonicalize(&self) -> RewriteResult {
         self.addi_add_constant()
-    }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
     }
 }
 

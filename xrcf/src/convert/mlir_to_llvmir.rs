@@ -429,6 +429,8 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     );
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
+    let argument = arguments.get(0).unwrap();
+    operation.set_results(Values::from_vec(vec![argument.clone()]));
     let operation = Arc::new(RwLock::new(operation));
     let mut phi = targ3t::llvmir::PhiOp::new(operation);
     let mut argument_pairs = determine_argument_pairs(&block);
@@ -436,6 +438,7 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     verify_argument_pairs(&argument_pairs);
     phi.set_argument_pairs(Some(argument_pairs));
     let phi = Arc::new(RwLock::new(phi));
+    println!("{}", arguments.get(0).unwrap().try_read().unwrap());
     arguments.clear();
     block_read.insert_op(phi, 0);
 }

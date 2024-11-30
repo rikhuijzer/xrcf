@@ -391,19 +391,12 @@ impl Operation {
         }
         Users::OpOperands(out)
     }
-    /// Display the results of the operation (e.g., `%0 = `).
-    pub fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let results = self.results().vec();
-        let results = results.try_read().unwrap();
-        if !results.is_empty() {
-            write!(f, "{} = ", self.results())?;
-        }
-        Ok(())
-    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        self.display_results(f)?;
+        if !self.results().is_empty() {
+            write!(f, "{} = ", self.results())?;
+        }
         write!(f, "{}", self.name())?;
         let operands = self.operands();
         if !operands.vec().try_read().unwrap().is_empty() {
@@ -446,7 +439,6 @@ pub trait GuardedOperation {
     fn attributes(&self) -> Attributes;
     fn blocks(&self) -> Vec<Arc<RwLock<Block>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
     fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>>;
     fn operands(&self) -> OpOperands;
@@ -478,9 +470,6 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
-    }
-    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.try_read().unwrap().display_results(f)
     }
     fn name(&self) -> OperationName {
         self.try_read().unwrap().name()

@@ -435,6 +435,7 @@ impl Op for PhiOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{} = ", self.operation.results())?;
         write!(f, "phi ")?;
         let pairs = self.argument_pairs().unwrap();
         assert!(pairs.len() == 2, "Expected two callers");
