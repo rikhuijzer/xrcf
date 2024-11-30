@@ -200,6 +200,13 @@ impl Rewrite for BranchLowering {
             .unwrap();
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
+        let dest = op.dest().unwrap();
+        let mut dest = dest.try_write().unwrap();
+        let name = dest.name();
+        if name.starts_with("^") {
+            let name = name[1..].to_string();
+            dest.set_name(&format!("%{}", name));
+        }
         new_op.set_dest(op.dest().unwrap());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());

@@ -596,6 +596,9 @@ impl BlockDest {
     pub fn name(&self) -> String {
         self.name.clone()
     }
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
+    }
 }
 
 impl Display for BlockDest {
