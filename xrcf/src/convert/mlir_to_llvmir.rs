@@ -328,10 +328,12 @@ fn determine_argument_pairs(
         let caller = caller.try_read().unwrap();
         let caller_operand = caller.operation().operand(0).unwrap();
         let value = caller_operand.value();
-        argument_pairs.push((value.clone(), block.clone()));
+        let caller_block = caller.operation().parent().unwrap();
+        argument_pairs.push((value.clone(), caller_block.clone()));
     }
     argument_pairs
 }
+
 /// Replace the only argument of the block by a `phi` instruction.
 fn insert_phi(block: Arc<RwLock<Block>>) {
     let block_read = block.try_read().unwrap();
@@ -353,8 +355,8 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     assert!(argument_pairs.len() == 2, "Expected two callers");
     phi.set_argument_pairs(Some(argument_pairs));
     let phi = Arc::new(RwLock::new(phi));
-    // block_read.insert_op(phi, 0);
     arguments.clear();
+    block_read.insert_op(phi, 0);
 }
 
 impl Rewrite for MergeLowering {

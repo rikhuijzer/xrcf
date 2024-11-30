@@ -419,12 +419,19 @@ impl Op for PhiOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "phi foo")?;
-        for (value, block) in self.argument_pairs().unwrap() {
+        write!(f, "phi foo ")?;
+        let pairs = self.argument_pairs().unwrap();
+        let mut texts = vec![];
+        for (value, block) in pairs {
             let value = value.try_read().unwrap();
             let block = block.try_read().unwrap();
-            write!(f, "{} -> {}", value, block)?;
+            let mut label = block.label().expect("expected label");
+            if !label.starts_with('%') {
+                label = format!("%{}", label);
+            }
+            texts.push(format!("[ {}, {} ]", value, label));
         }
+        write!(f, "{}", texts.join(", "))?;
         Ok(())
     }
 }

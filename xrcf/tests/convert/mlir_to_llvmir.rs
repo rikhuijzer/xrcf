@@ -221,7 +221,7 @@ fn test_if_else() {
     else:
       br label %merge
     merge:
-      %4 = phi i32 [ 4, %else ], [ 3, %then ]
+      %4 = phi i32 [ 3, %then ], [ 4, %else ]
       br label %exit
     exit:
       ret i32 %4
