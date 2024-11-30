@@ -54,6 +54,9 @@ impl Op for BranchOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
+    fn block_destination(&self) -> Option<Arc<RwLock<BlockDest>>> {
+        self.dest.clone()
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest.as_ref().unwrap();

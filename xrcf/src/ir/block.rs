@@ -17,6 +17,10 @@ pub struct Block {
     parent: Option<Arc<RwLock<Region>>>,
 }
 
+fn canonicalize_label(label: &str) -> String {
+    label.trim_start_matches('^').to_string()
+}
+
 /// Two blocks are equal if they point to the same object.
 ///
 /// This is used for things like finding `successors`.
@@ -64,7 +68,44 @@ impl Block {
     pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
     }
-    /// Predecessors of the current block.
+    /// Return callers of this block (i.e., ops that point to the current block).
+    ///
+    /// For example, when called on the block `^merge` in
+    /// ```mlir
+    /// ^else:
+    ///   %c1 = arith.constant 1 : i32
+    ///   llvm.br ^merge(%c1 : i32)
+    /// ^merge(%result : i32):
+    /// ```
+    /// this method will return the operation `llvm.br`.
+    pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
+        let label = self.label();
+        if label.is_none() {
+            return None;
+        }
+        let label = label.unwrap();
+        let predecessors = self.predecessors();
+        let predecessors = predecessors.expect("expected predecessors");
+        let mut callers = vec![];
+        for predecessor in predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let ops = predecessor.ops();
+            let ops = ops.try_read().unwrap();
+            for op in ops.iter() {
+                let op_read = op.try_read().unwrap();
+                let dest = op_read.block_destination();
+                if dest.is_some() {
+                    let dest = dest.unwrap();
+                    let dest = dest.try_read().unwrap();
+                    if canonicalize_label(&dest.name()) == canonicalize_label(&label) {
+                        callers.push(op.clone());
+                    }
+                }
+            }
+        }
+        Some(callers)
+    }
+    /// Return predecessors of the current block.
     ///
     /// Returns all known blocks if the current block cannot be found in the
     /// parent region. This is because the current block may currently be in the

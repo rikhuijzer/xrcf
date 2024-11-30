@@ -1,7 +1,6 @@
 use crate::canonicalize::DeadCodeElimination;
 use crate::convert::apply_rewrites;
 use crate::convert::ChangedOp;
-use crate::ir::Block;
 use crate::convert::Pass;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
@@ -9,6 +8,7 @@ use crate::dialect;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir;
+use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::Constant;
 use crate::ir::GuardedBlock;
@@ -299,17 +299,62 @@ impl Rewrite for FuncLowering {
 /// ```
 struct MergeLowering;
 
-fn insert_phi(block: &Block) {
-    let arguments = block.arguments().vec();
-    let arguments = arguments.try_read().unwrap();
-    assert!(arguments.len() == 1, "Not implemented for multiple arguments");
-    let argument = arguments.get(0).unwrap();
-    let typ = argument.typ().unwrap();
-    let typ = typ.try_read().unwrap();
+/// Determine which values are passed to the given block.
+///
+/// For example, in
+/// ```mlir
+/// ^then:
+///   %c3_i32 = llvm.mlir.constant(3 : i32) : i32
+///   llvm.br ^merge(%c3_i32 : i32)
+/// ^else:
+///   %c4_i32 = llvm.mlir.constant(4 : i32) : i32
+///   llvm.br ^merge(%c4_i32 : i32)
+/// ^merge(%result : i32):
+///   llvm.br ^exit
+/// ```
+/// the return value of `determine_argument_pairs` will be `[(%c3_i32, ^then),
+/// (%c4_i32, ^else)]`.
+fn determine_argument_pairs(
+    block: &Arc<RwLock<Block>>,
+) -> Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)> {
+    let block_read = block.try_read().unwrap();
+    let callers = block_read.callers();
+    if callers.is_none() {
+        return vec![];
+    }
+    let callers = callers.unwrap();
+    let mut argument_pairs = vec![];
+    for caller in callers.iter() {
+        let caller = caller.try_read().unwrap();
+        let caller_operand = caller.operation().operand(0).unwrap();
+        let value = caller_operand.value();
+        argument_pairs.push((value.clone(), block.clone()));
+    }
+    argument_pairs
+}
+/// Replace the only argument of the block by a `phi` instruction.
+fn insert_phi(block: Arc<RwLock<Block>>) {
+    let block_read = block.try_read().unwrap();
+    let arguments = block_read.arguments().vec();
+    let mut arguments = arguments.try_write().unwrap();
+    assert!(
+        arguments.len() == 1,
+        "Not implemented for multiple arguments"
+    );
+    // let argument = arguments.get(0).unwrap();
+    // let typ = argument.typ().unwrap();
+    // let typ = typ.try_read().unwrap();
 
-    let operation = Operation::default();
+    let mut operation = Operation::default();
+    operation.set_parent(Some(block.clone()));
     let operation = Arc::new(RwLock::new(operation));
-    let phi = targ3t::llvmir::PhiOp::new(operation);
+    let mut phi = targ3t::llvmir::PhiOp::new(operation);
+    let argument_pairs = determine_argument_pairs(&block);
+    assert!(argument_pairs.len() == 2, "Expected two callers");
+    phi.set_argument_pairs(Some(argument_pairs));
+    let phi = Arc::new(RwLock::new(phi));
+    // block_read.insert_op(phi, 0);
+    arguments.clear();
 }
 
 impl Rewrite for MergeLowering {
@@ -340,10 +385,10 @@ impl Rewrite for MergeLowering {
         let blocks = op.operation().region().unwrap().blocks();
         let blocks = blocks.try_read().unwrap();
         for block in blocks.iter() {
-            let block = block.try_read().unwrap();
-            let has_argument = !block.arguments().vec().try_read().unwrap().is_empty();
+            let block_read = block.try_read().unwrap();
+            let has_argument = !block_read.arguments().vec().try_read().unwrap().is_empty();
             if has_argument {
-                insert_phi(&block);
+                insert_phi(block.clone());
             }
         }
         Ok(RewriteResult::Unchanged)

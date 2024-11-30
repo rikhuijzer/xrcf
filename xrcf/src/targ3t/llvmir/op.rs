@@ -2,6 +2,7 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
+use crate::ir::Block;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -398,6 +399,7 @@ impl Display for ModuleOp {
 
 pub struct PhiOp {
     operation: Arc<RwLock<Operation>>,
+    argument_pairs: Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>>,
 }
 
 impl Op for PhiOp {
@@ -405,7 +407,10 @@ impl Op for PhiOp {
         OperationName::new("phi".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        PhiOp { operation }
+        PhiOp {
+            operation,
+            argument_pairs: None,
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -415,7 +420,24 @@ impl Op for PhiOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "phi foo")?;
-        display_operands(f, &self.operation().operands())
+        for (value, block) in self.argument_pairs().unwrap() {
+            let value = value.try_read().unwrap();
+            let block = block.try_read().unwrap();
+            write!(f, "{} -> {}", value, block)?;
+        }
+        Ok(())
+    }
+}
+
+impl PhiOp {
+    pub fn argument_pairs(&self) -> Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>> {
+        self.argument_pairs.clone()
+    }
+    pub fn set_argument_pairs(
+        &mut self,
+        argument_pairs: Option<Vec<(Arc<RwLock<Value>>, Arc<RwLock<Block>>)>>,
+    ) {
+        self.argument_pairs = argument_pairs;
     }
 }
 
