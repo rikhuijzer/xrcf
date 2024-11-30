@@ -358,6 +358,29 @@ fn replace_constant_argument_pairs(pairs: &mut Vec<(Arc<RwLock<OpOperand>>, Arc<
     }
 }
 
+fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>) {
+    if pairs.len() != 2 {
+        panic!("Expected two callers");
+    }
+    let mut typ: Option<Arc<RwLock<dyn Type>>> = None;
+    for (op_operand, _) in pairs.iter() {
+        let op_operand = op_operand.try_read().unwrap();
+        let value = op_operand.value();
+        let value_typ = value.typ().unwrap();
+        if let Some(typ) = &typ {
+            let typ = typ.try_read().unwrap();
+            let value_typ = value_typ.try_read().unwrap();
+            let value_typ = value_typ.to_string();
+            let typ = typ.to_string();
+            if typ != value_typ {
+                panic!("Expected same type, but got {typ} and {value_typ}");
+            }
+        } else {
+            typ = Some(value_typ.clone());
+        }
+    }
+}
+
 /// Replace the only argument of the block by a `phi` instruction.
 fn insert_phi(block: Arc<RwLock<Block>>) {
     let block_read = block.try_read().unwrap();
@@ -377,7 +400,7 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     let mut phi = targ3t::llvmir::PhiOp::new(operation);
     let mut argument_pairs = determine_argument_pairs(&block);
     replace_constant_argument_pairs(&mut argument_pairs);
-    assert!(argument_pairs.len() == 2, "Expected two callers");
+    verify_argument_pairs(&argument_pairs);
     phi.set_argument_pairs(Some(argument_pairs));
     let phi = Arc::new(RwLock::new(phi));
     arguments.clear();

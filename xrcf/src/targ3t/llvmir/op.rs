@@ -419,17 +419,29 @@ impl Op for PhiOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "phi <TYPE> ")?;
+        write!(f, "phi ")?;
         let pairs = self.argument_pairs().unwrap();
+        assert!(pairs.len() == 2, "Expected two callers");
+        let typ = pairs[0].0.try_read().unwrap().typ().unwrap();
+        let typ = typ.try_read().unwrap();
+        write!(f, "{typ} ")?;
         let mut texts = vec![];
         for (value, block) in pairs {
             let value = value.try_read().unwrap();
+            let value = value.value();
+            let value = value.try_read().unwrap();
+            let value = if let Value::Constant(constant) = &*value {
+                // Drop type information.
+                constant.value().value()
+            } else {
+                value.to_string()
+            };
             let block = block.try_read().unwrap();
             let mut label = block.label().expect("expected label");
             if !label.starts_with('%') {
-                label = format!("%{}", label);
+                label = format!("%{label}");
             }
-            texts.push(format!("[ {}, {} ]", value, label));
+            texts.push(format!("[ {value}, {label} ]"));
         }
         write!(f, "{}", texts.join(", "))?;
         Ok(())
