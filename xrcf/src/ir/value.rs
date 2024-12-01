@@ -610,7 +610,7 @@ impl Display for Values {
 /// To allow other parts of the codebase to still recognize uses of some
 /// [OpResult] (like `%c4` in the first example), block destinations do not
 /// contain the [OpOperand]s. The operands are instead stored as operands of the
-/// operation. This is possible because the block desitions in `cr.cond_br` do
+/// operation. This is possible because the block destinations in `cr.cond_br` do
 /// not take arguments (let's hope this assumption keeps standing over time or
 /// we need to rewrite this).
 ///
