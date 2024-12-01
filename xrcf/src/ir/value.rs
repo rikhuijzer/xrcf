@@ -1,4 +1,6 @@
 use crate::ir::Attribute;
+use crate::ir::Block;
+use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
 use crate::ir::Op;
@@ -26,7 +28,7 @@ pub struct BlockArgument {
     ///
     /// This is used by [value.users] to find the users of this
     /// [BlockArgument].
-    parent_op: Option<Arc<RwLock<dyn Op>>>,
+    parent: Option<Arc<RwLock<Block>>>,
 }
 
 impl BlockArgument {
@@ -34,20 +36,20 @@ impl BlockArgument {
         BlockArgument {
             name,
             typ,
-            parent_op: None,
+            parent: None,
         }
     }
     pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
-    pub fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        self.parent_op.clone()
+    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+        self.parent.clone()
     }
     pub fn set_name(&mut self, name: Option<String>) {
         self.name = name;
     }
-    pub fn set_parent_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
-        self.parent_op = op;
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+        self.parent = parent;
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = typ;
@@ -381,13 +383,14 @@ impl Value {
         out
     }
     fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
-        let parent = arg.parent_op();
+        let parent = arg.parent();
         let parent = if parent.is_some() {
             parent.unwrap()
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };
-        let ops = parent.operation().successors();
+        let ops = parent.ops();
+        let ops = ops.try_read().unwrap();
         self.find_users(&ops)
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
@@ -449,14 +452,6 @@ impl GuardedValue for Arc<RwLock<Value>> {
 #[derive(Clone)]
 pub struct Values {
     values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
-}
-
-use std::sync::RwLockReadGuard;
-
-impl Values {
-    pub fn try_read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
-        self.values.try_read().unwrap()
-    }
 }
 
 impl Values {

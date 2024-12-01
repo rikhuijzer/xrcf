@@ -18,6 +18,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::TypeParse;
+use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -234,8 +235,16 @@ impl<T: ParserDispatch> Parser<T> {
 
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
-        let block = Block::new(label, arguments, ops.clone(), parent);
+        let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
+        for argument in arguments.vec().try_read().unwrap().iter() {
+            let mut argument = argument.try_write().unwrap();
+            if let Value::BlockArgument(arg) = &mut *argument {
+                arg.set_parent(Some(block.clone()));
+            } else {
+                panic!("Expected a block argument");
+            }
+        }
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
