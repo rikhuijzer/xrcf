@@ -101,6 +101,24 @@ pub fn default_dispatch<T: ParserDispatch>(
     }
 }
 
+pub fn default_parse_type<T: ParserDispatch>(
+    parser: &mut Parser<T>,
+) -> Result<Arc<RwLock<dyn Type>>> {
+    if parser.check(TokenKind::IntType) {
+        let typ = parser.advance();
+        let typ = IntegerType::from_str(&typ.lexeme);
+        return Ok(Arc::new(RwLock::new(typ)));
+    }
+    let text = parser.parse_type_text()?;
+    if text.is_empty() {
+        panic!("Expected type but got empty string");
+    }
+    if text.starts_with("!llvm") {
+        return LLVM::parse_type(&text);
+    }
+    todo!("Not yet implemented for '{text}'")
+}
+
 impl ParserDispatch for DefaultParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
@@ -116,19 +134,7 @@ impl ParserDispatch for DefaultParserDispatch {
         default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
-        if parser.check(TokenKind::IntType) {
-            let typ = parser.advance();
-            let typ = IntegerType::from_str(&typ.lexeme);
-            return Ok(Arc::new(RwLock::new(typ)));
-        }
-        let text = parser.parse_type_text()?;
-        if text.is_empty() {
-            panic!("Expected type but got empty string");
-        }
-        if text.starts_with("!llvm") {
-            return LLVM::parse_type(&text);
-        }
-        todo!("Not yet implemented for '{text}'")
+        default_parse_type(parser)
     }
 }
 

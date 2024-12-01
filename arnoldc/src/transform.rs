@@ -10,6 +10,7 @@ use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Type;
 use xrcf::parser::default_dispatch;
+use xrcf::parser::default_parse_type;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
@@ -68,7 +69,10 @@ impl ParserDispatch for ArnoldParserDispatch {
         // parser that can parse MLIR syntax.
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `x = <op name>`).
-            parser.peek_n(2).unwrap().clone()
+            match parser.peek_n(2) {
+                Some(name) => name.clone(),
+                None => panic!("Couldn't peek 2 tokens at {}", parser.peek()),
+            }
         } else {
             // Ignore nothing (e.g., `<op name> x, y`).
             parser.peek().clone()
@@ -77,8 +81,8 @@ impl ParserDispatch for ArnoldParserDispatch {
             _ => default_dispatch(name, parser, parent),
         }
     }
-    fn parse_type(_parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
-        todo!()
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
+        default_parse_type(parser)
     }
 }
 
