@@ -389,8 +389,15 @@ impl Value {
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };
+        let successors = parent.successors().unwrap();
+        let parent = parent.try_read().unwrap();
         let ops = parent.ops();
-        let ops = ops.try_read().unwrap();
+        let mut ops = ops.try_read().unwrap().clone();
+        for successor in successors.iter() {
+            let current_ops = successor.ops();
+            let current_ops = current_ops.try_read().unwrap().clone();
+            ops.extend(current_ops);
+        }
         self.find_users(&ops)
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {

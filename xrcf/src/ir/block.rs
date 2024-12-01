@@ -124,6 +124,22 @@ impl Block {
         };
         Some(predecessors)
     }
+    /// Return predecessors of the current block.
+    ///
+    /// Panics if the current block cannot be found in the parent region.
+    pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        let region = self.parent();
+        let region = region.expect("no parent");
+        let region = region.try_read().unwrap();
+        let index = region.index_of(self);
+        let blocks = region.blocks();
+        let successors = blocks.try_read().unwrap();
+        let successors = match index {
+            Some(index) => successors[index + 1..].to_vec(),
+            None => panic!("Expected block to be in region"),
+        };
+        Some(successors)
+    }
     /// Return assignment of a value in the parent op's function arguments.
     ///
     /// Returns a [Value] if the parent operation is a function and contains an
@@ -433,9 +449,11 @@ pub trait GuardedBlock {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
+    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
+    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn unique_value_name(&self) -> String;
 }
 
@@ -461,6 +479,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
     }
+    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        self.try_read().unwrap().predecessors()
+    }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.try_write().unwrap().remove(op);
     }
@@ -469,6 +490,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);
+    }
+    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        self.try_read().unwrap().successors()
     }
     fn unique_value_name(&self) -> String {
         self.try_read().unwrap().unique_value_name()

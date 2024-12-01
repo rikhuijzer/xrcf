@@ -435,7 +435,6 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
     let operation = phi.operation();
     let argument = argument.try_read().unwrap();
 
-    // Find the users of the argument.
     let users = argument.users();
     let users = match users {
         Users::OpOperands(users) => users,
@@ -450,7 +449,6 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
         let new = Arc::new(RwLock::new(new));
         operation.set_results(Values::from_vec(vec![new.clone()]));
 
-        // Point the users to the new value.
         for user in users.iter() {
             let mut user = user.try_write().unwrap();
             user.set_value(new.clone());
