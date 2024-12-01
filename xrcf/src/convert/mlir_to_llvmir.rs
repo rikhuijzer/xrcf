@@ -26,6 +26,7 @@ use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Types;
+use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::targ3t;
@@ -419,7 +420,7 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
     }
 }
 
-/// Set the result of phi given the block argument.
+/// Set the result of phi given the block `argument`.
 ///
 /// This is part of rewriting `%result` as a block argument:
 /// ```mlir
@@ -431,16 +432,31 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
 ///   %result = phi i32 [ 3, %then ], [ 4, %else ]
 /// ```
 fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
-    todo!("find the users here and after the change update them");
-
     let operation = phi.operation();
     let argument = argument.try_read().unwrap();
+
+    // Find the users of the argument.
+    let users = argument.users();
+    let users = match users {
+        Users::OpOperands(users) => users,
+        Users::HasNoOpResults => vec![],
+    };
+
     if let Value::BlockArgument(arg) = &*argument {
         let typ = Some(arg.typ());
         let defining_op = Some(phi.clone());
         let res = OpResult::new(arg.name(), typ, defining_op);
         let new = Value::OpResult(res);
-        operation.set_results(Values::from_vec(vec![Arc::new(RwLock::new(new))]));
+        let new = Arc::new(RwLock::new(new));
+        operation.set_results(Values::from_vec(vec![new.clone()]));
+
+        // Point the users to the new value.
+        for user in users.iter() {
+            let mut user = user.try_write().unwrap();
+            user.set_value(new.clone());
+        }
+    } else {
+        panic!("Expected a block argument");
     }
 }
 

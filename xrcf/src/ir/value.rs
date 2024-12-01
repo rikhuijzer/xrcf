@@ -22,23 +22,38 @@ pub struct BlockArgument {
     /// anonymous arguments are allowed for functions without an implementation.
     name: Option<String>,
     typ: Arc<RwLock<dyn Type>>,
+    /// The operation for which this [BlockArgument] is an argument.
+    ///
+    /// This is used by [value.users] to find the users of this
+    /// [BlockArgument].
+    parent_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl BlockArgument {
     pub fn new(name: Option<String>, typ: Arc<RwLock<dyn Type>>) -> Self {
-        BlockArgument { name, typ }
+        BlockArgument {
+            name,
+            typ,
+            parent_op: None,
+        }
     }
     pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
+    pub fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+        self.parent_op.clone()
+    }
     pub fn set_name(&mut self, name: Option<String>) {
         self.name = name;
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        self.typ.clone()
+    pub fn set_parent_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+        self.parent_op = op;
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = typ;
+    }
+    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        self.typ.clone()
     }
 }
 
@@ -346,13 +361,7 @@ impl Value {
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
-    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
-        todo!("BlockArgument users")
-    }
-    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
-        let op = op_res.defining_op();
-        let op = op.expect("Defining op not set for OpResult");
-        let ops = op.operation().successors();
+    fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
             let operation = op.operation();
@@ -370,6 +379,26 @@ impl Value {
             }
         }
         out
+    }
+    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
+        let parent = arg.parent_op();
+        let parent = if parent.is_some() {
+            parent.unwrap()
+        } else {
+            panic!("BlockArgument {arg} has no parent operation");
+        };
+        let ops = parent.operation().successors();
+        self.find_users(&ops)
+    }
+    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+        let op = op_res.defining_op();
+        let op = if op.is_some() {
+            op.unwrap()
+        } else {
+            panic!("Defining op not set for OpResult {op_res}");
+        };
+        let ops = op.operation().successors();
+        self.find_users(&ops)
     }
     pub fn users(&self) -> Users {
         match self {
