@@ -4,6 +4,7 @@ use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
+use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BooleanAttr;
@@ -94,6 +95,7 @@ pub fn default_dispatch<T: ParserDispatch>(
         "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
+        "scf.if" => <scf::IfOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));
