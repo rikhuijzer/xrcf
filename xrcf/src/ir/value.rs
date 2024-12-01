@@ -156,6 +156,14 @@ impl Display for AnonymousResult {
     }
 }
 
+/// A named result of an operation.
+///
+/// For example, in the following code:
+/// ```mlir
+/// %0 = arith.addi %1, %2 : i32
+/// ```
+/// `%0` is the result of the operation and has the name `%0`. The `defining_op`
+/// is `arith.addi` and the `typ` is `i32`.
 pub struct OpResult {
     name: Option<String>,
     typ: Option<Arc<RwLock<dyn Type>>>,

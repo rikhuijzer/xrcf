@@ -1,3 +1,6 @@
+//! Arithmetic dialect.
+//!
+//! This dialect is meant to hold basic integer and floating point operations.
 mod op;
 
 use crate::Dialect;

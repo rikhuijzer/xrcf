@@ -8,6 +8,9 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// A collection of [Op]s.
+///
+/// A block is always nested below a [Region].
 pub struct Block {
     label: Option<String>,
     arguments: Values,

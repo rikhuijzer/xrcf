@@ -63,6 +63,7 @@ fn display_operands(f: &mut Formatter<'_>, operands: &OpOperands) -> std::fmt::R
     Ok(())
 }
 
+/// `add`
 pub struct AddOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -98,6 +99,7 @@ impl Display for AddOp {
     }
 }
 
+/// `alloca`
 pub struct AllocaOp {
     operation: Arc<RwLock<Operation>>,
     element_type: Option<String>,
@@ -154,6 +156,7 @@ impl Display for AllocaOp {
     }
 }
 
+/// `call`
 pub struct CallOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
@@ -225,6 +228,7 @@ impl Display for CallOp {
     }
 }
 
+/// `br`
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
     dest: Option<Arc<RwLock<BlockDest>>>,
@@ -413,6 +417,7 @@ impl Display for ModuleOp {
     }
 }
 
+/// `phi`
 pub struct PhiOp {
     operation: Arc<RwLock<Operation>>,
     argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
@@ -477,6 +482,7 @@ impl PhiOp {
     }
 }
 
+/// `ret`
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
@@ -512,6 +518,7 @@ impl Display for ReturnOp {
     }
 }
 
+/// `store`
 pub struct StoreOp {
     operation: Arc<RwLock<Operation>>,
     len: Option<usize>,
