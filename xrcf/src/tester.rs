@@ -141,7 +141,7 @@ impl Tester {
                 op.try_read().unwrap()
             );
             let results = op.operation().results();
-            for result in results.try_read().iter() {
+            for result in results.vec().try_read().unwrap().iter() {
                 let value = result.try_read().unwrap();
                 assert!(value.typ().is_ok(), "type was not set for {value}");
             }

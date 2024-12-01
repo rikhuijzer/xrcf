@@ -17,6 +17,10 @@ pub struct Block {
     parent: Option<Arc<RwLock<Region>>>,
 }
 
+fn canonicalize_label(label: &str) -> String {
+    label.trim_start_matches('^').to_string()
+}
+
 /// Two blocks are equal if they point to the same object.
 ///
 /// This is used for things like finding `successors`.
@@ -55,10 +59,53 @@ impl Block {
     pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
+    pub fn label(&self) -> Option<String> {
+        self.label.clone()
+    }
+    pub fn set_label(&mut self, label: Option<String>) {
+        self.label = label;
+    }
     pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
     }
-    /// Predecessors of the current block.
+    /// Return callers of this block (i.e., ops that point to the current block).
+    ///
+    /// For example, when called on the block `^merge` in
+    /// ```mlir
+    /// ^else:
+    ///   %c1 = arith.constant 1 : i32
+    ///   llvm.br ^merge(%c1 : i32)
+    /// ^merge(%result : i32):
+    /// ```
+    /// this method will return the operation `llvm.br`.
+    pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
+        let label = self.label();
+        if label.is_none() {
+            return None;
+        }
+        let label = label.unwrap();
+        let predecessors = self.predecessors();
+        let predecessors = predecessors.expect("expected predecessors");
+        let mut callers = vec![];
+        for predecessor in predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let ops = predecessor.ops();
+            let ops = ops.try_read().unwrap();
+            for op in ops.iter() {
+                let op_read = op.try_read().unwrap();
+                let dest = op_read.block_destination();
+                if dest.is_some() {
+                    let dest = dest.unwrap();
+                    let dest = dest.try_read().unwrap();
+                    if canonicalize_label(&dest.name()) == canonicalize_label(&label) {
+                        callers.push(op.clone());
+                    }
+                }
+            }
+        }
+        Some(callers)
+    }
+    /// Return predecessors of the current block.
     ///
     /// Returns all known blocks if the current block cannot be found in the
     /// parent region. This is because the current block may currently be in the
@@ -76,6 +123,22 @@ impl Block {
             None => predecessors.clone(),
         };
         Some(predecessors)
+    }
+    /// Return successors of the current block.
+    ///
+    /// Panics if the current block cannot be found in the parent region.
+    pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        let region = self.parent();
+        let region = region.expect("no parent");
+        let region = region.try_read().unwrap();
+        let index = region.index_of(self);
+        let blocks = region.blocks();
+        let successors = blocks.try_read().unwrap();
+        let successors = match index {
+            Some(index) => successors[index + 1..].to_vec(),
+            None => panic!("Expected block to be in region"),
+        };
+        Some(successors)
     }
     /// Return assignment of a value in the parent op's function arguments.
     ///
@@ -379,17 +442,25 @@ impl UnsetBlock {
 }
 
 pub trait GuardedBlock {
+    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
+    fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
+    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
+    fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
+    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn unique_value_name(&self) -> String;
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
+        self.try_read().unwrap().callers()
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
     }
@@ -402,14 +473,26 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
     }
+    fn label(&self) -> Option<String> {
+        self.try_read().unwrap().label()
+    }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
+    }
+    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        self.try_read().unwrap().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.try_write().unwrap().remove(op);
     }
+    fn set_label(&self, label: Option<String>) {
+        self.try_write().unwrap().set_label(label);
+    }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);
+    }
+    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+        self.try_read().unwrap().successors()
     }
     fn unique_value_name(&self) -> String {
         self.try_read().unwrap().unique_value_name()

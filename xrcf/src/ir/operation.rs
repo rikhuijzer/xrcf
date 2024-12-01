@@ -198,6 +198,14 @@ impl Operation {
     pub fn operands(&self) -> OpOperands {
         self.operands.clone()
     }
+    pub fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        let region = self.region();
+        let region = region.expect("expected region");
+        let region = region.try_read().unwrap();
+        let blocks = region.blocks();
+        let blocks = blocks.try_read().unwrap();
+        blocks.to_vec()
+    }
     pub fn operand_types(&self) -> Types {
         let operands = self.operands.vec();
         let operands = operands.try_read().unwrap();
@@ -383,19 +391,12 @@ impl Operation {
         }
         Users::OpOperands(out)
     }
-    /// Display the results of the operation (e.g., `%0 = `).
-    pub fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let results = self.results().vec();
-        let results = results.try_read().unwrap();
-        if !results.is_empty() {
-            write!(f, "{} = ", self.results())?;
-        }
-        Ok(())
-    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
-        self.display_results(f)?;
+        if !self.results().is_empty() {
+            write!(f, "{} = ", self.results())?;
+        }
         write!(f, "{}", self.name())?;
         let operands = self.operands();
         if !operands.vec().try_read().unwrap().is_empty() {
@@ -436,8 +437,8 @@ impl Display for Operation {
 pub trait GuardedOperation {
     fn arguments(&self) -> Values;
     fn attributes(&self) -> Attributes;
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result;
     fn name(&self) -> OperationName;
     fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>>;
     fn operands(&self) -> OpOperands;
@@ -451,8 +452,10 @@ pub trait GuardedOperation {
     fn set_attributes(&self, attributes: Attributes);
     fn set_name(&self, name: OperationName);
     fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>);
+    fn set_operands(&self, operands: OpOperands);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
+    fn set_results(&self, results: Values);
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
 }
 
@@ -463,11 +466,11 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn attributes(&self) -> Attributes {
         self.try_read().unwrap().attributes()
     }
+    fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
+        self.try_read().unwrap().blocks()
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
-    }
-    fn display_results(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.try_read().unwrap().display_results(f)
     }
     fn name(&self) -> OperationName {
         self.try_read().unwrap().name()
@@ -509,11 +512,17 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>) {
         self.try_write().unwrap().set_operand(index, operand);
     }
+    fn set_operands(&self, operands: OpOperands) {
+        self.try_write().unwrap().set_operands(operands);
+    }
     fn set_region(&self, region: Option<Arc<RwLock<Region>>>) {
         self.try_write().unwrap().set_region(region);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
         self.try_write().unwrap().set_parent(parent);
+    }
+    fn set_results(&self, results: Values) {
+        self.try_write().unwrap().set_results(results);
     }
     fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         self.try_read().unwrap().successors()

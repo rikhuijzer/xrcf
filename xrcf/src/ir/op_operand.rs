@@ -10,6 +10,7 @@ use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
 use anyhow::Result;
 use std::fmt::Display;
+use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -105,6 +106,20 @@ impl OpOperands {
         } else {
             operands[index] = operand;
         }
+    }
+    pub fn display_with_types(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let operands = self.operands.try_read().unwrap();
+        if !operands.is_empty() {
+            let mut texts = vec![];
+            for operand in operands.iter() {
+                let operand = operand.try_read().unwrap();
+                let typ = operand.typ().unwrap();
+                let typ = typ.try_read().unwrap();
+                texts.push(format!("{operand} : {typ}"));
+            }
+            write!(f, "{}", texts.join(", "))?;
+        }
+        Ok(())
     }
 }
 

@@ -1,4 +1,6 @@
 use crate::ir::Attribute;
+use crate::ir::Block;
+use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
 use crate::ir::Op;
@@ -22,23 +24,38 @@ pub struct BlockArgument {
     /// anonymous arguments are allowed for functions without an implementation.
     name: Option<String>,
     typ: Arc<RwLock<dyn Type>>,
+    /// The operation for which this [BlockArgument] is an argument.
+    ///
+    /// This is used by [value.users] to find the users of this
+    /// [BlockArgument].
+    parent: Option<Arc<RwLock<Block>>>,
 }
 
 impl BlockArgument {
     pub fn new(name: Option<String>, typ: Arc<RwLock<dyn Type>>) -> Self {
-        BlockArgument { name, typ }
+        BlockArgument {
+            name,
+            typ,
+            parent: None,
+        }
     }
     pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
+    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+        self.parent.clone()
+    }
     pub fn set_name(&mut self, name: Option<String>) {
         self.name = name;
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        self.typ.clone()
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+        self.parent = parent;
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = typ;
+    }
+    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+        self.typ.clone()
     }
 }
 
@@ -346,10 +363,7 @@ impl Value {
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
-    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
-        let op = op_res.defining_op();
-        let op = op.expect("Defining op not set for OpResult");
-        let ops = op.operation().successors();
+    fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
             let operation = op.operation();
@@ -368,9 +382,37 @@ impl Value {
         }
         out
     }
+    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
+        let parent = arg.parent();
+        let parent = if parent.is_some() {
+            parent.unwrap()
+        } else {
+            panic!("BlockArgument {arg} has no parent operation");
+        };
+        let successors = parent.successors().unwrap();
+        let parent = parent.try_read().unwrap();
+        let ops = parent.ops();
+        let mut ops = ops.try_read().unwrap().clone();
+        for successor in successors.iter() {
+            let current_ops = successor.ops();
+            let current_ops = current_ops.try_read().unwrap().clone();
+            ops.extend(current_ops);
+        }
+        self.find_users(&ops)
+    }
+    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+        let op = op_res.defining_op();
+        let op = if op.is_some() {
+            op.unwrap()
+        } else {
+            panic!("Defining op not set for OpResult {op_res}");
+        };
+        let ops = op.operation().successors();
+        self.find_users(&ops)
+    }
     pub fn users(&self) -> Users {
         match self {
-            Value::BlockArgument(_) => Users::HasNoOpResults,
+            Value::BlockArgument(arg) => Users::OpOperands(self.block_arg_users(arg)),
             Value::BlockLabel(_) => todo!(),
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
@@ -417,14 +459,6 @@ impl GuardedValue for Arc<RwLock<Value>> {
 #[derive(Clone)]
 pub struct Values {
     values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
-}
-
-use std::sync::RwLockReadGuard;
-
-impl Values {
-    pub fn try_read(&self) -> RwLockReadGuard<Vec<Arc<RwLock<Value>>>> {
-        self.values.try_read().unwrap()
-    }
 }
 
 impl Values {
@@ -560,11 +594,25 @@ impl Display for Values {
 /// For example, `^merge(%c4: i32)` in:
 ///
 /// ```mlir
+/// %c4 = arith.constant 4 : i32
 /// cr.br ^merge(%c4: i32)
+/// ```
+///
+/// or `^then, ^else` in:
+///
+/// ```mlir
+/// cr.cond_br %cond, ^then, ^else
 /// ```
 ///
 /// This data structure is used by ops such as `cf.cond_br` to keep track of
 /// multiple destinations.
+///
+/// To allow other parts of the codebase to still recognize uses of some
+/// [OpResult] (like `%c4` in the first example), block destinations do not
+/// contain the [OpOperand]s. The operands are instead stored as operands of the
+/// operation. This is possible because the block destinations in `cr.cond_br` do
+/// not take arguments (let's hope this assumption keeps standing over time or
+/// we need to rewrite this).
 ///
 /// Unlike variables ([OpResult]s), block destinations do not contain a pointer
 /// to the block. The reason is that the block definition may appear after the
@@ -575,7 +623,6 @@ impl Display for Values {
 /// `Option<Arc<RwLock<Block>>>` to this struct and set it later.
 pub struct BlockDest {
     name: String,
-    operands: Values,
 }
 
 impl BlockDest {
@@ -583,19 +630,14 @@ impl BlockDest {
     pub fn name(&self) -> String {
         self.name.clone()
     }
-    /// The operands of the destination block (e.g., `(%c4: i32)`).
-    pub fn operands(&self) -> Values {
-        self.operands.clone()
+    pub fn set_name(&mut self, name: &str) {
+        self.name = name.to_string();
     }
 }
 
 impl Display for BlockDest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)?;
-        if !self.operands.is_empty() {
-            write!(f, "({})", self.operands)?;
-        }
-        Ok(())
+        write!(f, "{}", self.name)
     }
 }
 
@@ -719,11 +761,6 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
-        let operands = if self.check(TokenKind::LParen) {
-            self.parse_function_arguments()?
-        } else {
-            Values::default()
-        };
-        Ok(BlockDest { name, operands })
+        Ok(BlockDest { name })
     }
 }

@@ -18,6 +18,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::TypeParse;
+use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
@@ -83,7 +84,9 @@ pub fn default_dispatch<T: ParserDispatch>(
         "func.func" => <func::FuncOp as Parse>::op(parser, parent),
         "llvm.add" => <llvm::AddOp as Parse>::op(parser, parent),
         "llvm.alloca" => <llvm::AllocaOp as Parse>::op(parser, parent),
+        "llvm.br" => <llvm::BranchOp as Parse>::op(parser, parent),
         "llvm.call" => <llvm::CallOp as Parse>::op(parser, parent),
+        "llvm.cond_br" => <llvm::CondBranchOp as Parse>::op(parser, parent),
         "llvm.func" => <llvm::FuncOp as Parse>::op(parser, parent),
         "llvm.mlir.constant" => <llvm::ConstantOp as Parse>::op(parser, parent),
         "llvm.mlir.global" => <llvm::GlobalOp as Parse>::op(parser, parent),
@@ -96,6 +99,24 @@ pub fn default_dispatch<T: ParserDispatch>(
             return Err(anyhow::anyhow!(msg));
         }
     }
+}
+
+pub fn default_parse_type<T: ParserDispatch>(
+    parser: &mut Parser<T>,
+) -> Result<Arc<RwLock<dyn Type>>> {
+    if parser.check(TokenKind::IntType) {
+        let typ = parser.advance();
+        let typ = IntegerType::from_str(&typ.lexeme);
+        return Ok(Arc::new(RwLock::new(typ)));
+    }
+    let text = parser.parse_type_text()?;
+    if text.is_empty() {
+        panic!("Expected type but got empty string");
+    }
+    if text.starts_with("!llvm") {
+        return LLVM::parse_type(&text);
+    }
+    todo!("Not yet implemented for '{text}'")
 }
 
 impl ParserDispatch for DefaultParserDispatch {
@@ -113,19 +134,7 @@ impl ParserDispatch for DefaultParserDispatch {
         default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
-        if parser.check(TokenKind::IntType) {
-            let typ = parser.advance();
-            let typ = IntegerType::from_str(&typ.lexeme);
-            return Ok(Arc::new(RwLock::new(typ)));
-        }
-        let text = parser.parse_type_text()?;
-        if text.is_empty() {
-            panic!("Expected type but got empty string");
-        }
-        if text.starts_with("!llvm") {
-            return LLVM::parse_type(&text);
-        }
-        todo!("Not yet implemented for '{text}'")
+        default_parse_type(parser)
     }
 }
 
@@ -232,8 +241,16 @@ impl<T: ParserDispatch> Parser<T> {
 
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
-        let block = Block::new(label, arguments, ops.clone(), parent);
+        let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
+        for argument in arguments.vec().try_read().unwrap().iter() {
+            let mut argument = argument.try_write().unwrap();
+            if let Value::BlockArgument(arg) = &mut *argument {
+                arg.set_parent(Some(block.clone()));
+            } else {
+                panic!("Expected a block argument");
+            }
+        }
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;

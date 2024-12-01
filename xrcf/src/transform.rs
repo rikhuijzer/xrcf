@@ -155,7 +155,7 @@ pub fn default_passes() -> Vec<Arg> {
 /// `transform` is used instead of `compile` because the infrastructure is not
 /// limited to compiling. For example, it could also be used to build
 /// decompilers (i.e., for security research where the assembly is decompiled to
-/// a more readable form.).
+/// a more readable form).
 pub fn transform<T: TransformDispatch>(
     op: Arc<RwLock<dyn Op>>,
     passes: &Passes,
@@ -166,6 +166,14 @@ pub fn transform<T: TransformDispatch>(
         if let RewriteResult::Changed(_) = new_result {
             result = new_result;
         }
+
+        if pass.to_string() != Canonicalize::NAME {
+            let canonicalize_result = Canonicalize::convert(op.clone())?;
+            if let RewriteResult::Changed(_) = canonicalize_result {
+                result = canonicalize_result;
+            }
+        }
     }
+
     Ok(result)
 }

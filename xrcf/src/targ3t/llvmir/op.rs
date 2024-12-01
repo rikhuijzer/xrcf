@@ -2,6 +2,8 @@ use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
+use crate::ir::Block;
+use crate::ir::BlockDest;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -18,7 +20,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-/// Display an operand LLVMIR style (e.g., `i32 8`, or `i32 %0`).
+/// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
     let value = operand.value();
     let value = value.try_read().unwrap();
@@ -34,13 +36,18 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {value}")
         }
+        Value::BlockLabel(label) => {
+            let label = label.name();
+            let label = label.split_once('^').unwrap().1;
+            write!(f, "label %{label}")
+        }
         Value::OpResult(op_result) => {
             let name = op_result.name().expect("Op result has no name");
             let typ = op_result.typ().expect("No type");
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {name}")
         }
-        _ => panic!("Unexpected"),
+        _ => panic!("Unexpected operand value type for {value}"),
     }
 }
 
@@ -218,6 +225,51 @@ impl Display for CallOp {
     }
 }
 
+pub struct BranchOp {
+    operation: Arc<RwLock<Operation>>,
+    dest: Option<Arc<RwLock<BlockDest>>>,
+}
+
+impl BranchOp {
+    pub fn set_dest(&mut self, dest: Arc<RwLock<BlockDest>>) {
+        self.dest = Some(dest);
+    }
+}
+
+impl Op for BranchOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("branch".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        BranchOp {
+            operation,
+            dest: None,
+        }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "br ")?;
+        if let Some(dest) = &self.dest {
+            write!(f, "label {}", dest.try_read().unwrap())?;
+        } else {
+            // Conditional branch (e.g., `br i1 %cond, label %then, label %else`).
+            display_operands(f, &self.operation().operands())?;
+        }
+        Ok(())
+    }
+}
+
+impl Display for BranchOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
 pub struct FuncOp {
     operation: Arc<RwLock<Operation>>,
     identifier: Option<String>,
@@ -361,13 +413,77 @@ impl Display for ModuleOp {
     }
 }
 
+pub struct PhiOp {
+    operation: Arc<RwLock<Operation>>,
+    argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
+}
+
+impl Op for PhiOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("phi".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        PhiOp {
+            operation,
+            argument_pairs: None,
+        }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{} = ", self.operation.results())?;
+        write!(f, "phi ")?;
+        let pairs = self.argument_pairs().unwrap();
+        assert!(pairs.len() == 2, "Expected two callers");
+        let typ = pairs[0].0.try_read().unwrap().typ().unwrap();
+        let typ = typ.try_read().unwrap();
+        write!(f, "{typ} ")?;
+        let mut texts = vec![];
+        for (value, block) in pairs {
+            let value = value.try_read().unwrap();
+            let value = value.value();
+            let value = value.try_read().unwrap();
+            let value = if let Value::Constant(constant) = &*value {
+                // Drop type information.
+                constant.value().value()
+            } else {
+                value.to_string()
+            };
+            let block = block.try_read().unwrap();
+            let mut label = block.label().expect("expected label");
+            if !label.starts_with('%') {
+                label = format!("%{label}");
+            }
+            texts.push(format!("[ {value}, {label} ]"));
+        }
+        write!(f, "{}", texts.join(", "))?;
+        Ok(())
+    }
+}
+
+impl PhiOp {
+    pub fn argument_pairs(&self) -> Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>> {
+        self.argument_pairs.clone()
+    }
+    pub fn set_argument_pairs(
+        &mut self,
+        argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
+    ) {
+        self.argument_pairs = argument_pairs;
+    }
+}
+
 pub struct ReturnOp {
     operation: Arc<RwLock<Operation>>,
 }
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::llvmir::return".to_string())
+        OperationName::new("ret".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         ReturnOp { operation }
@@ -380,10 +496,11 @@ impl Op for ReturnOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operands = self.operation().operands();
+        let name = Self::operation_name();
         if operands.vec().try_read().unwrap().is_empty() {
-            write!(f, "ret void")
+            write!(f, "{name} void")
         } else {
-            write!(f, "ret ")?;
+            write!(f, "{name} ")?;
             display_operands(f, &self.operation.operands())
         }
     }
