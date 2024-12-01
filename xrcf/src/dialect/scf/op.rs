@@ -28,7 +28,7 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 pub struct IfOp {
     operation: Arc<RwLock<Operation>>,
-    thn: Option<Arc<RwLock<Block>>>,
+    then: Option<Arc<RwLock<Block>>>,
     els: Option<Arc<RwLock<Block>>>,
 }
 
@@ -41,7 +41,7 @@ impl Op for IfOp {
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         IfOp {
             operation,
-            thn: None,
+            then: None,
             els: None,
         }
     }
