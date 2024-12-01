@@ -124,7 +124,7 @@ impl Block {
         };
         Some(predecessors)
     }
-    /// Return predecessors of the current block.
+    /// Return successors of the current block.
     ///
     /// Panics if the current block cannot be found in the parent region.
     pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
