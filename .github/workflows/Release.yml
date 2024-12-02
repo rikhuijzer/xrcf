@@ -1,5 +1,6 @@
 name: Release
 
+# The build always runs, but only releases on tag, see the last step.
 on:
   push:
     branches:
@@ -54,12 +55,24 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
           cd ..
 
-          SRC="target/${{ matrix.target }}/release/xrcf-bin${{ steps.check.outputs.ext }}"
-          echo "SRC: $SRC"
+          BIN_SRC="target/${{ matrix.target }}/release/xrcf-bin${{ steps.check.outputs.ext }}"
+          echo "BIN_SRC: $BIN_SRC"
           DST="target/release/xrcf-bin-${{ matrix.target }}${{ steps.check.outputs.ext }}"
-          echo "DST: $DST"
-          mv -v $SRC $DST
-          echo "dst=$DST" >> $GITHUB_OUTPUT
+          echo "BIN_DST: $BIN_DST"
+          mv -v $BIN_SRC $BIN_DST
+          echo "bin_dst=$BIN_DST" >> $GITHUB_OUTPUT
+
+          cd arnoldc/
+          cargo build --release --target ${{ matrix.target }}
+          cd ..
+
+          ARNOLDC_SRC="target/${{ matrix.target }}/release/arnoldc${{ steps.check.outputs.ext }}"
+          echo "ARNOLDC_SRC: $ARNOLDC_SRC"
+          DST="target/release/arnoldc-${{ matrix.target }}${{ steps.check.outputs.ext }}"
+          echo "ARNOLDC_DST: $ARNOLDC_DST"
+          mv -v $ARNOLDC_SRC $ARNOLDC_DST
+          echo "arnoldc_dst=$ARNOLDC_DST" >> $GITHUB_OUTPUT
+
         id: release
         shell: bash
 
@@ -67,4 +80,6 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         with:
           fail_on_unmatched_files: true
-          files: ${{ steps.release.outputs.dst }}
+          files: |
+            ${{ steps.release.outputs.bin_dst }}
+            ${{ steps.release.outputs.arnoldc_dst }}
