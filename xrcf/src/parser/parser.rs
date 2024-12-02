@@ -96,6 +96,7 @@ pub fn default_dispatch<T: ParserDispatch>(
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
         "scf.if" => <scf::IfOp as Parse>::op(parser, parent),
+        "scf.yield" => <scf::YieldOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));
@@ -220,7 +221,10 @@ impl<T: ParserDispatch> Parser<T> {
     fn is_region_end(&self) -> bool {
         self.peek().kind == TokenKind::RBrace
     }
-    pub fn parse_block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
+    pub fn parse_block(
+        &mut self,
+        parent: Option<Arc<RwLock<Region>>>,
+    ) -> Result<Arc<RwLock<Block>>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"

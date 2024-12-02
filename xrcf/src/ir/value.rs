@@ -742,8 +742,8 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
     /// This returns the results to allow setting the defining op on them.
-    /// 
-    /// Setting the type is not necessary since the type 
+    ///
+    /// Setting the type is not necessary since the type
     pub fn parse_op_results_into(
         &mut self,
         token_kind: TokenKind,

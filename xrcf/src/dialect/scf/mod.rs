@@ -9,6 +9,7 @@ mod op;
 use crate::Dialect;
 
 pub use op::IfOp;
+pub use op::YieldOp;
 
 pub struct Scf;
 

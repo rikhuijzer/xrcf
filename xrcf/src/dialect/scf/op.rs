@@ -12,8 +12,8 @@ use crate::ir::Op;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::Value;
 use crate::ir::Region;
+use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
@@ -70,7 +70,10 @@ impl Parse for IfOp {
 
         let parent = parent.expect("Expected parent");
         let _condition = parser.parse_op_operand_into(
-            parent.clone(), TokenKind::PercentIdentifier, &mut operation)?;
+            parent.clone(),
+            TokenKind::PercentIdentifier,
+            &mut operation,
+        )?;
 
         if parser.check(TokenKind::Arrow) {
             parser.advance();
@@ -81,7 +84,11 @@ impl Parse for IfOp {
         }
 
         let operation = Arc::new(RwLock::new(operation));
-        let op = IfOp { operation, then: None, els: None };
+        let op = IfOp {
+            operation,
+            then: None,
+            els: None,
+        };
         let op = Arc::new(RwLock::new(op));
         let then = parser.parse_region(op.clone())?;
         let els = parser.parse_region(op.clone())?;
@@ -90,6 +97,41 @@ impl Parse for IfOp {
         op_write.then = Some(then);
         op_write.els = Some(els);
         results.set_defining_op(op.clone());
+        Ok(op)
+    }
+}
+
+pub struct YieldOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for YieldOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("scf.yield".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        YieldOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+}
+
+impl Parse for YieldOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        parser.parse_operation_name_into::<YieldOp>(&mut operation)?;
+
+        let operation = Arc::new(RwLock::new(operation));
+        let op = YieldOp { operation };
+        let op = Arc::new(RwLock::new(op));
         Ok(op)
     }
 }
