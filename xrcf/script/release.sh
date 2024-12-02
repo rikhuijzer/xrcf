@@ -20,7 +20,7 @@ echo ""
 echo "ENSURE YOU ARE ON THE MAIN BRANCH"
 echo ""
 
-read -p 'Release notes, which will not trigger a release yet: ' NOTES
+NOTES="See CHANGELOG.md for details."
 
 read -p "Creating a new tag, which WILL TRIGGER A RELEASE with the following release notes: \"$NOTES\". Are you sure? [y/N]" -n 1 -r
 if [[ $REPLY =~ ^[Yy]$ ]]; then
