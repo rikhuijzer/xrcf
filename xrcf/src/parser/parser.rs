@@ -220,7 +220,7 @@ impl<T: ParserDispatch> Parser<T> {
     fn is_region_end(&self) -> bool {
         self.peek().kind == TokenKind::RBrace
     }
-    pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
+    pub fn parse_block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"
@@ -280,7 +280,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
+    pub fn parse_region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
@@ -289,7 +289,7 @@ impl<T: ParserDispatch> Parser<T> {
         let blocks = Arc::new(RwLock::new(blocks));
         region.set_blocks(blocks.clone());
         while !self.is_region_end() {
-            let block = self.block(Some(region.clone()))?;
+            let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.try_write().unwrap();
             blocks.push(block);
         }

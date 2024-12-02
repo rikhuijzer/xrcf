@@ -13,6 +13,7 @@ use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Value;
+use crate::ir::Region;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
@@ -28,11 +29,9 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 pub struct IfOp {
     operation: Arc<RwLock<Operation>>,
-    then: Option<Arc<RwLock<Block>>>,
-    els: Option<Arc<RwLock<Block>>>,
+    then: Option<Arc<RwLock<Region>>>,
+    els: Option<Arc<RwLock<Region>>>,
 }
-
-impl IfOp {}
 
 impl Op for IfOp {
     fn operation_name() -> OperationName {
@@ -63,6 +62,34 @@ impl Parse for IfOp {
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
-        todo!()
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
+        parser.expect(TokenKind::Equal)?;
+        parser.parse_operation_name_into::<IfOp>(&mut operation)?;
+
+        let parent = parent.expect("Expected parent");
+        let _condition = parser.parse_op_operand_into(
+            parent.clone(), TokenKind::PercentIdentifier, &mut operation)?;
+
+        if parser.check(TokenKind::Arrow) {
+            parser.advance();
+            parser.expect(TokenKind::LParen)?;
+            let return_types = parser.parse_types()?;
+            results.set_types(return_types);
+            parser.expect(TokenKind::RParen)?;
+        }
+
+        let operation = Arc::new(RwLock::new(operation));
+        let op = IfOp { operation, then: None, els: None };
+        let op = Arc::new(RwLock::new(op));
+        let then = parser.parse_region(op.clone())?;
+        let els = parser.parse_region(op.clone())?;
+        let op_write = op.clone();
+        let mut op_write = op_write.try_write().unwrap();
+        op_write.then = Some(then);
+        op_write.els = Some(els);
+        results.set_defining_op(op.clone());
+        Ok(op)
     }
 }

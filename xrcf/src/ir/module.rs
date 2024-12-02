@@ -90,7 +90,7 @@ impl Parse for ModuleOp {
         };
         let op = Arc::new(RwLock::new(op));
 
-        let region = parser.region(op.clone());
+        let region = parser.parse_region(op.clone());
         let mut operation = operation.try_write().unwrap();
         operation.set_region(Some(region?));
         operation.set_parent(parent.clone());

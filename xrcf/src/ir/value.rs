@@ -219,7 +219,7 @@ impl Display for OpResult {
     }
 }
 
-#[must_use = "the object inside `UnsetOpResult` should be further initialized, see the setter methods"]
+#[must_use = "the object should be further initialized, see the setter methods"]
 pub struct UnsetOpResult {
     result: Arc<RwLock<Value>>,
 }
@@ -240,7 +240,7 @@ impl UnsetOpResult {
     }
 }
 
-#[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
+#[must_use = "the object should be further initialized, see the setter methods"]
 pub struct UnsetOpResults {
     results: Values,
 }
@@ -256,8 +256,15 @@ impl UnsetOpResults {
         let values = self.values();
         values.set_defining_op(op);
     }
-    pub fn set_types(&self, _types: Vec<Arc<RwLock<dyn Type>>>) {
-        todo!("Not implemented")
+    pub fn set_types(&self, types: Vec<Arc<RwLock<dyn Type>>>) {
+        let results = self.values();
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        assert!(types.len() == results.len());
+        for (result, typ) in results.iter().zip(types) {
+            let mut result = result.try_write().unwrap();
+            result.set_type(typ);
+        }
     }
 }
 
@@ -735,6 +742,8 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
     /// This returns the results to allow setting the defining op on them.
+    /// 
+    /// Setting the type is not necessary since the type 
     pub fn parse_op_results_into(
         &mut self,
         token_kind: TokenKind,

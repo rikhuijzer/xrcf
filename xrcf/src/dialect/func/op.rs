@@ -413,7 +413,7 @@ impl<T: ParserDispatch> Parser<T> {
         let op = Arc::new(RwLock::new(op));
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
-            let region = parser.region(op.clone())?;
+            let region = parser.parse_region(op.clone())?;
             let op_rd = op.try_read().unwrap();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));

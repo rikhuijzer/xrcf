@@ -263,7 +263,7 @@ impl Parse for BeginMainOp {
             operation: operation.clone(),
         };
         let op = Arc::new(RwLock::new(op));
-        let region = parser.region(op.clone())?;
+        let region = parser.parse_region(op.clone())?;
         let mut operation = operation.write().unwrap();
         operation.set_region(Some(region.clone()));
         Ok(op)
