@@ -54,9 +54,9 @@ jobs:
           cargo build --release --target ${{ matrix.target }}
           cd ..
 
-          SRC="xrcf-bin/target/${{ matrix.target }}/release/xrcf-bin${{ steps.check.outputs.ext }}"
+          SRC="target/${{ matrix.target }}/release/xrcf-bin${{ steps.check.outputs.ext }}"
           echo "SRC: $SRC"
-          DST="xrcf-bin/target/release/xrcf-bin-${{ matrix.target }}${{ steps.check.outputs.ext }}"
+          DST="target/release/xrcf-bin-${{ matrix.target }}${{ steps.check.outputs.ext }}"
           echo "DST: $DST"
           mv -v $SRC $DST
           echo "dst=$DST" >> $GITHUB_OUTPUT
