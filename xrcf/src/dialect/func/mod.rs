@@ -1,3 +1,6 @@
+//! Function dialect.
+//!
+//! This dialect is meant to hold operations that are related to functions.
 mod op;
 
 pub use op::Call;

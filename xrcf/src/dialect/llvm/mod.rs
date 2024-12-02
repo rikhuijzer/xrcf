@@ -1,3 +1,9 @@
+//! LLVM dialect.
+//!
+//! This dialect is meant to hold operations that are related to the LLVM IR.
+//! Note that operations in this dialect are not the same as operations in the
+//! LLVM IR.
+
 mod attribute;
 mod op;
 mod typ;

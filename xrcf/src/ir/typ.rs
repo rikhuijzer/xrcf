@@ -244,9 +244,24 @@ impl<T: ParserDispatch> Parser<T> {
         }
         Ok(types)
     }
+    /// Parse a type and verify that it matches the given operand.
+    ///
+    /// For example, this method can be used to verify that `%0` has type `i32`
+    /// in:
+    ///
+    /// ```mlir
+    /// %0 = arith.constant 42 : i32
+    /// llvm.call @printf(%0) : (i32) -> (i32)
+    /// ```
+    pub fn parse_type_for_op_operand(&mut self, operand: Arc<RwLock<OpOperand>>) -> Result<()> {
+        let typ = self.parse_type()?;
+        self.verify_type(operand, typ)?;
+        Ok(())
+    }
     /// Parse types and verify that they match the given operands.
     ///
-    /// For example, can be used to verify that `%0` has type `i32` in:
+    /// For example, this method can be used to verify that `%0` has type `i32`
+    /// in:
     ///
     /// ```mlir
     /// %0 = arith.constant 42 : i32

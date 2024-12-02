@@ -122,6 +122,9 @@ impl Token {
     pub fn column(&self) -> usize {
         self.location.column()
     }
+    pub fn lexeme(&self) -> &str {
+        &self.lexeme
+    }
 }
 
 impl Display for Token {

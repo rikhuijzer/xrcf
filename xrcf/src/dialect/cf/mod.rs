@@ -1,3 +1,9 @@
+//! Unstructured control flow dialect.
+//!
+//! This dialect contains low-level control flow constructs. For example,
+//! `cf.br` is a branch operation that unconditionally branches to a given
+//! block, like a `goto`.
+
 mod op;
 
 use crate::Dialect;
