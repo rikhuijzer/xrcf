@@ -70,7 +70,7 @@ impl Op for IfOp {
         then.display(f, indent)?;
         let els = self.els.clone().expect("Expected `else` region");
         let els = els.try_read().unwrap();
-        write!(f, " else ")?;
+        write!(f, " else")?;
         els.display(f, indent)?;
         Ok(())
     }
@@ -149,6 +149,11 @@ impl Op for YieldOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{} ", self.operation.name())?;
+        self.operation.operands().display_with_types(f)?;
+        Ok(())
     }
 }
 
