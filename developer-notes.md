@@ -39,6 +39,32 @@ Calling out to an installed LLVM version is better but is hard with package vers
 Let's for now just generate LLVM IR, then the LLVM binary can be used to compile that.
 At a later point, the plan is to include the LLVM backend in a separate crate.
 
+## Comments
+
+Comments should explain *why* something is done, not *what* something does.
+The problem with "what" comments is that they often get out of date and then become confusing.
+If the "what" is not obvious from the code, then try to first explain it via descriptive variable and function names.
+
+## Op Docstrings
+
+Explaining *what* an op does is a good idea for docstrings.
+For example, for the `scf.yield` op, the docstring could be:
+
+    `scf.yield`
+ 
+    ```ebnf
+    `scf.yield` $operands `:` type($operands)
+    ```
+    For example,
+    ```mlir
+    scf.yield %0 : i32
+    ```
+
+This uses the Extended Backus-Naur Form (EBNF) to describe the syntax of the op.
+
+The benefit of using EBNF and the example is that it can be convinient to find this information in the documentation.
+Even more importantly, hopefully LLMs will learn from these examples how the parsing and printing code should look like.
+
 ## `Operation`
 
 MLIR has a `Op` trait where each `struct` that implements it contains a `Operation` field.

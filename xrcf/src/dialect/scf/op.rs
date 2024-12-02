@@ -101,6 +101,15 @@ impl Parse for IfOp {
     }
 }
 
+/// `scf.yield`
+/// 
+/// ```ebnf
+/// `scf.yield` $operands `:` type($operands)
+/// ```
+/// For example,
+/// ```mlir
+/// scf.yield %0 : i32
+/// ```
 pub struct YieldOp {
     operation: Arc<RwLock<Operation>>,
 }
