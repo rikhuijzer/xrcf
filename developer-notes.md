@@ -62,7 +62,7 @@ For example, for the `scf.yield` op, the docstring could be:
 
 This uses the Extended Backus-Naur Form (EBNF) to describe the syntax of the op.
 
-The benefit of using EBNF and the example is that it can be convinient to find this information in the documentation.
+The benefit of using EBNF and the example is that it can be convenient to find this information in the documentation.
 Even more importantly, hopefully LLMs will learn from these examples how the parsing and printing code should look like.
 
 ## `Operation`

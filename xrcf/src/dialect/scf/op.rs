@@ -27,6 +27,11 @@ use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
+/// `scf.if`
+///
+/// ```ebnf
+/// `scf.if` $condition `then` `{` $then `}` `else` `{` $else `}`
+/// ```
 pub struct IfOp {
     operation: Arc<RwLock<Operation>>,
     then: Option<Arc<RwLock<Region>>>,
@@ -50,9 +55,23 @@ impl Op for IfOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} = ", self.operation.results())?;
-        write!(f, "{}", self.operation.name())?;
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let has_results = !self.operation.results().is_empty();
+        if has_results {
+            write!(f, "{} = ", self.operation.results())?;
+        }
+        write!(f, "{} ", self.operation.name())?;
+        write!(f, "{} ", self.operation.operands())?;
+        if has_results {
+            write!(f, "-> ({})", self.operation.results().types())?;
+        }
+        let then = self.then.clone().expect("Expected `then` region");
+        let then = then.try_read().unwrap();
+        then.display(f, indent)?;
+        let els = self.els.clone().expect("Expected `else` region");
+        let els = els.try_read().unwrap();
+        write!(f, " else ")?;
+        els.display(f, indent)?;
         Ok(())
     }
 }
@@ -91,6 +110,10 @@ impl Parse for IfOp {
         };
         let op = Arc::new(RwLock::new(op));
         let then = parser.parse_region(op.clone())?;
+        let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
+        if else_keyword.lexeme() != "else" {
+            return Err(anyhow::anyhow!("Expected `else`, but got {}", else_keyword));
+        }
         let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
         let mut op_write = op_write.try_write().unwrap();
@@ -102,7 +125,7 @@ impl Parse for IfOp {
 }
 
 /// `scf.yield`
-/// 
+///
 /// ```ebnf
 /// `scf.yield` $operands `:` type($operands)
 /// ```
@@ -137,6 +160,10 @@ impl Parse for YieldOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<YieldOp>(&mut operation)?;
+        let parent = parent.expect("Expected parent");
+        let operand = parser.parse_op_operand_into(parent, TOKEN_KIND, &mut operation)?;
+        parser.expect(TokenKind::Colon)?;
+        parser.parse_type_for_op_operand(operand)?;
 
         let operation = Arc::new(RwLock::new(operation));
         let op = YieldOp { operation };

@@ -40,6 +40,8 @@ fn test_if() {
         return %0 : i32
     }
     "#};
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_contain(&actual, &src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
     Tester::check_lines_contain(&actual, expected, Location::caller());

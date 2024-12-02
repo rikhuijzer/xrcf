@@ -177,10 +177,10 @@ impl Block {
                 }
             }
         } else {
-            panic!(
-                "Expected parent op to be a function, but got {}",
-                operation.name()
-            );
+            // We are not in a function, but for example inside a region inside
+            // `scf.if`. As far as I know, the regions inside `scf.if` do not
+            // have access to the arguments of the parent function.
+            return None;
         }
         None
     }
