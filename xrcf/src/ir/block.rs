@@ -344,6 +344,9 @@ impl Block {
             }
         };
     }
+    fn set_arguments(&mut self, arguments: Values) {
+        self.arguments = arguments;
+    }
     fn used_names(&self) -> Vec<String> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
@@ -455,6 +458,7 @@ pub trait GuardedBlock {
     fn parent(&self) -> Option<Arc<RwLock<Region>>>;
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
+    fn set_arguments(&self, arguments: Values);
     fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
@@ -491,6 +495,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.try_write().unwrap().remove(op);
+    }
+    fn set_arguments(&self, arguments: Values) {
+        self.try_write().unwrap().set_arguments(arguments);
     }
     fn set_label(&self, label: Option<String>) {
         self.try_write().unwrap().set_label(label);

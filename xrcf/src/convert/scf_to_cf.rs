@@ -5,6 +5,7 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::ir::Block;
+use crate::ir::BlockArgument;
 use crate::ir::BlockDest;
 use crate::ir::BlockLabel;
 use crate::ir::GuardedBlock;
@@ -101,11 +102,14 @@ fn move_successors_to_exit_block(
 fn add_merge_block(
     parent_region: Arc<RwLock<Region>>,
     merge_label: String,
+    results: Values,
     exit_label: String,
 ) -> Result<()> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
     block.set_label(Some(merge_label.clone()));
+    let merge_block_operands = as_block_arguments(results, block.clone())?;
+    block.set_arguments(merge_block_operands);
 
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
@@ -127,6 +131,26 @@ fn add_exit_block(
 
     move_successors_to_exit_block(op, exit_block)?;
     Ok(())
+}
+
+/// Convert [OpResult]s to [BlockArgument]s.
+///
+/// Neccesary to translate `%result = scf.if` to `^merge:(%result)`.
+fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
+    let results = results.vec();
+    let results = results.try_read().unwrap();
+    let mut out = vec![];
+    for result in results.iter() {
+        let result = result.try_read().unwrap();
+        let name = result.name();
+        let typ = result.typ().unwrap();
+        let mut arg = BlockArgument::new(name, typ);
+        arg.set_parent(Some(parent.clone()));
+        let arg = Value::BlockArgument(arg);
+        let arg = Arc::new(RwLock::new(arg));
+        out.push(arg);
+    }
+    Ok(Values::from_vec(out))
 }
 
 /// Add blocks for the `then` and `els` regions of `scf.if`.
@@ -160,8 +184,6 @@ fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
-    let results = op.operation().results();
-
     let then_label = format!("^{}", parent_region.unique_block_name());
     let then_label_index = then_label
         .trim_start_matches("^bb")
@@ -178,7 +200,14 @@ fn add_blocks(
         add_block_from_region(then_label, merge_label.clone(), then, parent_region.clone())?;
     let else_label =
         add_block_from_region(else_label, merge_label.clone(), els, parent_region.clone())?;
-    add_merge_block(parent_region.clone(), merge_label, exit_label.clone())?;
+
+    let results = op.operation().results();
+    add_merge_block(
+        parent_region.clone(),
+        merge_label,
+        results,
+        exit_label.clone(),
+    )?;
     add_exit_block(op, parent_region.clone(), exit_label)?;
     Ok((then_label, else_label))
 }
