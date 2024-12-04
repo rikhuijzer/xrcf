@@ -15,10 +15,12 @@ use tracing::debug;
 mod experimental_to_mlir;
 mod func_to_llvm;
 mod mlir_to_llvmir;
+mod scf_to_cf;
 
 pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 pub use func_to_llvm::ConvertFuncToLLVM;
 pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
+pub use scf_to_cf::ConvertSCFToCF;
 
 pub struct ChangedOp {
     pub op: Arc<RwLock<dyn Op>>,

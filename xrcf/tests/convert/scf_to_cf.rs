@@ -5,7 +5,7 @@ use std::panic::Location;
 use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
-    vec!["--convert-mlir-to-llvmir"]
+    vec!["--convert-scf-to-cf"]
 }
 
 #[test]
