@@ -70,7 +70,7 @@ impl Region {
     pub fn set_blocks(&mut self, blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) {
         self.blocks = blocks;
     }
-    pub fn add_new_block(&mut self) -> UnsetBlock {
+    pub fn add_empty_block(&mut self) -> UnsetBlock {
         let block = Block::default();
         let block = Arc::new(RwLock::new(block));
         let blocks = self.blocks();
@@ -96,7 +96,7 @@ impl Region {
     pub fn unique_block_name(&self) -> String {
         let blocks = self.blocks();
         let blocks = blocks.try_read().unwrap();
-        let mut new_name: i32 = 1;
+        let mut new_name: i32 = 0;
         for block in blocks.iter() {
             let block = block.try_read().unwrap();
             let label = block.label();
@@ -130,6 +130,7 @@ impl Default for Region {
 }
 
 pub trait GuardedRegion {
+    fn add_empty_block(&self) -> UnsetBlock;
     fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
@@ -139,6 +140,9 @@ pub trait GuardedRegion {
 }
 
 impl GuardedRegion for Arc<RwLock<Region>> {
+    fn add_empty_block(&self) -> UnsetBlock {
+        self.try_write().unwrap().add_empty_block()
+    }
     fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
         self.try_read().unwrap().blocks()
     }
