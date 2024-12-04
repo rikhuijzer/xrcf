@@ -4,7 +4,6 @@ use crate::convert::Pass;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect::arith;
-use crate::dialect::cf;
 use crate::dialect::func;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
@@ -34,26 +33,6 @@ impl Rewrite for AddLowering {
     }
 }
 
-struct BranchLowering;
-
-impl Rewrite for BranchLowering {
-    fn name(&self) -> &'static str {
-        "func_to_llvm::BranchLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<cf::BranchOp>())
-    }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<cf::BranchOp>().unwrap();
-        let mut new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
-        new_op.set_dest(op.dest().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
-        op.replace(new_op.clone());
-        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
-    }
-}
-
 struct CallLowering;
 
 impl Rewrite for CallLowering {
@@ -71,25 +50,6 @@ impl Rewrite for CallLowering {
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
 
-        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
-    }
-}
-
-struct CondBranchLowering;
-
-impl Rewrite for CondBranchLowering {
-    fn name(&self) -> &'static str {
-        "func_to_llvm::CondBranchLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<cf::CondBranchOp>())
-    }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
-        let op = op.as_any().downcast_ref::<cf::CondBranchOp>().unwrap();
-        let new_op = llvm::CondBranchOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
-        op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
 }
@@ -175,9 +135,7 @@ impl Pass for ConvertFuncToLLVM {
     fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &AddLowering,
-            &BranchLowering,
             &CallLowering,
-            &CondBranchLowering,
             &ConstantOpLowering,
             &FuncLowering,
             &ReturnLowering,

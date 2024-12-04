@@ -39,25 +39,28 @@ Calling out to an installed LLVM version is better but is hard with package vers
 Let's for now just generate LLVM IR, then the LLVM binary can be used to compile that.
 At a later point, the plan is to include the LLVM backend in a separate crate.
 
-## `Operation`
+## Comments
 
-MLIR has a `Op` trait where each `struct` that implements it contains a `Operation` field.
-This means that `Operation` is very generic and the various `Op` implementations
-all access the real data through the `Operation` field.
+Comments should explain *why* something is done, not *what* something does.
+The problem with "what" comments is that they often get out of date and then become confusing.
+If the "what" is not obvious from the code, then try to first explain it via descriptive variable and function names.
 
-A downside of the `Operation` field is that it may contain fields that are not necessary.
-For example, `arith.constant` does not take any operands,
-but the `Operation` field will still contain an empty `operands` field.
+## Op Docstrings
 
-The benefit is that transformations do not require the fields to be copied.
-They can just call it a different type while pointing to the same `Operation` struct.
-This is probably why MLIR uses it.
-Otherwise, transforming all ops from one dialect to another would require copying all op fields.
+Explaining *what* an op does is a good idea for docstrings.
+For example, for the `scf.yield` op, the docstring could be:
 
-But wait, it's not that much copying.
-Many fields are just pointers to other data.
-Instead focus on the fact that any `Op` transformation takes ownership of the data.
-Then, it's will be harder to mess up the underlying data.
-There will be less state to keep track of.
+    `scf.yield`
+ 
+    ```ebnf
+    `scf.yield` $operands `:` type($operands)
+    ```
+    For example,
+    ```mlir
+    scf.yield %0 : i32
+    ```
 
-In summary: Do not prematurely optimize!
+This uses the Extended Backus-Naur Form (EBNF) to describe the syntax of the op.
+
+The benefit of using EBNF and the example is that it can be convenient to find this information in the documentation.
+Even more importantly, hopefully LLMs will learn from these examples how the parsing and printing code should look like.

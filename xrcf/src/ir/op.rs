@@ -181,21 +181,12 @@ pub trait Op {
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        let mut result = Vec::new();
         let region = self.region();
         if let Some(region) = region {
-            let blocks = region.blocks();
-            let blocks = blocks.try_read().unwrap();
-            for block in blocks.iter() {
-                let block = block.read().unwrap();
-                let ops = block.ops();
-                let ops = ops.read().unwrap();
-                for op in ops.iter() {
-                    result.push(op.clone());
-                }
-            }
+            region.ops()
+        } else {
+            vec![]
         }
-        result
     }
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let operation = self.operation().try_read().unwrap();

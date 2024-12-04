@@ -4,6 +4,7 @@ use crate::dialect::experimental;
 use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
+use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BooleanAttr;
@@ -94,6 +95,8 @@ pub fn default_dispatch<T: ParserDispatch>(
         "llvm.store" => <llvm::StoreOp as Parse>::op(parser, parent),
         "module" => <ModuleOp as Parse>::op(parser, parent),
         "return" => <func::ReturnOp as Parse>::op(parser, parent),
+        "scf.if" => <scf::IfOp as Parse>::op(parser, parent),
+        "scf.yield" => <scf::YieldOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
             return Err(anyhow::anyhow!(msg));
@@ -218,7 +221,10 @@ impl<T: ParserDispatch> Parser<T> {
     fn is_region_end(&self) -> bool {
         self.peek().kind == TokenKind::RBrace
     }
-    pub fn block(&mut self, parent: Option<Arc<RwLock<Region>>>) -> Result<Arc<RwLock<Block>>> {
+    pub fn parse_block(
+        &mut self,
+        parent: Option<Arc<RwLock<Region>>>,
+    ) -> Result<Arc<RwLock<Block>>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"
@@ -278,7 +284,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         false
     }
-    pub fn region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
+    pub fn parse_region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
         let region = Arc::new(RwLock::new(region));
@@ -287,7 +293,7 @@ impl<T: ParserDispatch> Parser<T> {
         let blocks = Arc::new(RwLock::new(blocks));
         region.set_blocks(blocks.clone());
         while !self.is_region_end() {
-            let block = self.block(Some(region.clone()))?;
+            let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.try_write().unwrap();
             blocks.push(block);
         }

@@ -59,7 +59,7 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest.as_ref().unwrap();
+        let dest = self.dest.as_ref().expect("Dest not set");
         let dest = dest.try_read().unwrap();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();

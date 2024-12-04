@@ -8,6 +8,9 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// A collection of [Op]s.
+///
+/// A block is always nested below a [Region].
 pub struct Block {
     label: Option<String>,
     arguments: Values,
@@ -174,10 +177,10 @@ impl Block {
                 }
             }
         } else {
-            panic!(
-                "Expected parent op to be a function, but got {}",
-                operation.name()
-            );
+            // We are not in a function, but for example inside a region inside
+            // `scf.if`. As far as I know, the regions inside `scf.if` do not
+            // have access to the arguments of the parent function.
+            return None;
         }
         None
     }
@@ -341,6 +344,9 @@ impl Block {
             }
         };
     }
+    fn set_arguments(&mut self, arguments: Values) {
+        self.arguments = arguments;
+    }
     fn used_names(&self) -> Vec<String> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
@@ -449,8 +455,10 @@ pub trait GuardedBlock {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
+    fn parent(&self) -> Option<Arc<RwLock<Region>>>;
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
+    fn set_arguments(&self, arguments: Values);
     fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
@@ -479,11 +487,17 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
     }
+    fn parent(&self) -> Option<Arc<RwLock<Region>>> {
+        self.try_read().unwrap().parent()
+    }
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         self.try_read().unwrap().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.try_write().unwrap().remove(op);
+    }
+    fn set_arguments(&self, arguments: Values) {
+        self.try_write().unwrap().set_arguments(arguments);
     }
     fn set_label(&self, label: Option<String>) {
         self.try_write().unwrap().set_label(label);

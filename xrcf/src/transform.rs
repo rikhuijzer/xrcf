@@ -1,7 +1,9 @@
 use crate::canonicalize::Canonicalize;
+use crate::convert::ConvertCFToLLVM;
 use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
+use crate::convert::ConvertSCFToCF;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
@@ -121,9 +123,11 @@ impl TransformDispatch for DefaultTransformDispatch {
         let pass = pass.to_string();
         match pass.as_str() {
             Canonicalize::NAME => Canonicalize::convert(op.clone()),
+            ConvertCFToLLVM::NAME => ConvertCFToLLVM::convert(op.clone()),
+            ConvertExperimentalToMLIR::NAME => ConvertExperimentalToMLIR::convert(op.clone()),
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
-            ConvertExperimentalToMLIR::NAME => ConvertExperimentalToMLIR::convert(op.clone()),
+            ConvertSCFToCF::NAME => ConvertSCFToCF::convert(op.clone()),
             _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
     }

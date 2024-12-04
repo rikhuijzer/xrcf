@@ -4,19 +4,16 @@
 //! To instead see the code in action, see the example compiler in the
 //! [`arnoldc` directory](https://github.com/rikhuijzer/xrcf/tree/main/arnoldc).
 //!
-//! This project provides tools to build your own compiler.
 //! What follows is some background on compilers and how this project can help you:
 //!
 //! Say you want to write a compiler for a new programming language.
 //! The compiler should take the source code in your language and convert it to platform that can execute it such as a CPU or GPU.
 //! Now you could do this via string manipulation.
-//! To sum two matrices, you just read a string like `x = a + b`, but then you realize that converting this to say LLVM is not that easy.
-//! In LLVM, you would need to work with pointers and `load` and `store` instructions.
-//! Doing this via string manipulation is very hard.
+//! To sum two matrices, you read a string like `x = a + b`, but then you realize that converting this to say LLVM via string manipulation is not that easy.
 //! That's why compilers first scan and parse the source code into an intermediate representation (IR).
 //! Unlike strings, the IR provides common methods to interact with the code.
 //! For example, this project defines a `insert_before` method for operations.
-//! That means that if you want to insert an new operation before the addition call, you can just call `add_op.insert_before(new_op)`.
+//! Whereas with strings you would need to manually search for the line where to insert the new operation, with the IR you can just call `add_op.insert_before(new_op)`.
 //!
 //! Next you decide that you want to compile this code to another platform such as a GPU.
 //! Then you would need to convert some of the operations to GPU-specific operations.

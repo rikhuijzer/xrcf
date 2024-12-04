@@ -156,6 +156,14 @@ impl Display for AnonymousResult {
     }
 }
 
+/// A named result of an operation.
+///
+/// For example, in the following code:
+/// ```mlir
+/// %0 = arith.addi %1, %2 : i32
+/// ```
+/// `%0` is the result of the operation and has the name `%0`. The `defining_op`
+/// is `arith.addi` and the `typ` is `i32`.
 pub struct OpResult {
     name: Option<String>,
     typ: Option<Arc<RwLock<dyn Type>>>,
@@ -211,7 +219,7 @@ impl Display for OpResult {
     }
 }
 
-#[must_use = "the object inside `UnsetOpResult` should be further initialized, see the setter methods"]
+#[must_use = "the object should be further initialized, see the setter methods"]
 pub struct UnsetOpResult {
     result: Arc<RwLock<Value>>,
 }
@@ -232,7 +240,7 @@ impl UnsetOpResult {
     }
 }
 
-#[must_use = "the object inside `ResultsWithoutParent` should receive a defining op"]
+#[must_use = "the object should be further initialized, see the setter methods"]
 pub struct UnsetOpResults {
     results: Values,
 }
@@ -248,8 +256,15 @@ impl UnsetOpResults {
         let values = self.values();
         values.set_defining_op(op);
     }
-    pub fn set_types(&self, _types: Vec<Arc<RwLock<dyn Type>>>) {
-        todo!("Not implemented")
+    pub fn set_types(&self, types: Vec<Arc<RwLock<dyn Type>>>) {
+        let results = self.values();
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        assert!(types.len() == results.len());
+        for (result, typ) in results.iter().zip(types) {
+            let mut result = result.try_write().unwrap();
+            result.set_type(typ);
+        }
     }
 }
 
@@ -626,6 +641,11 @@ pub struct BlockDest {
 }
 
 impl BlockDest {
+    pub fn new(name: &str) -> Self {
+        BlockDest {
+            name: name.to_string(),
+        }
+    }
     /// The name of the destination block (e.g., `^merge`).
     pub fn name(&self) -> String {
         self.name.clone()
@@ -727,6 +747,8 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse results (e.g., `%0 = ...`) into an operation.
     ///
     /// This returns the results to allow setting the defining op on them.
+    ///
+    /// Setting the type is not necessary since the type
     pub fn parse_op_results_into(
         &mut self,
         token_kind: TokenKind,

@@ -1,3 +1,7 @@
+//! LLVM IR dialect.
+//!
+//! This dialect holds operations that when printed are valid LLVM IR.
+
 mod op;
 mod typ;
 

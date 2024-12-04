@@ -266,7 +266,7 @@ impl FuncOp {
             let ops = vec![op.clone()];
             let ops = Arc::new(RwLock::new(ops));
             let mut region = Region::default();
-            let without_parent = region.add_new_block();
+            let without_parent = region.add_empty_block();
             let region = Arc::new(RwLock::new(region));
             let block = without_parent.set_parent(Some(region.clone()));
             block.set_ops(ops);
@@ -413,7 +413,7 @@ impl<T: ParserDispatch> Parser<T> {
         let op = Arc::new(RwLock::new(op));
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
-            let region = parser.region(op.clone())?;
+            let region = parser.parse_region(op.clone())?;
             let op_rd = op.try_read().unwrap();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
