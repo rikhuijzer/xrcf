@@ -44,9 +44,9 @@ fn test_if() {
       }
     }
     "#};
-    // let (module, actual) = Tester::parse(src);
-    // Tester::verify(module);
-    // Tester::check_lines_contain(&actual, &src, Location::caller());
+    let (module, actual) = Tester::parse(src);
+    Tester::verify(module);
+    Tester::check_lines_contain(&actual, &src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_exact(&actual, expected, Location::caller());
