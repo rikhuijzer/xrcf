@@ -445,6 +445,7 @@ pub trait GuardedOperation {
     fn parent(&self) -> Option<Arc<RwLock<Block>>>;
     fn region(&self) -> Option<Arc<RwLock<Region>>>;
     fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()>;
+    fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>>;
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
     fn results(&self) -> Values;
     fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
@@ -490,6 +491,9 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         self.try_read().unwrap().rename_variables(renamer)
+    }
+    fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>> {
+        self.try_read().unwrap().result(index)
     }
     fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
         self.try_read().unwrap().result_type(index)
