@@ -1,0 +1,85 @@
+name: Release
+
+# The build always runs, but only releases on tag, see the last step.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*.*.*"
+    paths-ignore:
+      - "README.md"
+      - "LICENSE"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: macos-latest
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: |
+          if [[ ${{ matrix.os }} = "windows-latest" ]]; then
+            EXT=".exe"
+          else
+            EXT=""
+          fi
+          echo "EXT: $EXT"
+          echo "ext=$EXT" >> $GITHUB_OUTPUT
+        id: check
+        shell: bash
+
+      - run: |
+          rustup update stable
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+
+      - run: |
+          cd xrcf-bin/
+          cargo build --release --target ${{ matrix.target }}
+          cd ..
+
+          BIN_SRC="target/${{ matrix.target }}/release/xrcf-bin${{ steps.check.outputs.ext }}"
+          echo "BIN_SRC: $BIN_SRC"
+          BIN_DST="target/release/xrcf-bin-${{ matrix.target }}${{ steps.check.outputs.ext }}"
+          echo "BIN_DST: $BIN_DST"
+          mv -v $BIN_SRC $BIN_DST
+          echo "bin_dst=$BIN_DST" >> $GITHUB_OUTPUT
+
+          cd arnoldc/
+          cargo build --release --target ${{ matrix.target }}
+          cd ..
+
+          ARNOLDC_SRC="target/${{ matrix.target }}/release/arnoldc${{ steps.check.outputs.ext }}"
+          echo "ARNOLDC_SRC: $ARNOLDC_SRC"
+          ARNOLDC_DST="target/release/arnoldc-${{ matrix.target }}${{ steps.check.outputs.ext }}"
+          echo "ARNOLDC_DST: $ARNOLDC_DST"
+          mv -v $ARNOLDC_SRC $ARNOLDC_DST
+          echo "arnoldc_dst=$ARNOLDC_DST" >> $GITHUB_OUTPUT
+
+        id: release
+        shell: bash
+
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.release.outputs.bin_dst }}
+            ${{ steps.release.outputs.arnoldc_dst }}
