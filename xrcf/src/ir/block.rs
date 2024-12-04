@@ -452,6 +452,7 @@ pub trait GuardedBlock {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
+    fn parent(&self) -> Option<Arc<RwLock<Region>>>;
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_label(&self, label: Option<String>);
@@ -481,6 +482,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
+    }
+    fn parent(&self) -> Option<Arc<RwLock<Region>>> {
+        self.try_read().unwrap().parent()
     }
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         self.try_read().unwrap().predecessors()

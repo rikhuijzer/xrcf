@@ -26,6 +26,14 @@ pub struct IfOp {
     els: Option<Arc<RwLock<Region>>>,
 }
 
+impl IfOp {
+    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
+        self.then.clone()
+    }
+    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
+        self.els.clone()
+    }
+}
 impl Op for IfOp {
     fn operation_name() -> OperationName {
         OperationName::new("scf.if".to_string())
