@@ -61,7 +61,7 @@ impl Op for BranchOp {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest.as_ref().expect("Dest not set");
         let dest = dest.try_read().unwrap();
-        write!(f, ">{}<", dest)?;
+        write!(f, "{}", dest)?;
         let operands = self.operation().operands();
         if !operands.vec().try_read().unwrap().is_empty() {
             write!(f, "(")?;

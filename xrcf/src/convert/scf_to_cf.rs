@@ -23,20 +23,20 @@ use std::sync::RwLock;
 
 struct IfLowering;
 
-fn lower_yield_op(op: &dialect::scf::YieldOp, merge_label: String) -> Result<()> {
+fn lower_yield_op(op: &dialect::scf::YieldOp, merge_label: String) -> Result<Arc<RwLock<dyn Op>>> {
     let mut new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
     new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&merge_label)))));
     let new_op = Arc::new(RwLock::new(new_op));
-    op.replace(new_op.clone());
-    Ok(())
+    Ok(new_op)
 }
 
-fn add_block_from_ops(
+fn add_block_from_region(
     label: String,
     merge_label: String,
-    ops: Vec<Arc<RwLock<dyn Op>>>,
+    region: Arc<RwLock<Region>>,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<Arc<RwLock<OpOperand>>> {
+    let mut ops = region.ops();
     let ops_clone = ops.clone();
     let yield_op = ops_clone.last().unwrap();
     let yield_op = yield_op.try_read().unwrap();
@@ -44,7 +44,9 @@ fn add_block_from_ops(
         .as_any()
         .downcast_ref::<dialect::scf::YieldOp>()
         .unwrap();
-    lower_yield_op(&yield_op, merge_label)?;
+    let new_op = lower_yield_op(&yield_op, merge_label)?;
+    ops.pop();
+    ops.push(new_op.clone());
 
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
@@ -172,18 +174,10 @@ fn add_blocks(
     let then = op.then().expect("Expected `then` region");
     let els = op.els().expect("Expected `else` region");
 
-    let then_label = add_block_from_ops(
-        then_label,
-        merge_label.clone(),
-        then.ops(),
-        parent_region.clone(),
-    )?;
-    let else_label = add_block_from_ops(
-        else_label,
-        merge_label.clone(),
-        els.ops(),
-        parent_region.clone(),
-    )?;
+    let then_label =
+        add_block_from_region(then_label, merge_label.clone(), then, parent_region.clone())?;
+    let else_label =
+        add_block_from_region(else_label, merge_label.clone(), els, parent_region.clone())?;
     add_merge_block(parent_region.clone(), merge_label, exit_label.clone())?;
     add_exit_block(op, parent_region.clone(), exit_label)?;
     Ok((then_label, else_label))
