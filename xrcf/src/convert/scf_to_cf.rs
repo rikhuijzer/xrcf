@@ -135,7 +135,7 @@ fn add_exit_block(
 
 /// Convert [OpResult]s to [BlockArgument]s.
 ///
-/// Neccesary to translate `%result = scf.if` to `^merge:(%result)`.
+/// Necessary to translate `%result = scf.if` to `^merge:(%result)`.
 fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
     let results = results.vec();
     let results = results.try_read().unwrap();
