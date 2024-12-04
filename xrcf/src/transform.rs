@@ -1,4 +1,5 @@
 use crate::canonicalize::Canonicalize;
+use crate::convert::ConvertCFToLLVM;
 use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::ConvertFuncToLLVM;
 use crate::convert::ConvertMLIRToLLVMIR;
@@ -122,6 +123,7 @@ impl TransformDispatch for DefaultTransformDispatch {
         let pass = pass.to_string();
         match pass.as_str() {
             Canonicalize::NAME => Canonicalize::convert(op.clone()),
+            ConvertCFToLLVM::NAME => ConvertCFToLLVM::convert(op.clone()),
             ConvertExperimentalToMLIR::NAME => ConvertExperimentalToMLIR::convert(op.clone()),
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),

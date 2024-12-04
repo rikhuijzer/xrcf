@@ -10,6 +10,8 @@ use crate::dialect::llvm;
 use crate::dialect::llvm::PointerType;
 use crate::ir::APInt;
 use crate::ir::Block;
+use crate::ir::BlockDest;
+use crate::ir::BlockLabel;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -33,27 +35,38 @@ struct IfLowering;
 fn add_block_from_ops(
     ops: Vec<Arc<RwLock<dyn Op>>>,
     parent_region: Arc<RwLock<Region>>,
-) -> Result<()> {
+) -> Result<Arc<RwLock<OpOperand>>> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
     block.set_ops(Arc::new(RwLock::new(ops)));
     let label = format!("^{}", parent_region.unique_block_name());
-    block.set_label(Some(label));
-    Ok(())
+    block.set_label(Some(label.clone()));
+    let label = BlockLabel::new(label);
+    let label = Value::BlockLabel(label);
+    let label = Arc::new(RwLock::new(label));
+    let operand = OpOperand::new(label);
+    let operand = Arc::new(RwLock::new(operand));
+    Ok(operand)
 }
 
-fn add_merge_block(parent_region: Arc<RwLock<Region>>) -> Result<(String, String)> {
+fn add_merge_and_exit_blocks(parent_region: Arc<RwLock<Region>>) -> Result<()> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
     let merge_label = format!("^{}", parent_region.unique_block_name());
     block.set_label(Some(merge_label.clone()));
 
+    let unset_block = parent_region.add_empty_block();
+    let return_block = unset_block.set_parent(Some(parent_region.clone()));
     let return_label = format!("^{}", parent_region.unique_block_name());
+    return_block.set_label(Some(return_label.clone()));
 
-    let operation = Operation::default();
-    let merge_op = dialect::cf::BranchOp::from_operation(operation);
-
-    Ok((merge_label, return_label))
+    let mut operation = Operation::default();
+    operation.set_parent(Some(block.clone()));
+    let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
+    merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&return_label)))));
+    let merge_op = Arc::new(RwLock::new(merge_op));
+    block.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
+    Ok(())
 }
 
 /// Add blocks for the `then` and `els` regions of `scf.if`.
@@ -87,11 +100,11 @@ fn add_blocks(
     then: Arc<RwLock<Region>>,
     els: Arc<RwLock<Region>>,
     parent_region: Arc<RwLock<Region>>,
-) -> Result<()> {
-    add_block_from_ops(then.ops(), parent_region.clone())?;
-    add_block_from_ops(els.ops(), parent_region.clone())?;
-    let (merge_label, return_label) = add_merge_block(parent_region.clone())?;
-    Ok(())
+) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
+    let then_label = add_block_from_ops(then.ops(), parent_region.clone())?;
+    let else_label = add_block_from_ops(els.ops(), parent_region.clone())?;
+    add_merge_and_exit_blocks(parent_region.clone())?;
+    Ok((then_label, else_label))
 }
 
 impl Rewrite for IfLowering {
@@ -109,11 +122,14 @@ impl Rewrite for IfLowering {
 
         let then = op.then().expect("Expected `then` region");
         let els = op.els().expect("Expected `else` region");
-        add_blocks(then.clone(), els.clone(), parent_region.clone())?;
+        let (then_label, else_label) =
+            add_blocks(then.clone(), els.clone(), parent_region.clone())?;
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
+        operation.set_operand(1, then_label.clone());
+        operation.set_operand(2, else_label.clone());
         let new = dialect::cf::CondBranchOp::from_operation(operation);
         let new = Arc::new(RwLock::new(new));
         op.replace(new.clone());

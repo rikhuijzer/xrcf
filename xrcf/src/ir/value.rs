@@ -641,6 +641,11 @@ pub struct BlockDest {
 }
 
 impl BlockDest {
+    pub fn new(name: &str) -> Self {
+        BlockDest {
+            name: name.to_string(),
+        }
+    }
     /// The name of the destination block (e.g., `^merge`).
     pub fn name(&self) -> String {
         self.name.clone()
