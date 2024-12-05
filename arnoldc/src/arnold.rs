@@ -334,16 +334,22 @@ impl Parse for IfOp {
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         parser.parse_op_operand_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
-        let mut op = IfOp {
+        let op = IfOp {
             operation: operation.clone(),
             then: None,
             els: None,
         };
         let op = Arc::new(RwLock::new(op));
         let then = parser.parse_region(op.clone())?;
+        let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
+        if else_keyword.lexeme != "BULLSHIT" {
+            panic!("Expected BULLSHIT but got {}", else_keyword.lexeme);
+        }
+        let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
         let mut op_write = op_write.try_write().unwrap();
         op_write.then = Some(then);
+        op_write.els = Some(els);
         Ok(op)
     }
 }

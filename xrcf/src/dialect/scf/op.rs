@@ -27,11 +27,17 @@ pub struct IfOp {
 }
 
 impl IfOp {
+    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
+        self.els.clone()
+    }
     pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
         self.then.clone()
     }
-    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
-        self.els.clone()
+    pub fn set_els(&mut self, els: Option<Arc<RwLock<Region>>>) {
+        self.els = els;
+    }
+    pub fn set_then(&mut self, then: Option<Arc<RwLock<Region>>>) {
+        self.then = then;
     }
 }
 
