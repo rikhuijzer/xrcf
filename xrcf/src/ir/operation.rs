@@ -332,8 +332,16 @@ impl Operation {
     }
     pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent();
-        let parent = parent.expect("no parent");
-        let index = parent.index_of(self).expect("expected index");
+        let parent = parent.expect("Expected parent");
+        let index = match parent.index_of(self) {
+            Some(index) => index,
+            None => {
+                panic!(
+                    "Expected index. Is the parent set correctly for the following op?\n{}",
+                    self
+                );
+            }
+        };
         let ops = parent.ops();
         let ops = ops.try_read().unwrap();
         ops[index + 1..].to_vec()

@@ -170,13 +170,6 @@ pub fn transform<T: TransformDispatch>(
         if let RewriteResult::Changed(_) = new_result {
             result = new_result;
         }
-
-        if pass.to_string() != Canonicalize::NAME {
-            let canonicalize_result = Canonicalize::convert(op.clone())?;
-            if let RewriteResult::Changed(_) = canonicalize_result {
-                result = canonicalize_result;
-            }
-        }
     }
 
     Ok(result)

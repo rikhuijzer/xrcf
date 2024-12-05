@@ -64,9 +64,9 @@ impl Op for IfOp {
             write!(f, "{} = ", self.operation.results())?;
         }
         write!(f, "{} ", self.operation.name())?;
-        write!(f, "{} ", self.operation.operands())?;
+        write!(f, "{}", self.operation.operands())?;
         if has_results {
-            write!(f, "-> ({})", self.operation.results().types())?;
+            write!(f, " -> ({})", self.operation.results().types())?;
         }
         let then = self.then.clone().expect("Expected `then` region");
         let then = then.try_read().unwrap();
@@ -87,9 +87,11 @@ impl Parse for IfOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
-        parser.expect(TokenKind::Equal)?;
+        let has_results = !results.values().is_empty();
+        if has_results {
+            parser.expect(TokenKind::Equal)?;
+        }
         parser.parse_operation_name_into::<IfOp>(&mut operation)?;
-
         let parent = parent.expect("Expected parent");
         let _condition = parser.parse_op_operand_into(
             parent.clone(),
@@ -97,8 +99,8 @@ impl Parse for IfOp {
             &mut operation,
         )?;
 
-        if parser.check(TokenKind::Arrow) {
-            parser.advance();
+        if has_results {
+            parser.expect(TokenKind::Arrow)?;
             parser.expect(TokenKind::LParen)?;
             let return_types = parser.parse_types()?;
             results.set_types(return_types);
