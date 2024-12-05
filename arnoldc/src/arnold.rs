@@ -12,6 +12,7 @@ use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::Region;
 use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
@@ -51,6 +52,13 @@ trait ArnoldParse {
     ) -> Result<()>;
 }
 
+/// Tokenize an ArnoldC operation name.
+fn tokenize_arnoldc_name(name: &str) -> Vec<String> {
+    let name = name.replace('\'', " \' ");
+    println!("name: {name}");
+    name.split_whitespace().map(|s| s.to_string()).collect()
+}
+
 impl<T: ParserDispatch> ArnoldParse for Parser<T> {
     /// Parse a constant like `@NO PROBLEMO` into the [Operation].
     fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
@@ -75,10 +83,13 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
         name: OperationName,
         operation: &mut Operation,
     ) -> Result<()> {
-        let text = name.to_string();
-        let parts = text.split_whitespace().collect::<Vec<&str>>();
+        let parts = tokenize_arnoldc_name(&name.to_string());
         for part in parts {
             let next = self.peek();
+            if next.kind == TokenKind::SingleQuote {
+                self.advance();
+                continue;
+            }
             if next.kind != TokenKind::BareIdentifier {
                 return Err(anyhow::anyhow!(
                     "Expected part {} but got {:?}",
@@ -97,6 +108,79 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
         }
         operation.set_name(name);
         Ok(())
+    }
+}
+
+/// `IT'S SHOWTIME`
+///
+/// We do not immediately parse this into some `arnold::FuncOp` in order to
+/// apply a rewrite first:
+///
+/// ```arnoldc
+/// ITS SHOWTIME {
+///   TALK TO THE HAND "Hello, world!"
+/// }
+/// ```
+/// will be rewritten to
+/// ```mlir
+/// func.func @main() -> i32 {
+///   TALK TO THE HAND "Hello, world!"
+///   %0 = arith.constant 0 : i32
+///   return %0 : i32
+/// }
+/// ```
+pub struct BeginMainOp {
+    operation: Arc<RwLock<Operation>>,
+}
+
+impl Op for BeginMainOp {
+    fn operation_name() -> OperationName {
+        // Removed the single quote to make it easier to handle.
+        OperationName::new("ITS SHOWTIME".to_string())
+    }
+    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+        BeginMainOp { operation }
+    }
+    fn is_func(&self) -> bool {
+        true
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Arc<RwLock<Operation>> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let operation = self.operation.try_read().unwrap();
+        write!(f, "{} ", operation.name())?;
+        let region = operation.region().unwrap();
+        let region = region.try_read().unwrap();
+        write!(f, "()")?;
+        region.display(f, indent)?;
+        Ok(())
+    }
+}
+
+impl Parse for BeginMainOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Arc<RwLock<Block>>>,
+    ) -> Result<Arc<RwLock<dyn Op>>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+
+        let name = BeginMainOp::operation_name();
+        parser.parse_arnold_operation_name_into(name, &mut operation)?;
+
+        let operation = Arc::new(RwLock::new(operation));
+        let op = BeginMainOp {
+            operation: operation.clone(),
+        };
+        let op = Arc::new(RwLock::new(op));
+        let region = parser.parse_region(op.clone())?;
+        let mut operation = operation.write().unwrap();
+        operation.set_region(Some(region.clone()));
+        Ok(op)
     }
 }
 
@@ -197,38 +281,41 @@ impl Parse for DeclareIntOp {
     }
 }
 
-/// `IT'S SHOWTIME`
+/// `BECAUSE I'M GOING TO SAY PLEASE`
 ///
-/// We do not immediately parse this into some `arnold::FuncOp` in order to
-/// apply a rewrite first:
-///
+/// Examples:
 /// ```arnoldc
-/// ITS SHOWTIME {
-///   TALK TO THE HAND "Hello, world!"
-/// }
+/// BECAUSE I'M GOING TO SAY PLEASE x
+///   TALK TO THE HAND "x was true"
+/// BULLSHIT
+///   TALK TO THE HAND "x was false"
+/// YOU HAVE NO RESPECT FOR LOGIC
 /// ```
-/// will be rewritten to
-/// ```mlir
-/// func.func @main() -> i32 {
-///   TALK TO THE HAND "Hello, world!"
-///   %0 = arith.constant 0 : i32
-///   return %0 : i32
-/// }
-/// ```
-pub struct BeginMainOp {
+pub struct IfOp {
     operation: Arc<RwLock<Operation>>,
+    then: Option<Arc<RwLock<Region>>>,
+    els: Option<Arc<RwLock<Region>>>,
 }
 
-impl Op for BeginMainOp {
+impl IfOp {
+    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
+        self.then.clone()
+    }
+    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
+        self.els.clone()
+    }
+}
+
+impl Op for IfOp {
     fn operation_name() -> OperationName {
-        // Removed the single quote to make it easier to handle.
-        OperationName::new("ITS SHOWTIME".to_string())
+        OperationName::new("BECAUSE I'M GOING TO SAY PLEASE".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BeginMainOp { operation }
-    }
-    fn is_func(&self) -> bool {
-        true
+        IfOp {
+            operation,
+            then: None,
+            els: None,
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -236,36 +323,29 @@ impl Op for BeginMainOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation.try_read().unwrap();
-        write!(f, "{} ", operation.name())?;
-        let region = operation.region().unwrap();
-        let region = region.try_read().unwrap();
-        write!(f, "()")?;
-        region.display(f, indent)?;
-        Ok(())
-    }
 }
 
-impl Parse for BeginMainOp {
+impl Parse for IfOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
         parent: Option<Arc<RwLock<Block>>>,
     ) -> Result<Arc<RwLock<dyn Op>>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-
-        let name = BeginMainOp::operation_name();
+        let name = IfOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-
+        parser.parse_op_operand_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
         let operation = Arc::new(RwLock::new(operation));
-        let op = BeginMainOp {
+        let mut op = IfOp {
             operation: operation.clone(),
+            then: None,
+            els: None,
         };
         let op = Arc::new(RwLock::new(op));
-        let region = parser.parse_region(op.clone())?;
-        let mut operation = operation.write().unwrap();
-        operation.set_region(Some(region.clone()));
+        let then = parser.parse_region(op.clone())?;
+        let op_write = op.clone();
+        let mut op_write = op_write.try_write().unwrap();
+        op_write.then = Some(then);
         Ok(op)
     }
 }

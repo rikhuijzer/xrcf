@@ -52,9 +52,10 @@ impl ParserDispatch for ArnoldParserDispatch {
         let second = parser.peek_n(1).unwrap();
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
         let op = match first_two.as_str() {
+            "BECAUSE I" => Some(<arnold::IfOp as Parse>::op(parser, parent.clone())),
+            "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
             "ITS SHOWTIME" => Some(<arnold::BeginMainOp as Parse>::op(parser, parent.clone())),
             "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
-            "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
             "YOU SET" => Some(<arnold::SetInitialValueOp as Parse>::op(
                 parser,
                 parent.clone(),
@@ -147,6 +148,10 @@ mod tests {
     use tracing;
     use xrcf::tester::Tester;
 
+    fn flags() -> Vec<&'static str> {
+        vec!["--convert-arnold-to-mlir"]
+    }
+
     #[test]
     fn test_replace_begin_and_end() {
         Tester::init_tracing();
@@ -221,8 +226,7 @@ mod tests {
         }
         "#}
         .trim();
-        let passes = vec!["--convert-arnold-to-mlir"];
-        let (module, actual) = test_transform(src, passes);
+        let (module, actual) = test_transform(src, flags());
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
@@ -265,9 +269,44 @@ mod tests {
         }
         "#}
         .trim();
-        let passes = vec!["--convert-arnold-to-mlir"];
-        let (module, actual) = test_transform(src, passes);
+        let (module, actual) = test_transform(src, flags());
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
+    }
+
+    #[test]
+    fn test_if_else() {
+        Tester::init_tracing();
+        let src = indoc! {r#"
+        IT'S SHOWTIME
+
+        HEY CHRISTMAS TREE x
+        YOU SET US UP @I LIED
+
+        BECAUSE I'M GOING TO SAY PLEASE x
+        TALK TO THE HAND "x was true"
+        BULLSHIT
+        TALK TO THE HAND "x was false"
+        YOU HAVE NO RESPECT FOR LOGIC
+
+        YOU HAVE BEEN TERMINATED
+        "#}
+        .trim();
+        let expected = indoc! {r#"
+        func.func @main() -> i32 {
+          %false = arith.constant false
+          scf.if %false {
+            experimental.printf("x was true")
+          } else {
+            experimental.printf("x was false")
+          }
+          %0 = arith.constant 0 : i32
+          return %0 : i32
+        }
+        "#}
+        .trim();
+        let (module, actual) = test_transform(src, flags());
+        Tester::verify(module);
+        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
     }
 }
