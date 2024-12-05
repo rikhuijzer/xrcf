@@ -61,7 +61,11 @@ fn add_block_from_region(
 
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
-    block.set_ops(Arc::new(RwLock::new(ops)));
+    block.set_ops(Arc::new(RwLock::new(ops.clone())));
+    for op in ops.iter() {
+        let op = op.try_read().unwrap();
+        op.set_parent(block.clone());
+    }
     block.set_label(Some(label.clone()));
     let label = BlockLabel::new(label);
     let label = Value::BlockLabel(label);
@@ -104,6 +108,10 @@ fn move_successors_to_exit_block(
     let ops = if_op_parent.ops();
     let mut ops = ops.try_write().unwrap();
     let return_ops = ops[if_op_index + 1..].to_vec();
+    for op in return_ops.iter() {
+        let op = op.try_read().unwrap();
+        op.set_parent(exit_block.clone());
+    }
     exit_block.set_ops(Arc::new(RwLock::new(return_ops)));
     ops.drain(if_op_index + 1..);
     Ok(())
@@ -262,8 +270,6 @@ impl Rewrite for IfLowering {
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
         new.operation().set_results(Values::default());
-
-        println!("parent_region:\n{}", parent_region.try_read().unwrap());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }
