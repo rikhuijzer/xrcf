@@ -325,6 +325,6 @@ mod tests {
         .trim();
         let (module, actual) = test_transform(src, flags());
         Tester::verify(module);
-        // Tester::check_lines_contain(actual.trim(), expected, Location::caller());
+        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
     }
 }
