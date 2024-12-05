@@ -38,11 +38,11 @@ fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
         let args = vec![
             "--convert-arnold-to-mlir",
-            "--convert-experimental-to-mlir",
-            "--convert-scf-to-cf",
             "--convert-cf-to-llvm",
+            "--convert-experimental-to-mlir",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
+            "--convert-scf-to-cf",
         ];
         Passes::from_convert_vec(args)
     } else {
