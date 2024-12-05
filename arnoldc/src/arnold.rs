@@ -55,7 +55,6 @@ trait ArnoldParse {
 /// Tokenize an ArnoldC operation name.
 fn tokenize_arnoldc_name(name: &str) -> Vec<String> {
     let name = name.replace('\'', " \' ");
-    println!("name: {name}");
     name.split_whitespace().map(|s| s.to_string()).collect()
 }
 
@@ -135,8 +134,7 @@ pub struct BeginMainOp {
 
 impl Op for BeginMainOp {
     fn operation_name() -> OperationName {
-        // Removed the single quote to make it easier to handle.
-        OperationName::new("ITS SHOWTIME".to_string())
+        OperationName::new("IT'S SHOWTIME".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
         BeginMainOp { operation }
