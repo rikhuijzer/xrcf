@@ -31,6 +31,14 @@ fn lower_yield_op(op: &dialect::scf::YieldOp, after_label: &str) -> Result<Arc<R
     Ok(new_op)
 }
 
+fn branch_op(after_label: &str) -> Arc<RwLock<dyn Op>> {
+    let operation = Operation::default();
+    let mut new_op = dialect::cf::BranchOp::from_operation(operation);
+    new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(after_label)))));
+    let new_op = Arc::new(RwLock::new(new_op));
+    new_op
+}
+
 fn add_block_from_region(
     label: String,
     after_label: &str,
@@ -46,7 +54,10 @@ fn add_block_from_region(
         let new_op = lower_yield_op(&yield_op, after_label)?;
         ops.pop();
         ops.push(new_op.clone());
-    }
+    } else {
+        let new_op = branch_op(after_label);
+        ops.push(new_op.clone());
+    };
 
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
@@ -251,6 +262,8 @@ impl Rewrite for IfLowering {
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
         new.operation().set_results(Values::default());
+
+        println!("parent_region:\n{}", parent_region.try_read().unwrap());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }
