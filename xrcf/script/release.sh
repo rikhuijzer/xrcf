@@ -21,6 +21,10 @@ echo "ENSURE CHANGELOG.md IS UP-TO-DATE"
 echo ""
 echo "ENSURE YOU ARE ON THE MAIN BRANCH"
 echo ""
+echo "ENSURE 'cargo publish --dry-run' SUCCEEDED"
+echo ""
+echo "ENSURE 'cargo publish' SUCCEEDED"
+echo ""
 
 NOTES="See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information."
 
