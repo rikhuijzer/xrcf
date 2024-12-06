@@ -17,14 +17,22 @@ TAGNAME="v$VERSION"
 echo "TAGNAME: $TAGNAME"
 
 echo ""
+echo "ENSURE CHANGELOG.md IS UP-TO-DATE"
+echo ""
 echo "ENSURE YOU ARE ON THE MAIN BRANCH"
 echo ""
 
 NOTES="See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information."
 
-read -p "Creating a new tag, which WILL TRIGGER A RELEASE with the following release notes: \"$NOTES\". Are you sure? [y/N]" -n 1 -r
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+read -p "Creating a new tag, which WILL TRIGGER A RELEASE with the following release notes: \"$NOTES\". Are you sure? Type YES to continue. " REPLY
+
+if [[ $REPLY == "YES" ]]; then
     echo ""
     git tag -a $TAGNAME -m "$NOTES"
     git push origin $TAGNAME
+    exit 0
+else
+    echo ""
+    echo "Did not receive YES, aborting"
+    exit 1
 fi
