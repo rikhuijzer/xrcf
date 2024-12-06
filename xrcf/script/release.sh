@@ -10,6 +10,8 @@ set -e
 # trigger new workflows.
 # "This prevents you from accidentally creating recursive workflow runs."
 
+echo "CREATING A RELEASE WITH:"
+
 METADATA="$(cargo metadata --format-version=1 --no-deps)"
 VERSION="$(echo $METADATA | jq -r '.packages[0].version')"
 echo "VERSION: $VERSION"
