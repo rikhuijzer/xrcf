@@ -144,7 +144,7 @@ pub fn default_passes() -> Vec<Arg> {
             .action(ArgAction::SetTrue),
         Arg::new("convert-cf-to-llvm")
             .long("convert-cf-to-llvm")
-            .help("Convert control flow (cf) operations to LLVM IR")
+            .help("Convert control flow (cf) operations to LLVM")
             .action(ArgAction::SetTrue),
         Arg::new("convert-experimental-to-mlir")
             .long("convert-experimental-to-mlir")
@@ -152,7 +152,7 @@ pub fn default_passes() -> Vec<Arg> {
             .action(ArgAction::SetTrue),
         Arg::new("convert-func-to-llvm")
             .long("convert-func-to-llvm")
-            .help("Convert function operations to LLVM IR")
+            .help("Convert function operations to LLVM")
             .action(ArgAction::SetTrue),
         Arg::new("convert-mlir-to-llvmir")
             .long("convert-mlir-to-llvmir")
