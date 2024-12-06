@@ -12,6 +12,7 @@ use xrcf::dialect::experimental;
 use xrcf::dialect::func;
 use xrcf::dialect::func::Call;
 use xrcf::dialect::func::Func;
+use xrcf::dialect::scf;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
@@ -52,6 +53,17 @@ impl Rewrite for CallLowering {
     }
 }
 
+/// Lower `HEY CHRISTMAS TREE` (declare integer).
+///
+/// Example:
+/// ```arnoldc
+/// HEY CHRISTMAS TREE x
+/// YOU SET US UP @NO PROBLEMO
+/// ```
+/// is rewritten to:
+/// ```mlir
+/// %x = arith.constant 1 : i16
+/// ```
 struct DeclareIntLowering;
 
 impl Rewrite for DeclareIntLowering {
@@ -61,17 +73,6 @@ impl Rewrite for DeclareIntLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::DeclareIntOp>())
     }
-    /// Rewrite `HEY CHRISTMAS TREE` (declare integer).
-    ///
-    /// Example:
-    /// ```arnold
-    /// HEY CHRISTMAS TREE x
-    /// YOU SET US UP @NO PROBLEMO
-    /// ```
-    /// is rewritten to:
-    /// ```mlir
-    /// %x = arith.constant 1 : i16
-    /// ```
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
@@ -112,6 +113,47 @@ impl Rewrite for FuncLowering {
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(identifier.to_string());
+        let new_op = Arc::new(RwLock::new(new_op));
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
+/// Lower `BECAUSE I'M GOING TO SAY PLEASE` (if).
+///
+/// Example:
+/// ```arnoldc
+/// BECAUSE I'M GOING TO SAY PLEASE x
+///   TALK TO THE HAND "x was true"
+/// BULLSHIT
+///   TALK TO THE HAND "x was false"
+/// YOU HAVE NO RESPECT FOR LOGIC
+/// ```
+/// is rewritten to:
+/// ```mlir
+/// scf.if %x {
+///   experimental.printf("x was true")
+/// } else {
+///   experimental.printf("x was false")
+/// }
+/// ```
+struct IfLowering;
+
+impl Rewrite for IfLowering {
+    fn name(&self) -> &'static str {
+        "example_to_mlir::IfLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<arnold::IfOp>())
+    }
+    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+        let op = op.try_read().unwrap();
+        let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
+        let operation = op.operation();
+        let mut new_op = scf::IfOp::from_operation_arc(operation.clone());
+        new_op.set_parent(operation.parent().clone().unwrap());
+        new_op.set_then(op.then().clone());
+        new_op.set_els(op.els().clone());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -257,6 +299,7 @@ impl Pass for ConvertArnoldToMLIR {
             &CallLowering,
             &DeclareIntLowering,
             &FuncLowering,
+            &IfLowering,
             &ModuleLowering,
             &PrintLowering,
         ];

@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
-use xrcf::ir::spaces;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Type;
@@ -52,9 +51,10 @@ impl ParserDispatch for ArnoldParserDispatch {
         let second = parser.peek_n(1).unwrap();
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
         let op = match first_two.as_str() {
-            "ITS SHOWTIME" => Some(<arnold::BeginMainOp as Parse>::op(parser, parent.clone())),
-            "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
+            "BECAUSE I" => Some(<arnold::IfOp as Parse>::op(parser, parent.clone())),
             "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
+            "IT '" => Some(<arnold::BeginMainOp as Parse>::op(parser, parent.clone())),
+            "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
             "YOU SET" => Some(<arnold::SetInitialValueOp as Parse>::op(
                 parser,
                 parent.clone(),
@@ -97,35 +97,26 @@ impl TransformDispatch for ArnoldTransformDispatch {
     }
 }
 
-/// Replace begin and end of blocks with braces to make it easier to parse.
+/// Preprocess ArnoldC source code to make it easier to parse.
 ///
-/// Also adds some indentation for readability.
-/// For example, this function changes
-/// ```arnoldc
-/// IT'S SHOWTIME
-/// TALK TO THE HAND "Hello, World!"
-/// YOU HAVE BEEN TERMINATED
-/// ```
-/// to
-/// ```mlir
-/// IT'S SHOWTIME {
-///   TALK TO THE HAND "Hello, World!"
-/// }
-/// ```
-fn replace_begin_and_end(src: &str) -> String {
+/// This mostly adds braces to make the structure of the code more clear. This
+/// could have been done in the xrcf parser, but it's moved here to keep the
+/// logic separated (i.e., to make it easier to understand the code).
+fn preprocess(src: &str) -> String {
     let mut result = String::new();
-    let mut indent = 0;
     for line in src.lines() {
         if line.contains("IT'S SHOWTIME") {
-            // Removing the single quote to make it easier to handle.
-            result.push_str(&format!("{}ITS SHOWTIME {{", spaces(indent)));
-            indent += 1;
+            result.push_str(&format!("{} {{", line));
+        } else if line.contains("BECAUSE I'M GOING TO SAY PLEASE") {
+            result.push_str(&format!("{} {{", line));
         } else if line.contains("YOU HAVE BEEN TERMINATED") {
-            indent -= 1;
-            result.push_str(&format!("{}}}", spaces(indent)));
+            result.push_str(&line.replace("YOU HAVE BEEN TERMINATED", "}"));
+        } else if line.contains("YOU HAVE NO RESPECT FOR LOGIC") {
+            result.push_str(&line.replace("YOU HAVE NO RESPECT FOR LOGIC", "}"));
+        } else if line.contains("BULLSHIT") {
+            result.push_str(&line.replace("BULLSHIT", "} BULLSHIT {"));
         } else {
-            let line = line.trim();
-            result.push_str(&format!("{}{}", spaces(indent), line));
+            result.push_str(&line);
         }
         result.push('\n');
     }
@@ -133,7 +124,7 @@ fn replace_begin_and_end(src: &str) -> String {
 }
 
 pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
-    let src = replace_begin_and_end(src);
+    let src = preprocess(src);
     let op = Parser::<ArnoldParserDispatch>::parse(&src)?;
     let result = transform::<ArnoldTransformDispatch>(op, passes)?;
     Ok(result)
@@ -142,30 +133,63 @@ pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compile_passes;
     use indoc::indoc;
     use std::panic::Location;
     use tracing;
     use xrcf::tester::Tester;
 
+    fn flags() -> Vec<&'static str> {
+        vec!["--convert-arnold-to-mlir"]
+    }
+
     #[test]
-    fn test_replace_begin_and_end() {
+    fn test_preprocess() {
         Tester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
         TALK TO THE HAND "Hello, World!\n"
+
+        HEY CHRISTMAS TREE x
+        YOU SET US UP @I LIED
+
+        BECAUSE I'M GOING TO SAY PLEASE x
+          BECAUSE I'M GOING TO SAY PLEASE x
+            TALK TO THE HAND "x was true"
+          BULLSHIT
+            TALK TO THE HAND "this case will never happen"
+          YOU HAVE NO RESPECT FOR LOGIC
+        BULLSHIT
+          TALK TO THE HAND "x was false"
+        YOU HAVE NO RESPECT FOR LOGIC
+
         YOU HAVE BEEN TERMINATED
         "#}
         .trim();
         let expected = indoc! {r#"
-        ITS SHOWTIME {
-          TALK TO THE HAND "Hello, World!\n"
+        IT'S SHOWTIME {
+        TALK TO THE HAND "Hello, World!\n"
+
+        HEY CHRISTMAS TREE x
+        YOU SET US UP @I LIED
+
+        BECAUSE I'M GOING TO SAY PLEASE x {
+          BECAUSE I'M GOING TO SAY PLEASE x {
+            TALK TO THE HAND "x was true"
+          } BULLSHIT {
+            TALK TO THE HAND "this case will never happen"
+          }
+        } BULLSHIT {
+          TALK TO THE HAND "x was false"
+        }
+
         }
         "#}
         .trim();
-        let result = replace_begin_and_end(src);
-        tracing::info!("Before replace_begin_and_end:\n{src}\n");
-        tracing::info!("After replace_begin_and_end:\n{result}\n");
-        assert_eq!(result.trim(), expected.trim());
+        let result = preprocess(src);
+        tracing::info!("Before preprocess:\n{src}\n");
+        tracing::info!("After preprocess:\n{result}\n");
+        Tester::check_lines_exact(expected, result.trim(), Location::caller());
     }
 
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
@@ -221,17 +245,11 @@ mod tests {
         }
         "#}
         .trim();
-        let passes = vec!["--convert-arnold-to-mlir"];
-        let (module, actual) = test_transform(src, passes);
+        let (module, actual) = test_transform(src, flags());
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
-        let passes = vec![
-            "--convert-arnold-to-mlir",
-            "--convert-experimental-to-mlir",
-            "--convert-func-to-llvm",
-            "--convert-mlir-to-llvmir",
-        ];
+        let passes = compile_passes();
         let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
         assert!(actual.contains("declare i32 @printf(ptr)"));
@@ -256,7 +274,7 @@ mod tests {
         let expected = indoc! {r#"
         module {
           func.func @main() -> i32 {
-            %x = arith.constant 1 : i16
+            %x = arith.constant 1 : i1
             experimental.printf("x: ")
             experimental.printf("%d", %x)
             %0 = arith.constant 0 : i32
@@ -265,9 +283,57 @@ mod tests {
         }
         "#}
         .trim();
-        let passes = vec!["--convert-arnold-to-mlir"];
-        let (module, actual) = test_transform(src, passes);
+        let (module, actual) = test_transform(src, flags());
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
+    }
+
+    #[test]
+    fn test_if_else() {
+        Tester::init_tracing();
+        let src = indoc! {r#"
+        IT'S SHOWTIME
+
+        HEY CHRISTMAS TREE x
+        YOU SET US UP @I LIED
+
+        BECAUSE I'M GOING TO SAY PLEASE x
+          TALK TO THE HAND "x was true"
+        BULLSHIT
+          TALK TO THE HAND "x was false"
+        YOU HAVE NO RESPECT FOR LOGIC
+
+        YOU HAVE BEEN TERMINATED
+        "#}
+        .trim();
+        let expected = indoc! {r#"
+        func.func @main() -> i32 {
+          %x = arith.constant 0 : i1
+          scf.if %x {
+            experimental.printf("x was true")
+          } else {
+            experimental.printf("x was false")
+          }
+          %0 = arith.constant 0 : i32
+          return %0 : i32
+        }
+        "#}
+        .trim();
+        let (module, actual) = test_transform(src, flags());
+        Tester::verify(module);
+        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
+
+        let expected = indoc! {r#"
+        define i32 @main() {
+        
+        br i1 0, label %bb1, label %bb2
+
+        ret i32 0
+        "#}
+        .trim();
+        let passes = compile_passes();
+        let (module, actual) = test_transform(src, passes);
+        Tester::verify(module);
+        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
     }
 }

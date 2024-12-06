@@ -3,6 +3,7 @@ use clap::Args;
 use clap::Command;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
+use xrcf::init_subscriber;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
 use xrcf::transform;
@@ -16,6 +17,9 @@ struct XRCFArgs {
     /// The input file (- is interpreted as stdin)
     #[arg(default_value = "-")]
     input: String,
+    /// Print debug information
+    #[arg(long, name = "debug")]
+    debug: bool,
 }
 
 fn cli() -> Command {
@@ -39,11 +43,23 @@ fn parse_and_transform(src: &str, passes: &Passes) -> String {
     result
 }
 
+fn init_tracing(level: tracing::Level) {
+    match init_subscriber(level) {
+        Ok(_) => (),
+        Err(_e) => (),
+    }
+}
+
 fn main() {
     let cli = cli();
     let args = std::env::args_os();
     let passes = Passes::from_convert_args(args);
     let matches = cli.get_matches();
+    if matches.get_flag("debug") {
+        init_tracing(tracing::Level::DEBUG);
+    } else {
+        init_tracing(tracing::Level::INFO);
+    }
 
     let input = matches.get_one::<String>("input").unwrap();
 

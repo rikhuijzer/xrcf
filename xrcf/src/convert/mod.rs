@@ -122,7 +122,7 @@ pub fn apply_rewrites(
     root: Arc<RwLock<dyn Op>>,
     rewrites: &[&dyn Rewrite],
 ) -> Result<RewriteResult> {
-    let max_iterations = 16;
+    let max_iterations = 1024;
     let mut root = root;
     let mut has_changed = false;
     for _ in 0..max_iterations {
@@ -142,7 +142,7 @@ pub fn apply_rewrites(
             }
         }
     }
-    tracing::warn!("too many rewrite iterations");
+    tracing::warn!("Too many rewrite iterations");
     Ok(RewriteResult::Changed(ChangedOp::new(root)))
 }
 

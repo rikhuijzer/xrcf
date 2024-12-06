@@ -180,6 +180,10 @@ pub trait Op {
         }
     }
     /// Return ops that are children of this op (inside blocks that are inside the region).
+    ///
+    /// Some ops may decide to override this implementation if the children are
+    /// not located inside the main region of the op. For example, the `scf.if`
+    /// operation contains two regions: the "then" region and the "else" region.
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let region = self.region();
         if let Some(region) = region {

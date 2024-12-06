@@ -9,6 +9,7 @@ use clap::Command;
 use std::env::ArgsOs;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
+use xrcf::init_subscriber;
 use xrcf::Passes;
 
 use crate::transform::parse_and_transform;
@@ -26,6 +27,9 @@ struct ArnoldcArgs {
     /// Compile the code
     #[arg(long, name = "compile")]
     compile: bool,
+    /// Print debug information
+    #[arg(long, name = "debug")]
+    debug: bool,
 }
 
 fn cli() -> Command {
@@ -34,19 +38,29 @@ fn cli() -> Command {
     cli
 }
 
+fn compile_passes() -> Vec<&'static str> {
+    vec![
+        "--convert-arnold-to-mlir",
+        "--convert-experimental-to-mlir",
+        "--convert-scf-to-cf",
+        "--convert-cf-to-llvm",
+        "--convert-func-to-llvm",
+        "--convert-mlir-to-llvmir",
+    ]
+}
+
 fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
-        let args = vec![
-            "--convert-arnold-to-mlir",
-            "--convert-experimental-to-mlir",
-            "--convert-scf-to-cf",
-            "--convert-cf-to-llvm",
-            "--convert-func-to-llvm",
-            "--convert-mlir-to-llvmir",
-        ];
-        Passes::from_convert_vec(args)
+        Passes::from_convert_vec(compile_passes())
     } else {
         Passes::from_convert_args(args)
+    }
+}
+
+fn init_tracing(level: tracing::Level) {
+    match init_subscriber(level) {
+        Ok(_) => (),
+        Err(_e) => (),
     }
 }
 
@@ -54,6 +68,11 @@ fn main() {
     let cli = cli();
     let args = std::env::args_os();
     let matches = cli.get_matches();
+    if matches.get_flag("debug") {
+        init_tracing(tracing::Level::DEBUG);
+    } else {
+        init_tracing(tracing::Level::INFO);
+    }
     let passes = passes_from_args(args, matches.clone());
 
     let input = matches.get_one::<String>("input").unwrap();

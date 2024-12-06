@@ -1,5 +1,6 @@
 use crate::ir::Block;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
@@ -27,13 +28,20 @@ pub struct IfOp {
 }
 
 impl IfOp {
-    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
-        self.then.clone()
-    }
     pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
         self.els.clone()
     }
+    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
+        self.then.clone()
+    }
+    pub fn set_els(&mut self, els: Option<Arc<RwLock<Region>>>) {
+        self.els = els;
+    }
+    pub fn set_then(&mut self, then: Option<Arc<RwLock<Region>>>) {
+        self.then = then;
+    }
 }
+
 impl Op for IfOp {
     fn operation_name() -> OperationName {
         OperationName::new("scf.if".to_string())
@@ -50,6 +58,16 @@ impl Op for IfOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
+    }
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let mut ops = vec![];
+        if let Some(then) = self.then() {
+            ops.extend(then.ops());
+        }
+        if let Some(els) = self.els() {
+            ops.extend(els.ops());
+        }
+        ops
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let has_results = !self.operation.results().is_empty();
