@@ -325,6 +325,10 @@ mod tests {
 
         let expected = indoc! {r#"
         define i32 @main() {
+        
+        br i1 0, label %bb1, label %bb2
+
+        ret i32 0
         "#}
         .trim();
         let passes = compile_passes();
