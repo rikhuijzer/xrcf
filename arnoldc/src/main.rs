@@ -34,17 +34,20 @@ fn cli() -> Command {
     cli
 }
 
+fn compile_passes() -> Vec<&'static str> {
+    vec![
+        "--convert-arnold-to-mlir",
+        "--convert-experimental-to-mlir",
+        "--convert-scf-to-cf",
+        "--convert-cf-to-llvm",
+        "--convert-func-to-llvm",
+        "--convert-mlir-to-llvmir",
+    ]
+}
+
 fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
     if matches.get_flag("compile") {
-        let args = vec![
-            "--convert-arnold-to-mlir",
-            "--convert-experimental-to-mlir",
-            "--convert-scf-to-cf",
-            "--convert-cf-to-llvm",
-            "--convert-func-to-llvm",
-            "--convert-mlir-to-llvmir",
-        ];
-        Passes::from_convert_vec(args)
+        Passes::from_convert_vec(compile_passes())
     } else {
         Passes::from_convert_args(args)
     }

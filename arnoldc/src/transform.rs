@@ -133,6 +133,7 @@ pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compile_passes;
     use indoc::indoc;
     use std::panic::Location;
     use tracing;
@@ -248,12 +249,7 @@ mod tests {
         Tester::check_lines_exact(expected, actual.trim(), Location::caller());
         Tester::verify(module);
 
-        let passes = vec![
-            "--convert-arnold-to-mlir",
-            "--convert-experimental-to-mlir",
-            "--convert-func-to-llvm",
-            "--convert-mlir-to-llvmir",
-        ];
+        let passes = compile_passes();
         let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
         assert!(actual.contains("declare i32 @printf(ptr)"));
@@ -302,9 +298,9 @@ mod tests {
         YOU SET US UP @I LIED
 
         BECAUSE I'M GOING TO SAY PLEASE x
-        TALK TO THE HAND "x was true"
+          TALK TO THE HAND "x was true"
         BULLSHIT
-        TALK TO THE HAND "x was false"
+          TALK TO THE HAND "x was false"
         YOU HAVE NO RESPECT FOR LOGIC
 
         YOU HAVE BEEN TERMINATED
@@ -324,6 +320,15 @@ mod tests {
         "#}
         .trim();
         let (module, actual) = test_transform(src, flags());
+        Tester::verify(module);
+        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
+
+        let expected = indoc! {r#"
+        define i32 @main() {
+        "#}
+        .trim();
+        let passes = compile_passes();
+        let (module, actual) = test_transform(src, passes);
         Tester::verify(module);
         Tester::check_lines_contain(actual.trim(), expected, Location::caller());
     }
