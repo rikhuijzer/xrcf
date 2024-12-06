@@ -61,10 +61,10 @@ impl Op for IfOp {
     }
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut ops = vec![];
-        if let Some(then) = self.then.clone() {
+        if let Some(then) = self.then() {
             ops.extend(then.ops());
         }
-        if let Some(els) = self.els.clone() {
+        if let Some(els) = self.els() {
             ops.extend(els.ops());
         }
         ops
