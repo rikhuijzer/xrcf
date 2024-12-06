@@ -29,8 +29,8 @@ fn arnold_integer(value: u64) -> APInt {
     APInt::new(16, value, true)
 }
 
-fn arnold_attribute(value: u64) -> IntegerAttr {
-    let typ = IntegerType::new(16);
+fn arnold_attribute(value: u64, num_bits: u64) -> IntegerAttr {
+    let typ = IntegerType::new(num_bits);
     let value = arnold_integer(value);
     IntegerAttr::new(typ, value)
 }
@@ -66,9 +66,9 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
         let next_next = self.advance();
         let constant = format!("{} {}", next.lexeme, next_next.lexeme);
         let constant = if constant == "@NO PROBLEMO" {
-            arnold_attribute(1)
+            arnold_attribute(1, 1)
         } else if constant == "@I LIED" {
-            arnold_attribute(0)
+            arnold_attribute(0, 1)
         } else {
             return Err(anyhow::anyhow!("Unknown constant: {}", constant));
         };

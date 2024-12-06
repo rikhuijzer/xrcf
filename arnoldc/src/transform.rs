@@ -274,7 +274,7 @@ mod tests {
         let expected = indoc! {r#"
         module {
           func.func @main() -> i32 {
-            %x = arith.constant 1 : i16
+            %x = arith.constant 1 : i1
             experimental.printf("x: ")
             experimental.printf("%d", %x)
             %0 = arith.constant 0 : i32
@@ -308,7 +308,7 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         func.func @main() -> i32 {
-          %x = arith.constant 0 : i16
+          %x = arith.constant 0 : i1
           scf.if %x {
             experimental.printf("x was true")
           } else {
