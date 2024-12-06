@@ -39,6 +39,8 @@ fn passes_from_args(args: ArgsOs, matches: ArgMatches) -> Passes {
         let args = vec![
             "--convert-arnold-to-mlir",
             "--convert-experimental-to-mlir",
+            "--convert-scf-to-cf",
+            "--convert-cf-to-llvm",
             "--convert-func-to-llvm",
             "--convert-mlir-to-llvmir",
         ];

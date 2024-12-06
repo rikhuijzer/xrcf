@@ -138,6 +138,16 @@ impl TransformDispatch for DefaultTransformDispatch {
 /// For an example on how to use this, see the usage in the `arnoldc/` directory.
 pub fn default_passes() -> Vec<Arg> {
     vec![
+        Arg::new("convert-scf-to-cf")
+            .long("convert-scf-to-cf")
+            .help(
+                "Convert structured control flow (scf) operations to control flow (cf) operations",
+            )
+            .action(ArgAction::SetTrue),
+        Arg::new("convert-cf-to-llvm")
+            .long("convert-cf-to-llvm")
+            .help("Convert control flow (cf) operations to LLVM IR")
+            .action(ArgAction::SetTrue),
         Arg::new("convert-experimental-to-mlir")
             .long("convert-experimental-to-mlir")
             .help("Convert experimental operations to MLIR")
