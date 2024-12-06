@@ -14,12 +14,12 @@ echo "CREATING A RELEASE WITH:"
 
 METADATA="$(cargo metadata --format-version=1 --no-deps)"
 VERSION="$(echo $METADATA | jq -r '.packages[0].version')"
-echo "VERSION: $VERSION"
+echo "VERSION $VERSION"
 TAGNAME="v$VERSION"
-echo "TAGNAME: $TAGNAME"
+echo "TAGNAME $TAGNAME"
 
 echo ""
-echo "ENSURE CHANGELOG.md IS UP-TO-DATE"
+echo "ENSURE 'CHANGELOG.md' IS UP-TO-DATE"
 echo ""
 echo "ENSURE YOU ARE ON THE MAIN BRANCH"
 echo ""
@@ -30,7 +30,10 @@ echo ""
 
 NOTES="See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information."
 
-read -p "Creating a new tag, which WILL TRIGGER A RELEASE with the following release notes: \"$NOTES\". Are you sure? Type YES to continue. " REPLY
+echo "Ready to create a new tag, which WILL TRIGGER A RELEASE with the following release notes:"
+echo "\"$NOTES\""
+echo ""
+read -p "Are you sure? Type YES to continue. " REPLY
 
 if [[ $REPLY == "YES" ]]; then
     echo ""
