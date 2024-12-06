@@ -1,5 +1,6 @@
 use crate::ir::Block;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
@@ -57,6 +58,16 @@ impl Op for IfOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
+    }
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let mut ops = vec![];
+        if let Some(then) = self.then.clone() {
+            ops.extend(then.ops());
+        }
+        if let Some(els) = self.els.clone() {
+            ops.extend(els.ops());
+        }
+        ops
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let has_results = !self.operation.results().is_empty();
