@@ -140,9 +140,7 @@ pub fn default_passes() -> Vec<Arg> {
     vec![
         Arg::new("convert-scf-to-cf")
             .long("convert-scf-to-cf")
-            .help(
-                "Convert structured control flow (scf) operations to control flow (cf) operations",
-            )
+            .help("Convert structured control flow (scf) operations to cf")
             .action(ArgAction::SetTrue),
         Arg::new("convert-cf-to-llvm")
             .long("convert-cf-to-llvm")
