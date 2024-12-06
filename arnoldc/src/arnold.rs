@@ -112,8 +112,9 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
 
 /// `IT'S SHOWTIME`
 ///
-/// We do not immediately parse this into some `arnold::FuncOp` in order to
-/// apply a rewrite first:
+/// We do not immediately parse this into some `arnold::FuncOp` since the
+/// rewrite should not only change the op but also return a zero for the status
+/// code.
 ///
 /// ```arnoldc
 /// ITS SHOWTIME {

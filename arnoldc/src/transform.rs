@@ -101,7 +101,7 @@ impl TransformDispatch for ArnoldTransformDispatch {
 ///
 /// This mostly adds braces to make the structure of the code more clear. This
 /// could have been done in the xrcf parser, but it's moved here to keep the
-/// logic more separate.
+/// logic separated (i.e., to make it easier to understand the code).
 fn preprocess(src: &str) -> String {
     let mut result = String::new();
     for line in src.lines() {
