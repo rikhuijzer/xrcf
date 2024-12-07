@@ -11,6 +11,7 @@ use std::io::Read;
 use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::Passes;
+use xrcf::TransformOptions;
 
 use crate::transform::parse_and_transform;
 
@@ -33,7 +34,7 @@ struct ArnoldcArgs {
 }
 
 fn cli() -> Command {
-    let cli = Command::new("arnoldc").args(xrcf::default_passes());
+    let cli = Command::new("arnoldc").args(xrcf::default_arguments());
     let cli = ArnoldcArgs::augment_args(cli);
     cli
 }
@@ -74,6 +75,7 @@ fn main() {
         init_tracing(tracing::Level::INFO);
     }
     let passes = passes_from_args(args, matches.clone());
+    let options = TransformOptions::from_args(matches.clone(), passes.clone());
 
     let input = matches.get_one::<String>("input").unwrap();
 
@@ -85,7 +87,7 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    let result = parse_and_transform(&input_text, &passes).unwrap();
+    let result = parse_and_transform(&input_text, &options).unwrap();
     let result = match result {
         RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
         RewriteResult::Unchanged => input_text.to_string(),
@@ -98,22 +100,36 @@ mod tests {
     use super::*;
     use anyhow::Result;
     use indoc::indoc;
+    use std::panic::Location;
+    use std::sync::Arc;
+    use std::sync::RwLock;
     use xrcf::convert::RewriteResult;
     use xrcf::tester::Tester;
 
-    fn run_app(args: Vec<&str>, input_text: &str) -> Result<RewriteResult> {
+    fn run_app(
+        out: Option<Arc<RwLock<dyn std::io::Write + Send>>>,
+        args: Vec<&str>,
+        input_text: &str,
+    ) -> Result<RewriteResult> {
         let cli = cli();
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let _matches = cli.try_get_matches_from(args_owned)?;
-        let passes = Passes::from_convert_vec(args);
-        let result = parse_and_transform(input_text, &passes)?;
+        let passes = Passes::from_convert_vec(args.clone());
+        let mut options = TransformOptions::from_passes(passes.clone());
+        if args.contains(&"--print-ir-before-all") {
+            options.set_print_ir_before_all(true);
+        }
+        if let Some(out) = out {
+            options.set_writer(out);
+        }
+        let result = parse_and_transform(input_text, &options)?;
         Ok(result)
     }
 
     #[test]
     fn test_help() {
         let args = vec!["xr-example", "--help"];
-        let result = run_app(args, "");
+        let result = run_app(None, args, "");
         let err = match result {
             Ok(_) => panic!("Expected an error"),
             Err(e) => e,
@@ -126,7 +142,8 @@ mod tests {
 
     #[test]
     fn test_invalid_args() {
-        let result = run_app(vec!["xr-example", "--invalid-flag"], "");
+        let args = vec!["xr-example", "--invalid-flag"];
+        let result = run_app(None, args, "");
         assert!(result.is_err());
     }
 
@@ -141,9 +158,14 @@ mod tests {
         "#
         };
         // The order of these passes is important.
-        let args = vec!["--convert-func-to-llvm", "--convert-mlir-to-llvmir"];
+        let args = vec![
+            "--convert-func-to-llvm",
+            "--convert-mlir-to-llvmir",
+            "--print-ir-before-all",
+        ];
         tracing::info!("\nBefore {args:?}:\n{src}");
-        let result = run_app(args.clone(), src);
+        let out: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));
+        let result = run_app(Some(out.clone()), args.clone(), &src);
         assert!(result.is_ok());
         let actual = match result.unwrap() {
             RewriteResult::Changed(op) => {
@@ -154,5 +176,13 @@ mod tests {
         };
         tracing::info!("\nAfter {args:?}:\n{actual}");
         assert!(actual.contains("define i32 @main"));
+
+        let printed = out.try_read().unwrap();
+        let printed = String::from_utf8(printed.clone()).unwrap();
+        let expected = indoc! {r#"
+        // ----- // IR Dump before convert-func-to-llvm //----- //
+        // ----- // IR Dump before convert-mlir-to-llvmir //----- //
+        "#};
+        Tester::check_lines_contain(&printed, expected, Location::caller());
     }
 }

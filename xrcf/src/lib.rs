@@ -48,13 +48,14 @@ pub mod targ3t;
 pub mod tester;
 mod transform;
 
-pub use transform::default_passes;
+pub use transform::default_arguments;
 pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;
 pub use transform::Passes;
 pub use transform::SinglePass;
 pub use transform::TransformDispatch;
+pub use transform::TransformOptions;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.
