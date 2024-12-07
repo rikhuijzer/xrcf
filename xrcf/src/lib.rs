@@ -48,7 +48,7 @@ pub mod targ3t;
 pub mod tester;
 mod transform;
 
-pub use transform::default_passes;
+pub use transform::default_arguments;
 pub use transform::init_subscriber;
 pub use transform::transform;
 pub use transform::DefaultTransformDispatch;

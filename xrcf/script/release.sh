@@ -4,7 +4,7 @@
 # Trigger a release
 #
 
-set -e
+set -e -u -o pipefail
 
 # We have to run this locally because tags created from workflows do not
 # trigger new workflows.

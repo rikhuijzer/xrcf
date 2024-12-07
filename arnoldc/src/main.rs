@@ -33,7 +33,7 @@ struct ArnoldcArgs {
 }
 
 fn cli() -> Command {
-    let cli = Command::new("arnoldc").args(xrcf::default_passes());
+    let cli = Command::new("arnoldc").args(xrcf::default_arguments());
     let cli = ArnoldcArgs::augment_args(cli);
     cli
 }

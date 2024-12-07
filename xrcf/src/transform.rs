@@ -133,10 +133,14 @@ impl TransformDispatch for DefaultTransformDispatch {
     }
 }
 
-/// Collection of passes that are available in xrcf.
+/// Default arguments that are available in xrcf.
+///
+/// This includes options such as `--print-ir-before-all`, but also the default
+/// passes such as `--convert-func-to-llvm`. `--debug` is not included to allow
+/// downstream projects to handle the logging differently.
 ///
 /// For an example on how to use this, see the usage in the `arnoldc/` directory.
-pub fn default_passes() -> Vec<Arg> {
+pub fn default_arguments() -> Vec<Arg> {
     vec![
         Arg::new("convert-scf-to-cf")
             .long("convert-scf-to-cf")
@@ -157,6 +161,10 @@ pub fn default_passes() -> Vec<Arg> {
         Arg::new("convert-mlir-to-llvmir")
             .long("convert-mlir-to-llvmir")
             .help("Convert MLIR to LLVM IR")
+            .action(ArgAction::SetTrue),
+        Arg::new("print-ir-before-all")
+            .long("print-ir-before-all")
+            .help("Print the IR before each pass")
             .action(ArgAction::SetTrue),
     ]
 }
