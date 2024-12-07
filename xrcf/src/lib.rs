@@ -55,6 +55,7 @@ pub use transform::DefaultTransformDispatch;
 pub use transform::Passes;
 pub use transform::SinglePass;
 pub use transform::TransformDispatch;
+pub use transform::TransformOptions;
 
 /// Dialects can define new operations, attributes, and types.
 /// Each dialect is given an unique namespace that is prefixed.

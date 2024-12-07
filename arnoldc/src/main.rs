@@ -11,6 +11,7 @@ use std::io::Read;
 use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::Passes;
+use xrcf::TransformOptions;
 
 use crate::transform::parse_and_transform;
 
@@ -74,6 +75,7 @@ fn main() {
         init_tracing(tracing::Level::INFO);
     }
     let passes = passes_from_args(args, matches.clone());
+    let options = TransformOptions::from_args(matches.clone(), passes.clone());
 
     let input = matches.get_one::<String>("input").unwrap();
 
@@ -85,7 +87,7 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    let result = parse_and_transform(&input_text, &passes).unwrap();
+    let result = parse_and_transform(&input_text, &options).unwrap();
     let result = match result {
         RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
         RewriteResult::Unchanged => input_text.to_string(),
@@ -106,7 +108,8 @@ mod tests {
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let _matches = cli.try_get_matches_from(args_owned)?;
         let passes = Passes::from_convert_vec(args);
-        let result = parse_and_transform(input_text, &passes)?;
+        let options = TransformOptions::from_passes(passes.clone());
+        let result = parse_and_transform(input_text, &options)?;
         Ok(result)
     }
 

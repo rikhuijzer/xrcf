@@ -9,6 +9,7 @@ use xrcf::parser::Parser;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
 use xrcf::Passes;
+use xrcf::TransformOptions;
 
 /// An example XRCF compiler that contains all default passes
 #[derive(Args, Debug)]
@@ -32,10 +33,10 @@ fn remove_comments(src: &str) -> String {
     src.lines().filter(|line| !line.starts_with("//")).collect()
 }
 
-fn parse_and_transform(src: &str, passes: &Passes) -> String {
+fn parse_and_transform(src: &str, options: &TransformOptions) -> String {
     let src = remove_comments(src);
     let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
-    let result = transform::<DefaultTransformDispatch>(module, &passes).unwrap();
+    let result = transform::<DefaultTransformDispatch>(module, options).unwrap();
     let result = match result {
         RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
         RewriteResult::Unchanged => src.to_string(),
@@ -55,6 +56,7 @@ fn main() {
     let args = std::env::args_os();
     let passes = Passes::from_convert_args(args);
     let matches = cli.get_matches();
+    let options = TransformOptions::from_args(matches.clone(), passes.clone());
     if matches.get_flag("debug") {
         init_tracing(tracing::Level::DEBUG);
     } else {
@@ -71,7 +73,7 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    let result = parse_and_transform(&input_text, &passes);
+    let result = parse_and_transform(&input_text, &options);
     println!("{result}");
 }
 
@@ -85,7 +87,8 @@ mod tests {
         let args_owned: Vec<String> = args.iter().map(|&s| s.to_string()).collect();
         let _matches = cli.try_get_matches_from(args_owned)?;
         let passes = Passes::from_convert_vec(args);
-        let result = parse_and_transform(input_text, &passes);
+        let options = TransformOptions::from_args(_matches.clone(), passes.clone());
+        let result = parse_and_transform(input_text, &options);
         Ok(result)
     }
 

@@ -10,6 +10,7 @@ use crate::ir::Op;
 use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
+use clap::ArgMatches;
 use std::env::ArgsOs;
 use std::fmt;
 use std::fmt::Display;
@@ -20,6 +21,7 @@ use tracing::Level;
 use tracing_subscriber;
 
 /// A transformation pass (e.g., `--convert-func-to-llvm`).
+#[derive(Clone)]
 pub struct SinglePass {
     pass: String,
 }
@@ -47,6 +49,7 @@ impl SinglePass {
 }
 
 /// A collection of [SinglePass]es.
+#[derive(Clone)]
 pub struct Passes {
     passes: Vec<SinglePass>,
 }
@@ -94,6 +97,43 @@ impl Passes {
     }
     pub fn vec(&self) -> &Vec<SinglePass> {
         &self.passes
+    }
+}
+
+pub struct TransformOptions {
+    passes: Passes,
+    /// Print the IR before each pass.
+    ///
+    /// `print-ir-after-all` is not implemented because I don't see when it
+    /// would be useful.
+    print_ir_before_all: bool,
+    writer: Arc<RwLock<dyn std::io::Write + Send>>,
+}
+
+impl TransformOptions {
+    pub fn from_args(matches: ArgMatches, passes: Passes) -> TransformOptions {
+        let print_ir_before_all = matches.get_flag("print-ir-before-all");
+        TransformOptions {
+            passes,
+            print_ir_before_all,
+            writer: Arc::new(RwLock::new(std::io::stdout())),
+        }
+    }
+    pub fn from_passes(passes: Passes) -> TransformOptions {
+        TransformOptions {
+            passes,
+            print_ir_before_all: false,
+            writer: Arc::new(RwLock::new(std::io::stdout())),
+        }
+    }
+    pub fn print_ir_before_all(&self) -> bool {
+        self.print_ir_before_all
+    }
+    pub fn passes(&self) -> &Passes {
+        &self.passes
+    }
+    pub fn set_writer(&mut self, writer: Arc<RwLock<dyn std::io::Write + Send>>) {
+        self.writer = writer;
     }
 }
 
@@ -172,16 +212,23 @@ pub fn default_arguments() -> Vec<Arg> {
 /// Transform the given operation via given passen.
 ///
 /// This is the main function that most users will interact with. The name
-/// `transform` is used instead of `compile` because the infrastructure is not
+/// "transform" is used instead of "compile" because the infrastructure is not
 /// limited to compiling. For example, it could also be used to build
 /// decompilers (i.e., for security research where the assembly is decompiled to
 /// a more readable form).
 pub fn transform<T: TransformDispatch>(
     op: Arc<RwLock<dyn Op>>,
-    passes: &Passes,
+    options: &TransformOptions,
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;
-    for pass in passes.vec() {
+    for pass in options.passes().vec() {
+        if options.print_ir_before_all() {
+            writeln!(
+                &mut *options.writer.write().unwrap(),
+                "// ----- // IR Dump before {pass} //----- //\n{}",
+                op.try_read().unwrap()
+            )?;
+        }
         let new_result = T::dispatch(op.clone(), pass)?;
         if let RewriteResult::Changed(_) = new_result {
             result = new_result;

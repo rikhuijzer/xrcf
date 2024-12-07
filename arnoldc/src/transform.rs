@@ -19,7 +19,7 @@ use xrcf::DefaultTransformDispatch;
 use xrcf::Passes;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
-
+use xrcf::TransformOptions;
 pub struct ArnoldParserDispatch;
 
 fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
@@ -123,10 +123,10 @@ fn preprocess(src: &str) -> String {
     result
 }
 
-pub fn parse_and_transform(src: &str, passes: &Passes) -> Result<RewriteResult> {
+pub fn parse_and_transform(src: &str, options: &TransformOptions) -> Result<RewriteResult> {
     let src = preprocess(src);
     let op = Parser::<ArnoldParserDispatch>::parse(&src)?;
-    let result = transform::<ArnoldTransformDispatch>(op, passes)?;
+    let result = transform::<ArnoldTransformDispatch>(op, options)?;
     Ok(result)
 }
 
@@ -200,7 +200,8 @@ mod tests {
         let src = src.trim();
         let passes = Passes::from_vec(passes);
         print_heading("Before", src, &passes);
-        let result = parse_and_transform(src, &passes).unwrap();
+        let options = TransformOptions::from_passes(passes.clone());
+        let result = parse_and_transform(src, &options).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
