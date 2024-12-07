@@ -142,3 +142,27 @@ fn test_hello_world_with_arg() {
     Tester::check_lines_exact(&actual, expected, Location::caller());
     Tester::verify(module);
 }
+
+#[test]
+fn test_unique_variable_names() {
+    Tester::init_tracing();
+    let src = indoc! {r#"
+    func.func @main() -> i32 {
+      %x = arith.constant 0 : i1
+      scf.if %x {
+        experimental.printf("x was true")
+      } else {
+        experimental.printf("x was false")
+      }
+      %0 = arith.constant 0 : i32
+      return %0 : i32
+    }
+    "#};
+    let expected = indoc! {r#"
+    %0 = llvm.mlir.constant("x was true\00") : !llvm.array<11 x i8>
+
+    %1 = llvm.mlir.constant("x was false\00") : !llvm.array<12 x i8>
+    "#};
+    let (_module, actual) = Tester::transform(flags(), src);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
+}
