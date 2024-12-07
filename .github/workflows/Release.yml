@@ -1,4 +1,4 @@
-name: Release
+name: release
 
 # The build always runs, but only releases on tag, see the last step.
 on:
@@ -76,7 +76,8 @@ jobs:
         id: release
         shell: bash
 
-      - uses: softprops/action-gh-release@v2
+        # Hardcoded commit hash to mitigate supply chain attacks.
+      - uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
         if: startsWith(github.ref, 'refs/tags/')
         with:
           fail_on_unmatched_files: true
