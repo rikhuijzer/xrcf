@@ -22,6 +22,38 @@ use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// Lower `scf.if` to `cf.cond_br`.
+///
+/// For example, this rewrites:
+/// ```mlir
+///   %result = scf.if %0 -> (i32) {
+///     %1 = arith.constant 3 : i32
+///     scf.yield %c1_i32 : i32
+///   } else {
+///     %2 = arith.constant 4 : i32
+///     scf.yield %2 : i32
+///   }
+/// ```
+/// to
+/// ```mlir
+///   cf.cond_br %0, ^bb1, ^bb2
+/// ^bb1:
+///   %1 = arith.constant 3 : i32
+///   cf.br ^bb3(%1 : i32)
+/// ^bb2:
+///   %2 = arith.constant 4 : i32
+///   cf.br ^bb3(%2 : i32)
+/// ^bb3(%result : i32):
+///   cf.br ^bb4
+/// ^bb4:
+///   return %result : i32
+/// ```
+///
+/// This lowering is similar to the following rewrite method in MLIR:
+/// ```cpp
+/// LogicalResult IfLowering::matchAndRewrite(scf::IfOp op,
+///                                           PatternRewriter &rewriter)
+/// ```
 struct IfLowering;
 
 fn lower_yield_op(op: &dialect::scf::YieldOp, after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
