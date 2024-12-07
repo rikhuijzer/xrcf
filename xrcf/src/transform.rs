@@ -10,6 +10,7 @@ use crate::ir::Op;
 use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
+use clap::ArgMatches;
 use std::env::ArgsOs;
 use std::fmt;
 use std::fmt::Display;
@@ -20,6 +21,7 @@ use tracing::Level;
 use tracing_subscriber;
 
 /// A transformation pass (e.g., `--convert-func-to-llvm`).
+#[derive(Clone)]
 pub struct SinglePass {
     pass: String,
 }
@@ -47,6 +49,7 @@ impl SinglePass {
 }
 
 /// A collection of [SinglePass]es.
+#[derive(Clone)]
 pub struct Passes {
     passes: Vec<SinglePass>,
 }
@@ -97,6 +100,48 @@ impl Passes {
     }
 }
 
+pub struct TransformOptions {
+    passes: Passes,
+    /// Print the IR before each pass.
+    ///
+    /// `print-ir-after-all` is not implemented because I don't see when it
+    /// would be useful. `print-ir-before-all` is useful to see the IR after
+    /// parsing, but seeing the IR after the last pass is already the final
+    /// output.
+    print_ir_before_all: bool,
+    writer: Arc<RwLock<dyn std::io::Write + Send>>,
+}
+
+impl TransformOptions {
+    pub fn from_args(matches: ArgMatches, passes: Passes) -> TransformOptions {
+        let print_ir_before_all = matches.get_flag("print-ir-before-all");
+        TransformOptions {
+            passes,
+            print_ir_before_all,
+            writer: Arc::new(RwLock::new(std::io::stderr())),
+        }
+    }
+    pub fn from_passes(passes: Passes) -> TransformOptions {
+        TransformOptions {
+            passes,
+            print_ir_before_all: false,
+            writer: Arc::new(RwLock::new(std::io::stderr())),
+        }
+    }
+    pub fn print_ir_before_all(&self) -> bool {
+        self.print_ir_before_all
+    }
+    pub fn passes(&self) -> &Passes {
+        &self.passes
+    }
+    pub fn set_print_ir_before_all(&mut self, print_ir_before_all: bool) {
+        self.print_ir_before_all = print_ir_before_all;
+    }
+    pub fn set_writer(&mut self, writer: Arc<RwLock<dyn std::io::Write + Send>>) {
+        self.writer = writer;
+    }
+}
+
 /// Interface to add custom passes to the compiler.
 pub trait TransformDispatch {
     fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult>;
@@ -133,10 +178,14 @@ impl TransformDispatch for DefaultTransformDispatch {
     }
 }
 
-/// Collection of passes that are available in xrcf.
+/// Default arguments that are available in xrcf.
+///
+/// This includes options such as `--print-ir-before-all`, but also the default
+/// passes such as `--convert-func-to-llvm`. `--debug` is not included to allow
+/// downstream projects to handle the logging differently.
 ///
 /// For an example on how to use this, see the usage in the `arnoldc/` directory.
-pub fn default_passes() -> Vec<Arg> {
+pub fn default_arguments() -> Vec<Arg> {
     vec![
         Arg::new("convert-scf-to-cf")
             .long("convert-scf-to-cf")
@@ -158,22 +207,33 @@ pub fn default_passes() -> Vec<Arg> {
             .long("convert-mlir-to-llvmir")
             .help("Convert MLIR to LLVM IR")
             .action(ArgAction::SetTrue),
+        Arg::new("print-ir-before-all")
+            .long("print-ir-before-all")
+            .help("Print the IR before each pass")
+            .action(ArgAction::SetTrue),
     ]
 }
 
 /// Transform the given operation via given passen.
 ///
 /// This is the main function that most users will interact with. The name
-/// `transform` is used instead of `compile` because the infrastructure is not
+/// "transform" is used instead of "compile" because the infrastructure is not
 /// limited to compiling. For example, it could also be used to build
 /// decompilers (i.e., for security research where the assembly is decompiled to
 /// a more readable form).
 pub fn transform<T: TransformDispatch>(
     op: Arc<RwLock<dyn Op>>,
-    passes: &Passes,
+    options: &TransformOptions,
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;
-    for pass in passes.vec() {
+    for pass in options.passes().vec() {
+        if options.print_ir_before_all() {
+            writeln!(
+                &mut *options.writer.write().unwrap(),
+                "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
+                op.try_read().unwrap()
+            )?;
+        }
         let new_result = T::dispatch(op.clone(), pass)?;
         if let RewriteResult::Changed(_) = new_result {
             result = new_result;

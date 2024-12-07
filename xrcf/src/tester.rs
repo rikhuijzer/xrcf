@@ -9,6 +9,7 @@ use crate::parser::Parser;
 use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
+use crate::TransformOptions;
 use std::cmp::max;
 use std::panic::Location;
 use std::sync::Arc;
@@ -122,7 +123,8 @@ impl Tester {
             }
         }
         let passes = Passes::from_convert_vec(arguments.clone());
-        let result = transform::<DefaultTransformDispatch>(module.clone(), &passes).unwrap();
+        let options = TransformOptions::from_passes(passes);
+        let result = transform::<DefaultTransformDispatch>(module.clone(), &options).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
