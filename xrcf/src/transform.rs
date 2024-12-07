@@ -116,14 +116,14 @@ impl TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all,
-            writer: Arc::new(RwLock::new(std::io::stdout())),
+            writer: Arc::new(RwLock::new(std::io::stderr())),
         }
     }
     pub fn from_passes(passes: Passes) -> TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all: false,
-            writer: Arc::new(RwLock::new(std::io::stdout())),
+            writer: Arc::new(RwLock::new(std::io::stderr())),
         }
     }
     pub fn print_ir_before_all(&self) -> bool {

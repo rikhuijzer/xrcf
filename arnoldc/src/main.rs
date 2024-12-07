@@ -107,7 +107,7 @@ mod tests {
     use xrcf::tester::Tester;
 
     fn run_app(
-        stdout: Option<Arc<RwLock<dyn std::io::Write + Send>>>,
+        out: Option<Arc<RwLock<dyn std::io::Write + Send>>>,
         args: Vec<&str>,
         input_text: &str,
     ) -> Result<RewriteResult> {
@@ -119,8 +119,8 @@ mod tests {
         if args.contains(&"--print-ir-before-all") {
             options.set_print_ir_before_all(true);
         }
-        if let Some(stdout) = stdout {
-            options.set_writer(stdout);
+        if let Some(out) = out {
+            options.set_writer(out);
         }
         let result = parse_and_transform(input_text, &options)?;
         Ok(result)
