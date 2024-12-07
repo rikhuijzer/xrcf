@@ -225,11 +225,10 @@ pub fn transform<T: TransformDispatch>(
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;
     for pass in options.passes().vec() {
-        println!("print_ir_before_all: {}", options.print_ir_before_all());
         if options.print_ir_before_all() {
             writeln!(
                 &mut *options.writer.write().unwrap(),
-                "// ----- // IR Dump before {pass} //----- //\n{}",
+                "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
                 op.try_read().unwrap()
             )?;
         }

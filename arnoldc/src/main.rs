@@ -183,7 +183,6 @@ mod tests {
         // ----- // IR Dump before convert-func-to-llvm //----- //
         // ----- // IR Dump before convert-mlir-to-llvmir //----- //
         "#};
-        println!("printed:\n{printed}");
         Tester::check_lines_contain(&printed, expected, Location::caller());
     }
 }
