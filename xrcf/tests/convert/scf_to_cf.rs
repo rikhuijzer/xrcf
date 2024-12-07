@@ -59,12 +59,12 @@ fn test_if_without_yield() {
     func.func @main() -> i64 {
       %x = arith.constant false
       scf.if %x {
-        %0 = arith.constant 0 : i64
+        %0 = arith.constant 2 : i64
       } else {
-        %1 = arith.constant 1 : i64
+        %0 = arith.constant 3 : i64
       }
-      %2 = arith.constant 0 : i64
-      return %2 : i64
+      %1 = arith.constant 0 : i64
+      return %1 : i64
     }
     "#};
     let expected = indoc! {r#"
@@ -72,14 +72,14 @@ fn test_if_without_yield() {
       %x = arith.constant false
       cf.cond_br %x, ^bb1, ^bb2
     ^bb1: 
-      %0 = arith.constant 0 : i64
+      %0 = arith.constant 2 : i64
       cf.br ^bb3
     ^bb2:
-      %1 = arith.constant 1 : i64
+      %0_0 = arith.constant 3 : i64
       cf.br ^bb3
     ^bb3:
-      %2 = arith.constant 0 : i64
-      return %2 : i64
+      %1 = arith.constant 0 : i64
+      return %1 : i64
     }
     "#};
     let (module, actual) = Tester::parse(src);
