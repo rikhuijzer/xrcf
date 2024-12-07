@@ -347,8 +347,8 @@ impl Block {
     fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    fn used_names(&self) -> Vec<String> {
-        let ops = self.ops();
+    fn used_names_in_block(block: &Block) -> Vec<String> {
+        let ops = block.ops();
         let ops = ops.try_read().unwrap();
         let mut used_names = vec![];
         for op in ops.iter() {
@@ -369,6 +369,19 @@ impl Block {
                     Value::Variadic => continue,
                 };
                 used_names.push(name);
+            }
+        }
+        used_names
+
+    }
+    fn used_names(&self) -> Vec<String> {
+        let predecessors = self.predecessors();
+        let mut used_names = Self::used_names_in_block(self);
+        if let Some(predecessors) = predecessors {
+            for predecessor in predecessors.iter() {
+                let predecessor = predecessor.try_read().unwrap();
+                println!("predecessor: {predecessor}");
+                used_names.extend(Self::used_names_in_block(&predecessor));
             }
         }
         used_names
