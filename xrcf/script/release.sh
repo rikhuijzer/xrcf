@@ -28,7 +28,11 @@ echo ""
 echo "ENSURE 'cargo publish' SUCCEEDED"
 echo ""
 
-NOTES="See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information."
+NOTES="\`xrcf-bin\` is a compiler that can compile basic MLIR programs to LLVM IR, and can be used for testing the xrcf package. This binary contains all the default passes such as \`--convert-func-to-llvm\`.
+
+\`arnoldc\` is a compiler that can compile basic ArnoldC programs to LLVM IR. Next to the default passes, this binary contains the pass \`--convert-arnold-to-mlir\` which can lower ArnoldC programs to MLIR. From there, the default passes such as \`--convert-func-to-llvm\` can be used to lower ArnoldC to LLVM IR.
+
+See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information about changes since the last release."
 
 echo "Ready to create a new tag, which WILL TRIGGER A RELEASE with the following release notes:"
 echo "\"$NOTES\""
