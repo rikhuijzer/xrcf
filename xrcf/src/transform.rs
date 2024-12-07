@@ -105,7 +105,9 @@ pub struct TransformOptions {
     /// Print the IR before each pass.
     ///
     /// `print-ir-after-all` is not implemented because I don't see when it
-    /// would be useful.
+    /// would be useful. `print-ir-before-all` is useful to see the IR after
+    /// parsing, but seeing the IR after the last pass is already the final
+    /// output.
     print_ir_before_all: bool,
     writer: Arc<RwLock<dyn std::io::Write + Send>>,
 }
