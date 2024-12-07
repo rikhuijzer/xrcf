@@ -132,6 +132,9 @@ impl TransformOptions {
     pub fn passes(&self) -> &Passes {
         &self.passes
     }
+    pub fn set_print_ir_before_all(&mut self, print_ir_before_all: bool) {
+        self.print_ir_before_all = print_ir_before_all;
+    }
     pub fn set_writer(&mut self, writer: Arc<RwLock<dyn std::io::Write + Send>>) {
         self.writer = writer;
     }
@@ -222,6 +225,7 @@ pub fn transform<T: TransformDispatch>(
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;
     for pass in options.passes().vec() {
+        println!("print_ir_before_all: {}", options.print_ir_before_all());
         if options.print_ir_before_all() {
             writeln!(
                 &mut *options.writer.write().unwrap(),

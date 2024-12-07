@@ -16,7 +16,6 @@ use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
-use xrcf::Passes;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
 use xrcf::TransformOptions;
@@ -138,6 +137,7 @@ mod tests {
     use std::panic::Location;
     use tracing;
     use xrcf::tester::Tester;
+    use xrcf::Passes;
 
     fn flags() -> Vec<&'static str> {
         vec!["--convert-arnold-to-mlir"]
@@ -195,6 +195,7 @@ mod tests {
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
+
     fn test_transform(src: &str, passes: Vec<&str>) -> (Arc<RwLock<dyn Op>>, String) {
         Tester::init_tracing();
         let src = src.trim();
