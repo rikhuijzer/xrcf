@@ -51,8 +51,7 @@ use std::sync::RwLock;
 ///
 /// This lowering is similar to the following rewrite method in MLIR:
 /// ```cpp
-/// LogicalResult IfLowering::matchAndRewrite(scf::IfOp op,
-///                                           PatternRewriter &rewriter)
+/// LogicalResult IfLowering::matchAndRewrite
 /// ```
 struct IfLowering;
 
