@@ -1,7 +1,7 @@
 # xrcf
 
 <!-- This README shows up at https://crates.io/crates/xrcf -->
-<!-- When updating this README also update the README.md in the root -->
+<!-- When updating this README also update the README in the root -->
 
 The eXtensible and Reusable Compiler Framework (xrcf) is a framework for building compilers.
 
