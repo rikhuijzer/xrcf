@@ -18,11 +18,21 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+#[derive(Clone)]
+enum BlockArgumentName {
+    /// The name of the block argument.
+    Name(String),
+    /// Anonymous block arguments are used for functions without an implementation.
+    Anonymous,
+}
+
 /// An argument in a block or function.
 pub struct BlockArgument {
-    /// The name of the block argument. Does not have to be set because
-    /// anonymous arguments are allowed for functions without an implementation.
-    name: Option<String>,
+    /// The name of the block argument.
+    ///
+    /// The name is only used during parsing to see which operands point to this
+    /// argument. During printing, a new name is generated.
+    name: Option<BlockArgumentName>,
     typ: Arc<RwLock<dyn Type>>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -32,20 +42,20 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: Option<String>, typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(name: Option<BlockArgumentName>, typ: Arc<RwLock<dyn Type>>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Option<BlockArgumentName> {
         self.name.clone()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
-    pub fn set_name(&mut self, name: Option<String>) {
+    pub fn set_name(&mut self, name: Option<BlockArgumentName>) {
         self.name = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
@@ -62,9 +72,13 @@ impl BlockArgument {
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.try_read().unwrap();
-        match &self.name {
-            Some(name) => write!(f, "{} : {}", name, typ),
-            None => write!(f, "{}", typ),
+        if let Some(BlockArgumentName::Anonymous) = &self.name {
+            write!(f, "{}", typ)
+        } else {
+            let parent = self.parent();
+            let parent = parent.expect("no parent");
+            let new_name = parent.unique_value_name();
+            write!(f, "{} : {}", new_name, typ)
         }
     }
 }
@@ -325,6 +339,14 @@ impl Value {
     ///
     /// Returns `None` for block arguments or func results that do not have a
     /// name.
+    ///
+    /// During printing, a new name is generated automatically. This is because
+    /// some names might collide during rewriting (for example, when moving a
+    /// set of variables out of a region/scope). These collides are no problem
+    /// because even though the name is the same, they are different [Value]s.
+    /// At the same time, LLVM wants SSA values to have unique and monotonically
+    /// increasing names. We can solve both these problems by just generating
+    /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => arg.name.clone(),

@@ -294,6 +294,9 @@ impl Block {
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
+    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        todo!()
+    }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
         let mut ops = ops.try_write().unwrap();
@@ -372,7 +375,6 @@ impl Block {
             }
         }
         used_names
-
     }
     fn used_names(&self) -> Vec<String> {
         let predecessors = self.predecessors();
@@ -387,7 +389,7 @@ impl Block {
         used_names
     }
     /// Find a unique name for a value (for example, `%4 = ...`).
-    pub fn unique_value_name(&self) -> String {
+    pub fn unique_value_name(&self, prefix: &str) -> String {
         let used_names = self.used_names();
         let mut new_name: i32 = -1;
         for name in used_names.iter() {
@@ -399,7 +401,7 @@ impl Block {
             }
         }
         new_name += 1;
-        format!("%{new_name}")
+        format!("{prefix}{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
@@ -465,6 +467,7 @@ pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
@@ -475,7 +478,7 @@ pub trait GuardedBlock {
     fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
-    fn unique_value_name(&self) -> String;
+    fn unique_value_name(&self, prefix: &str) -> String;
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
@@ -490,6 +493,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.try_read().unwrap().index_of_arc(op)
+    }
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        self.try_read().unwrap().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
@@ -521,7 +527,7 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         self.try_read().unwrap().successors()
     }
-    fn unique_value_name(&self) -> String {
-        self.try_read().unwrap().unique_value_name()
+    fn unique_value_name(&self, prefix: &str) -> String {
+        self.try_read().unwrap().unique_value_name(prefix)
     }
 }
