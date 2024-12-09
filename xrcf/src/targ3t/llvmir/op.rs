@@ -3,6 +3,7 @@ use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockArgumentName;
 use crate::ir::BlockDest;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
@@ -27,6 +28,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
     match &*value {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name().expect("Block argument has no name");
+            let name = match name {
+                BlockArgumentName::Name(name) => name,
+                BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+            };
             write!(f, "{name}")
         }
         Value::Constant(constant) => {
@@ -336,7 +341,15 @@ impl Op for FuncOp {
                     let typ = arg.typ();
                     let typ = typ.try_read().unwrap();
                     match arg.name() {
-                        Some(name) => write!(f, "{} {}", typ, name),
+                        Some(name) => {
+                            let name = match name {
+                                BlockArgumentName::Name(name) => name,
+                                BlockArgumentName::Anonymous => {
+                                    panic!("Expected a named block argument")
+                                }
+                            };
+                            write!(f, "{} {}", typ, name)
+                        }
                         None => write!(f, "{}", typ),
                     }?;
                 }

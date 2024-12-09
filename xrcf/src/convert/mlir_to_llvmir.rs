@@ -10,6 +10,7 @@ use crate::dialect::func::Func;
 use crate::ir;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
+use crate::ir::BlockArgumentName;
 use crate::ir::Constant;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -444,7 +445,12 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
     if let Value::BlockArgument(arg) = &*argument {
         let typ = Some(arg.typ());
         let defining_op = Some(phi.clone());
-        let res = OpResult::new(arg.name(), typ, defining_op);
+        let name = arg.name().unwrap();
+        let name = match name {
+            BlockArgumentName::Name(name) => name,
+            BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+        };
+        let res = OpResult::new(Some(name), typ, defining_op);
         let new = Value::OpResult(res);
         let new = Arc::new(RwLock::new(new));
         operation.set_results(Values::from_vec(vec![new.clone()]));
