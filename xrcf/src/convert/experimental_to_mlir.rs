@@ -36,7 +36,7 @@ impl PrintLowering {
         let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
-        let name = parent.try_read().unwrap().unique_value_name();
+        let name = parent.try_read().unwrap().unique_value_name("%");
         let typ = llvm::ArrayType::for_bytes(&text);
         let typ = Arc::new(RwLock::new(typ));
         let result = const_operation.add_new_op_result(&name, typ);
@@ -52,7 +52,7 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
-        let name = parent.try_read().unwrap().unique_value_name();
+        let name = parent.try_read().unwrap().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
         let op = arith::ConstantOp::from_operation(operation);
@@ -66,7 +66,7 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
-        let name = parent.try_read().unwrap().unique_value_name();
+        let name = parent.try_read().unwrap().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.result(0);
@@ -119,7 +119,7 @@ impl PrintLowering {
             operation.set_operand(1, var);
         }
         let typ = IntegerType::from_str("i32");
-        let name = parent.unique_value_name();
+        let name = parent.unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
 

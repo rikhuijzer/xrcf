@@ -6,6 +6,7 @@ use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
+use crate::ir::BlockArgumentName;
 use crate::ir::BlockDest;
 use crate::ir::BlockLabel;
 use crate::ir::GuardedBlock;
@@ -193,7 +194,8 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
         let result = result.try_read().unwrap();
         let name = result.name();
         let typ = result.typ().unwrap();
-        let mut arg = BlockArgument::new(name, typ);
+        let name = BlockArgumentName::Name(name.unwrap());
+        let mut arg = BlockArgument::new(Some(name), typ);
         arg.set_parent(Some(parent.clone()));
         let arg = Value::BlockArgument(arg);
         let arg = Arc::new(RwLock::new(arg));

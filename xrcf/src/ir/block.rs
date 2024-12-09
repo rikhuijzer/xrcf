@@ -1,3 +1,4 @@
+use crate::ir::BlockArgumentName;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -169,7 +170,8 @@ impl Block {
             for argument in arguments.iter() {
                 match &*argument.try_read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == Some(name.to_string()) {
+                        if block_argument.name() == Some(BlockArgumentName::Name(name.to_string()))
+                        {
                             return Some(argument.clone());
                         }
                     }
@@ -226,7 +228,7 @@ impl Block {
         for argument in arguments.iter() {
             match &*argument.try_read().unwrap() {
                 Value::BlockArgument(block_argument) => {
-                    if block_argument.name() == Some(name.to_string()) {
+                    if block_argument.name() == Some(BlockArgumentName::Name(name.to_string())) {
                         return Some(argument.clone());
                     }
                 }
@@ -364,7 +366,13 @@ impl Block {
             for result in results.iter() {
                 let result = result.try_read().unwrap();
                 let name = match &*result {
-                    Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
+                    Value::BlockArgument(arg) => {
+                        let name = arg.name().expect("failed to get name");
+                        match name {
+                            BlockArgumentName::Name(name) => name,
+                            BlockArgumentName::Anonymous => continue,
+                        }
+                    }
                     Value::BlockLabel(label) => label.name(),
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => continue,

@@ -18,8 +18,8 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-#[derive(Clone)]
-enum BlockArgumentName {
+#[derive(Clone, PartialEq, Eq)]
+pub enum BlockArgumentName {
     /// The name of the block argument.
     Name(String),
     /// Anonymous block arguments are used for functions without an implementation.
@@ -77,7 +77,7 @@ impl Display for BlockArgument {
         } else {
             let parent = self.parent();
             let parent = parent.expect("no parent");
-            let new_name = parent.unique_value_name();
+            let new_name = parent.unique_value_name("%arg");
             write!(f, "{} : {}", new_name, typ)
         }
     }
@@ -349,7 +349,11 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => arg.name.clone(),
+            Value::BlockArgument(arg) => match arg.name() {
+                Some(BlockArgumentName::Name(name)) => Some(name.clone()),
+                Some(BlockArgumentName::Anonymous) => None,
+                None => None,
+            },
             Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
@@ -392,7 +396,10 @@ impl Value {
     }
     pub fn set_name(&mut self, name: &str) {
         match self {
-            Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::BlockArgument(arg) => {
+                let arg_name = BlockArgumentName::Name(name.to_string());
+                arg.set_name(Some(arg_name));
+            }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
@@ -692,6 +699,7 @@ impl<T: ParserDispatch> Parser<T> {
             let name = identifier.lexeme.clone();
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
+            let name = BlockArgumentName::Name(name);
             let arg = Value::BlockArgument(BlockArgument::new(Some(name), typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
