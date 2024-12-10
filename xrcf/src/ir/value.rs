@@ -394,6 +394,16 @@ impl Value {
             Value::Variadic => panic!("Cannot set defining op for Variadic"),
         }
     }
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+        match self {
+            Value::BlockArgument(arg) => arg.set_parent(parent),
+            Value::BlockLabel(_) => todo!(),
+            Value::Constant(_) => todo!(),
+            Value::FuncResult(_) => todo!(),
+            Value::OpResult(_) => todo!(),
+            Value::Variadic => todo!(),
+        }
+    }
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => {
@@ -481,6 +491,7 @@ impl Display for Value {
 
 pub trait GuardedValue {
     fn rename(&self, new_name: &str);
+    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
 }
 
@@ -488,6 +499,10 @@ impl GuardedValue for Arc<RwLock<Value>> {
     fn rename(&self, new_name: &str) {
         let mut value = self.try_write().unwrap();
         value.set_name(new_name);
+    }
+    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
+        let mut value = self.try_write().unwrap();
+        value.set_parent(parent);
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.try_read().unwrap();

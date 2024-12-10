@@ -5,6 +5,7 @@ use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
 use crate::ir::GuardedRegion;
+use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -405,7 +406,10 @@ impl<T: ParserDispatch> Parser<T> {
         let visibility = FuncOp::try_parse_func_visibility(parser, &expected_name);
         let identifier = parser.expect(TokenKind::AtIdentifier)?;
         let identifier = identifier.lexeme.clone();
-        operation.set_arguments(parser.parse_function_arguments()?);
+
+        // these have no parent.
+        let arguments = parser.parse_function_arguments()?;
+        operation.set_arguments(arguments.clone());
         operation.set_anonymous_results(parser.result_types()?)?;
         let mut op = F::from_operation(operation);
         op.set_identifier(identifier);
@@ -417,6 +421,17 @@ impl<T: ParserDispatch> Parser<T> {
             let op_rd = op.try_read().unwrap();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
+
+            {
+                let blocks = region.blocks();
+                let blocks = blocks.try_read().unwrap();
+                let block = blocks.first().unwrap();
+                let arguments = arguments.vec();
+                let arguments = arguments.try_read().unwrap();
+                for argument in arguments.iter() {
+                    argument.set_parent(Some(block.clone()));
+                }
+            }
         }
 
         Ok(op)
