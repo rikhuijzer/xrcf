@@ -88,8 +88,10 @@ impl BlockArgument {
             }
         }
         let name = self.name();
-        let name = name.try_read().unwrap();
-        let own_name = match &*name {
+        let name_read = name.try_read().unwrap();
+        let name = name_read.clone();
+        drop(name_read);
+        let own_name = match name {
             BlockArgumentName::Name(name) => Some(name.to_string()),
             BlockArgumentName::Anonymous => None,
             BlockArgumentName::Unset => None,
@@ -105,8 +107,10 @@ impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.try_read().unwrap();
         let name = self.name();
-        let name = name.try_read().unwrap();
-        match &*name {
+        let name_read = name.try_read().unwrap();
+        let name = name_read.clone();
+        drop(name_read);
+        match name {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(_name) => {
                 let new_name = self.new_name();
