@@ -190,6 +190,7 @@ impl PrintLowering {
             let arg_type = Arc::new(RwLock::new(arg_type));
 
             let name = BlockArgumentName::Anonymous;
+            let name = Arc::new(RwLock::new(name));
             let argument = crate::ir::BlockArgument::new(name, arg_type);
             let value = Value::BlockArgument(argument);
             let value = Arc::new(RwLock::new(value));

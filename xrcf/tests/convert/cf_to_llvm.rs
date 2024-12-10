@@ -22,10 +22,10 @@ fn test_if_else() {
       ^else:
         %c4_i32 = arith.constant 4 : i32
         cf.br ^merge(%c4_i32 : i32)
-      ^merge(%result : i32):
+      ^merge(%arg0 : i32):
         cf.br ^exit
       ^exit:
-        return %result : i32
+        return %arg0 : i32
       }
     }
     "#};
@@ -40,10 +40,10 @@ fn test_if_else() {
       ^else:
         %c4_i32 = arith.constant 4 : i32
         llvm.br ^merge(%c4_i32 : i32)
-      ^merge(%result : i32):
+      ^merge(%arg0 : i32):
         llvm.br ^exit
       ^exit:
-        return %result : i32
+        return %arg0 : i32
       }
     }
     "#};

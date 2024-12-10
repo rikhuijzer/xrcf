@@ -170,7 +170,9 @@ impl Block {
             for argument in arguments.iter() {
                 match &*argument.try_read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == BlockArgumentName::Name(name.to_string()) {
+                        let current_name = block_argument.name();
+                        let current_name = current_name.try_read().unwrap();
+                        if *current_name == BlockArgumentName::Name(name.to_string()) {
                             return Some(argument.clone());
                         }
                     }
@@ -227,7 +229,9 @@ impl Block {
         for argument in arguments.iter() {
             match &*argument.try_read().unwrap() {
                 Value::BlockArgument(block_argument) => {
-                    if block_argument.name() == BlockArgumentName::Name(name.to_string()) {
+                    let current_name = block_argument.name();
+                    let current_name = current_name.try_read().unwrap();
+                    if *current_name == BlockArgumentName::Name(name.to_string()) {
                         return Some(argument.clone());
                     }
                 }
@@ -365,11 +369,15 @@ impl Block {
             for result in results.iter() {
                 let result = result.try_read().unwrap();
                 let name = match &*result {
-                    Value::BlockArgument(arg) => match arg.name() {
-                        BlockArgumentName::Anonymous => continue,
-                        BlockArgumentName::Name(name) => name,
-                        BlockArgumentName::Unset => panic!("Block argument has no name"),
-                    },
+                    Value::BlockArgument(arg) => {
+                        let name = arg.name();
+                        let name = name.try_read().unwrap();
+                        match &*name {
+                            BlockArgumentName::Anonymous => continue,
+                            BlockArgumentName::Name(name) => name.to_string(),
+                            BlockArgumentName::Unset => panic!("Block argument has no name"),
+                        }
+                    }
                     Value::BlockLabel(label) => label.name(),
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => continue,

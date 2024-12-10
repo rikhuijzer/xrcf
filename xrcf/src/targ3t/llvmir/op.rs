@@ -28,9 +28,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
     match &*value {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name();
-            let name = match name {
+            let name = name.try_read().unwrap();
+            let name = match &*name {
                 BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
-                BlockArgumentName::Name(name) => name,
+                BlockArgumentName::Name(name) => name.to_string(),
                 BlockArgumentName::Unset => panic!("Block argument has no name"),
             };
             write!(f, "{name}")
@@ -341,7 +342,9 @@ impl Op for FuncOp {
                 Value::BlockArgument(arg) => {
                     let typ = arg.typ();
                     let typ = typ.try_read().unwrap();
-                    match arg.name() {
+                    let name = arg.name();
+                    let name = name.try_read().unwrap();
+                    match &*name {
                         BlockArgumentName::Name(name) => write!(f, "{typ} {name}"),
                         BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
                         BlockArgumentName::Unset => write!(f, "{}", typ),

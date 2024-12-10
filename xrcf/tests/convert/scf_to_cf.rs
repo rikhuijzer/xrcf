@@ -9,7 +9,7 @@ fn flags() -> Vec<&'static str> {
 }
 
 #[test]
-fn test_if() {
+fn test_if_with_yield() {
     Tester::init_tracing();
     let src = indoc! {r#"
     module {
@@ -37,10 +37,10 @@ fn test_if() {
       ^bb2:
         %c4_i32 = arith.constant 4 : i32
         cf.br ^bb3(%c4_i32 : i32)
-      ^bb3(%result : i32):
+      ^bb3(%arg0 : i32):
         cf.br ^bb4
       ^bb4:
-        return %result : i32
+        return %arg0 : i32
       }
     }
     "#};

@@ -291,6 +291,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
                     let typ = targ3t::llvmir::PointerType::from_str("ptr");
                     let typ = Arc::new(RwLock::new(typ));
                     let name = BlockArgumentName::Unset;
+                    let name = Arc::new(RwLock::new(name));
                     let arg = Value::BlockArgument(BlockArgument::new(name, typ));
                     new_arguments.push(Arc::new(RwLock::new(arg)));
                 } else {
@@ -446,8 +447,10 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
     if let Value::BlockArgument(arg) = &*argument {
         let typ = Some(arg.typ());
         let defining_op = Some(phi.clone());
-        let name = match arg.name() {
-            BlockArgumentName::Name(name) => name,
+        let name = arg.name();
+        let name = name.try_read().unwrap();
+        let name = match &*name {
+            BlockArgumentName::Name(name) => name.to_string(),
             BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
             BlockArgumentName::Unset => panic!("Block argument has no name"),
         };

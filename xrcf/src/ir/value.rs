@@ -35,7 +35,7 @@ pub struct BlockArgument {
     ///
     /// The name is only used during parsing to see which operands point to this
     /// argument. During printing, a new name is generated.
-    name: BlockArgumentName,
+    name: Arc<RwLock<BlockArgumentName>>,
     typ: Arc<RwLock<dyn Type>>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -45,21 +45,22 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: BlockArgumentName, typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(name: Arc<RwLock<BlockArgumentName>>, typ: Arc<RwLock<dyn Type>>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> BlockArgumentName {
+    pub fn name(&self) -> Arc<RwLock<BlockArgumentName>> {
         self.name.clone()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
-    pub fn set_name(&mut self, name: BlockArgumentName) {
-        self.name = name;
+    pub fn set_name(&self, name: BlockArgumentName) {
+        let mut arg_name = self.name.try_write().unwrap();
+        *arg_name = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;
@@ -86,19 +87,26 @@ impl BlockArgument {
                 used_names.push(name);
             }
         }
-        let own_name = match self.name() {
-            BlockArgumentName::Name(name) => Some(name),
+        let name = self.name();
+        let name = name.try_read().unwrap();
+        let own_name = match &*name {
+            BlockArgumentName::Name(name) => Some(name.to_string()),
             BlockArgumentName::Anonymous => None,
             BlockArgumentName::Unset => None,
         };
-        generate_new_name(used_names, own_name, "%arg")
+        let new_name = generate_new_name(used_names, own_name, "%arg");
+        let new_arg_name = BlockArgumentName::Name(new_name.clone());
+        self.set_name(new_arg_name);
+        new_name
     }
 }
 
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.try_read().unwrap();
-        match self.name() {
+        let name = self.name();
+        let name = name.try_read().unwrap();
+        match &*name {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(_name) => {
                 let new_name = self.new_name();
@@ -378,11 +386,15 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => match arg.name() {
-                BlockArgumentName::Anonymous => None,
-                BlockArgumentName::Name(name) => Some(name.clone()),
-                BlockArgumentName::Unset => None,
-            },
+            Value::BlockArgument(arg) => {
+                let name = arg.name();
+                let name = name.try_read().unwrap();
+                match &*name {
+                    BlockArgumentName::Anonymous => None,
+                    BlockArgumentName::Name(name) => Some(name.clone()),
+                    BlockArgumentName::Unset => None,
+                }
+            }
             Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
@@ -749,6 +761,7 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
+            let name = Arc::new(RwLock::new(name));
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
@@ -759,6 +772,7 @@ impl<T: ParserDispatch> Parser<T> {
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Anonymous;
+            let name = Arc::new(RwLock::new(name));
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
