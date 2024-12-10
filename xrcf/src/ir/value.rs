@@ -216,14 +216,18 @@ impl Display for AnonymousResult {
 /// `%0` is the result of the operation and has the name `%0`. The `defining_op`
 /// is `arith.addi` and the `typ` is `i32`.
 pub struct OpResult {
-    name: Option<String>,
+    /// The name of the result.
+    /// 
+    /// Does not necesarily have to be set because new names are generated
+    /// anyway.
+    name: Arc<RwLock<Option<String>>>,
     typ: Option<Arc<RwLock<dyn Type>>>,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
     pub fn new(
-        name: Option<String>,
+        name: Arc<RwLock<Option<String>>>,
         typ: Option<Arc<RwLock<dyn Type>>>,
         defining_op: Option<Arc<RwLock<dyn Op>>>,
     ) -> Self {
@@ -233,7 +237,7 @@ impl OpResult {
             defining_op,
         }
     }
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Arc<RwLock<Option<String>>> {
         self.name.clone()
     }
     pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
@@ -242,8 +246,9 @@ impl OpResult {
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.defining_op.clone()
     }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_string());
+    pub fn set_name(&self, name: &str) {
+        let mut name_write = self.name.try_write().unwrap();
+        *name_write = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = Some(typ);
@@ -251,12 +256,27 @@ impl OpResult {
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
     }
+    fn new_name(&self) -> String {
+        let defining_op = self.defining_op();
+        let defining_op = defining_op.expect("defining op not set");
+        let defining_op = defining_op.try_read().unwrap();
+        let mut used_names = vec![];
+        let predecessors = defining_op.operation().predecessors();
+        for predecessor in predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let result_names = predecessor.operation().result_names();
+            used_names.extend(result_names);
+        }
+        let name = self.name();
+        let name = name.try_read().unwrap();
+        generate_new_name(used_names, name.clone(), "%")
+    }
 }
 
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: None,
+            name: Arc::new(RwLock::new(None)),
             typ: None,
             defining_op: None,
         }
@@ -265,8 +285,13 @@ impl Default for OpResult {
 
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = self.name.as_ref().expect("OpResult has no name");
-        write!(f, "{}", name)
+        // The definition of the OpResult is always called before usage, so we
+        // can generate a new name here. Note also that this saves us from
+        // generating a new name during each IR transformation since we only
+        // generate during printing.
+        let new_name = self.new_name();
+        self.set_name(&new_name);
+        write!(f, "{new_name}")
     }
 }
 
@@ -398,7 +423,11 @@ impl Value {
             Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => result.name.clone(),
+            Value::OpResult(result) => {
+                let name = result.name();
+                let name = name.try_read().unwrap();
+                name.clone()
+            }
             Value::Variadic => None,
         }
     }

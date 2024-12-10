@@ -210,8 +210,12 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        if op_result.name().expect("OpResult has no name") == name {
-                            return Some(value.clone());
+                        let current_name = op_result.name();
+                        let current_name = current_name.try_read().unwrap();
+                        if let Some(current_name) = &*current_name {
+                            if current_name == name {
+                                return Some(value.clone());
+                            }
                         }
                     }
                     Value::Variadic => continue,
@@ -367,29 +371,8 @@ impl Block {
             let op = op.try_read().unwrap();
             let operation = op.operation();
             let operation = operation.try_read().unwrap();
-            let results = operation.results();
-            let results = results.vec();
-            let results = results.try_read().unwrap();
-            for result in results.iter() {
-                let result = result.try_read().unwrap();
-                let name = match &*result {
-                    Value::BlockArgument(arg) => {
-                        let name = arg.name();
-                        let name = name.try_read().unwrap();
-                        match &*name {
-                            BlockArgumentName::Anonymous => continue,
-                            BlockArgumentName::Name(name) => name.to_string(),
-                            BlockArgumentName::Unset => panic!("Block argument has no name"),
-                        }
-                    }
-                    Value::BlockLabel(label) => label.name(),
-                    Value::Constant(_) => continue,
-                    Value::FuncResult(_) => continue,
-                    Value::OpResult(res) => res.name().expect("failed to get name"),
-                    Value::Variadic => continue,
-                };
-                used_names.push(name);
-            }
+            let result_names = operation.result_names();
+            used_names.extend(result_names);
         }
         used_names
     }
