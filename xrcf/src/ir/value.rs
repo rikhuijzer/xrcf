@@ -758,7 +758,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
-            let name = BlockArgumentName::Unset;
+            let name = BlockArgumentName::Anonymous;
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {

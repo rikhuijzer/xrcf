@@ -397,8 +397,6 @@ impl<T: ParserDispatch> Parser<T> {
         let visibility = FuncOp::try_parse_func_visibility(parser, &expected_name);
         let identifier = parser.expect(TokenKind::AtIdentifier)?;
         let identifier = identifier.lexeme.clone();
-
-        // these have no parent.
         let arguments = parser.parse_function_arguments()?;
         operation.set_arguments(arguments.clone());
         operation.set_anonymous_results(parser.result_types()?)?;
