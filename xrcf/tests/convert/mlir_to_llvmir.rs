@@ -70,8 +70,8 @@ fn test_add_one() {
     "};
     let expected = indoc! {r#"
     define i32 @add_one(i32 %arg0) {
-        %1 = add i32 1, %arg0
-        ret i32 %1
+        %0 = add i32 1, %arg0
+        ret i32 %0
     }
     "#};
     let (_module, actual) = Tester::parse(src);
@@ -107,9 +107,9 @@ fn test_hello_world() {
     declare i32 @printf(ptr)
 
     define i32 @main() {
-      %2 = alloca i8, i64 14, align 1
-      store [14 x i8] c"hello, world\0A\00", ptr %2, align 1
-      %3 = call i32 @printf(ptr %2)
+      %0 = alloca i8, i64 14, align 1
+      store [14 x i8] c"hello, world\0A\00", ptr %0, align 1
+      %1 = call i32 @printf(ptr %0)
       ret i32 0
     }
 
@@ -148,9 +148,9 @@ fn test_print_with_vararg() {
 
     declare i32 @printf(ptr, ...)
     define i32 @main() {
-      %2 = alloca i8, i64 14, align 1
-      store [11 x i8] c"hello, %d\0A\00", ptr %2, align 1
-      %4 = call i32 (ptr, ...) @printf(ptr %2, i32 42)
+      %0 = alloca i8, i64 14, align 1
+      store [11 x i8] c"hello, %d\0A\00", ptr %0, align 1
+      %1 = call i32 (ptr, ...) @printf(ptr %0, i32 42)
       ret i32 0
     }
 
@@ -195,18 +195,18 @@ fn test_if_else() {
     let src = indoc! {r#"
     module {
       llvm.func @main() -> i32 {
-        %false = llvm.mlir.constant(false) : i1
-        llvm.cond_br %false, ^then, ^else
+        %0 = llvm.mlir.constant(false) : i1
+        llvm.cond_br %0, ^then, ^else
       ^then:
-        %c3_i32 = llvm.mlir.constant(3 : i32) : i32
-        llvm.br ^merge(%c3_i32 : i32)
+        %1 = llvm.mlir.constant(3 : i32) : i32
+        llvm.br ^merge(%1 : i32)
       ^else:
-        %c4_i32 = llvm.mlir.constant(4 : i32) : i32
-        llvm.br ^merge(%c4_i32 : i32)
-      ^merge(%result : i32):
+        %2 = llvm.mlir.constant(4 : i32) : i32
+        llvm.br ^merge(%2 : i32)
+      ^merge(%3 : i32):
         llvm.br ^exit
       ^exit:
-        llvm.return %result : i32
+        llvm.return %3 : i32
       }
     }
     "#};
@@ -221,10 +221,10 @@ fn test_if_else() {
     else:
       br label %merge
     merge:
-      %result = phi i32 [ 3, %then ], [ 4, %else ]
+      %0 = phi i32 [ 3, %then ], [ 4, %else ]
       br label %exit
     exit:
-      ret i32 %result
+      ret i32 %0
     }
 
     !llvm.module.flags = !{!0}

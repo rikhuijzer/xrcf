@@ -1,3 +1,4 @@
+use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
@@ -18,11 +19,22 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+pub enum BlockArgumentName {
+    /// Anonymous block arguments are used for functions without an implementation.
+    Anonymous,
+    /// The name of the block argument.
+    Name(String),
+    /// The name does not have to be set since we generate unique names anyway.
+    Unset,
+}
+
 /// An argument in a block or function.
 pub struct BlockArgument {
-    /// The name of the block argument. Does not have to be set because
-    /// anonymous arguments are allowed for functions without an implementation.
-    name: Option<String>,
+    /// The name of the block argument.
+    ///
+    /// The name is only used during parsing to see which operands point to this
+    /// argument. During printing, a new name is generated.
+    name: Arc<RwLock<BlockArgumentName>>,
     typ: Arc<RwLock<dyn Type>>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -32,21 +44,22 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: Option<String>, typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(name: Arc<RwLock<BlockArgumentName>>, typ: Arc<RwLock<dyn Type>>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Arc<RwLock<BlockArgumentName>> {
         self.name.clone()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
-    pub fn set_name(&mut self, name: Option<String>) {
-        self.name = name;
+    pub fn set_name(&self, name: BlockArgumentName) {
+        let mut arg_name = self.name.try_write().unwrap();
+        *arg_name = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;
@@ -57,14 +70,51 @@ impl BlockArgument {
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         self.typ.clone()
     }
+    /// Generate a new name from scratch.
+    ///
+    /// Used during printing.
+    pub fn new_name(&self) -> String {
+        let parent = self.parent();
+        let parent = parent.expect("no parent");
+        let arguments = parent.arguments();
+        let arguments = arguments.vec();
+        let arguments = arguments.try_read().unwrap();
+        let mut used_names = vec![];
+        for argument in arguments.iter() {
+            let argument = argument.try_read().unwrap();
+            if let Value::BlockArgument(argument) = &*argument {
+                if std::ptr::eq(self, argument) {
+                    break;
+                }
+            };
+            let name = argument.name();
+            if let Some(name) = name {
+                used_names.push(name);
+            }
+        }
+        generate_new_name(used_names, "%arg")
+    }
 }
 
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.try_read().unwrap();
-        match &self.name {
-            Some(name) => write!(f, "{} : {}", name, typ),
-            None => write!(f, "{}", typ),
+        let name = self.name();
+        let name_read = name.try_read().unwrap();
+        match &*name_read {
+            BlockArgumentName::Anonymous => write!(f, "{typ}"),
+            BlockArgumentName::Name(_name) => {
+                drop(name_read);
+                let new_name = self.new_name();
+                self.set_name(BlockArgumentName::Name(new_name.clone()));
+                write!(f, "{new_name} : {typ}")
+            }
+            BlockArgumentName::Unset => {
+                drop(name_read);
+                let new_name = self.new_name();
+                self.set_name(BlockArgumentName::Name(new_name.clone()));
+                write!(f, "{new_name} : {typ}")
+            }
         }
     }
 }
@@ -165,14 +215,18 @@ impl Display for AnonymousResult {
 /// `%0` is the result of the operation and has the name `%0`. The `defining_op`
 /// is `arith.addi` and the `typ` is `i32`.
 pub struct OpResult {
-    name: Option<String>,
+    /// The name of the result.
+    ///
+    /// Does not necessarily have to be set because new names are generated
+    /// anyway.
+    name: Arc<RwLock<Option<String>>>,
     typ: Option<Arc<RwLock<dyn Type>>>,
     defining_op: Option<Arc<RwLock<dyn Op>>>,
 }
 
 impl OpResult {
     pub fn new(
-        name: Option<String>,
+        name: Arc<RwLock<Option<String>>>,
         typ: Option<Arc<RwLock<dyn Type>>>,
         defining_op: Option<Arc<RwLock<dyn Op>>>,
     ) -> Self {
@@ -182,7 +236,7 @@ impl OpResult {
             defining_op,
         }
     }
-    pub fn name(&self) -> Option<String> {
+    pub fn name(&self) -> Arc<RwLock<Option<String>>> {
         self.name.clone()
     }
     pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
@@ -191,8 +245,9 @@ impl OpResult {
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.defining_op.clone()
     }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = Some(name.to_string());
+    pub fn set_name(&self, name: &str) {
+        let mut name_write = self.name.try_write().unwrap();
+        *name_write = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = Some(typ);
@@ -200,12 +255,36 @@ impl OpResult {
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
     }
+    pub fn new_name(&self) -> String {
+        let defining_op = self.defining_op();
+        let defining_op = defining_op.expect("defining op not set");
+        let defining_op = defining_op.try_read().unwrap();
+        let mut used_names = vec![];
+
+        let parent_block = defining_op.operation().parent();
+        let parent_block = parent_block.expect("defining op has no parent");
+        let block_predecessors = parent_block.predecessors();
+        let block_predecessors = block_predecessors.expect("expected predecessors");
+        for predecessor in block_predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let names_in_block = predecessor.used_names_without_predecessors();
+            used_names.extend(names_in_block);
+        }
+
+        let predecessors = defining_op.operation().predecessors();
+        for predecessor in predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let result_names = predecessor.operation().result_names();
+            used_names.extend(result_names);
+        }
+        generate_new_name(used_names, "%")
+    }
 }
 
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: None,
+            name: Arc::new(RwLock::new(None)),
             typ: None,
             defining_op: None,
         }
@@ -214,8 +293,13 @@ impl Default for OpResult {
 
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = self.name.as_ref().expect("OpResult has no name");
-        write!(f, "{}", name)
+        // The definition of the OpResult is always called before usage, so we
+        // can generate a new name here. Note also that this saves us from
+        // generating a new name during each IR transformation since we only
+        // generate during printing.
+        let new_name = self.new_name();
+        self.set_name(&new_name);
+        write!(f, "{new_name}")
     }
 }
 
@@ -325,13 +409,33 @@ impl Value {
     ///
     /// Returns `None` for block arguments or func results that do not have a
     /// name.
+    ///
+    /// During printing, a new name is generated automatically. This is because
+    /// some names might collide during rewriting (for example, when moving a
+    /// set of variables out of a region/scope). These collides are no problem
+    /// because even though the name is the same, they are different [Value]s.
+    /// At the same time, LLVM wants SSA values to have unique and monotonically
+    /// increasing names. We can solve both these problems by just generating
+    /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => arg.name.clone(),
+            Value::BlockArgument(arg) => {
+                let name = arg.name();
+                let name = name.try_read().unwrap();
+                match &*name {
+                    BlockArgumentName::Anonymous => None,
+                    BlockArgumentName::Name(name) => Some(name.clone()),
+                    BlockArgumentName::Unset => None,
+                }
+            }
             Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => result.name.clone(),
+            Value::OpResult(result) => {
+                let name = result.name();
+                let name = name.try_read().unwrap();
+                name.clone()
+            }
             Value::Variadic => None,
         }
     }
@@ -368,9 +472,22 @@ impl Value {
             Value::Variadic => panic!("Cannot set defining op for Variadic"),
         }
     }
+    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+        match self {
+            Value::BlockArgument(arg) => arg.set_parent(parent),
+            Value::BlockLabel(_) => todo!(),
+            Value::Constant(_) => todo!(),
+            Value::FuncResult(_) => todo!(),
+            Value::OpResult(_) => todo!(),
+            Value::Variadic => todo!(),
+        }
+    }
     pub fn set_name(&mut self, name: &str) {
         match self {
-            Value::BlockArgument(arg) => arg.set_name(Some(name.to_string())),
+            Value::BlockArgument(arg) => {
+                let arg_name = BlockArgumentName::Name(name.to_string());
+                arg.set_name(arg_name);
+            }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
@@ -451,14 +568,24 @@ impl Display for Value {
 }
 
 pub trait GuardedValue {
+    fn name(&self) -> Option<String>;
     fn rename(&self, new_name: &str);
+    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
 }
 
 impl GuardedValue for Arc<RwLock<Value>> {
+    fn name(&self) -> Option<String> {
+        let value = self.try_read().unwrap();
+        value.name()
+    }
     fn rename(&self, new_name: &str) {
         let mut value = self.try_write().unwrap();
         value.set_name(new_name);
+    }
+    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
+        let mut value = self.try_write().unwrap();
+        value.set_parent(parent);
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.try_read().unwrap();
@@ -670,7 +797,9 @@ impl<T: ParserDispatch> Parser<T> {
             let name = identifier.lexeme.clone();
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
-            let arg = Value::BlockArgument(BlockArgument::new(Some(name), typ));
+            let name = BlockArgumentName::Name(name);
+            let name = Arc::new(RwLock::new(name));
+            let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
                 self.advance();
@@ -679,7 +808,8 @@ impl<T: ParserDispatch> Parser<T> {
         }
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
-            let name = None;
+            let name = BlockArgumentName::Anonymous;
+            let name = Arc::new(RwLock::new(name));
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
@@ -711,7 +841,7 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
-        let mut op_result = OpResult::default();
+        let op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
         Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))

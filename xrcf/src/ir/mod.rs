@@ -47,6 +47,7 @@ pub use typ::TypeParse;
 pub use typ::Types;
 pub use value::AnonymousResult;
 pub use value::BlockArgument;
+pub use value::BlockArgumentName;
 pub use value::BlockDest;
 pub use value::BlockLabel;
 pub use value::Constant;
@@ -114,4 +115,33 @@ pub fn escape(src: &str) -> String {
 pub fn unescape(src: &str) -> String {
     let src = src.replace("\\n", "\n");
     src
+}
+
+/// Generate a new name as part of printing.
+///
+/// Assumes `used_names` contains only names that are defined before the current
+/// `own_name` and is ordered by order of occurrence.
+pub fn generate_new_name(used_names: Vec<String>, prefix: &str) -> String {
+    let mut new_index: i32 = -1;
+    for name in used_names {
+        if name.starts_with(prefix) {
+            let name = name.trim_start_matches(prefix);
+            if let Ok(num) = name.parse::<i32>() {
+                // Ensure new_name is greater than any used name.
+                // This is required by LLVM.
+                new_index = new_index.max(num);
+            }
+        }
+    }
+    new_index += 1;
+    format!("{prefix}{new_index}")
+}
+
+#[test]
+fn test_generate_new_name() {
+    let used_names = vec!["arg0", "arg1", "arg2"];
+    let used_names = used_names.iter().map(|s| s.to_string()).collect();
+    let prefix = "arg";
+    let new_name = generate_new_name(used_names, prefix);
+    assert_eq!(new_name, "arg3");
 }

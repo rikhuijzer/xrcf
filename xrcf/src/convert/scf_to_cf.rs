@@ -6,6 +6,7 @@ use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
+use crate::ir::BlockArgumentName;
 use crate::ir::BlockDest;
 use crate::ir::BlockLabel;
 use crate::ir::GuardedBlock;
@@ -16,12 +17,44 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Region;
+use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+/// Lower `scf.if` to `cf.cond_br`.
+///
+/// For example, this rewrites:
+/// ```mlir
+///   %result = scf.if %0 -> (i32) {
+///     %1 = arith.constant 3 : i32
+///     scf.yield %c1_i32 : i32
+///   } else {
+///     %2 = arith.constant 4 : i32
+///     scf.yield %2 : i32
+///   }
+/// ```
+/// to
+/// ```mlir
+///   cf.cond_br %0, ^bb1, ^bb2
+/// ^bb1:
+///   %1 = arith.constant 3 : i32
+///   cf.br ^bb3(%1 : i32)
+/// ^bb2:
+///   %2 = arith.constant 4 : i32
+///   cf.br ^bb3(%2 : i32)
+/// ^bb3(%result : i32):
+///   cf.br ^bb4
+/// ^bb4:
+///   return %result : i32
+/// ```
+///
+/// This lowering is similar to the following rewrite method in MLIR:
+/// ```cpp
+/// LogicalResult IfLowering::matchAndRewrite
+/// ```
 struct IfLowering;
 
 fn lower_yield_op(op: &dialect::scf::YieldOp, after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
@@ -122,12 +155,12 @@ fn add_merge_block(
     merge_label: String,
     results: Values,
     exit_label: String,
-) -> Result<()> {
+) -> Result<Values> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
     block.set_label(Some(merge_label.clone()));
-    let merge_block_operands = as_block_arguments(results, block.clone())?;
-    block.set_arguments(merge_block_operands);
+    let merge_block_arguments = as_block_arguments(results, block.clone())?;
+    block.set_arguments(merge_block_arguments.clone());
 
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
@@ -135,7 +168,7 @@ fn add_merge_block(
     merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&exit_label)))));
     let merge_op = Arc::new(RwLock::new(merge_op));
     block.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
-    Ok(())
+    Ok(merge_block_arguments)
 }
 
 fn add_exit_block(
@@ -162,6 +195,8 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
         let result = result.try_read().unwrap();
         let name = result.name();
         let typ = result.typ().unwrap();
+        let name = BlockArgumentName::Name(name.unwrap());
+        let name = Arc::new(RwLock::new(name));
         let mut arg = BlockArgument::new(name, typ);
         arg.set_parent(Some(parent.clone()));
         let arg = Value::BlockArgument(arg);
@@ -233,12 +268,31 @@ fn add_blocks(
     let else_label = add_block_from_region(else_label, &after_label, els, parent_region.clone())?;
 
     if has_results {
-        add_merge_block(
+        let merge_block_arguments = add_merge_block(
             parent_region.clone(),
             merge_label.unwrap(),
-            results,
+            results.clone(),
             exit_label.clone(),
         )?;
+        let merge_block_arguments = merge_block_arguments.vec();
+        let merge_block_arguments = merge_block_arguments.try_read().unwrap();
+
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        assert!(results.len() == merge_block_arguments.len());
+        for i in 0..results.len() {
+            let result = results[i].try_read().unwrap();
+            let users = result.users();
+            let users = match users {
+                Users::OpOperands(users) => users,
+                Users::HasNoOpResults => vec![],
+            };
+            let arg = merge_block_arguments[i].clone();
+            for user in users.iter() {
+                let mut user = user.try_write().unwrap();
+                user.set_value(arg.clone());
+            }
+        }
     }
     add_exit_block(op, parent_region.clone(), exit_label)?;
     Ok((then_label, else_label))

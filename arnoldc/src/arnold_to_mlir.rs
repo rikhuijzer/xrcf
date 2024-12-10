@@ -170,7 +170,7 @@ impl ModuleLowering {
         let typ = IntegerType::new(32);
         let value = APInt::new(32, 0, true);
         let integer = IntegerAttr::new(typ, value);
-        let name = parent.try_read().unwrap().unique_value_name();
+        let name = parent.try_read().unwrap().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = constant.add_new_op_result(&name, result_type.clone());
         let constant = arith::ConstantOp::from_operation(constant);

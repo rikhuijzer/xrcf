@@ -1,3 +1,4 @@
+use crate::ir::BlockArgumentName;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -169,8 +170,12 @@ impl Block {
             for argument in arguments.iter() {
                 match &*argument.try_read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == Some(name.to_string()) {
-                            return Some(argument.clone());
+                        let current_name = block_argument.name();
+                        let current_name = current_name.try_read().unwrap();
+                        if let BlockArgumentName::Name(current_name) = &*current_name {
+                            if current_name == name {
+                                return Some(argument.clone());
+                            }
                         }
                     }
                     _ => panic!("Expected BlockArgument"),
@@ -205,8 +210,12 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        if op_result.name().expect("OpResult has no name") == name {
-                            return Some(value.clone());
+                        let current_name = op_result.name();
+                        let current_name = current_name.try_read().unwrap();
+                        if let Some(current_name) = &*current_name {
+                            if current_name == name {
+                                return Some(value.clone());
+                            }
                         }
                     }
                     Value::Variadic => continue,
@@ -226,8 +235,12 @@ impl Block {
         for argument in arguments.iter() {
             match &*argument.try_read().unwrap() {
                 Value::BlockArgument(block_argument) => {
-                    if block_argument.name() == Some(name.to_string()) {
-                        return Some(argument.clone());
+                    let current_name = block_argument.name();
+                    let current_name = current_name.try_read().unwrap();
+                    if let BlockArgumentName::Name(current_name) = &*current_name {
+                        if current_name == name {
+                            return Some(argument.clone());
+                        }
                     }
                 }
                 _ => panic!("Expected BlockArgument"),
@@ -294,6 +307,9 @@ impl Block {
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
+    pub fn inline_region_before(&self, _region: Arc<RwLock<Region>>) {
+        todo!()
+    }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
         let mut ops = ops.try_write().unwrap();
@@ -347,7 +363,7 @@ impl Block {
     fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    fn used_names(&self) -> Vec<String> {
+    pub fn used_names_without_predecessors(&self) -> Vec<String> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
         let mut used_names = vec![];
@@ -355,30 +371,28 @@ impl Block {
             let op = op.try_read().unwrap();
             let operation = op.operation();
             let operation = operation.try_read().unwrap();
-            let results = operation.results();
-            let results = results.vec();
-            let results = results.try_read().unwrap();
-            for result in results.iter() {
-                let result = result.try_read().unwrap();
-                let name = match &*result {
-                    Value::BlockArgument(arg) => arg.name().expect("failed to get name"),
-                    Value::BlockLabel(label) => label.name(),
-                    Value::Constant(_) => continue,
-                    Value::FuncResult(_) => continue,
-                    Value::OpResult(res) => res.name().expect("failed to get name"),
-                    Value::Variadic => continue,
-                };
-                used_names.push(name);
+            let result_names = operation.result_names();
+            used_names.extend(result_names);
+        }
+        used_names
+    }
+    fn used_names_with_predecessors(&self) -> Vec<String> {
+        let predecessors = self.predecessors();
+        let mut used_names = self.used_names_without_predecessors();
+        if let Some(predecessors) = predecessors {
+            for predecessor in predecessors.iter() {
+                let predecessor = predecessor.try_read().unwrap();
+                used_names.extend(Self::used_names_without_predecessors(&predecessor));
             }
         }
         used_names
     }
     /// Find a unique name for a value (for example, `%4 = ...`).
-    pub fn unique_value_name(&self) -> String {
-        let used_names = self.used_names();
+    pub fn unique_value_name(&self, prefix: &str) -> String {
+        let used_names = self.used_names_with_predecessors();
         let mut new_name: i32 = -1;
         for name in used_names.iter() {
-            let name = name.trim_start_matches('%');
+            let name = name.trim_start_matches(prefix);
             if let Ok(num) = name.parse::<i32>() {
                 // Ensure new_name is greater than any used name.
                 // This is required by LLVM.
@@ -386,7 +400,7 @@ impl Block {
             }
         }
         new_name += 1;
-        format!("%{new_name}")
+        format!("{prefix}{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let Some(label) = &self.label {
@@ -448,10 +462,12 @@ impl UnsetBlock {
 }
 
 pub trait GuardedBlock {
+    fn arguments(&self) -> Values;
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
@@ -462,10 +478,13 @@ pub trait GuardedBlock {
     fn set_label(&self, label: Option<String>);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
-    fn unique_value_name(&self) -> String;
+    fn unique_value_name(&self, prefix: &str) -> String;
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn arguments(&self) -> Values {
+        self.try_read().unwrap().arguments()
+    }
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
         self.try_read().unwrap().callers()
     }
@@ -477,6 +496,9 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.try_read().unwrap().index_of_arc(op)
+    }
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        self.try_read().unwrap().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
@@ -508,7 +530,7 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         self.try_read().unwrap().successors()
     }
-    fn unique_value_name(&self) -> String {
-        self.try_read().unwrap().unique_value_name()
+    fn unique_value_name(&self, prefix: &str) -> String {
+        self.try_read().unwrap().unique_value_name(prefix)
     }
 }

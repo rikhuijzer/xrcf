@@ -3,6 +3,7 @@ use crate::dialect::func::Func;
 use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockArgumentName;
 use crate::ir::BlockDest;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
@@ -26,7 +27,13 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
     let value = value.try_read().unwrap();
     match &*value {
         Value::BlockArgument(block_arg) => {
-            let name = block_arg.name().expect("Block argument has no name");
+            let name = block_arg.name();
+            let name = name.try_read().unwrap();
+            let name = match &*name {
+                BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+                BlockArgumentName::Name(name) => name.to_string(),
+                BlockArgumentName::Unset => panic!("Block argument has no name"),
+            };
             write!(f, "{name}")
         }
         Value::Constant(constant) => {
@@ -42,7 +49,8 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
-            let name = op_result.name().expect("Op result has no name");
+            let name = op_result.new_name();
+            op_result.set_name(&name);
             let typ = op_result.typ().expect("No type");
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {name}")
@@ -335,9 +343,12 @@ impl Op for FuncOp {
                 Value::BlockArgument(arg) => {
                     let typ = arg.typ();
                     let typ = typ.try_read().unwrap();
-                    match arg.name() {
-                        Some(name) => write!(f, "{} {}", typ, name),
-                        None => write!(f, "{}", typ),
+                    let name = arg.name();
+                    let name = name.try_read().unwrap();
+                    match &*name {
+                        BlockArgumentName::Name(name) => write!(f, "{typ} {name}"),
+                        BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+                        BlockArgumentName::Unset => write!(f, "{}", typ),
                     }?;
                 }
                 Value::Variadic => write!(f, "...")?,
