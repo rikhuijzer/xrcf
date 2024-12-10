@@ -11,6 +11,7 @@ use crate::dialect::llvm;
 use crate::dialect::llvm::PointerType;
 use crate::ir::APInt;
 use crate::ir::Block;
+use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -187,7 +188,13 @@ impl PrintLowering {
         {
             let arg_type = PointerType::new();
             let arg_type = Arc::new(RwLock::new(arg_type));
-            op.set_argument_from_type(0, arg_type)?;
+
+            let name = BlockArgumentName::Anonymous;
+            let argument = crate::ir::BlockArgument::new(name, arg_type);
+            let value = Value::BlockArgument(argument);
+            let value = Arc::new(RwLock::new(value));
+            let operation = op.operation();
+            operation.set_argument(0, value);
         }
         if set_varargs {
             let value = Value::Variadic;
