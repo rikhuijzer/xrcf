@@ -24,6 +24,7 @@ impl OpOperand {
     }
     pub fn name(&self) -> String {
         let value = self.value.try_read().unwrap();
+        println!("name for op operand: {}", value.name().expect("no name"));
         value.name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {

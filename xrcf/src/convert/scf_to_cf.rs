@@ -17,6 +17,7 @@ use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::Region;
+use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
 use anyhow::Result;
@@ -154,12 +155,12 @@ fn add_merge_block(
     merge_label: String,
     results: Values,
     exit_label: String,
-) -> Result<()> {
+) -> Result<Values> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
     block.set_label(Some(merge_label.clone()));
-    let merge_block_operands = as_block_arguments(results, block.clone())?;
-    block.set_arguments(merge_block_operands);
+    let merge_block_arguments = as_block_arguments(results, block.clone())?;
+    block.set_arguments(merge_block_arguments.clone());
 
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
@@ -167,7 +168,7 @@ fn add_merge_block(
     merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&exit_label)))));
     let merge_op = Arc::new(RwLock::new(merge_op));
     block.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
-    Ok(())
+    Ok(merge_block_arguments)
 }
 
 fn add_exit_block(
@@ -267,12 +268,31 @@ fn add_blocks(
     let else_label = add_block_from_region(else_label, &after_label, els, parent_region.clone())?;
 
     if has_results {
-        add_merge_block(
+        let merge_block_arguments = add_merge_block(
             parent_region.clone(),
             merge_label.unwrap(),
-            results,
+            results.clone(),
             exit_label.clone(),
         )?;
+        let merge_block_arguments = merge_block_arguments.vec();
+        let merge_block_arguments = merge_block_arguments.try_read().unwrap();
+
+        let results = results.vec();
+        let results = results.try_read().unwrap();
+        assert!(results.len() == merge_block_arguments.len());
+        for i in 0..results.len() {
+            let result = results[i].try_read().unwrap();
+            let users = result.users();
+            let users = match users {
+                Users::OpOperands(users) => users,
+                Users::HasNoOpResults => vec![],
+            };
+            let arg = merge_block_arguments[i].clone();
+            for user in users.iter() {
+                let mut user = user.try_write().unwrap();
+                user.set_value(arg.clone());
+            }
+        }
     }
     add_exit_block(op, parent_region.clone(), exit_label)?;
     Ok((then_label, else_label))
