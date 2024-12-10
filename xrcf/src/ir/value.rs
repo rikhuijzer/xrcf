@@ -217,7 +217,7 @@ impl Display for AnonymousResult {
 pub struct OpResult {
     /// The name of the result.
     ///
-    /// Does not necesarily have to be set because new names are generated
+    /// Does not necessarily have to be set because new names are generated
     /// anyway.
     name: Arc<RwLock<Option<String>>>,
     typ: Option<Arc<RwLock<dyn Type>>>,
