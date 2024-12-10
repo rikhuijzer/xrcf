@@ -128,13 +128,13 @@ fn test_hello_world_with_arg() {
       llvm.func @printf(!llvm.ptr, ...) -> i32 attributes {sym_visibility = "private"}
       func.func @main() -> i32 {
         %0 = arith.constant 42 : i32
-        %2 = llvm.mlir.constant("hello, %d\0A\00") : !llvm.array<11 x i8>
-        %3 = arith.constant 11 : i16
-        %4 = llvm.alloca %3 x i8 : (i16) -> !llvm.ptr
-        llvm.store %2, %4 : !llvm.array<11 x i8>, !llvm.ptr
-        %5 = llvm.call @printf(%4, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
-        %1 = arith.constant 0 : i32
-        return %1 : i32
+        %1 = llvm.mlir.constant("hello, %d\0A\00") : !llvm.array<11 x i8>
+        %2 = arith.constant 11 : i16
+        %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
+        llvm.store %1, %3 : !llvm.array<11 x i8>, !llvm.ptr
+        %4 = llvm.call @printf(%3, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
+        %5 = arith.constant 0 : i32
+        return %5 : i32
       }
     }
     "#};
