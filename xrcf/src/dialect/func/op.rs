@@ -1,6 +1,7 @@
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -196,7 +197,8 @@ pub trait Func: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
     fn set_argument_from_type(&mut self, index: usize, typ: Arc<RwLock<dyn Type>>) -> Result<()> {
-        let argument = crate::ir::BlockArgument::new(None, typ);
+        let name = BlockArgumentName::Unset;
+        let argument = crate::ir::BlockArgument::new(name, typ);
         let value = Value::BlockArgument(argument);
         let value = Arc::new(RwLock::new(value));
         let operation = self.operation();

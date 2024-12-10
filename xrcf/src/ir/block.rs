@@ -170,8 +170,7 @@ impl Block {
             for argument in arguments.iter() {
                 match &*argument.try_read().unwrap() {
                     Value::BlockArgument(block_argument) => {
-                        if block_argument.name() == Some(BlockArgumentName::Name(name.to_string()))
-                        {
+                        if block_argument.name() == BlockArgumentName::Name(name.to_string()) {
                             return Some(argument.clone());
                         }
                     }
@@ -228,7 +227,7 @@ impl Block {
         for argument in arguments.iter() {
             match &*argument.try_read().unwrap() {
                 Value::BlockArgument(block_argument) => {
-                    if block_argument.name() == Some(BlockArgumentName::Name(name.to_string())) {
+                    if block_argument.name() == BlockArgumentName::Name(name.to_string()) {
                         return Some(argument.clone());
                     }
                 }
@@ -366,13 +365,11 @@ impl Block {
             for result in results.iter() {
                 let result = result.try_read().unwrap();
                 let name = match &*result {
-                    Value::BlockArgument(arg) => {
-                        let name = arg.name().expect("failed to get name");
-                        match name {
-                            BlockArgumentName::Name(name) => name,
-                            BlockArgumentName::Anonymous => continue,
-                        }
-                    }
+                    Value::BlockArgument(arg) => match arg.name() {
+                        BlockArgumentName::Anonymous => continue,
+                        BlockArgumentName::Name(name) => name,
+                        BlockArgumentName::Unset => panic!("Block argument has no name"),
+                    },
                     Value::BlockLabel(label) => label.name(),
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => continue,

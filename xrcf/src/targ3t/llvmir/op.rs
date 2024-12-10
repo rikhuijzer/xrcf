@@ -27,10 +27,11 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
     let value = value.try_read().unwrap();
     match &*value {
         Value::BlockArgument(block_arg) => {
-            let name = block_arg.name().expect("Block argument has no name");
+            let name = block_arg.name();
             let name = match name {
-                BlockArgumentName::Name(name) => name,
                 BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+                BlockArgumentName::Name(name) => name,
+                BlockArgumentName::Unset => panic!("Block argument has no name"),
             };
             write!(f, "{name}")
         }
@@ -341,16 +342,9 @@ impl Op for FuncOp {
                     let typ = arg.typ();
                     let typ = typ.try_read().unwrap();
                     match arg.name() {
-                        Some(name) => {
-                            let name = match name {
-                                BlockArgumentName::Name(name) => name,
-                                BlockArgumentName::Anonymous => {
-                                    panic!("Expected a named block argument")
-                                }
-                            };
-                            write!(f, "{} {}", typ, name)
-                        }
-                        None => write!(f, "{}", typ),
+                        BlockArgumentName::Name(name) => write!(f, "{typ} {name}"),
+                        BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
+                        BlockArgumentName::Unset => write!(f, "{}", typ),
                     }?;
                 }
                 Value::Variadic => write!(f, "...")?,

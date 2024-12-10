@@ -375,9 +375,9 @@ impl Value {
     pub fn name(&self) -> Option<String> {
         match self {
             Value::BlockArgument(arg) => match arg.name() {
-                Some(BlockArgumentName::Name(name)) => Some(name.clone()),
-                Some(BlockArgumentName::Anonymous) => None,
-                None => None,
+                BlockArgumentName::Anonymous => None,
+                BlockArgumentName::Name(name) => Some(name.clone()),
+                BlockArgumentName::Unset => None,
             },
             Value::BlockLabel(label) => Some(label.name.clone()),
             Value::Constant(_) => None,
@@ -433,7 +433,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => {
                 let arg_name = BlockArgumentName::Name(name.to_string());
-                arg.set_name(Some(arg_name));
+                arg.set_name(arg_name);
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
@@ -745,7 +745,7 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
-            let arg = Value::BlockArgument(BlockArgument::new(Some(name), typ));
+            let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
                 self.advance();
@@ -754,7 +754,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
-            let name = None;
+            let name = BlockArgumentName::Unset;
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Arc::new(RwLock::new(arg));
             if self.check(TokenKind::Comma) {
