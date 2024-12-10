@@ -307,7 +307,14 @@ impl Block {
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
-    pub fn inline_region_before(&self, _region: Arc<RwLock<Region>>) {
+    /// Move the blocks that belong to `region` before `self`.
+    ///
+    /// The caller is in charge to update create the operation transferring the
+    /// control flow to the region and pass it the correct block arguments.
+    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        let parent = self.parent();
+        let parent = parent.expect("no parent");
+        //  parent.getBlocks().splice(before, region.getBlocks());
         todo!()
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
