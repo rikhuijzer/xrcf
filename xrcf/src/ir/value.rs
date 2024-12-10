@@ -1,3 +1,4 @@
+use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedBlock;
@@ -20,10 +21,12 @@ use std::sync::RwLock;
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum BlockArgumentName {
-    /// The name of the block argument.
-    Name(String),
     /// Anonymous block arguments are used for functions without an implementation.
     Anonymous,
+    /// The name of the block argument.
+    Name(String),
+    /// The name does not have to be set since we generate unique names anyway.
+    Unset,
 }
 
 /// An argument in a block or function.
@@ -32,7 +35,7 @@ pub struct BlockArgument {
     ///
     /// The name is only used during parsing to see which operands point to this
     /// argument. During printing, a new name is generated.
-    name: Option<BlockArgumentName>,
+    name: BlockArgumentName,
     typ: Arc<RwLock<dyn Type>>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -42,20 +45,20 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: Option<BlockArgumentName>, typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(name: BlockArgumentName, typ: Arc<RwLock<dyn Type>>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Option<BlockArgumentName> {
+    pub fn name(&self) -> BlockArgumentName {
         self.name.clone()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
         self.parent.clone()
     }
-    pub fn set_name(&mut self, name: Option<BlockArgumentName>) {
+    pub fn set_name(&mut self, name: BlockArgumentName) {
         self.name = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
@@ -67,18 +70,40 @@ impl BlockArgument {
     pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
         self.typ.clone()
     }
+    /// Generate a new name from scratch.
+    ///
+    /// Used during printing.
+    pub fn new_name(&self) -> String {
+        let parent = self.parent();
+        let parent = parent.expect("no parent");
+        let arguments = parent.arguments();
+        let arguments = arguments.vec();
+        let arguments = arguments.try_read().unwrap();
+        let mut used_names = vec![];
+        for argument in arguments.iter() {
+            let name = argument.name();
+            if let Some(name) = name {
+                used_names.push(name);
+            }
+        }
+        let own_name = match self.name() {
+            BlockArgumentName::Name(name) => Some(name),
+            BlockArgumentName::Anonymous => None,
+            BlockArgumentName::Unset => None,
+        };
+        generate_new_name(used_names, own_name, "arg")
+    }
 }
 
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.try_read().unwrap();
-        if let Some(BlockArgumentName::Anonymous) = &self.name {
-            write!(f, "{}", typ)
-        } else {
-            let parent = self.parent();
-            let parent = parent.expect("no parent");
-            let new_name = parent.unique_value_name("%arg");
-            write!(f, "{} : {}", new_name, typ)
+        match self.name {
+            BlockArgumentName::Anonymous => write!(f, "{typ}"),
+            _ => {
+                let new_name = self.new_name();
+                write!(f, "{new_name} : {typ}")
+            }
         }
     }
 }
@@ -490,12 +515,17 @@ impl Display for Value {
 }
 
 pub trait GuardedValue {
+    fn name(&self) -> Option<String>;
     fn rename(&self, new_name: &str);
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
 }
 
 impl GuardedValue for Arc<RwLock<Value>> {
+    fn name(&self) -> Option<String> {
+        let value = self.try_read().unwrap();
+        value.name()
+    }
     fn rename(&self, new_name: &str) {
         let mut value = self.try_write().unwrap();
         value.set_name(new_name);

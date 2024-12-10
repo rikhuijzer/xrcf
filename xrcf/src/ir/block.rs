@@ -296,7 +296,7 @@ impl Block {
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
-    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+    pub fn inline_region_before(&self, _region: Arc<RwLock<Region>>) {
         todo!()
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
@@ -401,7 +401,7 @@ impl Block {
         let used_names = self.used_names();
         let mut new_name: i32 = -1;
         for name in used_names.iter() {
-            let name = name.trim_start_matches('%');
+            let name = name.trim_start_matches(prefix);
             if let Ok(num) = name.parse::<i32>() {
                 // Ensure new_name is greater than any used name.
                 // This is required by LLVM.
@@ -471,6 +471,7 @@ impl UnsetBlock {
 }
 
 pub trait GuardedBlock {
+    fn arguments(&self) -> Values;
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
@@ -490,6 +491,9 @@ pub trait GuardedBlock {
 }
 
 impl GuardedBlock for Arc<RwLock<Block>> {
+    fn arguments(&self) -> Values {
+        self.try_read().unwrap().arguments()
+    }
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
         self.try_read().unwrap().callers()
     }

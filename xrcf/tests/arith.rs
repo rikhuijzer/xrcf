@@ -35,7 +35,7 @@ fn parse_addi() {
     "};
     let expected = indoc! {"
     module {
-      func.func @test_addi(%arg0 : i64) -> i64 {
+        func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
         %1 = arith.constant 2 : i64
         %2 = arith.addi %0, %1 : i64
