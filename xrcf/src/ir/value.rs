@@ -75,10 +75,6 @@ impl BlockArgument {
     /// Used during printing.
     pub fn new_name(&self) -> String {
         let parent = self.parent();
-        println!("typ: {}", self.typ.try_read().unwrap());
-        if parent.is_none() {
-            return "TMP".to_string();
-        }
         let parent = parent.expect("no parent");
         let arguments = parent.arguments();
         let arguments = arguments.vec();
@@ -104,13 +100,11 @@ impl Display for BlockArgument {
         let typ = self.typ.try_read().unwrap();
         match self.name() {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
-            BlockArgumentName::Name(name) => {
-                println!("name: {}", name);
+            BlockArgumentName::Name(_name) => {
                 let new_name = self.new_name();
                 write!(f, "{new_name} : {typ}")
             }
             BlockArgumentName::Unset => {
-                println!("Unset");
                 let new_name = self.new_name();
                 write!(f, "{new_name} : {typ}")
             }
