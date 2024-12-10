@@ -91,7 +91,7 @@ impl BlockArgument {
             BlockArgumentName::Anonymous => None,
             BlockArgumentName::Unset => None,
         };
-        generate_new_name(used_names, own_name, "arg")
+        generate_new_name(used_names, own_name, "%arg")
     }
 }
 

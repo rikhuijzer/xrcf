@@ -1,7 +1,6 @@
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -15,7 +14,6 @@ use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::UnsetOp;
-use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parse;
 use crate::parser::Parser;
