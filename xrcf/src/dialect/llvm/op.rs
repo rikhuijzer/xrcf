@@ -624,8 +624,7 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let name = Self::operation_name().to_string();
-        func::ReturnOp::display_return(self, &name, f, indent)
+        func::ReturnOp::display_return(self, f, indent)
     }
 }
 

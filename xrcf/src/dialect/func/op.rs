@@ -444,11 +444,11 @@ pub struct ReturnOp {
 impl ReturnOp {
     pub fn display_return(
         op: &dyn Op,
-        name: &str,
         f: &mut Formatter<'_>,
         _indent: i32,
     ) -> std::fmt::Result {
         let operation = op.operation();
+        let name = operation.name();
         write!(f, "{name}")?;
         let operands = operation.operands().vec();
         let operands = operands.try_read().unwrap();
@@ -477,8 +477,7 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let name = Self::operation_name().to_string();
-        ReturnOp::display_return(self, &name, f, _indent)
+        ReturnOp::display_return(self, f, _indent)
     }
 }
 
