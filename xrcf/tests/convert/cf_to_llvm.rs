@@ -14,14 +14,14 @@ fn test_if_else() {
     let src = indoc! {r#"
     module {
       func.func @main() -> i32 {
-        %false = arith.constant false
-        cf.cond_br %false, ^then, ^else
+        %0 = arith.constant false
+        cf.cond_br %0, ^then, ^else
       ^then:
-        %c3_i32 = arith.constant 3 : i32
-        cf.br ^merge(%c3_i32 : i32)
+        %1 = arith.constant 3 : i32
+        cf.br ^merge(%1 : i32)
       ^else:
-        %c4_i32 = arith.constant 4 : i32
-        cf.br ^merge(%c4_i32 : i32)
+        %2 = arith.constant 4 : i32
+        cf.br ^merge(%2 : i32)
       ^merge(%arg0 : i32):
         cf.br ^exit
       ^exit:
@@ -32,14 +32,14 @@ fn test_if_else() {
     let expected = indoc! {r#"
     module {
       func.func @main() -> i32 {
-        %false = arith.constant false
-        llvm.cond_br %false, ^then, ^else
+        %0 = arith.constant false
+        llvm.cond_br %0, ^then, ^else
       ^then:
-        %c3_i32 = arith.constant 3 : i32
-        llvm.br ^merge(%c3_i32 : i32)
+        %1 = arith.constant 3 : i32
+        llvm.br ^merge(%1 : i32)
       ^else:
-        %c4_i32 = arith.constant 4 : i32
-        llvm.br ^merge(%c4_i32 : i32)
+        %2 = arith.constant 4 : i32
+        llvm.br ^merge(%2 : i32)
       ^merge(%arg0 : i32):
         llvm.br ^exit
       ^exit:

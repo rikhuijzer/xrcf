@@ -311,7 +311,7 @@ mod tests {
         let expected = indoc! {r#"
         func.func @main() -> i32 {
           %0 = arith.constant 0 : i1
-          scf.if %x {
+          scf.if %0 {
             experimental.printf("x was true")
           } else {
             experimental.printf("x was false")

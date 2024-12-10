@@ -363,8 +363,8 @@ impl Block {
     fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    fn used_names_in_block(block: &Block) -> Vec<String> {
-        let ops = block.ops();
+    pub fn used_names_without_predecessors(&self) -> Vec<String> {
+        let ops = self.ops();
         let ops = ops.try_read().unwrap();
         let mut used_names = vec![];
         for op in ops.iter() {
@@ -376,21 +376,20 @@ impl Block {
         }
         used_names
     }
-    fn used_names(&self) -> Vec<String> {
+    fn used_names_with_predecessors(&self) -> Vec<String> {
         let predecessors = self.predecessors();
-        let mut used_names = Self::used_names_in_block(self);
+        let mut used_names = self.used_names_without_predecessors();
         if let Some(predecessors) = predecessors {
             for predecessor in predecessors.iter() {
                 let predecessor = predecessor.try_read().unwrap();
-                println!("predecessor: {predecessor}");
-                used_names.extend(Self::used_names_in_block(&predecessor));
+                used_names.extend(Self::used_names_without_predecessors(&predecessor));
             }
         }
         used_names
     }
     /// Find a unique name for a value (for example, `%4 = ...`).
     pub fn unique_value_name(&self, prefix: &str) -> String {
-        let used_names = self.used_names();
+        let used_names = self.used_names_with_predecessors();
         let mut new_name: i32 = -1;
         for name in used_names.iter() {
             let name = name.trim_start_matches(prefix);

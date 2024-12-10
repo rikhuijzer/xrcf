@@ -254,6 +254,17 @@ impl OpResult {
         let defining_op = defining_op.expect("defining op not set");
         let defining_op = defining_op.try_read().unwrap();
         let mut used_names = vec![];
+
+        let parent_block = defining_op.operation().parent();
+        let parent_block = parent_block.expect("defining op has no parent");
+        let block_predecessors = parent_block.predecessors();
+        let block_predecessors = block_predecessors.expect("expected predecessors");
+        for predecessor in block_predecessors.iter() {
+            let predecessor = predecessor.try_read().unwrap();
+            let names_in_block = predecessor.used_names_without_predecessors();
+            used_names.extend(names_in_block);
+        }
+
         let predecessors = defining_op.operation().predecessors();
         for predecessor in predecessors.iter() {
             let predecessor = predecessor.try_read().unwrap();
