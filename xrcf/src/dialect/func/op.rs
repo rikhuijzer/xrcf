@@ -442,11 +442,7 @@ pub struct ReturnOp {
 }
 
 impl ReturnOp {
-    pub fn display_return(
-        op: &dyn Op,
-        f: &mut Formatter<'_>,
-        _indent: i32,
-    ) -> std::fmt::Result {
+    pub fn display_return(op: &dyn Op, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = op.operation();
         let name = operation.name();
         write!(f, "{name}")?;

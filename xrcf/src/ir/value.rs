@@ -87,19 +87,13 @@ impl BlockArgument {
             }
         }
         let name = self.name();
-        let name_read = name.try_read().unwrap();
-        let own_name = match &*name_read {
+        let name = name.try_read().unwrap();
+        let own_name = match &*name {
             BlockArgumentName::Name(name) => Some(name.to_string()),
             BlockArgumentName::Anonymous => None,
             BlockArgumentName::Unset => None,
         };
-        drop(name_read);
-        let new_name = generate_new_name(used_names, own_name, "%arg");
-        println!("new_arg_name: {new_name}");
-        let new_arg_name = BlockArgumentName::Name(new_name.clone());
-        self.set_name(new_arg_name);
-
-        new_name
+        generate_new_name(used_names, own_name, "%arg")
     }
 }
 
@@ -113,11 +107,13 @@ impl Display for BlockArgument {
             BlockArgumentName::Name(_name) => {
                 drop(name_read);
                 let new_name = self.new_name();
+                self.set_name(BlockArgumentName::Name(new_name.clone()));
                 write!(f, "{new_name} : {typ}")
             }
             BlockArgumentName::Unset => {
                 drop(name_read);
                 let new_name = self.new_name();
+                self.set_name(BlockArgumentName::Name(new_name.clone()));
                 write!(f, "{new_name} : {typ}")
             }
         }
