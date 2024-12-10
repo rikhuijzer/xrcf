@@ -121,19 +121,10 @@ pub fn unescape(src: &str) -> String {
 ///
 /// Assumes `used_names` contains only names that are defined before the current
 /// `own_name` and is ordered by order of occurrence.
-pub fn generate_new_name(
-    used_names: Vec<String>,
-    own_name: Option<String>,
-    prefix: &str,
-) -> String {
+pub fn generate_new_name(used_names: Vec<String>, prefix: &str) -> String {
     let mut new_index: i32 = -1;
     for name in used_names {
         if name.starts_with(prefix) {
-            if let Some(ref own_name) = own_name {
-                if &name == own_name {
-                    return own_name.to_string();
-                }
-            }
             let name = name.trim_start_matches(prefix);
             if let Ok(num) = name.parse::<i32>() {
                 // Ensure new_name is greater than any used name.
@@ -150,8 +141,7 @@ pub fn generate_new_name(
 fn test_generate_new_name() {
     let used_names = vec!["arg0", "arg1", "arg2"];
     let used_names = used_names.iter().map(|s| s.to_string()).collect();
-    let own_name = Some("arg3".to_string());
     let prefix = "arg";
-    let new_name = generate_new_name(used_names, own_name, prefix);
+    let new_name = generate_new_name(used_names, prefix);
     assert_eq!(new_name, "arg3");
 }

@@ -86,14 +86,7 @@ impl BlockArgument {
                 used_names.push(name);
             }
         }
-        let name = self.name();
-        let name = name.try_read().unwrap();
-        let own_name = match &*name {
-            BlockArgumentName::Name(name) => Some(name.to_string()),
-            BlockArgumentName::Anonymous => None,
-            BlockArgumentName::Unset => None,
-        };
-        generate_new_name(used_names, own_name, "%arg")
+        generate_new_name(used_names, "%arg")
     }
 }
 
@@ -267,9 +260,7 @@ impl OpResult {
             let result_names = predecessor.operation().result_names();
             used_names.extend(result_names);
         }
-        let name = self.name();
-        let name = name.try_read().unwrap();
-        generate_new_name(used_names, name.clone(), "%")
+        generate_new_name(used_names, "%")
     }
 }
 
