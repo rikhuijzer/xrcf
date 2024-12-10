@@ -81,6 +81,12 @@ impl BlockArgument {
         let arguments = arguments.try_read().unwrap();
         let mut used_names = vec![];
         for argument in arguments.iter() {
+            let argument = argument.try_read().unwrap();
+            if let Value::BlockArgument(argument) = &*argument {
+                if std::ptr::eq(self, argument) {
+                    break;
+                }
+            };
             let name = argument.name();
             if let Some(name) = name {
                 used_names.push(name);
