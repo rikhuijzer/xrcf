@@ -172,8 +172,10 @@ impl Block {
                     Value::BlockArgument(block_argument) => {
                         let current_name = block_argument.name();
                         let current_name = current_name.try_read().unwrap();
-                        if *current_name == BlockArgumentName::Name(name.to_string()) {
-                            return Some(argument.clone());
+                        if let BlockArgumentName::Name(current_name) = &*current_name {
+                            if current_name == name {
+                                return Some(argument.clone());
+                            }
                         }
                     }
                     _ => panic!("Expected BlockArgument"),
@@ -231,8 +233,10 @@ impl Block {
                 Value::BlockArgument(block_argument) => {
                     let current_name = block_argument.name();
                     let current_name = current_name.try_read().unwrap();
-                    if *current_name == BlockArgumentName::Name(name.to_string()) {
-                        return Some(argument.clone());
+                    if let BlockArgumentName::Name(current_name) = &*current_name {
+                        if current_name == name {
+                            return Some(argument.clone());
+                        }
                     }
                 }
                 _ => panic!("Expected BlockArgument"),

@@ -19,7 +19,6 @@ use std::fmt::Display;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-#[derive(Clone, PartialEq, Eq)]
 pub enum BlockArgumentName {
     /// Anonymous block arguments are used for functions without an implementation.
     Anonymous,
@@ -89,16 +88,17 @@ impl BlockArgument {
         }
         let name = self.name();
         let name_read = name.try_read().unwrap();
-        let name = name_read.clone();
-        drop(name_read);
-        let own_name = match name {
+        let own_name = match &*name_read {
             BlockArgumentName::Name(name) => Some(name.to_string()),
             BlockArgumentName::Anonymous => None,
             BlockArgumentName::Unset => None,
         };
+        drop(name_read);
         let new_name = generate_new_name(used_names, own_name, "%arg");
+        println!("new_arg_name: {new_name}");
         let new_arg_name = BlockArgumentName::Name(new_name.clone());
         self.set_name(new_arg_name);
+
         new_name
     }
 }
@@ -108,15 +108,15 @@ impl Display for BlockArgument {
         let typ = self.typ.try_read().unwrap();
         let name = self.name();
         let name_read = name.try_read().unwrap();
-        let name = name_read.clone();
-        drop(name_read);
-        match name {
+        match &*name_read {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(_name) => {
+                drop(name_read);
                 let new_name = self.new_name();
                 write!(f, "{new_name} : {typ}")
             }
             BlockArgumentName::Unset => {
+                drop(name_read);
                 let new_name = self.new_name();
                 write!(f, "{new_name} : {typ}")
             }
