@@ -80,6 +80,16 @@ jobs:
       - uses: softprops/action-gh-release@01570a1f39cb168c169c802c3bceb9e93fb10974 # v2.1.0
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          body: |
+            `xrcf-bin` is a compiler that can compile basic MLIR programs to LLVM IR, and can be used for testing the xrcf package.
+            This binary contains all the default passes such as `--convert-func-to-llvm`.
+
+            `arnoldc` is a compiler that can compile basic ArnoldC programs to LLVM IR.
+            Next to the default passes, this binary contains the pass `--convert-arnold-to-mlir` which can lower ArnoldC programs to MLIR.
+            From there, the default passes such as `--convert-func-to-llvm` can be used to lower ArnoldC to LLVM IR.
+
+            See [CHANGELOG.md](https://github.com/rikhuijzer/xrcf/blob/main/CHANGELOG.md) for more information about changes since the last release.
+
           fail_on_unmatched_files: true
           files: |
             ${{ steps.release.outputs.bin_dst }}
