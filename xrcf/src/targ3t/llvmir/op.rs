@@ -49,7 +49,8 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
-            let name = op_result.name().expect("Op result has no name");
+            let name = op_result.new_name();
+            op_result.set_name(&name);
             let typ = op_result.typ().expect("No type");
             let typ = typ.try_read().unwrap();
             write!(f, "{typ} {name}")

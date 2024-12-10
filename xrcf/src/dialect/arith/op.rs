@@ -167,8 +167,7 @@ impl AddiOp {
         new_operation.set_attributes(attributes);
 
         let results = Values::default();
-        // TODO: use results.add_new_op_result()
-        let mut result = OpResult::default();
+        let result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
         let result = Arc::new(RwLock::new(result));

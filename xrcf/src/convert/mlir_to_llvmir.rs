@@ -454,7 +454,8 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
             BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
             BlockArgumentName::Unset => panic!("Block argument has no name"),
         };
-        let res = OpResult::new(Some(name), typ, defining_op);
+        let name = Arc::new(RwLock::new(Some(name)));
+        let res = OpResult::new(name, typ, defining_op);
         let new = Value::OpResult(res);
         let new = Arc::new(RwLock::new(new));
         operation.set_results(Values::from_vec(vec![new.clone()]));

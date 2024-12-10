@@ -273,7 +273,7 @@ impl Operation {
                         Some(name) => name.to_string(),
                         None => continue,
                     }
-                },
+                }
                 Value::Variadic => continue,
             };
             result_names.push(name);

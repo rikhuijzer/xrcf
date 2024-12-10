@@ -217,7 +217,7 @@ impl Display for AnonymousResult {
 /// is `arith.addi` and the `typ` is `i32`.
 pub struct OpResult {
     /// The name of the result.
-    /// 
+    ///
     /// Does not necesarily have to be set because new names are generated
     /// anyway.
     name: Arc<RwLock<Option<String>>>,
@@ -256,7 +256,7 @@ impl OpResult {
     pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
         self.defining_op = op;
     }
-    fn new_name(&self) -> String {
+    pub fn new_name(&self) -> String {
         let defining_op = self.defining_op();
         let defining_op = defining_op.expect("defining op not set");
         let defining_op = defining_op.try_read().unwrap();
@@ -833,7 +833,7 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
-        let mut op_result = OpResult::default();
+        let op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
         Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))
