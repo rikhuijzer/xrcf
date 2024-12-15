@@ -563,6 +563,9 @@ impl Blocks {
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         let vec = self.vec();
         let vec = vec.try_read().unwrap();
+        if vec.is_empty() {
+            panic!("Trying to find block in empty set of blocks");
+        }
         vec.iter().position(|b| {
             let b = &*b.try_read().unwrap();
             std::ptr::eq(b, block)

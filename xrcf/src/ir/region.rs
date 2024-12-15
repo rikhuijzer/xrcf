@@ -47,20 +47,11 @@ impl Region {
         }
         result
     }
+    /// Return the index of `block` in `self`.
+    ///
+    /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
-        if blocks.is_empty() {
-            panic!("Region {self} has no blocks");
-        }
-        for (i, current) in (&blocks).iter().enumerate() {
-            let current = current.try_read().unwrap();
-            if *current == *block {
-                return Some(i);
-            }
-        }
-        None
+        self.blocks().index_of(block)
     }
     pub fn is_empty(&self) -> bool {
         let blocks = self.blocks();
