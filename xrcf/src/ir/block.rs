@@ -1,4 +1,5 @@
 use crate::ir::BlockArgumentName;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -121,6 +122,7 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
+        let blocks = blocks.vec();
         let predecessors = blocks.try_read().unwrap();
         let predecessors = match index {
             Some(index) => predecessors[..index].to_vec(),
@@ -137,6 +139,7 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
+        let blocks = blocks.vec();
         let successors = blocks.try_read().unwrap();
         let successors = match index {
             Some(index) => successors[index + 1..].to_vec(),
@@ -311,9 +314,12 @@ impl Block {
     ///
     /// The caller is in charge to update create the operation transferring the
     /// control flow to the region and pass it the correct block arguments.
-    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>) {
+        // Could also get this parent via `before`.
         let parent = self.parent();
         let parent = parent.expect("no parent");
+        let blocks = parent.blocks();
+        blocks.splice(before, region.blocks());
         //  parent.getBlocks().splice(before, region.getBlocks());
         todo!()
     }
@@ -474,7 +480,7 @@ pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>);
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
@@ -504,8 +510,10 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.try_read().unwrap().index_of_arc(op)
     }
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        self.try_read().unwrap().inline_region_before(region);
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>) {
+        self.try_read()
+            .unwrap()
+            .inline_region_before(region, before);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
@@ -539,5 +547,22 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn unique_value_name(&self, prefix: &str) -> String {
         self.try_read().unwrap().unique_value_name(prefix)
+    }
+}
+
+#[derive(Clone)]
+pub struct Blocks {
+    vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
+}
+
+impl Blocks {
+    pub fn new(vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) -> Self {
+        Self { vec }
+    }
+    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
+        self.vec.clone()
+    }
+    pub fn splice(&self, before: Arc<RwLock<Block>>, blocks: Blocks) {
+        todo!()
     }
 }

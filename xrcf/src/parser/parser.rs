@@ -7,6 +7,7 @@ use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -291,7 +292,7 @@ impl<T: ParserDispatch> Parser<T> {
         self.expect(TokenKind::LBrace)?;
         let blocks = vec![];
         let blocks = Arc::new(RwLock::new(blocks));
-        region.set_blocks(blocks.clone());
+        region.set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.try_write().unwrap();
@@ -368,6 +369,7 @@ impl<T: ParserDispatch> Parser<T> {
                 .write()
                 .unwrap()
                 .blocks()
+                .vec()
                 .try_write()
                 .unwrap()
                 .push(block.clone());

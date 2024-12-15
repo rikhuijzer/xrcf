@@ -413,6 +413,7 @@ impl<T: ParserDispatch> Parser<T> {
 
             {
                 let blocks = region.blocks();
+                let blocks = blocks.vec();
                 let blocks = blocks.try_read().unwrap();
                 let block = blocks.first().unwrap();
                 let arguments = arguments.vec();

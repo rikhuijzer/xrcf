@@ -149,6 +149,7 @@ impl Rewrite for BlockLowering {
         let region = op.operation().region();
         if let Some(region) = region {
             let blocks = region.blocks();
+            let blocks = blocks.vec();
             let blocks = blocks.try_read().unwrap();
             for block in blocks.iter() {
                 let label = block.label();
@@ -543,6 +544,7 @@ impl Rewrite for MergeLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let blocks = op.operation().region().unwrap().blocks();
+        let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         for block in blocks.iter() {
             let block_read = block.try_read().unwrap();

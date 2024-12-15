@@ -411,6 +411,7 @@ impl Op for ModuleOp {
         let region = self.operation().region();
         if let Some(region) = region {
             let blocks = region.blocks();
+            let blocks = blocks.vec();
             let blocks = blocks.try_read().unwrap();
             for block in blocks.iter() {
                 block.display(f, indent)?;

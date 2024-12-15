@@ -125,6 +125,7 @@ pub fn display_region_inside_func(
     if let Some(region) = region {
         let region = region.try_read().unwrap();
         let blocks = region.blocks();
+        let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         if blocks.is_empty() {
             write!(f, "\n")
@@ -204,6 +205,7 @@ impl Operation {
         let region = region.expect("expected region");
         let region = region.try_read().unwrap();
         let blocks = region.blocks();
+        let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         blocks.to_vec()
     }
