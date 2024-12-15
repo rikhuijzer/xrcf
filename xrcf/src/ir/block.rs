@@ -294,34 +294,31 @@ impl Block {
         }
         None
     }
+    /// Return index of `op` in `self`.
+    ///
+    /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
-        for (i, current) in (&ops).iter().enumerate() {
+        ops.iter().position(|current| {
             let current = current.try_read().unwrap();
             let current = current.operation();
-            let current = current.try_read().unwrap();
-            if *current == *op {
-                return Some(i);
-            }
-        }
-        None
+            let current = &*current.try_read().unwrap();
+            std::ptr::eq(current, op)
+        })
     }
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
     /// Move the blocks that belong to `region` before `self`.
     ///
-    /// The caller is in charge to update create the operation transferring the
-    /// control flow to the region and pass it the correct block arguments.
-    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>) {
-        // Could also get this parent via `before`.
+    /// The caller is in charge of transferring the control flow to the region
+    /// and pass it the correct block arguments.
+    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
         let parent = self.parent();
         let parent = parent.expect("no parent");
         let blocks = parent.blocks();
-        blocks.splice(before, region.blocks());
-        //  parent.getBlocks().splice(before, region.getBlocks());
-        todo!()
+        blocks.splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
@@ -480,7 +477,7 @@ pub trait GuardedBlock {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>);
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Option<String>;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
@@ -510,10 +507,8 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.try_read().unwrap().index_of_arc(op)
     }
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>, before: Arc<RwLock<Block>>) {
-        self.try_read()
-            .unwrap()
-            .inline_region_before(region, before);
+    fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        self.try_read().unwrap().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
@@ -562,7 +557,30 @@ impl Blocks {
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
         self.vec.clone()
     }
-    pub fn splice(&self, before: Arc<RwLock<Block>>, blocks: Blocks) {
-        todo!()
+    /// Return the index of `block` in `self`.
+    ///
+    /// Returns `None` if `block` is not found in `self`.
+    pub fn index_of(&self, block: &Block) -> Option<usize> {
+        let vec = self.vec();
+        let vec = vec.try_read().unwrap();
+        vec.iter().position(|b| {
+            let b = &*b.try_read().unwrap();
+            std::ptr::eq(b, block)
+        })
+    }
+    /// Move `blocks` before `before` in `self`.
+    pub fn splice(&self, before: &Block, blocks: Blocks) {
+        let blocks = blocks.vec();
+        let blocks = blocks.try_read().unwrap();
+        let index = self.index_of(before);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find block in blocks during splice");
+            }
+        };
+        let vec = self.vec();
+        let mut vec = vec.try_write().unwrap();
+        vec.splice(index..index, blocks.iter().cloned());
     }
 }
