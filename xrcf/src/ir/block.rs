@@ -553,7 +553,7 @@ impl GuardedBlock for Arc<RwLock<Block>> {
         self.try_write().unwrap().set_arguments(arguments);
     }
     fn set_label(&self, label: BlockName) {
-        self.try_write().unwrap().set_label(label);
+        self.try_read().unwrap().set_label(label);
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);

@@ -46,7 +46,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
         }
         Value::BlockLabel(label) => {
             let label = label.name();
-            let label = label.split_once('^').unwrap().1;
+            println!("{:?}", label);
+            let label = label.split_once('^');
+            let label = label.expect("Expected label to contain ^");
+            let label = label.1;
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {

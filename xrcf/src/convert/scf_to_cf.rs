@@ -100,9 +100,9 @@ fn add_block_from_region(
         let op = op.try_read().unwrap();
         op.set_parent(block.clone());
     }
-    let label = BlockName::Unset;
-    block.set_label(label);
-    let label = BlockLabel::new("foo".to_string());
+    let block_label = BlockName::Name(label.clone());
+    block.set_label(block_label);
+    let label = BlockLabel::new(label);
     let label = Value::BlockLabel(label);
     let label = Arc::new(RwLock::new(label));
     let operand = OpOperand::new(label);
@@ -160,8 +160,8 @@ fn add_merge_block(
 ) -> Result<Values> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
-    todo!();
-    // block.set_label(Some(merge_label.clone()));
+    let label = BlockName::Name(merge_label.clone());
+    block.set_label(label);
     let merge_block_arguments = as_block_arguments(results, block.clone())?;
     block.set_arguments(merge_block_arguments.clone());
 
@@ -181,8 +181,8 @@ fn add_exit_block(
 ) -> Result<()> {
     let unset_block = parent_region.add_empty_block();
     let exit_block = unset_block.set_parent(Some(parent_region.clone()));
-    todo!();
-    // exit_block.set_label(Some(exit_label.clone()));
+    let label = BlockName::Name(exit_label.clone());
+    exit_block.set_label(label);
 
     move_successors_to_exit_block(op, exit_block)?;
     Ok(())

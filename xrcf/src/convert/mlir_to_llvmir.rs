@@ -169,10 +169,11 @@ impl Rewrite for BlockLowering {
             let block = block.try_read().unwrap();
             let label = block.label();
             let label = label.try_read().unwrap();
-            if let BlockName::Name(label) = &*label {
-                if label.starts_with("^") {
-                    let new_label = label[1..].to_string();
+            if let BlockName::Name(text) = &*label {
+                if text.starts_with("^") {
+                    let new_label = text[1..].to_string();
                     let new_label = BlockName::Name(new_label);
+                    drop(label);
                     block.set_label(new_label);
                 }
             }
