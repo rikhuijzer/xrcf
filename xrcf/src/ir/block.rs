@@ -430,7 +430,8 @@ impl Block {
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let label = self.label();
         let label = label.try_read().unwrap();
-        if !(*label != BlockName::Unnamed) {
+        if *label != BlockName::Unnamed {
+            drop(label);
             let new = self.new_name();
             let label = BlockName::Name(new.clone());
             self.set_label(label);
