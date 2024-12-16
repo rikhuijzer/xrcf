@@ -168,6 +168,35 @@ enum Dialects {
     LLVM,
 }
 
+/// Replace block labels in operands by pointers.
+///
+/// Replaces operands that use block labels by pointers after the operands have
+/// been parsed earlier.
+///
+/// Assumes it is only called during the parsing of a block.
+fn replace_block_labels(block: Arc<RwLock<Block>>) {
+    let parent = block.parent().expect("No parent");
+    // Assumes the current block was not yet added to the parent region.
+    let predecessors = parent.blocks();
+    let predecessors = predecessors.try_read().unwrap();
+    for predecessor in predecessors.iter() {
+        let predecessor = predecessor.try_read().unwrap();
+        let ops = predecessor.ops();
+        let ops = ops.try_read().unwrap();
+        for op in ops.iter() {
+            let op = op.try_read().unwrap();
+            let operands = op.operation().operands().vec();
+            let operands = operands.try_read().unwrap();
+            for operand in operands.iter() {
+                let operand = operand.try_read().unwrap();
+                if let Value::BlockLabel(label) = &*operand {
+                    let label = label.clone();
+                }
+            }
+        }
+    }
+}
+
 impl<T: ParserDispatch> Parser<T> {
     pub fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
@@ -247,12 +276,13 @@ impl<T: ParserDispatch> Parser<T> {
             let values = Values::default();
             (label, values)
         };
-        let label = Arc::new(RwLock::new(label));
 
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
+        let label = Arc::new(RwLock::new(label));
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
+        replace_block_labels(block.clone());
         for argument in arguments.vec().try_read().unwrap().iter() {
             let mut argument = argument.try_write().unwrap();
             if let Value::BlockArgument(arg) = &mut *argument {

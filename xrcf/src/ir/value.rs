@@ -396,11 +396,16 @@ impl Display for Variadic {
 /// We also express a [Constant] as a [Value] because it allows us to keep track
 /// of the order of the operands in the [Operation] `operands` field.
 pub enum Value {
+    /// A block argument (e.g., `add_one(%arg0: i64)`).
     BlockArgument(BlockArgument),
+    /// A block label (will be replaced by a pointer once the block is parsed).
     BlockLabel(BlockLabel),
+    /// A constant value (e.g., `arith.constant 1 : i64`).
     Constant(Constant),
     FuncResult(AnonymousResult),
+    /// A result of an operation (e.g., `%0 = ...`).
     OpResult(OpResult),
+    /// A variadic value.
     Variadic,
 }
 
