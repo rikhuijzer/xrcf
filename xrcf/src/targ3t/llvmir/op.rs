@@ -5,6 +5,7 @@ use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockDest;
+use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -470,7 +471,13 @@ impl Op for PhiOp {
                 value.to_string()
             };
             let block = block.try_read().unwrap();
-            let mut label = block.label().expect("expected label");
+            let label = block.label();
+            let label = label.try_read().unwrap();
+            let mut label = match &*label {
+                BlockName::Name(name) => name.to_string(),
+                BlockName::Unnamed => panic!("Expected a named block"),
+                BlockName::Unset => panic!("Expected a named block"),
+            };
             if !label.starts_with('%') {
                 label = format!("%{label}");
             }

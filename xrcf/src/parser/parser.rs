@@ -7,6 +7,7 @@ use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockName;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -233,17 +234,20 @@ impl<T: ParserDispatch> Parser<T> {
         let (label, arguments) = if self.is_block_definition() {
             let label = self.expect(TokenKind::CaretIdentifier)?;
             let label = label.lexeme.to_string();
+            let label = BlockName::Name(label);
             let arguments = if self.check(TokenKind::LParen) {
                 self.parse_function_arguments()?
             } else {
                 Values::default()
             };
             self.expect(TokenKind::Colon)?;
-            (Some(label), arguments)
+            (label, arguments)
         } else {
+            let label = BlockName::Unnamed;
             let values = Values::default();
-            (None, values)
+            (label, values)
         };
+        let label = Arc::new(RwLock::new(label));
 
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
@@ -356,7 +360,8 @@ impl<T: ParserDispatch> Parser<T> {
             }
             let ops = Arc::new(RwLock::new(ops));
             let arguments = Values::default();
-            let block = Block::new(None, arguments, ops.clone(), Some(module_region.clone()));
+            let label = Arc::new(RwLock::new(BlockName::Unnamed));
+            let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
                 let ops = ops.read().unwrap();

@@ -1,4 +1,5 @@
 use crate::ir::block::Block;
+use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
@@ -100,13 +101,18 @@ impl Region {
         for block in blocks.iter() {
             let block = block.try_read().unwrap();
             let label = block.label();
-            if let Some(label) = label {
-                let name = label.trim_start_matches("bb").trim_start_matches("^bb");
-                if let Ok(num) = name.parse::<i32>() {
-                    // Ensure the new name is greater than any existing name.
-                    // This makes the output a bit clearer.
-                    new_name = new_name.max(num);
+            let label = label.try_read().unwrap();
+            match &*label {
+                BlockName::Name(name) => {
+                    let name = name.trim_start_matches("bb").trim_start_matches("^bb");
+                    if let Ok(num) = name.parse::<i32>() {
+                        // Ensure the new name is greater than any existing name.
+                        // This makes the output a bit clearer.
+                        new_name = new_name.max(num);
+                    }
                 }
+                BlockName::Unset => {}
+                BlockName::Unnamed => {}
             }
         }
         new_name += 1;

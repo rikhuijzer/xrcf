@@ -11,6 +11,7 @@ use crate::ir;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
+use crate::ir::BlockName;
 use crate::ir::Constant;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -152,7 +153,8 @@ impl Rewrite for BlockLowering {
             let blocks = blocks.try_read().unwrap();
             for block in blocks.iter() {
                 let label = block.label();
-                if let Some(label) = label {
+                let label = label.try_read().unwrap();
+                if let BlockName::Name(label) = &*label {
                     if label.starts_with("^") {
                         return Ok(true);
                     }
@@ -164,12 +166,14 @@ impl Rewrite for BlockLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let blocks = op.operation().blocks();
         for block in blocks.iter() {
-            let mut block = block.try_write().unwrap();
+            let block = block.try_read().unwrap();
             let label = block.label();
-            if let Some(label) = label {
+            let label = label.try_read().unwrap();
+            if let BlockName::Name(label) = &*label {
                 if label.starts_with("^") {
                     let new_label = label[1..].to_string();
-                    block.set_label(Some(new_label));
+                    let new_label = BlockName::Name(new_label);
+                    block.set_label(new_label);
                 }
             }
         }
