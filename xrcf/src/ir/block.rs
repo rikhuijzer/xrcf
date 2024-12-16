@@ -226,6 +226,7 @@ impl Block {
                         return None;
                     }
                     Value::BlockLabel(_) => continue,
+                    Value::BlockPtr(_) => continue,
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {

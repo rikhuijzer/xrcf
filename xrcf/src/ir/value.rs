@@ -141,6 +141,29 @@ impl Display for BlockLabel {
     }
 }
 
+/// A pointer to a block (replaces the block label).
+///
+/// This is essentially a sort of interface so that [OpOperand]'s
+/// pointer (`Arc<RwLock<Value>>`) can point to a block.
+pub struct BlockPtr {
+    block: Arc<RwLock<Block>>,
+}
+
+impl BlockPtr {
+    pub fn new(block: Arc<RwLock<Block>>) -> Self {
+        BlockPtr { block }
+    }
+    pub fn block(&self) -> Arc<RwLock<Block>> {
+        self.block.clone()
+    }
+}
+
+impl Display for BlockPtr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.block.try_read().unwrap())
+    }
+}
+
 /// A constant value, for example a constant integer.
 ///
 /// This is useful for situations where a operand is replaced by a constant
@@ -400,6 +423,11 @@ pub enum Value {
     BlockArgument(BlockArgument),
     /// A block label (will be replaced by a pointer once the block is parsed).
     BlockLabel(BlockLabel),
+    /// A pointer to a block (replaces the block label).
+    ///
+    /// This is essentially a sort of interface so that [OpOperand]'s
+    /// pointer (`Arc<RwLock<Value>>`) can point to a block.
+    BlockPtr(BlockPtr),
     /// A constant value (e.g., `arith.constant 1 : i64`).
     Constant(Constant),
     FuncResult(AnonymousResult),
@@ -434,6 +462,7 @@ impl Value {
                 }
             }
             Value::BlockLabel(label) => Some(label.name.clone()),
+            Value::BlockPtr(_) => None,
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => {
@@ -448,6 +477,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => Ok(arg.typ.clone()),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(constant) => Ok(constant.typ()),
             Value::FuncResult(result) => Ok(result.typ.clone()),
             Value::OpResult(result) => match result.typ() {
@@ -461,6 +491,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
@@ -471,6 +502,7 @@ impl Value {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
             Value::BlockLabel(_) => todo!("Cannot set defining op for BlockLabel"),
+            Value::BlockPtr(_) => todo!("Cannot set defining op for BlockPtr"),
             Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
@@ -481,6 +513,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => arg.set_parent(parent),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(_) => todo!(),
@@ -494,6 +527,7 @@ impl Value {
                 arg.set_name(arg_name);
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
@@ -551,6 +585,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => Users::OpOperands(self.block_arg_users(arg)),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
@@ -564,6 +599,7 @@ impl Display for Value {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
             Value::BlockLabel(label) => write!(f, "{label}"),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
@@ -685,6 +721,7 @@ impl Values {
                 Value::BlockLabel(_) => {
                     panic!("Trying to set defining op for block label")
                 }
+                Value::BlockPtr(_) => panic!("Trying to set defining op for block ptr"),
                 Value::Constant(_) => {
                     panic!("Trying to set defining op for constant")
                 }
