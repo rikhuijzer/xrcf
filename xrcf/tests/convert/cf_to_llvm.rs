@@ -15,8 +15,8 @@ fn test_if_else() {
     module {
       func.func @main() -> i32 {
         %0 = arith.constant false
-        cf.cond_br %0, ^then, ^bb2
-      ^then:
+        cf.cond_br %0, ^bb1, ^bb2
+      ^bb1:
         %1 = arith.constant 3 : i32
         cf.br ^bb3(%1 : i32)
       ^bb2:
@@ -33,16 +33,16 @@ fn test_if_else() {
     module {
       func.func @main() -> i32 {
         %0 = arith.constant false
-        llvm.cond_br %0, ^then, ^else
-      ^then:
+        llvm.cond_br %0, ^bb1, ^bb2
+      ^bb1:
         %1 = arith.constant 3 : i32
-        llvm.br ^merge(%1 : i32)
-      ^else:
+        llvm.br ^bb3(%1 : i32)
+      ^bb2:
         %2 = arith.constant 4 : i32
-        llvm.br ^merge(%2 : i32)
-      ^merge(%arg0 : i32):
-        llvm.br ^exit
-      ^exit:
+        llvm.br ^bb3(%2 : i32)
+      ^bb3(%arg0 : i32):
+        llvm.br ^bb4
+      ^bb4:
         return %arg0 : i32
       }
     }
