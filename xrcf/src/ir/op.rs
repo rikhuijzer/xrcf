@@ -107,20 +107,6 @@ pub trait Op {
         let value = attributes.get(key)?;
         Some(value.clone())
     }
-    /// Return the block destination of the operation.
-    ///
-    /// For example, the operation `llvm.br` overrides this method to return the
-    /// block destination so that
-    /// ```mlir
-    /// llvm.br ^merge
-    /// ```
-    /// will return `^merge`.
-    ///
-    /// This method is used by `block.callers()` to find the operations that
-    /// point to the current block.
-    fn block_destination(&self) -> Option<Arc<RwLock<BlockDest>>> {
-        None
-    }
     /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
         let operation = self.operation().try_read().unwrap();

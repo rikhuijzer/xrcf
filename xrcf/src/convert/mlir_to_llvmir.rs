@@ -164,17 +164,6 @@ impl Rewrite for BlockLowering {
         let blocks = op.operation().blocks();
         for block in blocks.iter() {
             block.set_label_prefix("".to_string());
-            let label = block.label();
-            let label = label.try_read().unwrap();
-            if let BlockName::Name(text) = &*label {
-                println!("label: {:?}", text);
-                if text.starts_with("^") {
-                    let new_label = text[1..].to_string();
-                    let new_label = BlockName::Name(new_label);
-                    drop(label);
-                    block.set_label(new_label);
-                }
-            }
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }

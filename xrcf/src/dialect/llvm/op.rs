@@ -16,6 +16,7 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StringAttr;
 use crate::ir::Type;
+use crate::ir::Value;
 use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
@@ -160,15 +161,14 @@ impl Parse for AllocaOp {
 /// `llvm.br`
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
-    dest: Option<Arc<RwLock<BlockDest>>>,
 }
 
 impl BranchOp {
-    pub fn dest(&self) -> Option<Arc<RwLock<BlockDest>>> {
-        self.dest.clone()
+    pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
+        self.operation().operand(0)
     }
-    pub fn set_dest(&mut self, dest: Option<Arc<RwLock<BlockDest>>>) {
-        self.dest = dest;
+    pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
+        self.operation().set_operand(0, dest);
     }
 }
 
@@ -177,10 +177,7 @@ impl Op for BranchOp {
         OperationName::new("llvm.br".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BranchOp {
-            operation,
-            dest: None,
-        }
+        BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -190,9 +187,6 @@ impl Op for BranchOp {
     }
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
-    }
-    fn block_destination(&self) -> Option<Arc<RwLock<BlockDest>>> {
-        self.dest.clone()
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
