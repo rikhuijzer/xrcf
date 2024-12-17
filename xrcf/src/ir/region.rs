@@ -116,7 +116,7 @@ impl Region {
             }
         }
         new_name += 1;
-        format!("bb{new_name}")
+        format!("^bb{new_name}")
     }
 }
 

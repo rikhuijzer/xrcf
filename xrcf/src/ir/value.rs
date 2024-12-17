@@ -466,6 +466,7 @@ impl Value {
             Value::BlockPtr(block_ptr) => {
                 let label = block_ptr.block().label();
                 let label = label.try_read().unwrap();
+                println!("Getting name of BlockPtr");
                 match &*label {
                     BlockName::Name(name) => Some(name.clone()),
                     BlockName::Unnamed => None,
