@@ -20,6 +20,38 @@ pub struct Region {
     parent: Option<Arc<RwLock<dyn Op>>>,
 }
 
+/// Set fresh block labels for all blocks in the region.
+///
+/// This happens before the individual blocks are printed since some operands
+/// will point to blocks that occur later. If we would refresh the name during
+/// printing of the block (like we do with ssa variables), then the operands
+/// would print outdated names.
+fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
+    let mut label_index: usize = 1;
+    for block in blocks.iter() {
+        let block = block.try_read().unwrap();
+        let label = block.label();
+        let label_read = label.try_read().unwrap();
+        match &*label_read {
+            BlockName::Name(_name) => {
+                drop(label_read);
+                label_index += 1;
+                let new = format!("^bb{label_index}");
+                let new = BlockName::Name(new);
+                block.set_label(new);
+            }
+            BlockName::Unnamed => {}
+            BlockName::Unset => {
+                drop(label_read);
+                label_index += 1;
+                let new = format!("^bb{label_index}");
+                let new = BlockName::Name(new);
+                block.set_label(new);
+            }
+        }
+    }
+}
+
 impl Region {
     pub fn new(
         blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
@@ -86,6 +118,7 @@ impl Region {
         write!(f, " {{\n")?;
         let blocks = self.blocks();
         let blocks = blocks.try_read().unwrap();
+        set_fresh_block_labels(&blocks);
         for block in blocks.iter() {
             let block = block.try_read().unwrap();
             block.display(f, indent + 1)?;

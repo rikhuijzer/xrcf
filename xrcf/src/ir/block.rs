@@ -422,23 +422,13 @@ impl Block {
         new_name += 1;
         format!("{prefix}{new_name}")
     }
-    /// Find a unique name for a block (for example, `bb2`).
-    fn new_name(&self) -> String {
-        let parent = self.parent();
-        let parent = parent.expect("Expected parent");
-        parent.unique_block_name()
-    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let label = self.label();
         let label = label.try_read().unwrap();
-        if *label != BlockName::Unnamed {
-            drop(label);
-            let new = self.new_name();
-            let label = BlockName::Name(new.clone());
-            self.set_label(label);
+        if let BlockName::Name(name) = &*label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             let spaces = crate::ir::spaces(label_indent);
-            write!(f, "{spaces}{new}")?;
+            write!(f, "{spaces}{name}")?;
             let arguments = self.arguments();
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
