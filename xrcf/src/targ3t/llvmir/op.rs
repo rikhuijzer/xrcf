@@ -45,11 +45,18 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "{typ} {value}")
         }
         Value::BlockLabel(label) => {
-            let label = label.name();
-            println!("{:?}", label);
-            let label = label.split_once('^');
-            let label = label.expect("Expected label to contain ^");
-            let label = label.1;
+            panic!("This case should not happen, but happened for {label}");
+        }
+        Value::BlockPtr(ptr) => {
+            let ptr = ptr.block();
+            let ptr = ptr.try_read().unwrap();
+            let label = ptr.label();
+            let label = label.try_read().unwrap();
+            let label = match &*label {
+                BlockName::Name(name) => name.to_string(),
+                BlockName::Unnamed => panic!("Expected a named block"),
+                BlockName::Unset => panic!("Expected a named block"),
+            };
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {

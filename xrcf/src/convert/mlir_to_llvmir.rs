@@ -152,12 +152,9 @@ impl Rewrite for BlockLowering {
             let blocks = region.blocks();
             let blocks = blocks.try_read().unwrap();
             for block in blocks.iter() {
-                let label = block.label();
-                let label = label.try_read().unwrap();
-                if let BlockName::Name(label) = &*label {
-                    if label.starts_with("^") {
-                        return Ok(true);
-                    }
+                let label_prefix = block.label_prefix();
+                if label_prefix == "^" {
+                    return Ok(true);
                 }
             }
         }
@@ -166,10 +163,11 @@ impl Rewrite for BlockLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let blocks = op.operation().blocks();
         for block in blocks.iter() {
-            let block = block.try_read().unwrap();
+            block.set_label_prefix("".to_string());
             let label = block.label();
             let label = label.try_read().unwrap();
             if let BlockName::Name(text) = &*label {
+                println!("label: {:?}", text);
                 if text.starts_with("^") {
                     let new_label = text[1..].to_string();
                     let new_label = BlockName::Name(new_label);

@@ -30,13 +30,13 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
         let block = block.try_read().unwrap();
+        let label_prefix = block.label_prefix();
         let label = block.label();
         let label_read = label.try_read().unwrap();
         match &*label_read {
             BlockName::Name(_name) => {
                 drop(label_read);
-                let new = format!("^bb{label_index}");
-                println!("new: {}", new);
+                let new = format!("{label_prefix}bb{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
@@ -44,8 +44,7 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
             BlockName::Unnamed => {}
             BlockName::Unset => {
                 drop(label_read);
-                let new = format!("^bb{label_index}");
-                println!("new: {}", new);
+                let new = format!("{label_prefix}bb{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
