@@ -611,7 +611,7 @@ impl Display for Value {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
             Value::BlockLabel(label) => write!(f, "{label}"),
-            Value::BlockPtr(_) => todo!(),
+            Value::BlockPtr(ptr) => write!(f, "{ptr}"),
             Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
