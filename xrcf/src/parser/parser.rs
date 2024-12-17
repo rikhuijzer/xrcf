@@ -8,6 +8,7 @@ use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
+use crate::ir::BlockPtr;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -170,11 +171,18 @@ enum Dialects {
 
 /// Replace block labels in operands by pointers.
 ///
-/// Replaces operands that use block labels by pointers after the operands have
-/// been parsed earlier.
+/// Replaces operands that use block labels and point to `block` by pointers
+/// after the operands have been parsed earlier.
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
+    let label = block.label();
+    let label = label.try_read().unwrap();
+    let label = match &*label {
+        BlockName::Name(name) => name.clone(),
+        BlockName::Unnamed => return,
+        BlockName::Unset => return,
+    };
     let parent = block.parent().expect("No parent");
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
@@ -188,9 +196,18 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
             let operands = op.operation().operands().vec();
             let operands = operands.try_read().unwrap();
             for operand in operands.iter() {
-                let operand = operand.try_read().unwrap();
-                if let Value::BlockLabel(label) = &*operand {
-                    let label = label.clone();
+                let mut operand = operand.try_write().unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                if let Value::BlockLabel(current_label) = &*value {
+                    println!("BlockLabel: {}", current_label);
+                    println!("Label: {}", label);
+                    if current_label.name() == label {
+                        let block_ptr = BlockPtr::new(block.clone());
+                        let block_ptr = Value::BlockPtr(block_ptr);
+                        let block_ptr = Arc::new(RwLock::new(block_ptr));
+                        operand.set_value(block_ptr.clone());
+                    }
                 }
             }
         }

@@ -1,6 +1,7 @@
 use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -462,7 +463,15 @@ impl Value {
                 }
             }
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(_) => None,
+            Value::BlockPtr(block_ptr) => {
+                let label = block_ptr.block().label();
+                let label = label.try_read().unwrap();
+                match &*label {
+                    BlockName::Name(name) => Some(name.clone()),
+                    BlockName::Unnamed => None,
+                    BlockName::Unset => None,
+                }
+            }
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => {

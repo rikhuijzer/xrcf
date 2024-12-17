@@ -51,6 +51,7 @@ pub use value::BlockArgument;
 pub use value::BlockArgumentName;
 pub use value::BlockDest;
 pub use value::BlockLabel;
+pub use value::BlockPtr;
 pub use value::Constant;
 pub use value::GuardedValue;
 pub use value::OpResult;
