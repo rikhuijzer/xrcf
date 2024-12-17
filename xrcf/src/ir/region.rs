@@ -36,6 +36,7 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
             BlockName::Name(_name) => {
                 drop(label_read);
                 let new = format!("^bb{label_index}");
+                println!("new: {}", new);
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
@@ -44,6 +45,7 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
             BlockName::Unset => {
                 drop(label_read);
                 let new = format!("^bb{label_index}");
+                println!("new: {}", new);
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;

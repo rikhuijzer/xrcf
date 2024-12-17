@@ -243,6 +243,7 @@ fn add_blocks(
 ) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
     let then_label = format!("^{}", parent_region.unique_block_name());
     let then_label_index = then_label
+        .trim_start_matches("^^bb")
         .trim_start_matches("^bb")
         .parse::<usize>()
         .unwrap();
