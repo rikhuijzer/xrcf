@@ -489,7 +489,6 @@ impl Value {
                 let label = label.try_read().unwrap();
                 match &*label {
                     BlockName::Name(name) => {
-                        println!("Getting name BlockPtr: {name}");
                         Some(name.clone())
                     }
                     BlockName::Unnamed => None,

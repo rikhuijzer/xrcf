@@ -200,10 +200,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
                 let value = operand.value();
                 let value = value.try_read().unwrap();
                 if let Value::BlockLabel(current_label) = &*value {
-                    println!("BlockLabel: {}", current_label);
-                    println!("Label: {}", label);
                     if current_label.name() == label {
-                        println!("Replacing BlockLabel with BlockPtr");
                         let block_ptr = BlockPtr::new(block.clone());
                         let block_ptr = Value::BlockPtr(block_ptr);
                         let block_ptr = Arc::new(RwLock::new(block_ptr));
