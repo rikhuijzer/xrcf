@@ -11,7 +11,6 @@ use crate::ir;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
-use crate::ir::BlockName;
 use crate::ir::Constant;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -194,15 +193,7 @@ impl Rewrite for BranchLowering {
             .downcast_ref::<dialect::llvm::BranchOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
-        let dest = op.dest().unwrap();
-        let mut dest = dest.try_write().unwrap();
-        let name = dest.name();
-        if name.starts_with("^") {
-            let name = name[1..].to_string();
-            dest.set_name(&format!("%{}", name));
-        }
-        new_op.set_dest(op.dest().unwrap());
+        let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

@@ -7,7 +7,6 @@ use crate::dialect;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
-use crate::ir::BlockDest;
 use crate::ir::BlockLabel;
 use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
@@ -58,17 +57,17 @@ use std::sync::RwLock;
 /// ```
 struct IfLowering;
 
-fn lower_yield_op(op: &dialect::scf::YieldOp, after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
-    let mut new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
-    new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&after_label)))));
+fn lower_yield_op(op: &dialect::scf::YieldOp, _after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
+    let new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
+    // new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&after_label)))));
     let new_op = Arc::new(RwLock::new(new_op));
     Ok(new_op)
 }
 
-fn branch_op(after_label: &str) -> Arc<RwLock<dyn Op>> {
+fn branch_op(_after_label: &str) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
-    let mut new_op = dialect::cf::BranchOp::from_operation(operation);
-    new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(after_label)))));
+    let new_op = dialect::cf::BranchOp::from_operation(operation);
+    // new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(after_label)))));
     let new_op = Arc::new(RwLock::new(new_op));
     new_op
 }
@@ -167,8 +166,8 @@ fn add_merge_block(
 
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
-    let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
-    merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&exit_label)))));
+    let merge_op = dialect::cf::BranchOp::from_operation(operation);
+    // merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&exit_label)))));
     let merge_op = Arc::new(RwLock::new(merge_op));
     block.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
     Ok(merge_block_arguments)
