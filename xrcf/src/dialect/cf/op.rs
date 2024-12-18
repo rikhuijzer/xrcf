@@ -58,9 +58,10 @@ impl Op for BranchOp {
         let operands = self.operation().operands();
         let operands = operands.vec();
         let operands = operands.try_read().unwrap();
-        if !operands.is_empty() {
+        let operands = operands.iter().skip(1);
+        if 0 < operands.len() {
             write!(f, "(")?;
-            for operand in operands.iter().skip(1) {
+            for operand in operands {
                 let operand = operand.try_read().unwrap();
                 operand.display_with_type(f)?;
             }
@@ -78,9 +79,11 @@ impl Parse for BranchOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
+        let dest = parser.parse_block_dest()?;
+        let dest = Arc::new(RwLock::new(dest));
+        operation.set_operand(0, dest);
 
         let operation = Arc::new(RwLock::new(operation));
-        let dest = parser.parse_block_dest()?;
 
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
@@ -88,7 +91,7 @@ impl Parse for BranchOp {
             let mut operands = operands.try_write().unwrap();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
-                operands.push(operand);
+                operands.push(operand.clone());
                 parser.expect(TokenKind::Colon)?;
                 let _typ = parser.advance();
                 if !parser.check(TokenKind::Comma) {
@@ -98,9 +101,7 @@ impl Parse for BranchOp {
             parser.expect(TokenKind::RParen)?;
         }
 
-        let mut op = BranchOp { operation };
-        let dest = Arc::new(RwLock::new(dest));
-        op.set_dest(dest);
+        let op = BranchOp { operation };
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }

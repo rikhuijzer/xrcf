@@ -488,9 +488,7 @@ impl Value {
                 let label = block_ptr.block().label();
                 let label = label.try_read().unwrap();
                 match &*label {
-                    BlockName::Name(name) => {
-                        Some(name.clone())
-                    }
+                    BlockName::Name(name) => Some(name.clone()),
                     BlockName::Unnamed => None,
                     BlockName::Unset => None,
                 }
