@@ -189,13 +189,19 @@ impl Op for BranchOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest();
-        let dest = dest.as_ref().unwrap();
+        let dest = dest.unwrap();
         let dest = dest.try_read().unwrap();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
-        if !operands.vec().try_read().unwrap().is_empty() {
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
+        let operands = operands.iter().skip(1);
+        if 0 < operands.len() {
             write!(f, "(")?;
-            operands.display_with_types(f)?;
+            for operand in operands {
+                let operand = operand.try_read().unwrap();
+                operand.display_with_type(f)?;
+            }
             write!(f, ")")?;
         }
         Ok(())
