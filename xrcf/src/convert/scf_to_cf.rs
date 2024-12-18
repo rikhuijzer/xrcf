@@ -64,9 +64,12 @@ fn tmp_as_operand(label: &str) -> Arc<RwLock<OpOperand>> {
     operand
 }
 
-fn lower_yield_op(op: &dialect::scf::YieldOp, _after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
-    let mut new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
-    new_op.set_dest(tmp_as_operand(_after_label));
+fn lower_yield_op(op: &dialect::scf::YieldOp, after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
+    let operation = op.operation();
+    let var = operation.operand(0).unwrap();
+    operation.set_operand(0, tmp_as_operand(after_label));
+    operation.set_operand(1, var);
+    let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
     let new_op = Arc::new(RwLock::new(new_op));
     Ok(new_op)
 }
@@ -247,9 +250,8 @@ fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
-    let then_label = format!("^{}", parent_region.unique_block_name());
+    let then_label = format!("{}", parent_region.unique_block_name());
     let then_label_index = then_label
-        .trim_start_matches("^^bb")
         .trim_start_matches("^bb")
         .parse::<usize>()
         .unwrap();
