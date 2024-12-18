@@ -21,7 +21,6 @@ use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
-use crate::ir::OpOperands;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
