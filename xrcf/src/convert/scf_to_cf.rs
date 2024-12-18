@@ -57,17 +57,24 @@ use std::sync::RwLock;
 /// ```
 struct IfLowering;
 
+fn tmp_as_operand(label: &str) -> Arc<RwLock<OpOperand>> {
+    let dest = Value::BlockLabel(BlockLabel::new(label.to_string()));
+    let operand = OpOperand::new(Arc::new(RwLock::new(dest)));
+    let operand = Arc::new(RwLock::new(operand));
+    operand
+}
+
 fn lower_yield_op(op: &dialect::scf::YieldOp, _after_label: &str) -> Result<Arc<RwLock<dyn Op>>> {
-    let new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
-    // new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&after_label)))));
+    let mut new_op = dialect::cf::BranchOp::from_operation_arc(op.operation().clone());
+    new_op.set_dest(tmp_as_operand(_after_label));
     let new_op = Arc::new(RwLock::new(new_op));
     Ok(new_op)
 }
 
-fn branch_op(_after_label: &str) -> Arc<RwLock<dyn Op>> {
+fn branch_op(after_label: &str) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
-    let new_op = dialect::cf::BranchOp::from_operation(operation);
-    // new_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(after_label)))));
+    let mut new_op = dialect::cf::BranchOp::from_operation(operation);
+    new_op.set_dest(tmp_as_operand(after_label));
     let new_op = Arc::new(RwLock::new(new_op));
     new_op
 }
@@ -155,7 +162,7 @@ fn add_merge_block(
     parent_region: Arc<RwLock<Region>>,
     merge_label: String,
     results: Values,
-    _exit_label: String,
+    exit_label: String,
 ) -> Result<Values> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
@@ -166,8 +173,8 @@ fn add_merge_block(
 
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
-    let merge_op = dialect::cf::BranchOp::from_operation(operation);
-    // merge_op.set_dest(Some(Arc::new(RwLock::new(BlockDest::new(&exit_label)))));
+    let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
+    merge_op.set_dest(tmp_as_operand(&exit_label));
     let merge_op = Arc::new(RwLock::new(merge_op));
     block.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
     Ok(merge_block_arguments)
