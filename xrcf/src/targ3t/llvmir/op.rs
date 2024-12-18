@@ -4,7 +4,6 @@ use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
-use crate::ir::BlockDest;
 use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;

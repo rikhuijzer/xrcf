@@ -1,7 +1,6 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::BlockDest;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedRegion;
 use crate::ir::Operation;

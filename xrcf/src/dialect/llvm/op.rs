@@ -190,7 +190,8 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest.as_ref().unwrap();
+        let dest = self.dest();
+        let dest = dest.as_ref().unwrap();
         let dest = dest.try_read().unwrap();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
@@ -229,8 +230,9 @@ impl Parse for BranchOp {
             }
             parser.expect(TokenKind::RParen)?;
         }
-        let dest = Some(Arc::new(RwLock::new(dest)));
-        let op = BranchOp { operation, dest };
+        let mut op = BranchOp { operation };
+        let dest = Arc::new(RwLock::new(dest));
+        op.set_dest(dest);
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }

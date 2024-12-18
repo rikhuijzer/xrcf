@@ -49,7 +49,6 @@ pub use typ::Types;
 pub use value::AnonymousResult;
 pub use value::BlockArgument;
 pub use value::BlockArgumentName;
-pub use value::BlockDest;
 pub use value::BlockLabel;
 pub use value::BlockPtr;
 pub use value::Constant;

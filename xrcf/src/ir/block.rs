@@ -1,4 +1,6 @@
 use crate::ir::BlockArgumentName;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -111,8 +113,10 @@ impl Block {
         let label = label.try_read().unwrap();
         let label = match &*label {
             BlockName::Unnamed => return None,
-            BlockName::Name(label) => label,
-            BlockName::Unset => panic!("Cannot find callers via this method when label is unset"),
+            // We can find callers via `Value::BlockLabel`.
+            BlockName::Name(label) => Some(label),
+            // We can still find callers via `Value::BlockPtr`.
+            BlockName::Unset => None,
         };
         let predecessors = self.predecessors();
         let predecessors = predecessors.expect("expected predecessors");
@@ -122,14 +126,23 @@ impl Block {
             let ops = predecessor.ops();
             let ops = ops.try_read().unwrap();
             for op in ops.iter() {
-                let op_read = op.try_read().unwrap();
-                let dest = op_read.block_destination();
-                if dest.is_some() {
-                    let dest = dest.unwrap();
-                    let dest = dest.try_read().unwrap();
-                    if canonicalize_label(&dest.name()) == canonicalize_label(&label) {
-                        callers.push(op.clone());
+                if let Some(label) = label {
+                    let operation = op.operation();
+                    let operands = operation.operands().vec();
+                    let operands = operands.try_read().unwrap();
+                    for operand in operands.iter() {
+                        let operand = operand.try_read().unwrap();
+                        let value = operand.value();
+                        let value = value.try_read().unwrap();
+                        if let Value::BlockLabel(block_label) = &*value {
+                            if canonicalize_label(&block_label.name()) == canonicalize_label(&label)
+                            {
+                                callers.push(op.clone());
+                            }
+                        }
                     }
+                } else {
+                    todo!("find via blockptr for this case but also previous case");
                 }
             }
         }

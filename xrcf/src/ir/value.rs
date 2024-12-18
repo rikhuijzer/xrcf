@@ -120,6 +120,19 @@ impl Display for BlockArgument {
     }
 }
 
+/// A label to a block.
+///
+/// This is a temporary data structure that holds a label until the block is
+/// parsed. At that point, the [BlockLabel]s are replaced by [BlockPtr]s.
+///
+/// Note that because this is a [Value], it can be directly stored in
+/// `operation.operands`. To model labels with operands like
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+/// store the `^merge` as a [BlockLabel] and the `%c4` as an [OpResult]. This
+/// "encoding" in the operands field has the benefit that other code can easily
+/// check if, for example, a variable is being used.
 pub struct BlockLabel {
     name: String,
 }
@@ -146,6 +159,14 @@ impl Display for BlockLabel {
 ///
 /// This is essentially a sort of interface so that [OpOperand]'s
 /// pointer (`Arc<RwLock<Value>>`) can point to a block.
+///
+/// To model labels with operands like
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+/// store the `^merge` as a [BlockPtr] and the `%c4` as an [OpResult]. This
+/// "encoding" in the operands field has the benefit that other code can easily
+/// check if, for example, a variable is being used.
 pub struct BlockPtr {
     block: Arc<RwLock<Block>>,
 }
@@ -785,63 +806,6 @@ impl Display for Values {
     }
 }
 
-/// Call to a destination of type block.
-///
-/// For example, `^merge(%c4: i32)` in:
-///
-/// ```mlir
-/// %c4 = arith.constant 4 : i32
-/// cr.br ^merge(%c4: i32)
-/// ```
-///
-/// or `^then, ^else` in:
-///
-/// ```mlir
-/// cr.cond_br %cond, ^then, ^else
-/// ```
-///
-/// This data structure is used by ops such as `cf.cond_br` to keep track of
-/// multiple destinations.
-///
-/// To allow other parts of the codebase to still recognize uses of some
-/// [OpResult] (like `%c4` in the first example), block destinations do not
-/// contain the [OpOperand]s. The operands are instead stored as operands of the
-/// operation. This is possible because the block destinations in `cr.cond_br` do
-/// not take arguments (let's hope this assumption keeps standing over time or
-/// we need to rewrite this).
-///
-/// Unlike variables ([OpResult]s), block destinations do not contain a pointer
-/// to the block. The reason is that the block definition may appear after the
-/// block destination. Put differently, whereas functions and variables have to
-/// be defined before calling them, blocks don't have to. This means that in
-/// order to parse a block destination, we would need two passes. This is
-/// currently not implemented. The solution would probably to add an
-/// `Option<Arc<RwLock<Block>>>` to this struct and set it later.
-pub struct BlockDest {
-    name: String,
-}
-
-impl BlockDest {
-    pub fn new(name: &str) -> Self {
-        BlockDest {
-            name: name.to_string(),
-        }
-    }
-    /// The name of the destination block (e.g., `^merge`).
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = name.to_string();
-    }
-}
-
-impl Display for BlockDest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
-    }
-}
-
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
     /// Parse `%arg0 : i64,`, `i64,`, or `...`.
@@ -964,9 +928,11 @@ impl<T: ParserDispatch> Parser<T> {
     /// ```mlir
     /// cr.br ^exit
     /// ```
-    pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
+    pub fn parse_block_dest(&mut self) -> Result<OpOperand> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
-        Ok(BlockDest { name })
+        let value = Value::BlockLabel(BlockLabel::new(name));
+        let value = Arc::new(RwLock::new(value));
+        Ok(OpOperand::new(value))
     }
 }
