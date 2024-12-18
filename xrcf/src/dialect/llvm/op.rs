@@ -219,6 +219,8 @@ impl Parse for BranchOp {
 
         let operation = Arc::new(RwLock::new(operation));
         let dest = parser.parse_block_dest()?;
+        let dest = Arc::new(RwLock::new(dest));
+        operation.set_operand(0, dest);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
@@ -234,9 +236,7 @@ impl Parse for BranchOp {
             }
             parser.expect(TokenKind::RParen)?;
         }
-        let mut op = BranchOp { operation };
-        let dest = Arc::new(RwLock::new(dest));
-        op.set_dest(dest);
+        let op = BranchOp { operation };
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }

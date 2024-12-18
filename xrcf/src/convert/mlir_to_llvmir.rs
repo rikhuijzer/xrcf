@@ -366,7 +366,8 @@ fn determine_argument_pairs(
     let mut argument_pairs = vec![];
     for caller in callers.iter() {
         let caller = caller.try_read().unwrap();
-        let caller_operand = caller.operation().operand(0).unwrap();
+        println!("caller: {}", caller);
+        let caller_operand = caller.operation().operand(1).unwrap();
         let caller_block = caller.operation().parent().unwrap();
         argument_pairs.push((caller_operand, caller_block.clone()));
     }

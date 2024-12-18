@@ -506,15 +506,15 @@ impl Value {
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         match self {
             Value::BlockArgument(arg) => Ok(arg.typ.clone()),
-            Value::BlockLabel(_) => todo!(),
-            Value::BlockPtr(_) => todo!(),
+            Value::BlockLabel(_) => panic!("BlockLabel has no type"),
+            Value::BlockPtr(_) => panic!("BlockPtr has no type"),
             Value::Constant(constant) => Ok(constant.typ()),
             Value::FuncResult(result) => Ok(result.typ.clone()),
             Value::OpResult(result) => match result.typ() {
                 Some(typ) => Ok(typ),
                 None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
             },
-            Value::Variadic => todo!(),
+            Value::Variadic => panic!("Variadic has no type"),
         }
     }
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
