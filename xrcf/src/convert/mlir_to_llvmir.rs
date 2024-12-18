@@ -169,6 +169,9 @@ impl Rewrite for BlockLowering {
 }
 
 /// Replace `llvm.br` by `br`.
+///
+/// This is only executed once the `phi` node has been inserted by
+/// [MergeLowering].
 struct BranchLowering;
 
 impl Rewrite for BranchLowering {
@@ -180,11 +183,20 @@ impl Rewrite for BranchLowering {
             let operands = op.operation().operands().vec();
             let operands = operands.try_read().unwrap();
             // Check whether [MergeLowering] has already removed the operands.
-            if operands.is_empty() {
-                return Ok(true);
+            for operand in operands.iter() {
+                let operand = operand.try_read().unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                match &*value {
+                    Value::BlockLabel(_) => {}
+                    Value::BlockPtr(_) => {}
+                    _ => return Ok(false),
+                }
             }
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
@@ -362,11 +374,9 @@ fn determine_argument_pairs(
         return vec![];
     }
     let callers = callers.unwrap();
-    println!("callers: {:?}", callers.len());
     let mut argument_pairs = vec![];
     for caller in callers.iter() {
         let caller = caller.try_read().unwrap();
-        println!("caller: {}", caller);
         let caller_operand = caller.operation().operand(1).unwrap();
         let caller_block = caller.operation().parent().unwrap();
         argument_pairs.push((caller_operand, caller_block.clone()));
@@ -498,7 +508,10 @@ fn remove_caller_operands(block: Arc<RwLock<Block>>) {
     let callers = callers.unwrap();
     for caller in callers.iter() {
         let caller = caller.operation();
-        caller.set_operands(OpOperands::default());
+        let operands = caller.operands();
+        let operands = operands.vec();
+        let mut operands = operands.try_write().unwrap();
+        operands.pop();
     }
 }
 
