@@ -56,9 +56,14 @@ impl Op for BranchOp {
         let dest = dest.try_read().unwrap();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
-        if !operands.vec().try_read().unwrap().is_empty() {
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
+        if !operands.is_empty() {
             write!(f, "(")?;
-            operands.display_with_types(f)?;
+            for operand in operands.iter().skip(1) {
+                let operand = operand.try_read().unwrap();
+                operand.display_with_type(f)?;
+            }
             write!(f, ")")?;
         }
         Ok(())

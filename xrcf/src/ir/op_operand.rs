@@ -49,6 +49,11 @@ impl OpOperand {
             Value::Variadic => None,
         }
     }
+    pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let typ = self.typ().unwrap();
+        let typ = typ.try_read().unwrap();
+        write!(f, "{self} : {typ}")
+    }
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.value.try_read().unwrap();
         value.typ()
@@ -113,14 +118,13 @@ impl OpOperands {
     pub fn display_with_types(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operands = self.operands.try_read().unwrap();
         if !operands.is_empty() {
-            let mut texts = vec![];
-            for operand in operands.iter() {
+            for (index, operand) in operands.iter().enumerate() {
+                if 0 < index {
+                    write!(f, ", ")?;
+                }
                 let operand = operand.try_read().unwrap();
-                let typ = operand.typ().unwrap();
-                let typ = typ.try_read().unwrap();
-                texts.push(format!("{operand} : {typ}"));
+                operand.display_with_type(f)?;
             }
-            write!(f, "{}", texts.join(", "))?;
         }
         Ok(())
     }
