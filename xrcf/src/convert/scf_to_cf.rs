@@ -155,7 +155,7 @@ fn add_merge_block(
     parent_region: Arc<RwLock<Region>>,
     merge_label: String,
     results: Values,
-    exit_label: String,
+    _exit_label: String,
 ) -> Result<Values> {
     let unset_block = parent_region.add_empty_block();
     let block = unset_block.set_parent(Some(parent_region.clone()));
