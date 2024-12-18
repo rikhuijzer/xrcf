@@ -1,5 +1,6 @@
 use crate::ir::BlockArgumentName;
 use crate::ir::GuardedOp;
+use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -126,23 +127,26 @@ impl Block {
             let ops = predecessor.ops();
             let ops = ops.try_read().unwrap();
             for op in ops.iter() {
-                if let Some(label) = label {
-                    let operation = op.operation();
-                    let operands = operation.operands().vec();
-                    let operands = operands.try_read().unwrap();
-                    for operand in operands.iter() {
-                        let operand = operand.try_read().unwrap();
-                        let value = operand.value();
-                        let value = value.try_read().unwrap();
-                        if let Value::BlockLabel(block_label) = &*value {
-                            if canonicalize_label(&block_label.name()) == canonicalize_label(&label)
-                            {
+                let operation = op.operation();
+                let operands = operation.operands().vec();
+                let operands = operands.try_read().unwrap();
+                for operand in operands.iter() {
+                    let value = operand.value();
+                    let value = value.try_read().unwrap();
+                    if let Value::BlockPtr(block_ptr) = &*value {
+                        let current = block_ptr.block();
+                        let current = &*current.try_read().unwrap();
+                        if std::ptr::eq(current, self) {
+                            callers.push(op.clone());
+                        }
+                    } else if let Value::BlockLabel(block_label) = &*value {
+                        if let Some(label) = label {
+                            let current = canonicalize_label(&block_label.name());
+                            if current == canonicalize_label(label) {
                                 callers.push(op.clone());
                             }
                         }
                     }
-                } else {
-                    todo!("find via blockptr for this case but also previous case");
                 }
             }
         }
