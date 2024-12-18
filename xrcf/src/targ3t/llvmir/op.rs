@@ -247,15 +247,11 @@ impl Display for CallOp {
 }
 
 /// `br`
+///
+/// Can be a conditional as well as an unconditional branch. Branch targets
+/// are stored as operands.
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
-    dest: Option<Arc<RwLock<BlockDest>>>,
-}
-
-impl BranchOp {
-    pub fn set_dest(&mut self, dest: Arc<RwLock<BlockDest>>) {
-        self.dest = Some(dest);
-    }
 }
 
 impl Op for BranchOp {
@@ -263,10 +259,7 @@ impl Op for BranchOp {
         OperationName::new("branch".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BranchOp {
-            operation,
-            dest: None,
-        }
+        BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -276,12 +269,7 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "br ")?;
-        if let Some(dest) = &self.dest {
-            write!(f, "label {}", dest.try_read().unwrap())?;
-        } else {
-            // Conditional branch (e.g., `br i1 %cond, label %then, label %else`).
-            display_operands(f, &self.operation().operands())?;
-        }
+        display_operands(f, &self.operation().operands())?;
         Ok(())
     }
 }
