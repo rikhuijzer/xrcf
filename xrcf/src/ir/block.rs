@@ -165,11 +165,9 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
-        let blocks = blocks.vec();
-        let predecessors = blocks.try_read().unwrap();
         let predecessors = match index {
-            Some(index) => predecessors[..index].to_vec(),
-            None => predecessors.clone(),
+            Some(index) => blocks.into_iter().take(index).collect(),
+            None => blocks.into_iter().collect(),
         };
         Some(predecessors)
     }
@@ -182,10 +180,8 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
-        let blocks = blocks.vec();
-        let successors = blocks.try_read().unwrap();
         let successors = match index {
-            Some(index) => successors[index + 1..].to_vec(),
+            Some(index) => blocks.into_iter().skip(index + 1).collect(),
             None => panic!("Expected block to be in region"),
         };
         Some(successors)
