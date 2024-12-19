@@ -54,8 +54,6 @@ fn parse_addi() {
     assert!(module_parent.is_none());
 
     let ops = module.ops();
-    let ops = ops.vec();
-    let ops = ops.try_read().unwrap();
     assert_eq!(ops.len(), 1);
     let func_op = ops[0].try_read().unwrap();
     let func_operation = func_op.operation().try_read().unwrap();

@@ -204,8 +204,8 @@ impl ModuleLowering {
             .set_anonymous_result(Arc::new(RwLock::new(typ)))
             .unwrap();
 
-        let mut ops = func.ops();
-        if ops.next().is_none() {
+        let ops = func.ops();
+        if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
         let last = ops.last().unwrap();
