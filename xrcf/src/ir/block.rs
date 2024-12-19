@@ -231,7 +231,7 @@ impl Block {
         let region = self.parent();
         assert!(region.is_some());
         let region = region.unwrap();
-        let region = region.try_read().unwrap();
+        let region = region.read().unwrap();
         let parent = region.parent();
         assert!(
             parent.is_some(),

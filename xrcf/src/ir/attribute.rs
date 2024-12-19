@@ -236,19 +236,19 @@ impl Attributes {
         self.map.clone()
     }
     pub fn is_empty(&self) -> bool {
-        self.map.try_read().unwrap().is_empty()
+        self.map.read().unwrap().is_empty()
     }
     pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
         self.map
-            .try_write()
+            .write()
             .unwrap()
             .insert(name.to_string(), attribute);
     }
     pub fn get(&self, name: &str) -> Option<Arc<dyn Attribute>> {
-        self.map.try_read().unwrap().get(name).cloned()
+        self.map.read().unwrap().get(name).cloned()
     }
     pub fn deep_clone(&self) -> Self {
-        let map = self.map.try_read().unwrap();
+        let map = self.map.read().unwrap();
         let mut out = HashMap::new();
         for (name, attribute) in map.iter() {
             let attribute = attribute.clone();
@@ -261,7 +261,7 @@ impl Attributes {
 
 impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let map = self.map.try_read().unwrap();
+        let map = self.map.read().unwrap();
         if !map.is_empty() {
             write!(f, "{{")?;
             for (i, attr) in map.iter().enumerate() {

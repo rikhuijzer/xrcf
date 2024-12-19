@@ -388,7 +388,7 @@ impl<T: ParserDispatch> Parser<T> {
         };
         let op = T::parse_op(&mut parser, None)?;
         let opp = op.clone();
-        let opp = opp.try_read().unwrap();
+        let opp = opp.read().unwrap();
         let casted = opp.as_any().downcast_ref::<ModuleOp>();
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
@@ -414,7 +414,7 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             }
             module_region
-                .try_write()
+                .write()
                 .unwrap()
                 .blocks()
                 .vec()
