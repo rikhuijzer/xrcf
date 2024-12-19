@@ -16,6 +16,7 @@ use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
+use crate::ir::Ops;
 use crate::ir::Region;
 use crate::ir::Users;
 use crate::ir::Value;
@@ -85,7 +86,9 @@ fn add_block_from_region(
     region: Arc<RwLock<Region>>,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<Arc<RwLock<OpOperand>>> {
-    let mut ops = region.ops();
+    let ops = region.ops();
+    let ops = ops.vec();
+    let mut ops = ops.try_write().unwrap();
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
     let last_op = last_op.try_read().unwrap();
@@ -101,7 +104,7 @@ fn add_block_from_region(
 
     let unset_block = parent_region.add_empty_block_before(after);
     let block = unset_block.set_parent(Some(parent_region.clone()));
-    block.set_ops(ops.clone());
+    block.set_ops(Ops::from_vec(ops.clone()));
     block.set_label(BlockName::Unset);
     for op in ops.iter() {
         let op = op.try_read().unwrap();
@@ -146,13 +149,15 @@ fn move_successors_to_exit_block(
         .index_of(&op.operation().try_read().unwrap())
         .expect("Expected index");
     let ops = if_op_parent.ops();
-    let mut ops = ops.try_write().unwrap();
-    let return_ops = ops[if_op_index + 1..].to_vec();
+    let ops = ops.vec();
+    let ops_read = ops.try_read().unwrap();
+    let return_ops = ops_read[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
         let op = op.try_read().unwrap();
         op.set_parent(exit_block.clone());
     }
-    exit_block.set_ops(Arc::new(RwLock::new(return_ops)));
+    exit_block.set_ops(Ops::from_vec(return_ops));
+    let mut ops = ops.try_write().unwrap();
     ops.drain(if_op_index + 1..);
     Ok(())
 }
@@ -176,7 +181,7 @@ fn add_merge_block(
     merge_op.set_dest(operand);
 
     let merge_op = Arc::new(RwLock::new(merge_op));
-    merge.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
+    merge.set_ops(Ops::from_vec(vec![merge_op.clone()]));
     Ok((merge, merge_block_arguments))
 }
 
@@ -297,7 +302,13 @@ fn add_blocks(
     };
 
     let yield_op = then.ops().last();
-    lower_yield_op(yield_op, after.clone())?;
+    let yield_op = yield_op.unwrap();
+    let yield_op = yield_op.try_read().unwrap();
+    let yield_op = yield_op
+        .as_any()
+        .downcast_ref::<dialect::scf::YieldOp>()
+        .unwrap();
+    lower_yield_op(&yield_op, after.clone())?;
 
     Ok((then, els))
 }

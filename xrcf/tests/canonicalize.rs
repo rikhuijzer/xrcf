@@ -28,9 +28,13 @@ fn determine_users() {
     let module = module.try_read().unwrap();
 
     let ops = module.ops();
+    let ops = ops.vec();
+    let ops = ops.try_read().unwrap();
     assert_eq!(ops.len(), 1);
     let func_op = ops[0].try_read().unwrap();
     let ops = func_op.ops();
+    let ops = ops.vec();
+    let ops = ops.try_read().unwrap();
     assert_eq!(ops.len(), 3);
 
     let op0 = ops[0].try_read().unwrap();
