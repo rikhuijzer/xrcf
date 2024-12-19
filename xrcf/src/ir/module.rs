@@ -58,8 +58,7 @@ impl ModuleOp {
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
         };
         let blocks = region.blocks();
-        let blocks = blocks.try_read().unwrap();
-        let block = match blocks.first() {
+        let block = match blocks.into_iter().next() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };

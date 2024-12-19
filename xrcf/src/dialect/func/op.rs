@@ -413,11 +413,8 @@ impl<T: ParserDispatch> Parser<T> {
 
             {
                 let blocks = region.blocks();
-                let blocks = blocks.try_read().unwrap();
-                let block = blocks.first().unwrap();
-                let arguments = arguments.vec();
-                let arguments = arguments.try_read().unwrap();
-                for argument in arguments.iter() {
+                let block = blocks.into_iter().next().unwrap();
+                for argument in arguments.into_iter() {
                     argument.set_parent(Some(block.clone()));
                 }
             }

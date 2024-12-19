@@ -244,6 +244,7 @@ pub trait GuardedOp {
     fn remove(&self);
     fn replace(&self, new: Arc<RwLock<dyn Op>>);
     fn result(&self, index: usize) -> Arc<RwLock<Value>>;
+    fn set_parent(&self, parent: Arc<RwLock<Block>>);
 }
 
 impl GuardedOp for Arc<RwLock<dyn Op>> {
@@ -276,5 +277,8 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
     }
     fn result(&self, index: usize) -> Arc<RwLock<Value>> {
         self.try_read().unwrap().result(index)
+    }
+    fn set_parent(&self, parent: Arc<RwLock<Block>>) {
+        self.try_read().unwrap().set_parent(parent);
     }
 }
