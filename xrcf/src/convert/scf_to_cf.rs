@@ -71,6 +71,23 @@ fn lower_yield_op(
     Ok(new_op)
 }
 
+fn replace_yield_op(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
+    let ops = block.ops();
+    let mut ops = ops.try_write().unwrap();
+    let ops_clone = ops.clone();
+    let last_op = ops_clone.last().unwrap();
+    let last_op = last_op.try_read().unwrap();
+    let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
+    if let Some(yield_op) = yield_op {
+        let new_op = lower_yield_op(&yield_op, after.clone()).unwrap();
+        ops.pop();
+        ops.push(new_op.clone());
+    } else {
+        let new_op = branch_op(after.clone());
+        ops.push(new_op.clone());
+    };
+}
+
 fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
@@ -296,10 +313,10 @@ fn add_blocks(
         exit.clone()
     };
 
-    // let then_operand =
-    //    add_block_from_region(then_label, after.clone(), then, parent_region.clone())?;
-    // let else_operand = add_block_from_region(after, els, parent_region.clone())?;
-    // let then_operand = else_operand.clone();
+    if has_results {
+        replace_yield_op(then.clone(), after.clone());
+        replace_yield_op(els.clone(), after.clone());
+    }
 
     Ok((then, els))
 }
