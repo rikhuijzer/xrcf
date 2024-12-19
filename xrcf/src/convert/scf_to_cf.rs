@@ -81,7 +81,6 @@ fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
 }
 
 fn add_block_from_region(
-    label: String,
     after: Arc<RwLock<Block>>,
     region: Arc<RwLock<Region>>,
     parent_region: Arc<RwLock<Region>>,
@@ -108,8 +107,6 @@ fn add_block_from_region(
         let op = op.try_read().unwrap();
         op.set_parent(block.clone());
     }
-    let block_label = BlockName::Name(label.clone());
-    block.set_label(block_label);
 
     let label = Value::BlockPtr(BlockPtr::new(block.clone()));
     let label = Arc::new(RwLock::new(label));
@@ -262,15 +259,17 @@ fn add_blocks(
     let results = op.operation().results();
     let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
-    let then_label = format!("{}", parent_region.unique_block_name());
-    let then_label_index = then_label
-        .trim_start_matches("^bb")
-        .parse::<usize>()
-        .unwrap();
     let has_results = !results.is_empty();
-    let else_label = format!("^bb{}", then_label_index + 1);
 
     let then = op.then().expect("Expected `then` region");
+    {
+        let then = then.blocks().vec();
+        let then = then.try_read().unwrap();
+        let then = then.first().unwrap();
+        let then = then.try_write().unwrap();
+        then.set_label(BlockName::Unset);
+    }
+    exit.inline_region_before(then.clone());
     let els = op.els().expect("Expected `else` region");
 
     let after = if has_results {
@@ -298,9 +297,10 @@ fn add_blocks(
         exit.clone()
     };
 
-    let then_operand =
-        add_block_from_region(then_label, after.clone(), then, parent_region.clone())?;
-    let else_operand = add_block_from_region(else_label, after, els, parent_region.clone())?;
+    // let then_operand =
+    //    add_block_from_region(then_label, after.clone(), then, parent_region.clone())?;
+    let else_operand = add_block_from_region(after, els, parent_region.clone())?;
+    let then_operand = else_operand.clone();
 
     Ok((then_operand, else_operand))
 }
