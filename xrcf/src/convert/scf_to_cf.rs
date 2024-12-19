@@ -9,6 +9,7 @@ use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockLabel;
 use crate::ir::BlockName;
+use crate::ir::BlockPtr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -111,8 +112,8 @@ fn add_block_from_region(
     }
     let block_label = BlockName::Name(label.clone());
     block.set_label(block_label);
-    let label = BlockLabel::new(label);
-    let label = Value::BlockLabel(label);
+
+    let label = Value::BlockPtr(BlockPtr::new(block.clone()));
     let label = Arc::new(RwLock::new(label));
     let operand = OpOperand::new(label);
     let operand = Arc::new(RwLock::new(operand));
@@ -277,8 +278,9 @@ fn add_blocks(
     } else {
         exit_label.clone()
     };
-    let then_label = add_block_from_region(then_label, &after_label, then, parent_region.clone())?;
-    let else_label = add_block_from_region(else_label, &after_label, els, parent_region.clone())?;
+    let then_operand =
+        add_block_from_region(then_label, &after_label, then, parent_region.clone())?;
+    let else_operand = add_block_from_region(else_label, &after_label, els, parent_region.clone())?;
 
     if has_results {
         let merge_block_arguments = add_merge_block(
@@ -308,7 +310,7 @@ fn add_blocks(
         }
     }
     add_exit_block(op, parent_region.clone(), exit_label)?;
-    Ok((then_label, else_label))
+    Ok((then_operand, else_operand))
 }
 
 impl Rewrite for IfLowering {
@@ -324,19 +326,21 @@ impl Rewrite for IfLowering {
         let parent_region = parent.parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
 
-        let (then_label, else_label) = add_blocks(&op, parent_region.clone())?;
+        let (then_operand, else_operand) = add_blocks(&op, parent_region.clone())?;
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
-        operation.set_operand(1, then_label.clone());
-        operation.set_operand(2, else_label.clone());
+        operation.set_operand(1, then_operand.clone());
+        operation.set_operand(2, else_operand.clone());
         let new = dialect::cf::CondBranchOp::from_operation(operation);
         let new: Arc<RwLock<dyn Op>> = Arc::new(RwLock::new(new));
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
         new.operation().set_results(Values::default());
+
+        println!("{}", parent_region.try_read().unwrap());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }
