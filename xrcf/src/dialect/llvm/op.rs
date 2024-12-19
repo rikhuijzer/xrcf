@@ -6,7 +6,6 @@ use crate::ir::AnyAttr;
 use crate::ir::Attribute;
 use crate::ir::Attributes;
 use crate::ir::Block;
-use crate::ir::BlockDest;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
 use crate::ir::Op;
@@ -160,15 +159,14 @@ impl Parse for AllocaOp {
 /// `llvm.br`
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
-    dest: Option<Arc<RwLock<BlockDest>>>,
 }
 
 impl BranchOp {
-    pub fn dest(&self) -> Option<Arc<RwLock<BlockDest>>> {
-        self.dest.clone()
+    pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
+        self.operation().operand(0)
     }
-    pub fn set_dest(&mut self, dest: Option<Arc<RwLock<BlockDest>>>) {
-        self.dest = dest;
+    pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
+        self.operation().set_operand(0, dest);
     }
 }
 
@@ -177,10 +175,7 @@ impl Op for BranchOp {
         OperationName::new("llvm.br".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BranchOp {
-            operation,
-            dest: None,
-        }
+        BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -191,18 +186,22 @@ impl Op for BranchOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn block_destination(&self) -> Option<Arc<RwLock<BlockDest>>> {
-        self.dest.clone()
-    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest.as_ref().unwrap();
+        let dest = self.dest();
+        let dest = dest.unwrap();
         let dest = dest.try_read().unwrap();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
-        if !operands.vec().try_read().unwrap().is_empty() {
+        let operands = operands.vec();
+        let operands = operands.try_read().unwrap();
+        let operands = operands.iter().skip(1);
+        if 0 < operands.len() {
             write!(f, "(")?;
-            operands.display_with_types(f)?;
+            for operand in operands {
+                let operand = operand.try_read().unwrap();
+                operand.display_with_type(f)?;
+            }
             write!(f, ")")?;
         }
         Ok(())
@@ -220,6 +219,8 @@ impl Parse for BranchOp {
 
         let operation = Arc::new(RwLock::new(operation));
         let dest = parser.parse_block_dest()?;
+        let dest = Arc::new(RwLock::new(dest));
+        operation.set_operand(0, dest);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
@@ -235,8 +236,7 @@ impl Parse for BranchOp {
             }
             parser.expect(TokenKind::RParen)?;
         }
-        let dest = Some(Arc::new(RwLock::new(dest)));
-        let op = BranchOp { operation, dest };
+        let op = BranchOp { operation };
         let op = Arc::new(RwLock::new(op));
         Ok(op)
     }

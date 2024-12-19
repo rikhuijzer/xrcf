@@ -266,6 +266,7 @@ impl Operation {
                     }
                 }
                 Value::BlockLabel(label) => label.name(),
+                Value::BlockPtr(_) => continue,
                 Value::Constant(_) => continue,
                 Value::FuncResult(_) => continue,
                 Value::OpResult(res) => {

@@ -19,6 +19,11 @@ pub struct OpOperand {
 }
 
 impl OpOperand {
+    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+        let value = Value::from_block(block);
+        let value = Arc::new(RwLock::new(value));
+        OpOperand { value }
+    }
     pub fn new(value: Arc<RwLock<Value>>) -> Self {
         OpOperand { value }
     }
@@ -34,17 +39,25 @@ impl OpOperand {
     }
     /// If this `OpOperand` is the result of an operation, return the operation
     /// that defines it.
+    ///
+    /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
         let value = &*value.try_read().unwrap();
         match value {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
+            Value::BlockPtr(_) => None,
             Value::Constant(_) => None,
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => op_res.defining_op(),
             Value::Variadic => None,
         }
+    }
+    pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let typ = self.typ().unwrap();
+        let typ = typ.try_read().unwrap();
+        write!(f, "{self} : {typ}")
     }
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let value = self.value.try_read().unwrap();
@@ -110,14 +123,13 @@ impl OpOperands {
     pub fn display_with_types(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operands = self.operands.try_read().unwrap();
         if !operands.is_empty() {
-            let mut texts = vec![];
-            for operand in operands.iter() {
+            for (index, operand) in operands.iter().enumerate() {
+                if 0 < index {
+                    write!(f, ", ")?;
+                }
                 let operand = operand.try_read().unwrap();
-                let typ = operand.typ().unwrap();
-                let typ = typ.try_read().unwrap();
-                texts.push(format!("{operand} : {typ}"));
+                operand.display_with_type(f)?;
             }
-            write!(f, "{}", texts.join(", "))?;
         }
         Ok(())
     }

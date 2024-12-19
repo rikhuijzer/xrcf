@@ -196,17 +196,17 @@ fn test_if_else() {
     module {
       llvm.func @main() -> i32 {
         %0 = llvm.mlir.constant(false) : i1
-        llvm.cond_br %0, ^then, ^else
-      ^then:
+        llvm.cond_br %0, ^bb1, ^bb2
+      ^bb1:
         %1 = llvm.mlir.constant(3 : i32) : i32
-        llvm.br ^merge(%1 : i32)
-      ^else:
+        llvm.br ^bb3(%1 : i32)
+      ^bb2:
         %2 = llvm.mlir.constant(4 : i32) : i32
-        llvm.br ^merge(%2 : i32)
-      ^merge(%3 : i32):
-        llvm.br ^exit
-      ^exit:
-        llvm.return %3 : i32
+        llvm.br ^bb3(%2 : i32)
+      ^bb3(%arg0 : i32):
+        llvm.br ^bb4
+      ^bb4:
+        llvm.return %arg0 : i32
       }
     }
     "#};
@@ -215,15 +215,15 @@ fn test_if_else() {
     source_filename = "LLVMDialectModule"
 
     define i32 @main() {
-      br i1 false, label %then, label %else
-    then:
-      br label %merge
-    else:
-      br label %merge
-    merge:
-      %0 = phi i32 [ 3, %then ], [ 4, %else ]
-      br label %exit
-    exit:
+      br i1 false, label %bb1, label %bb2
+    bb1:
+      br label %bb3
+    bb2:
+      br label %bb3
+    bb3:
+      %0 = phi i32 [ 3, %bb1 ], [ 4, %bb2 ]
+      br label %bb4
+    bb4:
       ret i32 %0
     }
 
@@ -231,6 +231,8 @@ fn test_if_else() {
 
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_exact(&actual, &src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_exact(&actual, expected, Location::caller());

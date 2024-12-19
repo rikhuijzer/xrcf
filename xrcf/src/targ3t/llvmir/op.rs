@@ -4,7 +4,7 @@ use crate::ir::display_region_inside_func;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
-use crate::ir::BlockDest;
+use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
@@ -44,8 +44,18 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "{typ} {value}")
         }
         Value::BlockLabel(label) => {
-            let label = label.name();
-            let label = label.split_once('^').unwrap().1;
+            panic!("BlockLabel for {label} should have been BlockPtr");
+        }
+        Value::BlockPtr(ptr) => {
+            let ptr = ptr.block();
+            let ptr = ptr.try_read().unwrap();
+            let label = ptr.label();
+            let label = label.try_read().unwrap();
+            let label = match &*label {
+                BlockName::Name(name) => name.to_string(),
+                BlockName::Unnamed => panic!("Expected a named block"),
+                BlockName::Unset => panic!("Expected a named block"),
+            };
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
@@ -237,15 +247,11 @@ impl Display for CallOp {
 }
 
 /// `br`
+///
+/// Can be a conditional as well as an unconditional branch. Branch targets
+/// are stored as operands.
 pub struct BranchOp {
     operation: Arc<RwLock<Operation>>,
-    dest: Option<Arc<RwLock<BlockDest>>>,
-}
-
-impl BranchOp {
-    pub fn set_dest(&mut self, dest: Arc<RwLock<BlockDest>>) {
-        self.dest = Some(dest);
-    }
 }
 
 impl Op for BranchOp {
@@ -253,10 +259,7 @@ impl Op for BranchOp {
         OperationName::new("branch".to_string())
     }
     fn new(operation: Arc<RwLock<Operation>>) -> Self {
-        BranchOp {
-            operation,
-            dest: None,
-        }
+        BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -266,12 +269,7 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "br ")?;
-        if let Some(dest) = &self.dest {
-            write!(f, "label {}", dest.try_read().unwrap())?;
-        } else {
-            // Conditional branch (e.g., `br i1 %cond, label %then, label %else`).
-            display_operands(f, &self.operation().operands())?;
-        }
+        display_operands(f, &self.operation().operands())?;
         Ok(())
     }
 }
@@ -471,7 +469,13 @@ impl Op for PhiOp {
                 value.to_string()
             };
             let block = block.try_read().unwrap();
-            let mut label = block.label().expect("expected label");
+            let label = block.label();
+            let label = label.try_read().unwrap();
+            let mut label = match &*label {
+                BlockName::Name(name) => name.to_string(),
+                BlockName::Unnamed => panic!("Expected a named block"),
+                BlockName::Unset => panic!("Expected a named block"),
+            };
             if !label.starts_with('%') {
                 label = format!("%{label}");
             }

@@ -1,6 +1,7 @@
 use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -119,6 +120,19 @@ impl Display for BlockArgument {
     }
 }
 
+/// A label to a block.
+///
+/// This is a temporary data structure that holds a label until the block is
+/// parsed. At that point, the [BlockLabel]s are replaced by [BlockPtr]s.
+///
+/// Note that because this is a [Value], it can be directly stored in
+/// `operation.operands`. To model labels with operands like
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+/// store the `^merge` as a [BlockLabel] and the `%c4` as an [OpResult]. This
+/// "encoding" in the operands field has the benefit that other code can easily
+/// check if, for example, a variable is being used.
 pub struct BlockLabel {
     name: String,
 }
@@ -138,6 +152,37 @@ impl BlockLabel {
 impl Display for BlockLabel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+/// A pointer to a block (replaces the block label).
+///
+/// This is essentially a sort of interface so that [OpOperand]'s
+/// pointer (`Arc<RwLock<Value>>`) can point to a block.
+///
+/// To model labels with operands like
+/// ```mlir
+/// cr.br ^merge(%c4: i32)
+/// ```
+/// store the `^merge` as a [BlockPtr] and the `%c4` as an [OpResult]. This
+/// "encoding" in the operands field has the benefit that other code can easily
+/// check if, for example, a variable is being used.
+pub struct BlockPtr {
+    block: Arc<RwLock<Block>>,
+}
+
+impl BlockPtr {
+    pub fn new(block: Arc<RwLock<Block>>) -> Self {
+        BlockPtr { block }
+    }
+    pub fn block(&self) -> Arc<RwLock<Block>> {
+        self.block.clone()
+    }
+}
+
+impl Display for BlockPtr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.block.try_read().unwrap())
     }
 }
 
@@ -396,11 +441,21 @@ impl Display for Variadic {
 /// We also express a [Constant] as a [Value] because it allows us to keep track
 /// of the order of the operands in the [Operation] `operands` field.
 pub enum Value {
+    /// A block argument (e.g., `add_one(%arg0: i64)`).
     BlockArgument(BlockArgument),
+    /// A block label (will be replaced by a pointer once the block is parsed).
     BlockLabel(BlockLabel),
+    /// A pointer to a block (replaces the block label).
+    ///
+    /// This is essentially a sort of interface so that [OpOperand]'s
+    /// pointer (`Arc<RwLock<Value>>`) can point to a block.
+    BlockPtr(BlockPtr),
+    /// A constant value (e.g., `arith.constant 1 : i64`).
     Constant(Constant),
     FuncResult(AnonymousResult),
+    /// A result of an operation (e.g., `%0 = ...`).
     OpResult(OpResult),
+    /// A variadic value.
     Variadic,
 }
 
@@ -429,6 +484,15 @@ impl Value {
                 }
             }
             Value::BlockLabel(label) => Some(label.name.clone()),
+            Value::BlockPtr(block_ptr) => {
+                let label = block_ptr.block().label();
+                let label = label.try_read().unwrap();
+                match &*label {
+                    BlockName::Name(name) => Some(name.clone()),
+                    BlockName::Unnamed => None,
+                    BlockName::Unset => None,
+                }
+            }
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
             Value::OpResult(result) => {
@@ -442,20 +506,22 @@ impl Value {
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
         match self {
             Value::BlockArgument(arg) => Ok(arg.typ.clone()),
-            Value::BlockLabel(_) => todo!(),
+            Value::BlockLabel(_) => panic!("BlockLabel has no type"),
+            Value::BlockPtr(_) => panic!("BlockPtr has no type"),
             Value::Constant(constant) => Ok(constant.typ()),
             Value::FuncResult(result) => Ok(result.typ.clone()),
             Value::OpResult(result) => match result.typ() {
                 Some(typ) => Ok(typ),
                 None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
             },
-            Value::Variadic => todo!(),
+            Value::Variadic => panic!("Variadic has no type"),
         }
     }
     pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
             Value::FuncResult(result) => result.set_typ(typ),
             Value::OpResult(result) => result.set_typ(typ),
@@ -466,6 +532,7 @@ impl Value {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
             Value::BlockLabel(_) => todo!("Cannot set defining op for BlockLabel"),
+            Value::BlockPtr(_) => todo!("Cannot set defining op for BlockPtr"),
             Value::Constant(_) => panic!("Cannot set defining op for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this defining op"),
             Value::OpResult(op_res) => op_res.set_defining_op(op),
@@ -476,6 +543,7 @@ impl Value {
         match self {
             Value::BlockArgument(arg) => arg.set_parent(parent),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(_) => todo!(),
@@ -489,11 +557,16 @@ impl Value {
                 arg.set_name(arg_name);
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => panic!("Cannot set name for Constant"),
             Value::FuncResult(_) => panic!("It is not necessary to set this name"),
             Value::OpResult(result) => result.set_name(name),
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
+    }
+    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+        let ptr = BlockPtr::new(block);
+        Value::BlockPtr(ptr)
     }
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
@@ -539,13 +612,19 @@ impl Value {
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
+        println!("here");
+        let op = op.try_read().unwrap();
+        println!("op: {}", op);
+
         let ops = op.operation().successors();
+        println!("ops.len: {}", ops.len());
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {
         match self {
             Value::BlockArgument(arg) => Users::OpOperands(self.block_arg_users(arg)),
             Value::BlockLabel(_) => todo!(),
+            Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!("so this is empty? not sure yet"),
             Value::FuncResult(_) => todo!(),
             Value::OpResult(op_res) => Users::OpOperands(self.op_result_users(op_res)),
@@ -559,6 +638,7 @@ impl Display for Value {
         match self {
             Value::BlockArgument(arg) => write!(f, "{arg}"),
             Value::BlockLabel(label) => write!(f, "{label}"),
+            Value::BlockPtr(ptr) => write!(f, "{ptr}"),
             Value::Constant(constant) => write!(f, "{constant}"),
             Value::FuncResult(result) => write!(f, "{result}"),
             Value::OpResult(result) => write!(f, "{result}"),
@@ -680,6 +760,7 @@ impl Values {
                 Value::BlockLabel(_) => {
                     panic!("Trying to set defining op for block label")
                 }
+                Value::BlockPtr(_) => panic!("Trying to set defining op for block ptr"),
                 Value::Constant(_) => {
                     panic!("Trying to set defining op for constant")
                 }
@@ -728,63 +809,6 @@ impl Display for Values {
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{joined}")
-    }
-}
-
-/// Call to a destination of type block.
-///
-/// For example, `^merge(%c4: i32)` in:
-///
-/// ```mlir
-/// %c4 = arith.constant 4 : i32
-/// cr.br ^merge(%c4: i32)
-/// ```
-///
-/// or `^then, ^else` in:
-///
-/// ```mlir
-/// cr.cond_br %cond, ^then, ^else
-/// ```
-///
-/// This data structure is used by ops such as `cf.cond_br` to keep track of
-/// multiple destinations.
-///
-/// To allow other parts of the codebase to still recognize uses of some
-/// [OpResult] (like `%c4` in the first example), block destinations do not
-/// contain the [OpOperand]s. The operands are instead stored as operands of the
-/// operation. This is possible because the block destinations in `cr.cond_br` do
-/// not take arguments (let's hope this assumption keeps standing over time or
-/// we need to rewrite this).
-///
-/// Unlike variables ([OpResult]s), block destinations do not contain a pointer
-/// to the block. The reason is that the block definition may appear after the
-/// block destination. Put differently, whereas functions and variables have to
-/// be defined before calling them, blocks don't have to. This means that in
-/// order to parse a block destination, we would need two passes. This is
-/// currently not implemented. The solution would probably to add an
-/// `Option<Arc<RwLock<Block>>>` to this struct and set it later.
-pub struct BlockDest {
-    name: String,
-}
-
-impl BlockDest {
-    pub fn new(name: &str) -> Self {
-        BlockDest {
-            name: name.to_string(),
-        }
-    }
-    /// The name of the destination block (e.g., `^merge`).
-    pub fn name(&self) -> String {
-        self.name.clone()
-    }
-    pub fn set_name(&mut self, name: &str) {
-        self.name = name.to_string();
-    }
-}
-
-impl Display for BlockDest {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name)
     }
 }
 
@@ -910,9 +934,11 @@ impl<T: ParserDispatch> Parser<T> {
     /// ```mlir
     /// cr.br ^exit
     /// ```
-    pub fn parse_block_dest(&mut self) -> Result<BlockDest> {
+    pub fn parse_block_dest(&mut self) -> Result<OpOperand> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
-        Ok(BlockDest { name })
+        let value = Value::BlockLabel(BlockLabel::new(name));
+        let value = Arc::new(RwLock::new(value));
+        Ok(OpOperand::new(value))
     }
 }

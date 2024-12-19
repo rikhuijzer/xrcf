@@ -21,7 +21,6 @@ use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
-use crate::ir::OpOperands;
 use crate::ir::OpResult;
 use crate::ir::Operation;
 use crate::ir::Type;
@@ -152,11 +151,9 @@ impl Rewrite for BlockLowering {
             let blocks = blocks.vec();
             let blocks = blocks.try_read().unwrap();
             for block in blocks.iter() {
-                let label = block.label();
-                if let Some(label) = label {
-                    if label.starts_with("^") {
-                        return Ok(true);
-                    }
+                let label_prefix = block.label_prefix();
+                if label_prefix == "^" {
+                    return Ok(true);
                 }
             }
         }
@@ -165,20 +162,16 @@ impl Rewrite for BlockLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let blocks = op.operation().blocks();
         for block in blocks.iter() {
-            let mut block = block.try_write().unwrap();
-            let label = block.label();
-            if let Some(label) = label {
-                if label.starts_with("^") {
-                    let new_label = label[1..].to_string();
-                    block.set_label(Some(new_label));
-                }
-            }
+            block.set_label_prefix("".to_string());
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }
 }
 
 /// Replace `llvm.br` by `br`.
+///
+/// This is only executed once the `phi` node has been inserted by
+/// [MergeLowering].
 struct BranchLowering;
 
 impl Rewrite for BranchLowering {
@@ -190,11 +183,20 @@ impl Rewrite for BranchLowering {
             let operands = op.operation().operands().vec();
             let operands = operands.try_read().unwrap();
             // Check whether [MergeLowering] has already removed the operands.
-            if operands.is_empty() {
-                return Ok(true);
+            for operand in operands.iter() {
+                let operand = operand.try_read().unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                match &*value {
+                    Value::BlockLabel(_) => {}
+                    Value::BlockPtr(_) => {}
+                    _ => return Ok(false),
+                }
             }
+            Ok(true)
+        } else {
+            Ok(false)
         }
-        Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
@@ -203,15 +205,7 @@ impl Rewrite for BranchLowering {
             .downcast_ref::<dialect::llvm::BranchOp>()
             .unwrap();
         let operation = op.operation();
-        let mut new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
-        let dest = op.dest().unwrap();
-        let mut dest = dest.try_write().unwrap();
-        let name = dest.name();
-        if name.starts_with("^") {
-            let name = name[1..].to_string();
-            dest.set_name(&format!("%{}", name));
-        }
-        new_op.set_dest(op.dest().unwrap());
+        let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -383,7 +377,7 @@ fn determine_argument_pairs(
     let mut argument_pairs = vec![];
     for caller in callers.iter() {
         let caller = caller.try_read().unwrap();
-        let caller_operand = caller.operation().operand(0).unwrap();
+        let caller_operand = caller.operation().operand(1).unwrap();
         let caller_block = caller.operation().parent().unwrap();
         argument_pairs.push((caller_operand, caller_block.clone()));
     }
@@ -514,7 +508,10 @@ fn remove_caller_operands(block: Arc<RwLock<Block>>) {
     let callers = callers.unwrap();
     for caller in callers.iter() {
         let caller = caller.operation();
-        caller.set_operands(OpOperands::default());
+        let operands = caller.operands();
+        let operands = operands.vec();
+        let mut operands = operands.try_write().unwrap();
+        operands.pop();
     }
 }
 
