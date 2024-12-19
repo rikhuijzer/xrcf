@@ -604,13 +604,13 @@ pub struct Blocks {
     vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
 }
 
-impl Iterator for Blocks {
+impl IntoIterator for Blocks {
     type Item = Arc<RwLock<Block>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
 
-    fn next(&mut self) -> Option<Self::Item> {
+    fn into_iter(self) -> Self::IntoIter {
         let vec = self.vec.try_read().unwrap();
-        let mut iter = vec.iter();
-        iter.next().cloned()
+        vec.clone().into_iter()
     }
 }
 

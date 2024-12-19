@@ -8,7 +8,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::BlockPtr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
@@ -246,12 +245,12 @@ fn add_blocks(
     let has_results = !results.is_empty();
 
     let then_region = op.then().expect("Expected `then` region");
-    let then = then_region.blocks().next().unwrap();
+    let then = then_region.blocks().into_iter().next().unwrap();
     then.set_label(BlockName::Unset);
     exit.inline_region_before(then_region.clone());
 
     let else_region = op.els().expect("Expected `else` region");
-    let els = else_region.blocks().next().unwrap();
+    let els = else_region.blocks().into_iter().next().unwrap();
     els.set_label(BlockName::Unset);
     exit.inline_region_before(else_region.clone());
 
