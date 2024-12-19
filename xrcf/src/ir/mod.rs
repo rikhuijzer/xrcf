@@ -21,6 +21,7 @@ pub use attribute::IntegerAttr;
 pub use attribute::StringAttr;
 pub use block::Block;
 pub use block::BlockName;
+pub use block::Blocks;
 pub use block::GuardedBlock;
 pub use block::UnsetBlock;
 pub use module::ModuleOp;

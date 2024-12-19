@@ -58,6 +58,7 @@ impl ModuleOp {
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
         };
         let blocks = region.blocks();
+        let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         let block = match blocks.first() {
             Some(block) => block,
