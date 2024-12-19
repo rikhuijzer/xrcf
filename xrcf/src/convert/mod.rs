@@ -89,7 +89,7 @@ fn apply_rewrites_helper(
     let ops = root.try_read().unwrap().ops();
     for rewrite in rewrites {
         // Determine ops here because `rewrite` may delete an op.
-        for nested_op in ops.iter() {
+        for nested_op in ops.clone() {
             let indent = indent + 1;
             let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
             if let Some(_) = result.is_changed() {

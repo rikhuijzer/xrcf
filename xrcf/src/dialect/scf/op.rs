@@ -4,6 +4,7 @@ use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Ops;
 use crate::ir::Region;
 use crate::parser::Parse;
 use crate::parser::Parser;
@@ -59,7 +60,7 @@ impl Op for IfOp {
     fn operation(&self) -> &Arc<RwLock<Operation>> {
         &self.operation
     }
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    fn ops(&self) -> Ops {
         let mut ops = vec![];
         if let Some(then) = self.then() {
             ops.extend(then.ops());
@@ -67,7 +68,7 @@ impl Op for IfOp {
         if let Some(els) = self.els() {
             ops.extend(els.ops());
         }
-        ops
+        Ops::from_vec(ops)
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let has_results = !self.operation.results().is_empty();
