@@ -40,7 +40,7 @@ impl OpOperand {
     /// If this `OpOperand` is the result of an operation, return the operation
     /// that defines it.
     ///
-    /// Returns `None` if the operand is not an [OpResult].
+    /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
         let value = &*value.try_read().unwrap();
