@@ -683,6 +683,16 @@ pub struct Values {
     values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
 }
 
+impl IntoIterator for Values {
+    type Item = Arc<RwLock<Value>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let vec = self.values.try_read().unwrap();
+        vec.clone().into_iter()
+    }
+}
+
 impl Values {
     pub fn from_vec(values: Vec<Arc<RwLock<Value>>>) -> Self {
         Values {

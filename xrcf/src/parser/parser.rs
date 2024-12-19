@@ -9,6 +9,7 @@ use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
 use crate::ir::BlockPtr;
+use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -171,8 +172,7 @@ enum Dialects {
 
 /// Replace block labels in operands by pointers.
 ///
-/// Replaces operands that use block labels and point to `block` by pointers
-/// after the operands have been parsed earlier.
+/// More specifically, replaces [Value::BlockLabel] by [Value::BlockPtr].
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
@@ -186,8 +186,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     let parent = block.parent().expect("No parent");
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
-    let predecessors = predecessors.try_read().unwrap();
-    for predecessor in predecessors.iter() {
+    for predecessor in predecessors.into_iter() {
         let predecessor = predecessor.try_read().unwrap();
         let ops = predecessor.ops();
         let ops = ops.try_read().unwrap();
@@ -340,7 +339,7 @@ impl<T: ParserDispatch> Parser<T> {
         self.expect(TokenKind::LBrace)?;
         let blocks = vec![];
         let blocks = Arc::new(RwLock::new(blocks));
-        region.set_blocks(blocks.clone());
+        region.set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.try_write().unwrap();
@@ -418,6 +417,7 @@ impl<T: ParserDispatch> Parser<T> {
                 .write()
                 .unwrap()
                 .blocks()
+                .vec()
                 .try_write()
                 .unwrap()
                 .push(block.clone());

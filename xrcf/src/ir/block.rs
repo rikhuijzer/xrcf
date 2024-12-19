@@ -2,6 +2,7 @@ use crate::ir::BlockArgumentName;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -164,10 +165,9 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
-        let predecessors = blocks.try_read().unwrap();
         let predecessors = match index {
-            Some(index) => predecessors[..index].to_vec(),
-            None => predecessors.clone(),
+            Some(index) => blocks.into_iter().take(index).collect(),
+            None => blocks.into_iter().collect(),
         };
         Some(predecessors)
     }
@@ -180,9 +180,8 @@ impl Block {
         let region = region.try_read().unwrap();
         let index = region.index_of(self);
         let blocks = region.blocks();
-        let successors = blocks.try_read().unwrap();
         let successors = match index {
-            Some(index) => successors[index + 1..].to_vec(),
+            Some(index) => blocks.into_iter().skip(index + 1).collect(),
             None => panic!("Expected block to be in region"),
         };
         Some(successors)
@@ -335,24 +334,31 @@ impl Block {
         }
         None
     }
+    /// Return index of `op` in `self`.
+    ///
+    /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
         let ops = ops.try_read().unwrap();
-        for (i, current) in (&ops).iter().enumerate() {
+        ops.iter().position(|current| {
             let current = current.try_read().unwrap();
             let current = current.operation();
-            let current = current.try_read().unwrap();
-            if *current == *op {
-                return Some(i);
-            }
-        }
-        None
+            let current = &*current.try_read().unwrap();
+            std::ptr::eq(current, op)
+        })
     }
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
         self.index_of(&*op.try_read().unwrap())
     }
-    pub fn inline_region_before(&self, _region: Arc<RwLock<Region>>) {
-        todo!()
+    /// Move the blocks that belong to `region` before `self`.
+    ///
+    /// The caller is in charge of transferring the control flow to the region
+    /// and pass it the correct block arguments.
+    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+        let parent = self.parent();
+        let parent = parent.expect("no parent");
+        let blocks = parent.blocks();
+        blocks.splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         let ops = self.ops();
@@ -586,5 +592,71 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn unique_value_name(&self, prefix: &str) -> String {
         self.try_read().unwrap().unique_value_name(prefix)
+    }
+}
+
+#[derive(Clone)]
+pub struct Blocks {
+    vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
+}
+
+impl IntoIterator for Blocks {
+    type Item = Arc<RwLock<Block>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        let vec = self.vec.try_read().unwrap();
+        vec.clone().into_iter()
+    }
+}
+
+impl Blocks {
+    pub fn new(vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) -> Self {
+        Self { vec }
+    }
+    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
+        self.vec.clone()
+    }
+    /// Return the index of `block` in `self`.
+    ///
+    /// Returns `None` if `block` is not found in `self`.
+    pub fn index_of(&self, block: &Block) -> Option<usize> {
+        let vec = self.vec();
+        let vec = vec.try_read().unwrap();
+        if vec.is_empty() {
+            panic!("Trying to find block in empty set of blocks");
+        }
+        vec.iter().position(|b| {
+            let b = &*b.try_read().unwrap();
+            std::ptr::eq(b, block)
+        })
+    }
+    fn transfer(&self, before: &Block, blocks: Blocks) {
+        let index = self.index_of(before);
+        let index = match index {
+            Some(index) => index,
+            None => {
+                panic!("Could not find block in blocks during transfer");
+            }
+        };
+        let vec = self.vec();
+        let mut vec = vec.try_write().unwrap();
+        let blocks = blocks.vec();
+        let mut blocks = blocks.try_write().unwrap();
+        vec.splice(index..index, blocks.iter().cloned());
+        {
+            let parent = before.parent();
+            for block in blocks.iter() {
+                let mut block = block.try_write().unwrap();
+                block.set_parent(parent.clone());
+            }
+        }
+        blocks.clear();
+    }
+    /// Move `blocks` before `before` in `self`.
+    ///
+    /// This also handles side-effects like updating parents.
+    pub fn splice(&self, before: &Block, blocks: Blocks) {
+        self.transfer(before, blocks);
     }
 }

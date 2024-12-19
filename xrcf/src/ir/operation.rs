@@ -125,8 +125,7 @@ pub fn display_region_inside_func(
     if let Some(region) = region {
         let region = region.try_read().unwrap();
         let blocks = region.blocks();
-        let blocks = blocks.try_read().unwrap();
-        if blocks.is_empty() {
+        if blocks.into_iter().next().is_none() {
             write!(f, "\n")
         } else {
             region.display(f, indent)
@@ -203,9 +202,7 @@ impl Operation {
         let region = self.region();
         let region = region.expect("expected region");
         let region = region.try_read().unwrap();
-        let blocks = region.blocks();
-        let blocks = blocks.try_read().unwrap();
-        blocks.to_vec()
+        region.blocks().into_iter().collect::<Vec<_>>()
     }
     pub fn operand_types(&self) -> Types {
         let operands = self.operands.vec();

@@ -408,9 +408,7 @@ impl Op for ModuleOp {
         write!(f, "\n\n")?;
         let region = self.operation().region();
         if let Some(region) = region {
-            let blocks = region.blocks();
-            let blocks = blocks.try_read().unwrap();
-            for block in blocks.iter() {
+            for block in region.blocks().into_iter() {
                 block.display(f, indent)?;
             }
         }

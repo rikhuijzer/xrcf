@@ -1,5 +1,6 @@
 use crate::ir::block::Block;
 use crate::ir::BlockName;
+use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
@@ -14,7 +15,7 @@ pub struct Region {
     ///
     /// This field is an `Arc<RwLock<...>>` because the parser may read the
     /// blocks before the region is fully constructed.
-    blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
+    blocks: Blocks,
     // This field does not have to be an `Arc<RwLock<..>>` because the `Region`
     // is shared via `Arc<RwLock<..>>`.
     parent: Option<Arc<RwLock<dyn Op>>>,
@@ -54,17 +55,14 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
 }
 
 impl Region {
-    pub fn new(
-        blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
-        parent: Option<Arc<RwLock<dyn Op>>>,
-    ) -> Self {
+    pub fn new(blocks: Blocks, parent: Option<Arc<RwLock<dyn Op>>>) -> Self {
         Self { blocks, parent }
     }
-    pub fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
+    pub fn blocks(&self) -> Blocks {
         self.blocks.clone()
     }
     pub fn block(&self, index: usize) -> Arc<RwLock<Block>> {
-        self.blocks.read().unwrap()[index].clone()
+        self.blocks().into_iter().nth(index).unwrap()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.parent.clone()
@@ -72,8 +70,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
         let blocks = self.blocks();
-        let blocks = blocks.try_read().unwrap();
-        for block in blocks.iter() {
+        for block in blocks.into_iter() {
             let ops = block.ops();
             let ops = ops.read().unwrap();
             for op in ops.iter() {
@@ -82,32 +79,20 @@ impl Region {
         }
         result
     }
+    /// Return the index of `block` in `self`.
+    ///
+    /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
-        let blocks = self.blocks();
-        let blocks = blocks.try_read().unwrap();
-        if blocks.is_empty() {
-            panic!("Region {self} has no blocks");
-        }
-        for (i, current) in (&blocks).iter().enumerate() {
-            let current = current.try_read().unwrap();
-            if *current == *block {
-                return Some(i);
-            }
-        }
-        None
+        self.blocks().index_of(block)
     }
-    pub fn is_empty(&self) -> bool {
-        let blocks = self.blocks();
-        let blocks = blocks.try_read().unwrap();
-        blocks.is_empty()
-    }
-    pub fn set_blocks(&mut self, blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) {
+    pub fn set_blocks(&mut self, blocks: Blocks) {
         self.blocks = blocks;
     }
     pub fn add_empty_block(&self) -> UnsetBlock {
         let block = Block::default();
         let block = Arc::new(RwLock::new(block));
         let blocks = self.blocks();
+        let blocks = blocks.vec();
         let mut blocks = blocks.try_write().unwrap();
         blocks.push(block.clone());
         UnsetBlock::new(block)
@@ -118,6 +103,7 @@ impl Region {
         let new = Block::default();
         let new = Arc::new(RwLock::new(new));
         let blocks = self.blocks();
+        let blocks = blocks.vec();
         let mut blocks = blocks.try_write().unwrap();
         blocks.insert(index, new.clone());
         UnsetBlock::new(new)
@@ -128,6 +114,7 @@ impl Region {
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         write!(f, " {{\n")?;
         let blocks = self.blocks();
+        let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         set_fresh_block_labels(&blocks);
         for block in blocks.iter() {
@@ -139,10 +126,8 @@ impl Region {
     }
     /// Find a unique name for a block (for example, `bb2`).
     pub fn unique_block_name(&self) -> String {
-        let blocks = self.blocks();
-        let blocks = blocks.try_read().unwrap();
         let mut new_name: i32 = 0;
-        for block in blocks.iter() {
+        for block in self.blocks().into_iter() {
             let block = block.try_read().unwrap();
             let label = block.label();
             let label = label.try_read().unwrap();
@@ -173,7 +158,7 @@ impl Display for Region {
 impl Default for Region {
     fn default() -> Self {
         Self {
-            blocks: Arc::new(RwLock::new(vec![])),
+            blocks: Blocks::new(Arc::new(RwLock::new(vec![]))),
             parent: None,
         }
     }
@@ -182,10 +167,10 @@ impl Default for Region {
 pub trait GuardedRegion {
     fn add_empty_block(&self) -> UnsetBlock;
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock;
-    fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>>;
+    fn blocks(&self) -> Blocks;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-    fn set_blocks(&self, blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>);
+    fn set_blocks(&self, blocks: Blocks);
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>);
     fn unique_block_name(&self) -> String;
 }
@@ -197,7 +182,7 @@ impl GuardedRegion for Arc<RwLock<Region>> {
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
         self.try_read().unwrap().add_empty_block_before(block)
     }
-    fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
+    fn blocks(&self) -> Blocks {
         self.try_read().unwrap().blocks()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -206,7 +191,7 @@ impl GuardedRegion for Arc<RwLock<Region>> {
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         self.try_read().unwrap().ops()
     }
-    fn set_blocks(&self, blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) {
+    fn set_blocks(&self, blocks: Blocks) {
         self.try_write().unwrap().set_blocks(blocks);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>) {
