@@ -612,7 +612,12 @@ impl Value {
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
+        println!("here");
+        let op = op.try_read().unwrap();
+        println!("op: {}", op);
+
         let ops = op.operation().successors();
+        println!("ops.len: {}", ops.len());
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {

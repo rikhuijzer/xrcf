@@ -216,6 +216,18 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
     Ok(Values::from_vec(out))
 }
 
+fn results_users(results: Values) -> Vec<Users> {
+    let results = results.vec();
+    let results = results.try_read().unwrap();
+    let mut out = vec![];
+    for result in results.iter() {
+        let result = result.try_read().unwrap();
+        let users = result.users();
+        out.push(users);
+    }
+    out
+}
+
 /// Add blocks for the `then` and `els` regions of `scf.if`.
 ///
 /// For example, this rewrites:
@@ -247,13 +259,14 @@ fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
+    let results = op.operation().results();
+    let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
     let then_label = format!("{}", parent_region.unique_block_name());
     let then_label_index = then_label
         .trim_start_matches("^bb")
         .parse::<usize>()
         .unwrap();
-    let results = op.operation().results();
     let has_results = !results.is_empty();
     let else_label = format!("^bb{}", then_label_index + 1);
 
@@ -266,16 +279,14 @@ fn add_blocks(
         let merge_block_arguments = merge_block_arguments.vec();
         let merge_block_arguments = merge_block_arguments.try_read().unwrap();
 
-        let results = results.vec();
-        let results = results.try_read().unwrap();
-        assert!(results.len() == merge_block_arguments.len());
-        for i in 0..results.len() {
-            let result = results[i].try_read().unwrap();
-            let users = result.users();
+        assert!(results_users.len() == merge_block_arguments.len());
+        for i in 0..results_users.len() {
+            let users = &results_users[i];
             let users = match users {
                 Users::OpOperands(users) => users,
-                Users::HasNoOpResults => vec![],
+                Users::HasNoOpResults => &vec![],
             };
+            println!("users.len: {}", users.len());
             let arg = merge_block_arguments[i].clone();
             for user in users.iter() {
                 let mut user = user.try_write().unwrap();
