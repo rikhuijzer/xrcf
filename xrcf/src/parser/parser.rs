@@ -186,9 +186,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     let parent = block.parent().expect("No parent");
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
-    let predecessors = predecessors.vec();
-    let predecessors = predecessors.try_read().unwrap();
-    for predecessor in predecessors.iter() {
+    for predecessor in predecessors.into_iter() {
         let predecessor = predecessor.try_read().unwrap();
         let ops = predecessor.ops();
         let ops = ops.try_read().unwrap();

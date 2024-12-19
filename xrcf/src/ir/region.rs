@@ -62,7 +62,7 @@ impl Region {
         self.blocks.clone()
     }
     pub fn block(&self, index: usize) -> Arc<RwLock<Block>> {
-        self.blocks.vec().try_read().unwrap()[index].clone()
+        self.blocks().into_iter().nth(index).unwrap()
     }
     pub fn parent(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.parent.clone()
@@ -70,9 +70,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
         let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
-        for block in blocks.iter() {
+        for block in blocks.into_iter() {
             let ops = block.ops();
             let ops = ops.read().unwrap();
             for op in ops.iter() {
@@ -86,12 +84,6 @@ impl Region {
     /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         self.blocks().index_of(block)
-    }
-    pub fn is_empty(&self) -> bool {
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
-        blocks.is_empty()
     }
     pub fn set_blocks(&mut self, blocks: Blocks) {
         self.blocks = blocks;
@@ -134,11 +126,8 @@ impl Region {
     }
     /// Find a unique name for a block (for example, `bb2`).
     pub fn unique_block_name(&self) -> String {
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
         let mut new_name: i32 = 0;
-        for block in blocks.iter() {
+        for block in self.blocks().into_iter() {
             let block = block.try_read().unwrap();
             let label = block.label();
             let label = label.try_read().unwrap();
