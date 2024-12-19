@@ -71,7 +71,17 @@ fn lower_yield_op(
     Ok(new_op)
 }
 
-fn replace_yield_op(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
+fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+    let operation = Operation::default();
+    let mut new_op = dialect::cf::BranchOp::from_operation(operation);
+    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
+    new_op.set_dest(operand);
+    let new_op = Arc::new(RwLock::new(new_op));
+    new_op
+}
+
+/// Add a `cf.br` to the end of `block` with destination `after`.
+fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
     let ops = block.ops();
     let mut ops = ops.try_write().unwrap();
     let ops_clone = ops.clone();
@@ -84,52 +94,9 @@ fn replace_yield_op(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
         ops.push(new_op.clone());
     } else {
         let new_op = branch_op(after.clone());
+        new_op.set_parent(block.clone());
         ops.push(new_op.clone());
     };
-}
-
-fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
-    let operation = Operation::default();
-    let mut new_op = dialect::cf::BranchOp::from_operation(operation);
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
-    new_op.set_dest(operand);
-    let new_op = Arc::new(RwLock::new(new_op));
-    new_op
-}
-
-fn add_block_from_region(
-    after: Arc<RwLock<Block>>,
-    region: Arc<RwLock<Region>>,
-    parent_region: Arc<RwLock<Region>>,
-) -> Result<Arc<RwLock<OpOperand>>> {
-    let mut ops = region.ops();
-    let ops_clone = ops.clone();
-    let last_op = ops_clone.last().unwrap();
-    let last_op = last_op.try_read().unwrap();
-    let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
-    if let Some(yield_op) = yield_op {
-        let new_op = lower_yield_op(&yield_op, after.clone())?;
-        ops.pop();
-        ops.push(new_op.clone());
-    } else {
-        let new_op = branch_op(after.clone());
-        ops.push(new_op.clone());
-    };
-
-    let unset_block = parent_region.add_empty_block_before(after);
-    let block = unset_block.set_parent(Some(parent_region.clone()));
-    block.set_ops(Arc::new(RwLock::new(ops.clone())));
-    block.set_label(BlockName::Unset);
-    for op in ops.iter() {
-        let op = op.try_read().unwrap();
-        op.set_parent(block.clone());
-    }
-
-    let label = Value::BlockPtr(BlockPtr::new(block.clone()));
-    let label = Arc::new(RwLock::new(label));
-    let operand = OpOperand::new(label);
-    let operand = Arc::new(RwLock::new(operand));
-    Ok(operand)
 }
 
 /// Move all successors of `scf.if` to the return block.
@@ -313,10 +280,8 @@ fn add_blocks(
         exit.clone()
     };
 
-    if has_results {
-        replace_yield_op(then.clone(), after.clone());
-        replace_yield_op(els.clone(), after.clone());
-    }
+    add_branch_to_after(then.clone(), after.clone());
+    add_branch_to_after(els.clone(), after.clone());
 
     Ok((then, els))
 }
