@@ -381,7 +381,6 @@ impl Operation {
             }
         };
         let ops = parent.ops();
-        let ops = ops.vec();
         let ops = ops.try_read().unwrap();
         ops[..index].to_vec()
     }
@@ -398,7 +397,6 @@ impl Operation {
             }
         };
         let ops = parent.ops();
-        let ops = ops.vec();
         let ops = ops.try_read().unwrap();
         ops[index + 1..].to_vec()
     }

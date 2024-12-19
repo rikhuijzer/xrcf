@@ -5,7 +5,6 @@ use crate::ir::GuardedBlock;
 use crate::ir::GuardedRegion;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::Ops;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
@@ -170,12 +169,12 @@ pub trait Op {
     /// Some ops may decide to override this implementation if the children are
     /// not located inside the main region of the op. For example, the `scf.if`
     /// operation contains two regions: the "then" region and the "else" region.
-    fn ops(&self) -> Ops {
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let region = self.region();
         if let Some(region) = region {
             region.ops()
         } else {
-            Ops::default()
+            vec![]
         }
     }
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
@@ -240,7 +239,7 @@ pub trait GuardedOp {
     fn is_const(&self) -> bool;
     fn name(&self) -> OperationName;
     fn operation(&self) -> Arc<RwLock<Operation>>;
-    fn ops(&self) -> Ops;
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
     fn remove(&self);
     fn replace(&self, new: Arc<RwLock<dyn Op>>);
@@ -263,7 +262,7 @@ impl GuardedOp for Arc<RwLock<dyn Op>> {
     fn operation(&self) -> Arc<RwLock<Operation>> {
         self.try_read().unwrap().operation().clone()
     }
-    fn ops(&self) -> Ops {
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         self.try_read().unwrap().ops()
     }
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {

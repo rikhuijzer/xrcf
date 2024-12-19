@@ -64,8 +64,9 @@ impl ModuleOp {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        let mut ops = block.try_read().unwrap().ops();
-        let op = ops.next();
+        let ops = block.read().unwrap().ops();
+        let ops = ops.read().unwrap();
+        let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));
         } else {

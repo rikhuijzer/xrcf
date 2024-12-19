@@ -3,7 +3,6 @@ use crate::ir::BlockName;
 use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
-use crate::ir::Ops;
 use crate::ir::UnsetBlock;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -68,20 +67,19 @@ impl Region {
     pub fn parent(&self) -> Option<Arc<RwLock<dyn Op>>> {
         self.parent.clone()
     }
-    pub fn ops(&self) -> Ops {
-        let mut result = vec![];
+    pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+        let mut result = Vec::new();
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.try_read().unwrap();
         for block in blocks.iter() {
             let ops = block.ops();
-            let ops = ops.vec();
             let ops = ops.read().unwrap();
             for op in ops.iter() {
                 result.push(op.clone());
             }
         }
-        Ops::from_vec(result)
+        result
     }
     /// Return the index of `block` in `self`.
     ///
@@ -182,7 +180,7 @@ pub trait GuardedRegion {
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock;
     fn blocks(&self) -> Blocks;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn ops(&self) -> Ops;
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn set_blocks(&self, blocks: Blocks);
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>);
     fn unique_block_name(&self) -> String;
@@ -201,7 +199,7 @@ impl GuardedRegion for Arc<RwLock<Region>> {
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.try_read().unwrap().display(f, indent)
     }
-    fn ops(&self) -> Ops {
+    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         self.try_read().unwrap().ops()
     }
     fn set_blocks(&self, blocks: Blocks) {

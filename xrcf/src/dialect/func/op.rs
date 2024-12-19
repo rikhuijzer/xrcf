@@ -10,7 +10,6 @@ use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
-use crate::ir::Ops;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
@@ -249,14 +248,15 @@ impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
         let read = op.try_read().unwrap();
-        let mut ops = read.ops();
-        if ops.next().is_none() {
+        let ops = read.ops();
+        if ops.is_empty() {
             let operation = self.operation();
             let region = operation.region();
             if region.is_some() {
                 panic!("Expected region to be empty");
             }
-            let ops = Ops::default();
+            let ops = vec![op.clone()];
+            let ops = Arc::new(RwLock::new(ops));
             let region = Region::default();
             let without_parent = region.add_empty_block();
             let region = Arc::new(RwLock::new(region));

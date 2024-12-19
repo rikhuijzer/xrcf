@@ -19,7 +19,6 @@ use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
 use crate::ir::Operation;
-use crate::ir::Ops;
 use crate::ir::Region;
 use crate::ir::Type;
 use crate::ir::TypeParse;
@@ -192,7 +191,8 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     for predecessor in predecessors.iter() {
         let predecessor = predecessor.try_read().unwrap();
         let ops = predecessor.ops();
-        for op in ops {
+        let ops = ops.try_read().unwrap();
+        for op in ops.iter() {
             let op = op.try_read().unwrap();
             let operands = op.operation().operands().vec();
             let operands = operands.try_read().unwrap();
@@ -293,7 +293,8 @@ impl<T: ParserDispatch> Parser<T> {
             (label, values)
         };
 
-        let ops = Ops::default();
+        let ops = vec![];
+        let ops = Arc::new(RwLock::new(ops));
         let label = Arc::new(RwLock::new(label));
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
@@ -309,17 +310,17 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            let ops = ops.vec();
-            let mut ops = ops.try_write().unwrap();
+            let mut ops = ops.write().unwrap();
             ops.push(op.clone());
         }
-        if ops.clone().next().is_none() {
+        if ops.read().unwrap().is_empty() {
             let token = self.peek();
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
         let ops = block.ops();
-        for op in ops {
+        let ops = ops.try_read().unwrap();
+        for op in ops.iter() {
             op.operation().set_parent(Some(block.clone()));
         }
         Ok(block)
@@ -403,13 +404,14 @@ impl<T: ParserDispatch> Parser<T> {
                     ops.push(op.clone());
                 }
             }
-            let ops = Ops::default();
+            let ops = Arc::new(RwLock::new(ops));
             let arguments = Values::default();
             let label = Arc::new(RwLock::new(BlockName::Unnamed));
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
-                for child_op in ops {
+                let ops = ops.read().unwrap();
+                for child_op in ops.iter() {
                     child_op.operation().set_parent(Some(block.clone()));
                 }
             }
