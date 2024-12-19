@@ -92,15 +92,15 @@ fn add_block_from_region(
     let last_op = last_op.try_read().unwrap();
     let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
     if let Some(yield_op) = yield_op {
-        let new_op = lower_yield_op(&yield_op, after)?;
+        let new_op = lower_yield_op(&yield_op, after.clone())?;
         ops.pop();
         ops.push(new_op.clone());
     } else {
-        let new_op = branch_op(after);
+        let new_op = branch_op(after.clone());
         ops.push(new_op.clone());
     };
 
-    let unset_block = parent_region.add_empty_block();
+    let unset_block = parent_region.add_empty_block_before(after);
     let block = unset_block.set_parent(Some(parent_region.clone()));
     block.set_ops(Arc::new(RwLock::new(ops.clone())));
     block.set_label(BlockName::Unset);
@@ -320,8 +320,6 @@ impl Rewrite for IfLowering {
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
         new.operation().set_results(Values::default());
-
-        println!("{}", parent_region.try_read().unwrap());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

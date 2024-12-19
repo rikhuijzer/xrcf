@@ -104,13 +104,23 @@ impl Region {
     pub fn set_blocks(&mut self, blocks: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) {
         self.blocks = blocks;
     }
-    pub fn add_empty_block(&mut self) -> UnsetBlock {
+    pub fn add_empty_block(&self) -> UnsetBlock {
         let block = Block::default();
         let block = Arc::new(RwLock::new(block));
         let blocks = self.blocks();
         let mut blocks = blocks.try_write().unwrap();
         blocks.push(block.clone());
         UnsetBlock::new(block)
+    }
+    pub fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
+        let index = self.index_of(&block.try_read().unwrap()).unwrap();
+
+        let new = Block::default();
+        let new = Arc::new(RwLock::new(new));
+        let blocks = self.blocks();
+        let mut blocks = blocks.try_write().unwrap();
+        blocks.insert(index, new.clone());
+        UnsetBlock::new(new)
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
         self.parent = parent;
@@ -171,6 +181,7 @@ impl Default for Region {
 
 pub trait GuardedRegion {
     fn add_empty_block(&self) -> UnsetBlock;
+    fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock;
     fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
@@ -181,7 +192,10 @@ pub trait GuardedRegion {
 
 impl GuardedRegion for Arc<RwLock<Region>> {
     fn add_empty_block(&self) -> UnsetBlock {
-        self.try_write().unwrap().add_empty_block()
+        self.try_read().unwrap().add_empty_block()
+    }
+    fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
+        self.try_read().unwrap().add_empty_block_before(block)
     }
     fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
         self.try_read().unwrap().blocks()
