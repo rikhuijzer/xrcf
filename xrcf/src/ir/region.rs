@@ -76,7 +76,7 @@ impl Region {
         for block in blocks.iter() {
             let ops = block.ops();
             let ops = ops.vec();
-            let ops = ops.read().unwrap();
+            let ops = ops.try_read().unwrap();
             for op in ops.iter() {
                 result.push(op.clone());
             }
