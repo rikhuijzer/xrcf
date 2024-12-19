@@ -1,4 +1,7 @@
 use crate::ir::BlockArgumentName;
+use crate::ir::GuardedOp;
+use crate::ir::GuardedOpOperand;
+use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -9,11 +12,27 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+#[derive(Clone, PartialEq)]
+pub enum BlockName {
+    /// The block has no label.
+    Unnamed,
+    /// The name of the block.
+    Name(String),
+    /// The block has a label, but it is not set yet.
+    Unset,
+}
+
 /// A collection of [Op]s.
 ///
 /// A block is always nested below a [Region].
 pub struct Block {
-    label: Option<String>,
+    /// The label of the block.
+    ///
+    /// The label is only used during parsing to see which operands point to
+    /// this block. During printing, a new name is generated.
+    label: Arc<RwLock<BlockName>>,
+    /// The prefix for the label (defaults to `^`).
+    label_prefix: String,
     arguments: Values,
     ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
@@ -36,13 +55,14 @@ impl PartialEq for Block {
 
 impl Block {
     pub fn new(
-        label: Option<String>,
+        label: Arc<RwLock<BlockName>>,
         arguments: Values,
         ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
         parent: Option<Arc<RwLock<Region>>>,
     ) -> Self {
         Self {
             label,
+            label_prefix: "^".to_string(),
             arguments,
             ops,
             parent,
@@ -63,11 +83,18 @@ impl Block {
     pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         &mut self.ops
     }
-    pub fn label(&self) -> Option<String> {
+    pub fn label(&self) -> Arc<RwLock<BlockName>> {
         self.label.clone()
     }
-    pub fn set_label(&mut self, label: Option<String>) {
-        self.label = label;
+    pub fn label_prefix(&self) -> String {
+        self.label_prefix.clone()
+    }
+    pub fn set_label(&self, label: BlockName) {
+        let mut label_write = self.label.try_write().unwrap();
+        *label_write = label;
+    }
+    pub fn set_label_prefix(&mut self, label_prefix: String) {
+        self.label_prefix = label_prefix;
     }
     pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
         self.parent.clone()
@@ -84,10 +111,14 @@ impl Block {
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
         let label = self.label();
-        if label.is_none() {
-            return None;
-        }
-        let label = label.unwrap();
+        let label = label.try_read().unwrap();
+        let label = match &*label {
+            BlockName::Unnamed => return None,
+            // We can find callers via `Value::BlockLabel`.
+            BlockName::Name(label) => Some(label),
+            // We can still find callers via `Value::BlockPtr`.
+            BlockName::Unset => None,
+        };
         let predecessors = self.predecessors();
         let predecessors = predecessors.expect("expected predecessors");
         let mut callers = vec![];
@@ -96,13 +127,25 @@ impl Block {
             let ops = predecessor.ops();
             let ops = ops.try_read().unwrap();
             for op in ops.iter() {
-                let op_read = op.try_read().unwrap();
-                let dest = op_read.block_destination();
-                if dest.is_some() {
-                    let dest = dest.unwrap();
-                    let dest = dest.try_read().unwrap();
-                    if canonicalize_label(&dest.name()) == canonicalize_label(&label) {
-                        callers.push(op.clone());
+                let operation = op.operation();
+                let operands = operation.operands().vec();
+                let operands = operands.try_read().unwrap();
+                for operand in operands.iter() {
+                    let value = operand.value();
+                    let value = value.try_read().unwrap();
+                    if let Value::BlockPtr(block_ptr) = &*value {
+                        let current = block_ptr.block();
+                        let current = &*current.try_read().unwrap();
+                        if std::ptr::eq(current, self) {
+                            callers.push(op.clone());
+                        }
+                    } else if let Value::BlockLabel(block_label) = &*value {
+                        if let Some(label) = label {
+                            let current = canonicalize_label(&block_label.name());
+                            if current == canonicalize_label(label) {
+                                callers.push(op.clone());
+                            }
+                        }
                     }
                 }
             }
@@ -207,6 +250,7 @@ impl Block {
                         return None;
                     }
                     Value::BlockLabel(_) => continue,
+                    Value::BlockPtr(_) => continue,
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
@@ -403,10 +447,12 @@ impl Block {
         format!("{prefix}{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        if let Some(label) = &self.label {
+        let label = self.label();
+        let label = label.try_read().unwrap();
+        if let BlockName::Name(name) = &*label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             let spaces = crate::ir::spaces(label_indent);
-            write!(f, "{spaces}{label}")?;
+            write!(f, "{spaces}{name}")?;
             let arguments = self.arguments();
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
@@ -428,7 +474,7 @@ impl Block {
 
 impl Default for Block {
     fn default() -> Self {
-        let label = None;
+        let label = Arc::new(RwLock::new(BlockName::Unnamed));
         let arguments = Values::default();
         let ops = Arc::new(RwLock::new(vec![]));
         let parent = None;
@@ -469,13 +515,15 @@ pub trait GuardedBlock {
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
-    fn label(&self) -> Option<String>;
+    fn label(&self) -> Arc<RwLock<BlockName>>;
+    fn label_prefix(&self) -> String;
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
     fn parent(&self) -> Option<Arc<RwLock<Region>>>;
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn remove(&self, op: Arc<RwLock<Operation>>);
     fn set_arguments(&self, arguments: Values);
-    fn set_label(&self, label: Option<String>);
+    fn set_label(&self, label: BlockName);
+    fn set_label_prefix(&self, label_prefix: String);
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
     fn unique_value_name(&self, prefix: &str) -> String;
@@ -503,8 +551,11 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.try_write().unwrap().insert_after(earlier, later);
     }
-    fn label(&self) -> Option<String> {
+    fn label(&self) -> Arc<RwLock<BlockName>> {
         self.try_read().unwrap().label()
+    }
+    fn label_prefix(&self) -> String {
+        self.try_read().unwrap().label_prefix()
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
         self.try_read().unwrap().ops()
@@ -521,8 +572,11 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     fn set_arguments(&self, arguments: Values) {
         self.try_write().unwrap().set_arguments(arguments);
     }
-    fn set_label(&self, label: Option<String>) {
+    fn set_label(&self, label: BlockName) {
         self.try_write().unwrap().set_label(label);
+    }
+    fn set_label_prefix(&self, label_prefix: String) {
+        self.try_write().unwrap().set_label_prefix(label_prefix);
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
         self.try_write().unwrap().set_ops(ops);

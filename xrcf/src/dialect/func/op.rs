@@ -257,7 +257,7 @@ impl FuncOp {
             }
             let ops = vec![op.clone()];
             let ops = Arc::new(RwLock::new(ops));
-            let mut region = Region::default();
+            let region = Region::default();
             let without_parent = region.add_empty_block();
             let region = Arc::new(RwLock::new(region));
             let block = without_parent.set_parent(Some(region.clone()));

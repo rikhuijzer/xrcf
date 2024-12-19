@@ -7,6 +7,8 @@ use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
+use crate::ir::BlockName;
+use crate::ir::BlockPtr;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -167,6 +169,49 @@ enum Dialects {
     LLVM,
 }
 
+/// Replace block labels in operands by pointers.
+///
+/// Replaces operands that use block labels and point to `block` by pointers
+/// after the operands have been parsed earlier.
+///
+/// Assumes it is only called during the parsing of a block.
+fn replace_block_labels(block: Arc<RwLock<Block>>) {
+    let label = block.label();
+    let label = label.try_read().unwrap();
+    let label = match &*label {
+        BlockName::Name(name) => name.clone(),
+        BlockName::Unnamed => return,
+        BlockName::Unset => return,
+    };
+    let parent = block.parent().expect("No parent");
+    // Assumes the current block was not yet added to the parent region.
+    let predecessors = parent.blocks();
+    let predecessors = predecessors.try_read().unwrap();
+    for predecessor in predecessors.iter() {
+        let predecessor = predecessor.try_read().unwrap();
+        let ops = predecessor.ops();
+        let ops = ops.try_read().unwrap();
+        for op in ops.iter() {
+            let op = op.try_read().unwrap();
+            let operands = op.operation().operands().vec();
+            let operands = operands.try_read().unwrap();
+            for operand in operands.iter() {
+                let mut operand = operand.try_write().unwrap();
+                let value = operand.value();
+                let value = value.try_read().unwrap();
+                if let Value::BlockLabel(current_label) = &*value {
+                    if current_label.name() == label {
+                        let block_ptr = BlockPtr::new(block.clone());
+                        let block_ptr = Value::BlockPtr(block_ptr);
+                        let block_ptr = Arc::new(RwLock::new(block_ptr));
+                        operand.set_value(block_ptr.clone());
+                    }
+                }
+            }
+        }
+    }
+}
+
 impl<T: ParserDispatch> Parser<T> {
     pub fn previous(&self) -> &Token {
         &self.tokens[self.current - 1]
@@ -233,22 +278,26 @@ impl<T: ParserDispatch> Parser<T> {
         let (label, arguments) = if self.is_block_definition() {
             let label = self.expect(TokenKind::CaretIdentifier)?;
             let label = label.lexeme.to_string();
+            let label = BlockName::Name(label);
             let arguments = if self.check(TokenKind::LParen) {
                 self.parse_function_arguments()?
             } else {
                 Values::default()
             };
             self.expect(TokenKind::Colon)?;
-            (Some(label), arguments)
+            (label, arguments)
         } else {
+            let label = BlockName::Unnamed;
             let values = Values::default();
-            (None, values)
+            (label, values)
         };
 
         let ops = vec![];
         let ops = Arc::new(RwLock::new(ops));
+        let label = Arc::new(RwLock::new(label));
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
+        replace_block_labels(block.clone());
         for argument in arguments.vec().try_read().unwrap().iter() {
             let mut argument = argument.try_write().unwrap();
             if let Value::BlockArgument(arg) = &mut *argument {
@@ -356,7 +405,8 @@ impl<T: ParserDispatch> Parser<T> {
             }
             let ops = Arc::new(RwLock::new(ops));
             let arguments = Values::default();
-            let block = Block::new(None, arguments, ops.clone(), Some(module_region.clone()));
+            let label = Arc::new(RwLock::new(BlockName::Unnamed));
+            let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
                 let ops = ops.read().unwrap();

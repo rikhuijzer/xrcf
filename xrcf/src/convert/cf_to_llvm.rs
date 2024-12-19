@@ -22,8 +22,7 @@ impl Rewrite for BranchLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.try_read().unwrap();
         let op = op.as_any().downcast_ref::<cf::BranchOp>().unwrap();
-        let mut new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
-        new_op.set_dest(op.dest().clone());
+        let new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
         let new_op = Arc::new(RwLock::new(new_op));
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
