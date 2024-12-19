@@ -355,15 +355,11 @@ impl Block {
     /// The caller is in charge of transferring the control flow to the region
     /// and pass it the correct block arguments.
     pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        let parent = self.parent();
-        let parent = parent.expect("no parent");
-        let blocks = parent.blocks();
-        blocks.splice(self, region.blocks());
+        let parent = self.parent().expect("no parent");
+        parent.blocks().splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
-        let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        ops.insert(index, op);
+        self.ops.try_write().unwrap().insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         let index = self.index_of_arc(earlier.clone());
