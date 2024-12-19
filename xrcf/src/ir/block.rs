@@ -604,6 +604,16 @@ pub struct Blocks {
     vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
 }
 
+impl Iterator for Blocks {
+    type Item = Arc<RwLock<Block>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let vec = self.vec.try_read().unwrap();
+        let mut iter = vec.iter();
+        iter.next().cloned()
+    }
+}
+
 impl Blocks {
     pub fn new(vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) -> Self {
         Self { vec }

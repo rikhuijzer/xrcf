@@ -262,15 +262,12 @@ fn add_blocks(
     let has_results = !results.is_empty();
 
     let then = op.then().expect("Expected `then` region");
-    {
-        let then = then.blocks().vec();
-        let then = then.try_read().unwrap();
-        let then = then.first().unwrap();
-        let then = then.try_write().unwrap();
-        then.set_label(BlockName::Unset);
-    }
+    then.blocks().next().unwrap().set_label(BlockName::Unset);
     exit.inline_region_before(then.clone());
+
     let els = op.els().expect("Expected `else` region");
+    els.blocks().next().unwrap().set_label(BlockName::Unset);
+    exit.inline_region_before(els.clone());
 
     let after = if has_results {
         let (merge, merge_block_arguments) =
