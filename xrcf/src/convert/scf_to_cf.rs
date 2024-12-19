@@ -255,19 +255,21 @@ fn results_users(results: Values) -> Vec<Users> {
 fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
-) -> Result<(Arc<RwLock<OpOperand>>, Arc<RwLock<OpOperand>>)> {
+) -> Result<(Arc<RwLock<Block>>, Arc<RwLock<Block>>)> {
     let results = op.operation().results();
     let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
     let has_results = !results.is_empty();
 
-    let then = op.then().expect("Expected `then` region");
-    then.blocks().next().unwrap().set_label(BlockName::Unset);
-    exit.inline_region_before(then.clone());
+    let then_region = op.then().expect("Expected `then` region");
+    let then = then_region.blocks().next().unwrap();
+    then.set_label(BlockName::Unset);
+    exit.inline_region_before(then_region.clone());
 
-    let els = op.els().expect("Expected `else` region");
-    els.blocks().next().unwrap().set_label(BlockName::Unset);
-    exit.inline_region_before(els.clone());
+    let else_region = op.els().expect("Expected `else` region");
+    let els = else_region.blocks().next().unwrap();
+    els.set_label(BlockName::Unset);
+    exit.inline_region_before(else_region.clone());
 
     let after = if has_results {
         let (merge, merge_block_arguments) =
@@ -296,10 +298,10 @@ fn add_blocks(
 
     // let then_operand =
     //    add_block_from_region(then_label, after.clone(), then, parent_region.clone())?;
-    let else_operand = add_block_from_region(after, els, parent_region.clone())?;
-    let then_operand = else_operand.clone();
+    // let else_operand = add_block_from_region(after, els, parent_region.clone())?;
+    // let then_operand = else_operand.clone();
 
-    Ok((then_operand, else_operand))
+    Ok((then, els))
 }
 
 impl Rewrite for IfLowering {
@@ -315,13 +317,15 @@ impl Rewrite for IfLowering {
         let parent_region = parent.parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
 
-        let (then_operand, else_operand) = add_blocks(&op, parent_region.clone())?;
+        let (then, els) = add_blocks(&op, parent_region.clone())?;
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
-        operation.set_operand(1, then_operand.clone());
-        operation.set_operand(2, else_operand.clone());
+        let then_operand = Arc::new(RwLock::new(OpOperand::from_block(then)));
+        operation.set_operand(1, then_operand);
+        let els_operand = Arc::new(RwLock::new(OpOperand::from_block(els)));
+        operation.set_operand(2, els_operand);
         let new = dialect::cf::CondBranchOp::from_operation(operation);
         let new: Arc<RwLock<dyn Op>> = Arc::new(RwLock::new(new));
         op.replace(new.clone());
