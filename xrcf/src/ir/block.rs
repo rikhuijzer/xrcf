@@ -625,19 +625,32 @@ impl Blocks {
             std::ptr::eq(b, block)
         })
     }
-    /// Move `blocks` before `before` in `self`.
-    pub fn splice(&self, before: &Block, blocks: Blocks) {
-        let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
+    fn transfer(&self, before: &Block, blocks: Blocks) {
         let index = self.index_of(before);
         let index = match index {
             Some(index) => index,
             None => {
-                panic!("Could not find block in blocks during splice");
+                panic!("Could not find block in blocks during transfer");
             }
         };
         let vec = self.vec();
         let mut vec = vec.try_write().unwrap();
+        let blocks = blocks.vec();
+        let mut blocks = blocks.try_write().unwrap();
         vec.splice(index..index, blocks.iter().cloned());
+        {
+            let parent = before.parent();
+            for block in blocks.iter() {
+                let mut block = block.try_write().unwrap();
+                block.set_parent(parent.clone());
+            }
+        }
+        blocks.clear();
+    }
+    /// Move `blocks` before `before` in `self`.
+    ///
+    /// This also handles side-effects like updating parents.
+    pub fn splice(&self, before: &Block, blocks: Blocks) {
+        self.transfer(before, blocks);
     }
 }

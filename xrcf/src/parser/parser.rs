@@ -172,8 +172,7 @@ enum Dialects {
 
 /// Replace block labels in operands by pointers.
 ///
-/// Replaces operands that use block labels and point to `block` by pointers
-/// after the operands have been parsed earlier.
+/// More specifically, replaces [Value::BlockLabel] by [Value::BlockPtr].
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
