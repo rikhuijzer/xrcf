@@ -564,6 +564,10 @@ impl Value {
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
+    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+        let ptr = BlockPtr::new(block);
+        Value::BlockPtr(ptr)
+    }
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {

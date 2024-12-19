@@ -44,7 +44,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             write!(f, "{typ} {value}")
         }
         Value::BlockLabel(label) => {
-            panic!("This case should not happen, but happened for {label}");
+            panic!("BlockLabel for {label} should have been BlockPtr");
         }
         Value::BlockPtr(ptr) => {
             let ptr = ptr.block();

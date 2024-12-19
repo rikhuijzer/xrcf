@@ -19,6 +19,11 @@ pub struct OpOperand {
 }
 
 impl OpOperand {
+    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+        let value = Value::from_block(block);
+        let value = Arc::new(RwLock::new(value));
+        OpOperand { value }
+    }
     pub fn new(value: Arc<RwLock<Value>>) -> Self {
         OpOperand { value }
     }
