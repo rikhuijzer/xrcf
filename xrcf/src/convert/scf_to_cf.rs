@@ -165,7 +165,7 @@ fn add_merge_block(
     results: Values,
     exit: Arc<RwLock<Block>>,
 ) -> Result<(Arc<RwLock<Block>>, Values)> {
-    let unset_block = parent_region.add_empty_block();
+    let unset_block = parent_region.add_empty_block_before(exit.clone());
     let merge = unset_block.set_parent(Some(parent_region.clone()));
     let merge_block_arguments = as_block_arguments(results, merge.clone())?;
     merge.set_arguments(merge_block_arguments.clone());
