@@ -7,9 +7,9 @@ use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::Blocks;
 use crate::ir::BlockName;
 use crate::ir::BlockPtr;
+use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
@@ -187,6 +187,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     let parent = block.parent().expect("No parent");
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
+    let predecessors = predecessors.vec();
     let predecessors = predecessors.try_read().unwrap();
     for predecessor in predecessors.iter() {
         let predecessor = predecessor.try_read().unwrap();

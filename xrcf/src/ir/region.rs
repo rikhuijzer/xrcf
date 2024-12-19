@@ -1,6 +1,6 @@
 use crate::ir::block::Block;
-use crate::ir::Blocks;
 use crate::ir::BlockName;
+use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
@@ -111,6 +111,7 @@ impl Region {
         let new = Block::default();
         let new = Arc::new(RwLock::new(new));
         let blocks = self.blocks();
+        let blocks = blocks.vec();
         let mut blocks = blocks.try_write().unwrap();
         blocks.insert(index, new.clone());
         UnsetBlock::new(new)
@@ -177,7 +178,7 @@ impl Default for Region {
 pub trait GuardedRegion {
     fn add_empty_block(&self) -> UnsetBlock;
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock;
-    fn blocks(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>>;
+    fn blocks(&self) -> Blocks;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
     fn set_blocks(&self, blocks: Blocks);

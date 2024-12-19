@@ -1,8 +1,8 @@
 use crate::ir::BlockArgumentName;
-use crate::ir::GuardedRegion;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
+use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
