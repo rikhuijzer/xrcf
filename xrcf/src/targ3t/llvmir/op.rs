@@ -16,6 +16,7 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -24,11 +25,11 @@ use std::sync::RwLock;
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
     let value = operand.value();
-    let value = value.try_read().unwrap();
+    let value = value.re();
     match &*value {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name();
-            let name = name.try_read().unwrap();
+            let name = name.re();
             let name = match &*name {
                 BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
                 BlockArgumentName::Name(name) => name.to_string(),
@@ -40,7 +41,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             let value = constant.value();
             let value = value.value();
             let typ = constant.typ();
-            let typ = typ.try_read().unwrap();
+            let typ = typ.re();
             write!(f, "{typ} {value}")
         }
         Value::BlockLabel(label) => {
@@ -48,9 +49,9 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
         }
         Value::BlockPtr(ptr) => {
             let ptr = ptr.block();
-            let ptr = ptr.try_read().unwrap();
+            let ptr = ptr.re();
             let label = ptr.label();
-            let label = label.try_read().unwrap();
+            let label = label.re();
             let label = match &*label {
                 BlockName::Name(name) => name.to_string(),
                 BlockName::Unnamed => panic!("Expected a named block"),
@@ -62,7 +63,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             let name = op_result.new_name();
             op_result.set_name(&name);
             let typ = op_result.typ().expect("No type");
-            let typ = typ.try_read().unwrap();
+            let typ = typ.re();
             write!(f, "{typ} {name}")
         }
         _ => panic!("Unexpected operand value type for {value}"),
@@ -71,7 +72,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
 
 fn display_operands(f: &mut Formatter<'_>, operands: &OpOperands) -> std::fmt::Result {
     let operands = operands.vec();
-    let operands = operands.try_read().unwrap();
+    let operands = operands.re();
     for (i, operand) in operands.iter().enumerate() {
         if 0 < i {
             write!(f, ", ")?;
@@ -100,11 +101,11 @@ impl Op for AddOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().try_read().unwrap();
+        let operation = self.operation().re();
         let results = operation.results();
         let results = results.vec();
-        let results = results.try_read().unwrap();
-        let result = results[0].try_read().unwrap();
+        let results = results.re();
+        let result = results[0].re();
         write!(f, "{result} = add ")?;
         display_operands(f, &operation.operands())?;
         write!(f, "\n")
@@ -126,9 +127,9 @@ pub struct AllocaOp {
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
         let operand = self.operation().operand(0).unwrap();
-        let operand = operand.try_read().unwrap();
+        let operand = operand.re();
         let value = operand.value();
-        let value = value.try_read().unwrap();
+        let value = value.re();
         match &*value {
             Value::Constant(constant) => constant.value().clone(),
             _ => panic!("Unexpected"),
@@ -161,7 +162,7 @@ impl Op for AllocaOp {
         write!(f, "{}", self.element_type.as_ref().unwrap())?;
         let array_size = self.array_size();
         let typ = array_size.typ();
-        let typ = typ.try_read().unwrap();
+        let typ = typ.re();
         let value = array_size.value();
         write!(f, ", {typ} {value}, align 1")?;
         Ok(())
@@ -214,16 +215,16 @@ impl Op for CallOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().try_read().unwrap();
+        let operation = self.operation().re();
         let results = operation.results();
-        let n_results = results.vec().try_read().unwrap().len();
+        let n_results = results.vec().re().len();
         if 0 < n_results {
             write!(f, "{} = ", results)?;
         }
         let return_type = if n_results == 1 {
             let return_type = operation.result_type(0);
             let return_type = return_type.unwrap();
-            let return_type = return_type.try_read().unwrap().to_string();
+            let return_type = return_type.re().to_string();
             return_type
         } else {
             "void".to_string()
@@ -231,7 +232,7 @@ impl Op for CallOp {
         write!(f, "call {return_type} ")?;
         let varargs = self.varargs();
         if let Some(varargs) = varargs {
-            write!(f, "({}) ", varargs.try_read().unwrap())?;
+            write!(f, "({}) ", varargs.re())?;
         }
         write!(f, "{}(", self.identifier().unwrap())?;
         display_operands(f, &operation.operands())?;
@@ -314,7 +315,7 @@ impl Op for FuncOp {
         let return_types = self.return_types();
         let return_type = if return_types.len() == 1 {
             let return_type = return_types[0].clone();
-            let return_type = return_type.try_read().unwrap();
+            let return_type = return_type.re();
             return_type.to_string()
         } else {
             "void".to_string()
@@ -331,18 +332,18 @@ impl Op for FuncOp {
         )?;
         let arguments = self.arguments().unwrap();
         let arguments = arguments.vec();
-        let arguments = arguments.try_read().unwrap();
+        let arguments = arguments.re();
         for (i, argument) in arguments.iter().enumerate() {
             if 0 < i {
                 write!(f, ", ")?;
             }
-            let argument = argument.try_read().unwrap();
+            let argument = argument.re();
             match &*argument {
                 Value::BlockArgument(arg) => {
                     let typ = arg.typ();
-                    let typ = typ.try_read().unwrap();
+                    let typ = typ.re();
                     let name = arg.name();
-                    let name = name.try_read().unwrap();
+                    let name = name.re();
                     match &*name {
                         BlockArgumentName::Name(name) => write!(f, "{typ} {name}"),
                         BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
@@ -355,7 +356,7 @@ impl Op for FuncOp {
         }
         write!(f, ")")?;
 
-        let operation = self.operation().try_read().unwrap();
+        let operation = self.operation().re();
         display_region_inside_func(f, &*operation, indent)
     }
 }
@@ -451,23 +452,23 @@ impl Op for PhiOp {
         write!(f, "phi ")?;
         let pairs = self.argument_pairs().unwrap();
         assert!(pairs.len() == 2, "Expected two callers");
-        let typ = pairs[0].0.try_read().unwrap().typ().unwrap();
-        let typ = typ.try_read().unwrap();
+        let typ = pairs[0].0.re().typ().unwrap();
+        let typ = typ.re();
         write!(f, "{typ} ")?;
         let mut texts = vec![];
         for (value, block) in pairs {
-            let value = value.try_read().unwrap();
+            let value = value.re();
             let value = value.value();
-            let value = value.try_read().unwrap();
+            let value = value.re();
             let value = if let Value::Constant(constant) = &*value {
                 // Drop type information.
                 constant.value().value()
             } else {
                 value.to_string()
             };
-            let block = block.try_read().unwrap();
+            let block = block.re();
             let label = block.label();
-            let label = label.try_read().unwrap();
+            let label = label.re();
             let mut label = match &*label {
                 BlockName::Name(name) => name.to_string(),
                 BlockName::Unnamed => panic!("Expected a named block"),
@@ -516,7 +517,7 @@ impl Op for ReturnOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operands = self.operation().operands();
         let name = Self::operation_name();
-        if operands.vec().try_read().unwrap().is_empty() {
+        if operands.vec().re().is_empty() {
             write!(f, "{name} void")
         } else {
             write!(f, "{name} ")?;
@@ -539,7 +540,7 @@ pub struct StoreOp {
 
 impl StoreOp {
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.try_read().unwrap();
+        let operation = self.operation.re();
         let operand = operation.operand(1).unwrap();
         operand
     }
@@ -570,11 +571,11 @@ impl Op for StoreOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "store ")?;
         let const_value = self.operation().operand(0).unwrap();
-        let const_value = const_value.try_read().unwrap();
+        let const_value = const_value.re();
         let len = self.len().expect("len not set during lowering");
         write!(f, "[{len} x i8] ")?;
         write!(f, "c{const_value}, ")?;
-        write!(f, "ptr {}, ", self.addr().try_read().unwrap())?;
+        write!(f, "ptr {}, ", self.addr().re())?;
         write!(f, "align 1")?;
         Ok(())
     }

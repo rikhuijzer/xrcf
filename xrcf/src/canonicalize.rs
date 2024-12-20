@@ -6,6 +6,7 @@ use crate::convert::RewriteResult;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::Users;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -20,7 +21,7 @@ impl Rewrite for CanonicalizeOp {
         Ok(true)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let result = op.canonicalize();
         Ok(result)
     }
@@ -37,11 +38,11 @@ impl Rewrite for DeadCodeElimination {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let readonly = op.clone();
-        let readonly = readonly.try_read().unwrap();
+        let readonly = readonly.re();
         if !readonly.is_pure() {
             return Ok(RewriteResult::Unchanged);
         }
-        let operation = readonly.operation().try_read().unwrap();
+        let operation = readonly.operation().re();
         let users = operation.users();
         match users {
             Users::HasNoOpResults => Ok(RewriteResult::Unchanged),

@@ -6,6 +6,7 @@ use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
+use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
@@ -106,7 +107,7 @@ impl Tester {
         Self::print_heading("Before parse", src);
         let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
         let read_module = module.clone();
-        let read_module = read_module.try_read().unwrap();
+        let read_module = read_module.re();
         let actual = format!("{}", read_module);
         Self::print_heading("After parse", &actual);
         (module, actual)
@@ -131,13 +132,13 @@ impl Tester {
                 panic!("Expected changes");
             }
         };
-        let actual = format!("{}", new_root_op.try_read().unwrap());
+        let actual = format!("{}", new_root_op.re());
         let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }
     fn verify_core(op: Arc<RwLock<dyn Op>>) {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         if !op.name().to_string().contains("module") {
             let parent = op.operation().parent();
             assert!(
@@ -147,13 +148,13 @@ impl Tester {
             );
             let parent = parent.unwrap();
             let operation = op.operation();
-            let operation = operation.try_read().unwrap();
+            let operation = operation.re();
             assert!(parent.index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
             let results = op.operation().results();
-            for result in results.vec().try_read().unwrap().iter() {
-                let value = result.try_read().unwrap();
+            for result in results.vec().re().iter() {
+                let value = result.re();
                 assert!(value.typ().is_ok(), "type was not set for {value}");
             }
         }

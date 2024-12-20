@@ -22,6 +22,7 @@ use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::StringAttr;
 use crate::ir::Value;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use dialect::experimental::PrintfOp;
 use std::sync::Arc;
@@ -37,7 +38,7 @@ impl PrintLowering {
         let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
-        let name = parent.try_read().unwrap().unique_value_name("%");
+        let name = parent.re().unique_value_name("%");
         let typ = llvm::ArrayType::for_bytes(&text);
         let typ = Arc::new(RwLock::new(typ));
         let result = const_operation.add_new_op_result(&name, typ);
@@ -53,7 +54,7 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
-        let name = parent.try_read().unwrap().unique_value_name("%");
+        let name = parent.re().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
         let op = arith::ConstantOp::from_operation(operation);
@@ -67,7 +68,7 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
-        let name = parent.try_read().unwrap().unique_value_name("%");
+        let name = parent.re().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.result(0);
@@ -156,7 +157,7 @@ impl PrintLowering {
     fn contains_printf(top_level_op: Arc<RwLock<dyn Op>>) -> bool {
         let ops = top_level_op.ops();
         for op in ops {
-            let op = op.try_read().unwrap();
+            let op = op.re();
             if op.is_func() {
                 let func = match op.as_any().downcast_ref::<llvm::FuncOp>() {
                     Some(func) => func,
@@ -229,10 +230,10 @@ impl Rewrite for PrintLowering {
         let op_clone = op.clone();
         let set_varargs = {
             let operands = op.operation().operands().vec();
-            let operands = operands.try_read().unwrap();
+            let operands = operands.re();
             1 < operands.len()
         };
-        let op_rd = op_clone.try_read().unwrap();
+        let op_rd = op_clone.re();
         let op_rd = op_rd
             .as_any()
             .downcast_ref::<dialect::experimental::PrintfOp>()

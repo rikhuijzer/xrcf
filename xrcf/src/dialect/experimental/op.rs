@@ -11,6 +11,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -30,9 +31,9 @@ impl PrintfOp {
     pub fn text(&self) -> StringAttr {
         let operands = self.operation.operand(0);
         let operand = operands.expect("no operand");
-        let operand = operand.try_read().unwrap();
+        let operand = operand.re();
         let value = operand.value();
-        let value = value.try_read().unwrap();
+        let value = value.re();
         let text = match &*value {
             Value::Constant(constant) => constant,
             _ => panic!("expected constant"),

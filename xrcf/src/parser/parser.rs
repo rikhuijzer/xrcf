@@ -178,7 +178,7 @@ enum Dialects {
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
     let label = block.label();
-    let label = label.try_read().unwrap();
+    let label = label.re();
     let label = match &*label {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
@@ -188,17 +188,17 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
     for predecessor in predecessors.into_iter() {
-        let predecessor = predecessor.try_read().unwrap();
+        let predecessor = predecessor.re();
         let ops = predecessor.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         for op in ops.iter() {
-            let op = op.try_read().unwrap();
+            let op = op.re();
             let operands = op.operation().operands().vec();
-            let operands = operands.try_read().unwrap();
+            let operands = operands.re();
             for operand in operands.iter() {
                 let mut operand = operand.wr();
                 let value = operand.value();
-                let value = value.try_read().unwrap();
+                let value = value.re();
                 if let Value::BlockLabel(current_label) = &*value {
                     if current_label.name() == label {
                         let block_ptr = BlockPtr::new(block.clone());
@@ -298,7 +298,7 @@ impl<T: ParserDispatch> Parser<T> {
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Arc::new(RwLock::new(block));
         replace_block_labels(block.clone());
-        for argument in arguments.vec().try_read().unwrap().iter() {
+        for argument in arguments.vec().re().iter() {
             let mut argument = argument.wr();
             if let Value::BlockArgument(arg) = &mut *argument {
                 arg.set_parent(Some(block.clone()));
@@ -318,7 +318,7 @@ impl<T: ParserDispatch> Parser<T> {
             return Err(anyhow::anyhow!(msg));
         }
         let ops = block.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         for op in ops.iter() {
             op.operation().set_parent(Some(block.clone()));
         }

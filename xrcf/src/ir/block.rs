@@ -113,7 +113,7 @@ impl Block {
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
         let label = self.label();
-        let label = label.try_read().unwrap();
+        let label = label.re();
         let label = match &*label {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
@@ -125,19 +125,19 @@ impl Block {
         let predecessors = predecessors.expect("expected predecessors");
         let mut callers = vec![];
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
+            let predecessor = predecessor.re();
             let ops = predecessor.ops();
-            let ops = ops.try_read().unwrap();
+            let ops = ops.re();
             for op in ops.iter() {
                 let operation = op.operation();
                 let operands = operation.operands().vec();
-                let operands = operands.try_read().unwrap();
+                let operands = operands.re();
                 for operand in operands.iter() {
                     let value = operand.value();
-                    let value = value.try_read().unwrap();
+                    let value = value.re();
                     if let Value::BlockPtr(block_ptr) = &*value {
                         let current = block_ptr.block();
-                        let current = &*current.try_read().unwrap();
+                        let current = &*current.re();
                         if std::ptr::eq(current, self) {
                             callers.push(op.clone());
                         }
@@ -163,7 +163,7 @@ impl Block {
     pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.try_read().unwrap();
+        let region = region.re();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let predecessors = match index {
@@ -178,7 +178,7 @@ impl Block {
     pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.try_read().unwrap();
+        let region = region.re();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let successors = match index {
@@ -205,16 +205,16 @@ impl Block {
         let op = parent.unwrap();
         let op = &*op.re();
         let operation = op.operation();
-        let operation = operation.try_read().unwrap();
+        let operation = operation.re();
         if op.is_func() {
             let arguments = operation.arguments();
             let arguments = arguments.vec();
-            let arguments = arguments.try_read().unwrap();
+            let arguments = arguments.re();
             for argument in arguments.iter() {
-                match &*argument.try_read().unwrap() {
+                match &*argument.re() {
                     Value::BlockArgument(block_argument) => {
                         let current_name = block_argument.name();
-                        let current_name = current_name.try_read().unwrap();
+                        let current_name = current_name.re();
                         if let BlockArgumentName::Name(current_name) = &*current_name {
                             if current_name == name {
                                 return Some(argument.clone());
@@ -234,16 +234,16 @@ impl Block {
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         for op in ops.iter() {
-            let op = op.try_read().unwrap();
+            let op = op.re();
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
             let values = values.vec();
-            let values = values.try_read().unwrap();
+            let values = values.re();
             for value in values.iter() {
-                match &*value.try_read().unwrap() {
+                match &*value.re() {
                     Value::BlockArgument(_block_argument) => {
                         // Ignore this case because we are looking for
                         // assignment in ops.
@@ -255,7 +255,7 @@ impl Block {
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
                         let current_name = op_result.name();
-                        let current_name = current_name.try_read().unwrap();
+                        let current_name = current_name.re();
                         if let Some(current_name) = &*current_name {
                             if current_name == name {
                                 return Some(value.clone());
@@ -275,12 +275,12 @@ impl Block {
     pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let arguments = self.arguments();
         let arguments = arguments.vec();
-        let arguments = arguments.try_read().unwrap();
+        let arguments = arguments.re();
         for argument in arguments.iter() {
-            match &*argument.try_read().unwrap() {
+            match &*argument.re() {
                 Value::BlockArgument(block_argument) => {
                     let current_name = block_argument.name();
-                    let current_name = current_name.try_read().unwrap();
+                    let current_name = current_name.re();
                     if let BlockArgumentName::Name(current_name) = &*current_name {
                         if current_name == name {
                             return Some(argument.clone());
@@ -322,7 +322,7 @@ impl Block {
         let predecessors = self.predecessors();
         let predecessors = predecessors.expect("expected predecessors");
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
+            let predecessor = predecessor.re();
             if let Some(value) = predecessor.assignment_in_func_arguments(name) {
                 return Some(value);
             }
@@ -340,16 +340,16 @@ impl Block {
     /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         ops.iter().position(|current| {
-            let current = current.try_read().unwrap();
+            let current = current.re();
             let current = current.operation();
-            let current = &*current.try_read().unwrap();
+            let current = &*current.re();
             std::ptr::eq(current, op)
         })
     }
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.index_of(&*op.try_read().unwrap())
+        self.index_of(&*op.re())
     }
     /// Move the blocks that belong to `region` before `self`.
     ///
@@ -412,12 +412,12 @@ impl Block {
     }
     pub fn used_names_without_predecessors(&self) -> Vec<String> {
         let ops = self.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         let mut used_names = vec![];
         for op in ops.iter() {
-            let op = op.try_read().unwrap();
+            let op = op.re();
             let operation = op.operation();
-            let operation = operation.try_read().unwrap();
+            let operation = operation.re();
             let result_names = operation.result_names();
             used_names.extend(result_names);
         }
@@ -428,7 +428,7 @@ impl Block {
         let mut used_names = self.used_names_without_predecessors();
         if let Some(predecessors) = predecessors {
             for predecessor in predecessors.iter() {
-                let predecessor = predecessor.try_read().unwrap();
+                let predecessor = predecessor.re();
                 used_names.extend(Self::used_names_without_predecessors(&predecessor));
             }
         }
@@ -451,7 +451,7 @@ impl Block {
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let label = self.label();
-        let label = label.try_read().unwrap();
+        let label = label.re();
         if let BlockName::Name(name) = &*label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             let spaces = crate::ir::spaces(label_indent);
@@ -463,11 +463,11 @@ impl Block {
             write!(f, ":\n")?;
         }
         let ops = self.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.re();
         for op in ops.iter() {
             let spaces = crate::ir::spaces(indent);
             write!(f, "{spaces}")?;
-            let op = op.try_read().unwrap();
+            let op = op.re();
             op.display(f, indent)?;
             write!(f, "\n")?;
         }
@@ -534,40 +534,40 @@ pub trait GuardedBlock {
 
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn arguments(&self) -> Values {
-        self.try_read().unwrap().arguments()
+        self.re().arguments()
     }
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        self.try_read().unwrap().callers()
+        self.re().callers()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.try_read().unwrap().display(f, indent)
+        self.re().display(f, indent)
     }
     fn index_of(&self, op: &Operation) -> Option<usize> {
-        self.try_read().unwrap().index_of(op)
+        self.re().index_of(op)
     }
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.try_read().unwrap().index_of_arc(op)
+        self.re().index_of_arc(op)
     }
     fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        self.try_read().unwrap().inline_region_before(region);
+        self.re().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.wr().insert_after(earlier, later);
     }
     fn label(&self) -> Arc<RwLock<BlockName>> {
-        self.try_read().unwrap().label()
+        self.re().label()
     }
     fn label_prefix(&self) -> String {
-        self.try_read().unwrap().label_prefix()
+        self.re().label_prefix()
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
-        self.try_read().unwrap().ops()
+        self.re().ops()
     }
     fn parent(&self) -> Option<Arc<RwLock<Region>>> {
-        self.try_read().unwrap().parent()
+        self.re().parent()
     }
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.try_read().unwrap().predecessors()
+        self.re().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.wr().remove(op);
@@ -585,10 +585,10 @@ impl GuardedBlock for Arc<RwLock<Block>> {
         self.wr().set_ops(ops);
     }
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.try_read().unwrap().successors()
+        self.re().successors()
     }
     fn unique_value_name(&self, prefix: &str) -> String {
-        self.try_read().unwrap().unique_value_name(prefix)
+        self.re().unique_value_name(prefix)
     }
 }
 
@@ -602,7 +602,7 @@ impl IntoIterator for Blocks {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let vec = self.vec.try_read().unwrap();
+        let vec = self.vec.re();
         vec.clone().into_iter()
     }
 }
@@ -619,12 +619,12 @@ impl Blocks {
     /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         let vec = self.vec();
-        let vec = vec.try_read().unwrap();
+        let vec = vec.re();
         if vec.is_empty() {
             panic!("Trying to find block in empty set of blocks");
         }
         vec.iter().position(|b| {
-            let b = &*b.try_read().unwrap();
+            let b = &*b.re();
             std::ptr::eq(b, block)
         })
     }

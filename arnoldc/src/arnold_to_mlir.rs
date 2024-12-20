@@ -27,6 +27,7 @@ use xrcf::ir::Operation;
 use xrcf::ir::RenameBareToPercent;
 use xrcf::ir::StringAttr;
 use xrcf::ir::Value;
+use xrcf::shared::SharedExt;
 
 const RENAMER: RenameBareToPercent = RenameBareToPercent;
 
@@ -40,7 +41,7 @@ impl Rewrite for CallLowering {
         Ok(op.as_any().is::<arnold::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let op = op.as_any().downcast_ref::<arnold::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
@@ -74,13 +75,13 @@ impl Rewrite for DeclareIntLowering {
         Ok(op.as_any().is::<arnold::DeclareIntOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
         op.operation().rename_variables(&RENAMER)?;
 
         let successors = op.operation().successors();
         let set_initial_value = successors.first().unwrap();
-        let set_initial_value = set_initial_value.try_read().unwrap();
+        let set_initial_value = set_initial_value.re();
         let set_initial_value = set_initial_value
             .as_any()
             .downcast_ref::<arnold::SetInitialValueOp>()
@@ -107,7 +108,7 @@ impl Rewrite for FuncLowering {
         Ok(op.as_any().is::<arnold::BeginMainOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
         let identifier = "@main";
         let operation = op.operation();
@@ -147,7 +148,7 @@ impl Rewrite for IfLowering {
         Ok(op.as_any().is::<arnold::IfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
         let operation = op.operation();
         let mut new_op = scf::IfOp::from_operation_arc(operation.clone());
@@ -170,7 +171,7 @@ impl ModuleLowering {
         let typ = IntegerType::new(32);
         let value = APInt::new(32, 0, true);
         let integer = IntegerAttr::new(typ, value);
-        let name = parent.try_read().unwrap().unique_value_name("%");
+        let name = parent.re().unique_value_name("%");
         let result_type = Arc::new(RwLock::new(typ));
         let result = constant.add_new_op_result(&name, result_type.clone());
         let constant = arith::ConstantOp::from_operation(constant);
@@ -219,10 +220,10 @@ impl ModuleLowering {
         constant.insert_after(ret.clone());
     }
     fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
-        let func = func.try_read().unwrap();
+        let func = func.re();
         let func_op = func.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let result = func_op.operation().results();
-        result.vec().try_read().unwrap().len() == 1
+        result.vec().re().len() == 1
     }
     fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let ops = module.ops();
@@ -258,7 +259,7 @@ impl Rewrite for PrintLowering {
         Ok(op.as_any().is::<arnold::PrintOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.re();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
         let mut operation = Operation::default();
         operation.set_name(experimental::PrintfOp::operation_name());
@@ -268,7 +269,7 @@ impl Rewrite for PrintLowering {
 
         let operand = op.text();
         let value = operand.value();
-        match &*value.try_read().unwrap() {
+        match &*value.re() {
             // printf("some text")
             Value::Constant(constant) => {
                 let text = constant.value();

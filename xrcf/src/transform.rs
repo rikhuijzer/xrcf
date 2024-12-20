@@ -7,6 +7,7 @@ use crate::convert::ConvertSCFToCF;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
@@ -231,7 +232,7 @@ pub fn transform<T: TransformDispatch>(
             writeln!(
                 &mut *options.writer.write().unwrap(),
                 "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
-                op.try_read().unwrap()
+                op.re()
             )?;
         }
         let new_result = T::dispatch(op.clone(), pass)?;

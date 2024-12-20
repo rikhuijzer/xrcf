@@ -3,6 +3,7 @@ extern crate xrcf;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::ir::ModuleOp;
+use xrcf::shared::SharedExt;
 use xrcf::tester::Tester;
 
 fn flags() -> Vec<&'static str> {
@@ -37,7 +38,7 @@ fn test_constant() {
     let caller = Location::caller();
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
-    let module = module.try_read().unwrap();
+    let module = module.re();
     assert!(module.as_any().is::<ModuleOp>());
     Tester::check_lines_contain(&actual, expected, caller);
 }

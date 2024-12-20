@@ -29,7 +29,7 @@ impl OpOperand {
         OpOperand { value }
     }
     pub fn name(&self) -> String {
-        let value = self.value.try_read().unwrap();
+        let value = self.value.re();
         value.name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
@@ -44,7 +44,7 @@ impl OpOperand {
     /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
         let value = self.value();
-        let value = &*value.try_read().unwrap();
+        let value = &*value.re();
         match value {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
@@ -57,18 +57,18 @@ impl OpOperand {
     }
     pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ().unwrap();
-        let typ = typ.try_read().unwrap();
+        let typ = typ.re();
         write!(f, "{self} : {typ}")
     }
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.value.try_read().unwrap();
+        let value = self.value.re();
         value.typ()
     }
 }
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = self.value.try_read().unwrap();
+        let value = self.value.re();
         match &*value {
             Value::Constant(constant) => write!(f, "{constant}"),
             _ => write!(f, "{}", self.name()),
@@ -85,14 +85,14 @@ pub trait GuardedOpOperand {
 
 impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
     fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let op = self.try_read().unwrap();
+        let op = self.re();
         op.defining_op()
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        self.try_read().unwrap().typ()
+        self.re().typ()
     }
     fn value(&self) -> Arc<RwLock<Value>> {
-        self.try_read().unwrap().value()
+        self.re().value()
     }
     fn set_value(&mut self, value: Arc<RwLock<Value>>) {
         self.wr().set_value(value);
@@ -122,13 +122,13 @@ impl OpOperands {
         }
     }
     pub fn display_with_types(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let operands = self.operands.try_read().unwrap();
+        let operands = self.operands.re();
         if !operands.is_empty() {
             for (index, operand) in operands.iter().enumerate() {
                 if 0 < index {
                     write!(f, ", ")?;
                 }
-                let operand = operand.try_read().unwrap();
+                let operand = operand.re();
                 operand.display_with_type(f)?;
             }
         }
@@ -151,7 +151,7 @@ impl Display for OpOperands {
             .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.try_read().unwrap().to_string())
+            .map(|o| o.re().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)

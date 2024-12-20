@@ -46,7 +46,7 @@ pub trait Call: Op {
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operation = self.operation().read().unwrap();
         let results = operation.results();
-        let has_results = !results.vec().try_read().unwrap().is_empty();
+        let has_results = !results.vec().re().is_empty();
         if has_results {
             write!(f, "{} = ", operation.results())?;
         }
@@ -54,7 +54,7 @@ pub trait Call: Op {
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
         if let Some(varargs) = self.varargs() {
-            let varargs = varargs.try_read().unwrap();
+            let varargs = varargs.re();
             write!(f, " vararg({})", varargs)?;
         }
         write!(f, " : ")?;
@@ -62,7 +62,7 @@ pub trait Call: Op {
         write!(f, " -> ")?;
         if has_results {
             let result_type = operation.result_type(0).expect("no result type");
-            let result_type = result_type.try_read().unwrap();
+            let result_type = result_type.re();
             write!(f, "{}", result_type)?;
         } else {
             write!(f, "()")?;
@@ -115,7 +115,7 @@ pub trait Call: Op {
 
         // (i32) or (!llvm.ptr, i32)
         parser.expect(TokenKind::LParen)?;
-        if !operands.vec().try_read().unwrap().is_empty() {
+        if !operands.vec().re().is_empty() {
             parser.parse_types_for_op_operands(operands)?;
         }
         parser.expect(TokenKind::RParen)?;
@@ -248,7 +248,7 @@ pub struct FuncOp {
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
-        let read = op.try_read().unwrap();
+        let read = op.re();
         let ops = read.ops();
         if ops.is_empty() {
             let operation = self.operation();
@@ -301,7 +301,7 @@ impl FuncOp {
         f: &mut Formatter<'_>,
         indent: i32,
     ) -> std::fmt::Result {
-        let name = op.operation().try_read().unwrap().name();
+        let name = op.operation().re().name();
         write!(f, "{name} ")?;
         if let Some(visibility) = FuncOp::display_visibility(op) {
             write!(f, "{visibility} ")?;
@@ -408,7 +408,7 @@ impl<T: ParserDispatch> Parser<T> {
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.parse_region(op.clone())?;
-            let op_rd = op.try_read().unwrap();
+            let op_rd = op.re();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
 
@@ -445,7 +445,7 @@ impl ReturnOp {
         let name = operation.name();
         write!(f, "{name}")?;
         let operands = operation.operands().vec();
-        let operands = operands.try_read().unwrap();
+        let operands = operands.re();
         if !operands.is_empty() {
             for operand in operands.iter() {
                 write!(f, " {}", operand.read().unwrap())?;

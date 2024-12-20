@@ -127,7 +127,7 @@ impl AddiOp {
     fn addi_add_constant(&self) -> RewriteResult {
         let operands = self.operation.operands();
         let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
+        let operands = operands.re();
         assert!(operands.len() == 2);
 
         let lhs = operands.get(0).unwrap();
@@ -185,11 +185,11 @@ impl AddiOp {
         self.replace(new_const.clone());
 
         {
-            let new_const = new_const.try_read().unwrap();
-            let new_const = new_const.operation().try_read().unwrap();
+            let new_const = new_const.re();
+            let new_const = new_const.operation().re();
             let results = new_const.results();
             let results = results.vec();
-            let results = results.try_read().unwrap();
+            let results = results.re();
             assert!(results.len() == 1);
             results[0].rename("%c3_i64");
         }

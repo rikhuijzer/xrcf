@@ -81,10 +81,10 @@ impl Op for IfOp {
             write!(f, " -> ({})", self.operation.results().types())?;
         }
         let then = self.then.clone().expect("Expected `then` region");
-        let then = then.try_read().unwrap();
+        let then = then.re();
         then.display(f, indent)?;
         let els = self.els.clone().expect("Expected `else` region");
-        let els = els.try_read().unwrap();
+        let els = els.re();
         write!(f, " else")?;
         els.display(f, indent)?;
         Ok(())

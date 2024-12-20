@@ -104,17 +104,17 @@ impl Op for AllocaOp {
         write!(f, "{} = ", operation.results())?;
         write!(f, "{} ", operation.name())?;
         let array_size = self.array_size();
-        let array_size = array_size.try_read().unwrap();
+        let array_size = array_size.re();
         write!(f, "{}", array_size)?;
         write!(f, " x ")?;
         write!(f, "{}", self.element_type().expect("no element type"))?;
         write!(f, " : ")?;
         let array_size_type = array_size.typ().unwrap();
-        let array_size_type = array_size_type.try_read().unwrap();
+        let array_size_type = array_size_type.re();
         write!(f, "({})", array_size_type)?;
         write!(f, " -> ")?;
         let result_type = operation.result_type(0).unwrap();
-        let result_type = result_type.try_read().unwrap();
+        let result_type = result_type.re();
         write!(f, "{result_type}")?;
         Ok(())
     }
@@ -135,7 +135,7 @@ impl Parse for AllocaOp {
             parser.parse_op_operand_into(parent.unwrap(), TOKEN_KIND, &mut operation)?;
         parser.parse_keyword("x")?;
         let element_type = T::parse_type(parser)?;
-        let element_type = element_type.try_read().unwrap();
+        let element_type = element_type.re();
         parser.expect(TokenKind::Colon)?;
         parser.expect(TokenKind::LParen)?;
 
@@ -191,16 +191,16 @@ impl Op for BranchOp {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest();
         let dest = dest.unwrap();
-        let dest = dest.try_read().unwrap();
+        let dest = dest.re();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
         let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
+        let operands = operands.re();
         let operands = operands.iter().skip(1);
         if 0 < operands.len() {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.try_read().unwrap();
+                let operand = operand.re();
                 operand.display_with_type(f)?;
             }
             write!(f, ")")?;
@@ -389,9 +389,9 @@ impl Op for ConstantOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let results = self.operation().results();
         let results = results.vec();
-        let results = results.try_read().unwrap();
+        let results = results.re();
         let result = results.get(0).expect("no result");
-        let result = result.try_read().unwrap();
+        let result = result.re();
         write!(f, "{} = {}", result, Self::operation_name())?;
         write!(f, "(")?;
         let value = self.value();
@@ -399,7 +399,7 @@ impl Op for ConstantOp {
         write!(f, ")")?;
 
         let typ = self.operation().result_type(0).expect("no result type");
-        let typ = typ.try_read().unwrap();
+        let typ = typ.re();
         write!(f, " : {typ}")?;
 
         Ok(())
@@ -544,7 +544,7 @@ impl Parse for FuncOp {
             if text == "attributes" {
                 parser.advance();
                 let attributes = parser.parse_attributes()?;
-                let op = op.try_read().unwrap();
+                let op = op.re();
                 op.operation().set_attributes(attributes);
             }
         }
@@ -648,12 +648,12 @@ impl StoreOp {
         self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.try_read().unwrap();
+        let operation = self.operation.re();
         let operand = operation.operand(1).expect("no address set");
         operand
     }
     pub fn set_addr(&mut self, addr: Arc<RwLock<OpOperand>>) {
-        let operation = self.operation.try_read().unwrap();
+        let operation = self.operation.re();
         let mut operands = operation.operands();
         operands.set_operand(1, addr);
     }
@@ -678,10 +678,10 @@ impl Op for StoreOp {
         write!(f, " {}", operation.operands())?;
         write!(f, " : ")?;
         let value = self.value();
-        write!(f, "{}", value.typ().unwrap().try_read().unwrap())?;
+        write!(f, "{}", value.typ().unwrap().re())?;
         write!(f, ", ")?;
         let addr = self.addr();
-        write!(f, "{}", addr.typ().unwrap().try_read().unwrap())?;
+        write!(f, "{}", addr.typ().unwrap().re())?;
         Ok(())
     }
 }

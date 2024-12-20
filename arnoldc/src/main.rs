@@ -10,6 +10,7 @@ use std::env::ArgsOs;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
+use xrcf::shared::SharedExt;
 use xrcf::Passes;
 use xrcf::TransformOptions;
 
@@ -89,7 +90,7 @@ fn main() {
 
     let result = parse_and_transform(&input_text, &options).unwrap();
     let result = match result {
-        RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
+        RewriteResult::Changed(op) => op.op.re().to_string(),
         RewriteResult::Unchanged => input_text.to_string(),
     };
     println!("{result}");
@@ -169,7 +170,7 @@ mod tests {
         assert!(result.is_ok());
         let actual = match result.unwrap() {
             RewriteResult::Changed(op) => {
-                let op = op.op.try_read().unwrap();
+                let op = op.op.re();
                 op.to_string()
             }
             RewriteResult::Unchanged => panic!("Expected a change"),
@@ -177,7 +178,7 @@ mod tests {
         tracing::info!("\nAfter {args:?}:\n{actual}");
         assert!(actual.contains("define i32 @main"));
 
-        let printed = out.try_read().unwrap();
+        let printed = out.re();
         let printed = String::from_utf8(printed.clone()).unwrap();
         let expected = indoc! {r#"
         // ----- // IR Dump before convert-func-to-llvm //----- //
