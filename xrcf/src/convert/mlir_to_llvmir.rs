@@ -160,8 +160,7 @@ impl Rewrite for BlockLowering {
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let blocks = op.operation().blocks();
-        for block in blocks.iter() {
+        for block in op.operation().rd().blocks().into_iter() {
             block.set_label_prefix("".to_string());
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
@@ -517,8 +516,7 @@ impl Rewrite for MergeLowering {
         if operation.region().is_none() {
             return Ok(false);
         }
-        let blocks = operation.blocks();
-        for block in blocks.iter() {
+        for block in operation.rd().blocks().into_iter() {
             let block = block.rd();
             let has_argument = !block.arguments().vec().rd().is_empty();
             if has_argument {

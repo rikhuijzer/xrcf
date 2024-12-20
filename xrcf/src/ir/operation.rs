@@ -2,6 +2,7 @@ use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
+use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -126,8 +127,7 @@ pub fn display_region_inside_func(
     let region = operation.region();
     if let Some(region) = region {
         let region = region.rd();
-        let blocks = region.blocks();
-        if blocks.into_iter().next().is_none() {
+        if region.blocks().into_iter().next().is_none() {
             write!(f, "\n")
         } else {
             region.display(f, indent)
@@ -200,11 +200,8 @@ impl Operation {
     pub fn operands(&self) -> OpOperands {
         self.operands.clone()
     }
-    pub fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
-        let region = self.region();
-        let region = region.expect("expected region");
-        let region = region.rd();
-        region.blocks().into_iter().collect::<Vec<_>>()
+    pub fn blocks(&self) -> Blocks {
+        self.region().expect("no region").rd().blocks()
     }
     pub fn operand_types(&self) -> Types {
         let operands = self.operands.vec();
@@ -493,7 +490,6 @@ impl Display for Operation {
 pub trait GuardedOperation {
     fn arguments(&self) -> Values;
     fn attributes(&self) -> Attributes;
-    fn blocks(&self) -> Vec<Arc<RwLock<Block>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn name(&self) -> OperationName;
     fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>>;
@@ -524,9 +520,6 @@ impl GuardedOperation for Arc<RwLock<Operation>> {
     }
     fn attributes(&self) -> Attributes {
         self.rd().attributes()
-    }
-    fn blocks(&self) -> Vec<Arc<RwLock<Block>>> {
-        self.rd().blocks()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         self.rd().display(f, indent)

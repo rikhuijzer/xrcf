@@ -30,8 +30,7 @@ impl OpOperand {
         OpOperand { value }
     }
     pub fn name(&self) -> String {
-        let value = self.value.rd();
-        value.name().expect("no name")
+        self.value().rd().name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
@@ -44,9 +43,7 @@ impl OpOperand {
     ///
     /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let value = self.value();
-        let value = &*value.rd();
-        match value {
+        match &*self.value().rd() {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
             Value::BlockPtr(_) => None,
@@ -57,20 +54,16 @@ impl OpOperand {
         }
     }
     pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let typ = self.typ().unwrap();
-        let typ = typ.rd();
-        write!(f, "{self} : {typ}")
+        write!(f, "{self} : {}", self.typ().unwrap().rd())
     }
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.value.rd();
-        value.typ()
+        self.value.rd().typ()
     }
 }
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = self.value.rd();
-        match &*value {
+        match &*self.value.rd() {
             Value::Constant(constant) => write!(f, "{constant}"),
             _ => write!(f, "{}", self.name()),
         }
