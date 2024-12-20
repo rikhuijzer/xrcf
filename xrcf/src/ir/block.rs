@@ -8,7 +8,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;

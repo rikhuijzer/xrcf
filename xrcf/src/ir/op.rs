@@ -10,7 +10,7 @@ use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;

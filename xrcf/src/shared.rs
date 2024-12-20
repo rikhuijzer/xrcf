@@ -31,7 +31,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// ```
 /// use std::sync::Arc;
 /// use std::sync::RwLock;
-/// use xrcf::shared::RwLockExt;
+/// use xrcf::shared::SharedExt;
 ///
 /// let lock = Arc::new(RwLock::new(42));
 /// assert_eq!(*lock.re(), 42);
@@ -40,8 +40,8 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// ```
 /// use std::sync::Arc;
 /// use std::sync::RwLock;
-/// use xrcf::shared::RwLockExt;
 /// use xrcf::shared::Shared;
+/// use xrcf::shared::SharedExt;
 ///
 /// let lock = Shared::new(42.into());
 /// assert_eq!(*lock.re(), 42);
@@ -54,14 +54,14 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// let lock = Arc::new(RwLock::new(42));
 /// assert_eq!(*lock.try_read().unwrap(), 42);
 /// ```
-pub trait RwLockExt<T> {
+pub trait SharedExt<T> {
     /// Convenience method for reading.
     fn re(&self) -> RwLockReadGuard<T>;
     /// Convenience method for writing.
     fn wr(&self) -> RwLockWriteGuard<T>;
 }
 
-impl<T> RwLockExt<T> for Arc<RwLock<T>> {
+impl<T> SharedExt<T> for Arc<RwLock<T>> {
     fn re(&self) -> RwLockReadGuard<T> {
         self.try_read().unwrap()
     }

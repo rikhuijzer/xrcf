@@ -17,7 +17,7 @@ use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
-use xrcf::shared::RwLockExt;
+use xrcf::shared::SharedExt;
 
 /// The token kind used for variables in ArnoldC.
 ///

@@ -15,7 +15,7 @@ use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;

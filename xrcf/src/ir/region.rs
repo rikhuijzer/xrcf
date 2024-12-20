@@ -4,7 +4,7 @@ use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;

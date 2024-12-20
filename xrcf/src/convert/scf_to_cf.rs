@@ -19,7 +19,7 @@ use crate::ir::Region;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;

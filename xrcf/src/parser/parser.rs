@@ -27,7 +27,7 @@ use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;

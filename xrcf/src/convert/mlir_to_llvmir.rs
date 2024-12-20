@@ -29,7 +29,7 @@ use crate::ir::Types;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::shared::RwLockExt;
+use crate::shared::SharedExt;
 use crate::targ3t;
 use anyhow::Result;
 use std::sync::Arc;
