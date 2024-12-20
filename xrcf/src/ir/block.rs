@@ -200,7 +200,7 @@ impl Block {
         if op.is_func() {
             for argument in operation.rd().arguments().into_iter() {
                 match &*argument.rd() {
-                    Value::BlockArgument(block_argument) => match &*block_argument.name().rd() {
+                    Value::BlockArgument(arg) => match &*arg.name().rd() {
                         BlockArgumentName::Name(curr) => {
                             if curr == name {
                                 return Some(argument.clone());
