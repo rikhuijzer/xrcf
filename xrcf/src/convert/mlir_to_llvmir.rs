@@ -269,8 +269,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
         let arguments = arguments.rd();
         let mut new_arguments = vec![];
         for argument in arguments.iter() {
-            let argument_rd = argument.rd();
-            if let Value::Variadic = &*argument_rd {
+            if let Value::Variadic = &*argument.rd() {
                 new_arguments.push(argument.clone());
             } else {
                 let typ = argument.typ().unwrap();
@@ -394,14 +393,10 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
     }
     let mut typ: Option<Arc<RwLock<dyn Type>>> = None;
     for (op_operand, _) in pairs.iter() {
-        let op_operand = op_operand.rd();
-        let value = op_operand.value();
-        let value_typ = value.typ().unwrap();
+        let value_typ = op_operand.rd().value().typ().unwrap();
         if let Some(typ) = &typ {
-            let typ = typ.rd();
-            let value_typ = value_typ.rd();
-            let value_typ = value_typ.to_string();
-            let typ = typ.to_string();
+            let typ = typ.rd().to_string();
+            let value_typ = value_typ.rd().to_string();
             if typ != value_typ {
                 panic!("Expected same type, but got {typ} and {value_typ}");
             }

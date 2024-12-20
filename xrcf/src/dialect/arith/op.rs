@@ -127,11 +127,9 @@ impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&self) -> RewriteResult {
         let operands = self.operation.operands();
-        let operands = operands.vec();
-        let operands = operands.rd();
-        assert!(operands.len() == 2);
+        assert!(operands.clone().into_iter().len() == 2);
 
-        let lhs = operands.get(0).unwrap();
+        let lhs = operands.clone().into_iter().next().unwrap();
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
@@ -144,7 +142,7 @@ impl AddiOp {
             None => return RewriteResult::Unchanged,
         };
 
-        let rhs = operands.get(1).unwrap();
+        let rhs = operands.into_iter().nth(1).unwrap();
         let rhs = match rhs.defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
@@ -178,22 +176,23 @@ impl AddiOp {
 
         let new_const = ConstantOp::from_operation(new_operation);
         let new_const = Shared::new(new_const.into());
-        let mut result = result.wr();
-        if let Value::OpResult(result) = &mut *result {
+        if let Value::OpResult(result) = &mut *result.wr() {
             result.set_defining_op(Some(new_const.clone()));
         }
 
         self.replace(new_const.clone());
 
-        {
-            let new_const = new_const.rd();
-            let new_const = new_const.operation().rd();
-            let results = new_const.results();
-            let results = results.vec();
-            let results = results.rd();
-            assert!(results.len() == 1);
-            results[0].rename("%c3_i64");
-        }
+        new_const
+            .rd()
+            .operation()
+            .rd()
+            .results()
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, result)| {
+                assert!(i == 0, "Expected exactly one result");
+                result.rename("%c3_i64");
+            });
 
         RewriteResult::Changed(ChangedOp::new(new_const))
     }
