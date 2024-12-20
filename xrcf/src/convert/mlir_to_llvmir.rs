@@ -109,10 +109,10 @@ impl Rewrite for AllocaLowering {
             .unwrap();
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::AllocaOp::from_operation_arc(operation.clone());
-        {
-            let operation = operation.rd();
-            operation.results().convert_types::<ConvertMLIRToLLVMIR>()?;
-        }
+        operation
+            .rd()
+            .results()
+            .convert_types::<ConvertMLIRToLLVMIR>()?;
         new_op.set_element_type(op.element_type().unwrap());
         replace_constant_operands(&new_op);
         let new_op = Shared::new(new_op.into());
@@ -181,9 +181,8 @@ impl Rewrite for BranchLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         if op.as_any().is::<dialect::llvm::BranchOp>() {
             let operands = op.operation().operands().vec();
-            let operands = operands.rd();
             // Check whether [MergeLowering] has already removed the operands.
-            for operand in operands.iter() {
+            for operand in operands.rd().iter() {
                 let operand = operand.rd();
                 let value = operand.value();
                 let value = value.rd();
