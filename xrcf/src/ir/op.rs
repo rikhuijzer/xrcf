@@ -115,36 +115,32 @@ pub trait Op {
         parent.rd().remove(operation.clone());
     }
     /// Replace self with `new` by moving the results of the old operation to
-    /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
-    /// In effect, this makes all the uses of the old op refer to the new op instead.
+    /// the results of the specified new op, and pointing the
+    /// `result.defining_op` to the new op.  In effect, this makes all the uses
+    /// of the old op refer to the new op instead.
     ///
-    /// Note that this function assumes that `self` will be dropped after this function call.
-    /// Therefore, the old op can still have references to objects that are now part of
-    /// the new op.
+    /// Note that this function assumes that `self` will be dropped after this
+    /// function call.  Therefore, the old op can still have references to
+    /// objects that are now part of the new op.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
+        let parent = self.operation().rd().parent();
         let results = self.operation().rd().results();
         {
-            for result in results.vec().rd().iter() {
-                let mut result = result.wr();
-                if let Value::OpResult(res) = &mut *result {
+            for result in results.clone().into_iter() {
+                if let Value::OpResult(res) = &mut *result.wr() {
                     res.set_defining_op(Some(new.clone()));
                 }
             }
-            let new_read = new.rd();
-            let mut new_operation = new_read.operation().wr();
-            new_operation.set_results(results.clone());
+            new.rd().operation().wr().set_results(results.clone());
         }
-        let old_operation = self.operation().rd();
-        // Root ops do not have a parent, so we don't need to update the parent.
-        match old_operation.parent() {
-            Some(parent) => {
-                let parent = parent.rd();
-                parent.replace(self.operation().clone(), new.clone());
-            }
-            None => {}
+        // Root ops do not have a parent, so in that case we don't need to
+        // update the parent.
+        if let Some(parent) = parent {
+            parent.rd().replace(self.operation().clone(), new.clone())
         }
     }
-    /// Return ops that are children of this op (inside blocks that are inside the region).
+    /// Return ops that are children of this op (inside blocks that are inside
+    /// the region).
     ///
     /// Some ops may decide to override this implementation if the children are
     /// not located inside the main region of the op. For example, the `scf.if`
