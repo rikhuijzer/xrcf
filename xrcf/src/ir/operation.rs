@@ -370,16 +370,12 @@ impl Operation {
     }
     /// Add a new op result with given name.
     pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> UnsetOpResult {
-        let results = self.results();
-        let vec = results.vec();
-        let mut vec = vec.try_write().unwrap();
-
         let mut result = OpResult::default();
         result.set_name(name);
         result.set_typ(typ);
         let op_result = Value::OpResult(result);
         let op_result = Shared::new(op_result.into());
-        vec.push(op_result.clone());
+        self.results().vec().wr().push(op_result.clone());
         UnsetOpResult::new(op_result)
     }
     pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
@@ -395,14 +391,12 @@ impl Operation {
         let mut out = Vec::new();
         let results = self.results().vec();
         let results = results.rd();
-        let defines_result = results.len() > 0;
+        let defines_result = results.len() != 0;
         if !defines_result {
             return Users::HasNoOpResults;
         }
         for result in results.iter() {
-            let result = result.rd();
-            let result_users = result.users();
-            match result_users {
+            match result.rd().users() {
                 Users::OpOperands(users) => {
                     for usage in users.iter() {
                         out.push(usage.clone());
@@ -414,8 +408,7 @@ impl Operation {
         Users::OpOperands(out)
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}")?;
+        write!(f, "{}", crate::ir::spaces(indent))?;
         if !self.results().is_empty() {
             write!(f, "{} = ", self.results())?;
         }
@@ -425,10 +418,10 @@ impl Operation {
             write!(f, " {}", operands)?;
         }
         write!(f, "{}", self.attributes())?;
-        let result_types = self.results().types();
-        if !result_types.vec().is_empty() {
+        let result_types = self.results().types().into_iter();
+        if result_types.len() != 0 {
             write!(f, " :")?;
-            for result_type in result_types.vec().iter() {
+            for result_type in result_types {
                 write!(f, " {}", result_type.rd())?;
             }
         }

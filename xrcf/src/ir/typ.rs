@@ -181,6 +181,14 @@ pub struct Types {
     types: Vec<Arc<RwLock<dyn Type>>>,
 }
 
+impl IntoIterator for Types {
+    type Item = Arc<RwLock<dyn Type>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.types.into_iter()
+    }
+}
+
 impl Types {
     pub fn from_vec(types: Vec<Arc<RwLock<dyn Type>>>) -> Self {
         Self { types }
