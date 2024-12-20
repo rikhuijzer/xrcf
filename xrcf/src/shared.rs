@@ -15,16 +15,7 @@ use std::sync::RwLockWriteGuard;
 /// let lock = Shared::new(42.into());
 /// assert_eq!(*lock.try_read().unwrap(), 42);
 /// ```
-/// can also be used together with [SharedExt]:
-/// ```
-/// use std::sync::Arc;
-/// use std::sync::RwLock;
-/// use xrcf::shared::Shared;
-/// use xrcf::shared::SharedExt;
-///
-/// let lock = Shared::new(42.into());
-/// assert_eq!(*lock.rd(), 42);
-/// ```
+/// can also be used together with [SharedExt].
 pub type Shared<T> = Arc<RwLock<T>>;
 
 /// A trait for creating new Arc<RwLock<T>> values
