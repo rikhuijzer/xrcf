@@ -204,15 +204,15 @@ impl Operation {
         self.region().expect("no region").rd().blocks()
     }
     pub fn operand_types(&self) -> Types {
-        let operands = self.operands.vec();
-        let operands = operands.rd();
-        let operand_types = operands.iter().map(|o| o.rd().typ().unwrap()).collect();
-        Types::from_vec(operand_types)
+        Types::from_vec(
+            self.operands()
+                .into_iter()
+                .map(|o| o.rd().typ().unwrap())
+                .collect(),
+        )
     }
     pub fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
-        let operands = self.operands.vec();
-        let operands = operands.rd();
-        operands.get(index).cloned()
+        self.operands().into_iter().nth(index).clone()
     }
     pub fn operands_mut(&mut self) -> &mut OpOperands {
         &mut self.operands
@@ -224,29 +224,21 @@ impl Operation {
         self.results.clone()
     }
     pub fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>> {
-        let results = self.results.vec();
-        let results = results.rd();
-        results.get(index).cloned()
+        self.results().into_iter().nth(index).clone()
     }
     /// Get the single result type of the operation.
     ///
     /// Return `None` if `results.len() =! 1`.
     pub fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
-        let results = self.results();
-        let results = results.vec();
-        let results = results.rd();
-        let result = results.get(index).unwrap();
-        let result = result.rd();
-        Some(result.typ().unwrap())
+        match self.results().into_iter().nth(index) {
+            None => None,
+            Some(result) => Some(result.rd().typ().unwrap()),
+        }
     }
     pub fn result_names(&self) -> Vec<String> {
-        let results = self.results();
-        let results = results.vec();
-        let results = results.rd();
         let mut result_names = vec![];
-        for result in results.iter() {
-            let result = result.rd();
-            let name = match &*result {
+        for result in self.results().into_iter() {
+            let name = match &*result.rd() {
                 Value::BlockArgument(arg) => {
                     let name = arg.name();
                     let name = name.rd();
@@ -260,14 +252,10 @@ impl Operation {
                 Value::BlockPtr(_) => continue,
                 Value::Constant(_) => continue,
                 Value::FuncResult(_) => continue,
-                Value::OpResult(res) => {
-                    let name = res.name();
-                    let name = name.rd();
-                    match &*name {
-                        Some(name) => name.to_string(),
-                        None => continue,
-                    }
-                }
+                Value::OpResult(res) => match &*res.name().rd() {
+                    None => continue,
+                    Some(name) => name.to_string(),
+                },
                 Value::Variadic => continue,
             };
             result_names.push(name);
@@ -286,23 +274,18 @@ impl Operation {
             Some(parent) => parent,
             None => return None,
         };
-        let parent = parent.rd();
-        let parent = parent.parent();
-        let parent = match parent {
+        let parent = match parent.rd().parent() {
             Some(parent) => parent,
             None => return None,
         };
-        let parent = parent.rd();
-        let parent = parent.parent();
-        let parent = match parent {
+        let parent = match parent.rd().parent() {
             Some(parent) => parent,
             None => return None,
         };
         Some(parent)
     }
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
-        let results = self.results();
-        results.rename_variables(renamer)
+        self.results().rename_variables(renamer)
     }
     pub fn set_name(&mut self, name: OperationName) {
         self.name = name;
@@ -311,14 +294,10 @@ impl Operation {
         self.arguments = arguments;
     }
     pub fn set_argument(&mut self, index: usize, argument: Arc<RwLock<Value>>) {
-        let arguments = self.arguments.vec();
-        let mut arguments = arguments.try_write().unwrap();
-        set_or_grow_by_one(&mut arguments, index, argument);
+        set_or_grow_by_one(&mut self.arguments.vec().wr(), index, argument);
     }
     pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
-        let operands = self.operands.vec();
-        let mut operands = operands.try_write().unwrap();
-        set_or_grow_by_one(&mut operands, index, operand);
+        set_or_grow_by_one(&mut self.operands.vec().wr(), index, operand);
     }
     pub fn set_operands(&mut self, operands: OpOperands) {
         self.operands = operands;
@@ -330,22 +309,21 @@ impl Operation {
         self.results = results;
     }
     /// Update the result type for the operation.
-    ///
-    /// Panics if `results.len() != 1`.
     pub fn set_result_type(&self, index: usize, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
-        let results = self.results();
-        let results = results.vec();
-        let results = results.rd();
-        let result = results.get(index).unwrap();
-        let mut result = result.try_write().unwrap();
-        result.set_type(result_type);
+        self.results()
+            .into_iter()
+            .nth(index)
+            .unwrap()
+            .wr()
+            .set_type(result_type);
         Ok(())
     }
     /// Set the results (and types) of the operation to [AnonymousResult]s.
+    ///
+    /// Assumes the results are empty.
     pub fn set_anonymous_results(&self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
-        let results = self.results();
-        let results = results.vec();
-        let mut results = results.try_write().unwrap();
+        let results = self.results().vec();
+        let mut results = results.wr();
         for result_type in result_types.iter() {
             let func_result = AnonymousResult::new(result_type.clone());
             let value = Value::FuncResult(func_result);
@@ -356,40 +334,31 @@ impl Operation {
     }
     /// Set the result (and type) of the operation to [AnonymousResult].
     pub fn set_anonymous_result(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
-        let result_types = vec![result_type];
-        self.set_anonymous_results(result_types)
+        self.set_anonymous_results(vec![result_type])
     }
     pub fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        let parent = self.parent();
-        let parent = parent.expect("Expected parent");
-        let index = match parent.index_of(self) {
-            Some(index) => index,
+        let parent = self.parent().expect("no parent");
+        match parent.index_of(self) {
+            Some(index) => parent.ops().rd()[..index].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
                     self
                 );
             }
-        };
-        let ops = parent.ops();
-        let ops = ops.rd();
-        ops[..index].to_vec()
+        }
     }
     pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        let parent = self.parent();
-        let parent = parent.expect("Expected parent");
-        let index = match parent.index_of(self) {
-            Some(index) => index,
+        let parent = self.parent().expect("no parent");
+        match parent.index_of(self) {
+            Some(index) => parent.ops().rd()[index + 1..].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
                     self
                 );
             }
-        };
-        let ops = parent.ops();
-        let ops = ops.rd();
-        ops[index + 1..].to_vec()
+        }
     }
     pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
         let mut results = self.results();
