@@ -41,14 +41,8 @@ pub trait Op {
     where
         Self: Sized,
     {
-        {
-            let name = Self::operation_name();
-            let operation_write = operation.clone();
-            let mut operation_write = operation_write.wr();
-            operation_write.set_name(name);
-        }
-        let op = Self::new(operation);
-        op
+        operation.wr().set_name(Self::operation_name());
+        Self::new(operation)
     }
     /// Create an [Op] from an [Operation].
     ///
@@ -60,30 +54,21 @@ pub trait Op {
     where
         Self: Sized,
     {
-        let operation = Shared::new(operation.into());
-        Self::from_operation_arc(operation)
+        Self::from_operation_arc(Shared::new(operation.into()))
     }
     fn as_any(&self) -> &dyn std::any::Any;
     fn operation(&self) -> &Arc<RwLock<Operation>>;
-    /// Returns the name of the operation.
-    /// This is a convenience method for `self.operation().name()`.
-    /// Unlike `self.operation_name()`, this method is available on a `dyn Op`.
     fn name(&self) -> OperationName {
-        let operation = self.operation().rd();
-        operation.name()
+        self.operation().rd().name()
     }
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
-        let operation = self.operation().rd();
-        operation.region()
+        self.operation().rd().region()
     }
     /// Returns the values which this `Op` assigns to.
     /// For most ops, this is the `results` field of type `OpResult`.
     /// But for some other ops like `FuncOp`, this can be different.
     fn assignments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.rd();
-        let results = operation.results();
-        Ok(results.clone())
+        Ok(self.operation().rd().results())
     }
     fn canonicalize(&self) -> RewriteResult {
         RewriteResult::Unchanged
@@ -101,37 +86,33 @@ pub trait Op {
         false
     }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
-        let operation = self.operation().rd();
-        let attributes = operation.attributes();
-        let attributes = attributes.map();
-        let attributes = attributes.rd();
-        let value = attributes.get(key)?;
-        Some(value.clone())
+        Some(self.operation().rd().attributes().get(key)?)
     }
     /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
-        let operation = self.operation().rd();
-        let block = operation.parent().expect("no parent");
-        let block = block.rd();
-        let later = self.operation().clone();
-        block.insert_before(earlier, later);
-    }
-    /// Insert `later` after `self` inside `self`'s parent block.
-    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
-        let operation = self.operation().rd();
-        let block = match operation.parent() {
+        let operation = self.operation();
+        let parent = match operation.rd().parent() {
             Some(block) => block,
             None => panic!("no parent for {}", self.name()),
         };
-        let earlier = self.operation().clone();
-        block.insert_after(earlier, later);
+        let later = operation.clone();
+        parent.rd().insert_before(earlier, later);
+    }
+    /// Insert `later` after `self` inside `self`'s parent block.
+    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+        let operation = self.operation();
+        let parent = match operation.rd().parent() {
+            Some(block) => block,
+            None => panic!("no parent for {}", self.name()),
+        };
+        let earlier = operation.clone();
+        parent.rd().insert_after(earlier, later);
     }
     /// Remove the operation from its parent block.
     fn remove(&self) {
-        let operation = self.operation().rd();
-        let block = operation.parent().expect("no parent");
-        let block = block.rd();
-        block.remove(self.operation().clone());
+        let operation = self.operation();
+        let parent = operation.rd().parent().expect("no parent");
+        parent.rd().remove(operation.clone());
     }
     /// Replace self with `new` by moving the results of the old operation to
     /// the results of the specified new op, and pointing the `result.defining_op` to the new op.
@@ -141,10 +122,7 @@ pub trait Op {
     /// Therefore, the old op can still have references to objects that are now part of
     /// the new op.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        let results = {
-            let old_operation = self.operation().rd();
-            old_operation.results()
-        };
+        let results = self.operation().rd().results();
         {
             for result in results.vec().rd().iter() {
                 let mut result = result.wr();
