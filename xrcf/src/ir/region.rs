@@ -7,6 +7,7 @@ use crate::ir::UnsetBlock;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::ops::Deref;
+use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -183,14 +184,40 @@ impl<T> Shared<T> {
     }
 }
 
-impl<T> Deref for Shared<T> {
-    type Target = T;
+pub struct RegionRef<'a> {
+    guard: std::sync::RwLockReadGuard<'a, Region>,
+}
+
+impl<'a> Deref for RegionRef<'a> {
+    type Target = Region;
     fn deref(&self) -> &Self::Target {
-        let guard = self.read();
-        unsafe { &*(guard.deref() as *const T) }
+        &self.guard
     }
 }
-// pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
+
+pub struct SharedRegion {
+    inner: Shared<Region>,
+}
+
+impl SharedRegion {
+    pub fn new(region: Region) -> Self {
+        Self {
+            inner: Shared::new(region),
+        }
+    }
+    pub fn read(&self) -> RegionRef {
+        RegionRef {
+            guard: self.inner.read(),
+        }
+    }
+}
+
+fn tmp() {
+    let region = Region::default();
+    let shared = SharedRegion::new(region);
+    let region = shared.read();
+    let blocks = region.blocks();
+}
 
 pub trait GuardedRegion {
     fn add_empty_block(&self) -> UnsetBlock;
