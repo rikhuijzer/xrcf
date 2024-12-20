@@ -29,12 +29,6 @@ impl<T> SharedExt<T> for Shared<T> {
     }
 }
 
-#[test]
-fn test_shared() {
-    let lock = Shared::new(42.into());
-    assert_eq!(*lock.try_read().unwrap(), 42);
-}
-
 /// A convenience trait for the `RwLock` API.
 ///
 /// This trait makes using [RwLock] less verbose. Is this trait pretty? No. But
@@ -85,4 +79,11 @@ impl<T> RwLockExt<T> for Arc<RwLock<T>> {
     fn wr(&self) -> RwLockWriteGuard<T> {
         self.try_write().unwrap()
     }
+}
+
+#[test]
+/// Just another test that runs even if the docstrings don't.
+fn test_shared() {
+    let lock = Shared::new(42.into());
+    assert_eq!(*lock.rd(), 42);
 }
