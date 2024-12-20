@@ -60,13 +60,10 @@ impl ModuleOp {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        let x = match block.rd().ops().rd().first() {
-            None => {
-                return Err(anyhow::anyhow!("Expected 1 op, got 0"));
-            }
-            Some(op) => Ok(op.clone()),
+        match block.rd().ops().rd().first() {
+            None => return Err(anyhow::anyhow!("Expected 1 op, got 0")),
+            Some(op) => return Ok(op.clone()),
         };
-        x
     }
 }
 
