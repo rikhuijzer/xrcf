@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::sync::RwLockReadGuard;
@@ -25,17 +24,6 @@ impl<T> SharedGuard<T> {
     }
     fn try_write(&self) -> RwLockWriteGuard<T> {
         self.inner.try_write().unwrap()
-    }
-}
-
-pub struct ReadRef<'a, T> {
-    guard: RwLockReadGuard<'a, T>,
-}
-
-impl<'a, T> Deref for ReadRef<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.guard
     }
 }
 
@@ -74,18 +62,14 @@ impl<T> Shared<T> {
             inner: SharedGuard::new(inner),
         }
     }
-    pub fn read(&self) -> ReadRef<T> {
-        ReadRef {
-            guard: self.inner.read(),
-        }
+    pub fn read(&self) -> RwLockReadGuard<T> {
+        self.inner.read()
     }
     pub fn write(&self) -> RwLockWriteGuard<T> {
         self.inner.write()
     }
-    pub fn try_read(&self) -> ReadRef<T> {
-        ReadRef {
-            guard: self.inner.try_read(),
-        }
+    pub fn try_read(&self) -> RwLockReadGuard<T> {
+        self.inner.try_read()
     }
     pub fn try_write(&self) -> RwLockWriteGuard<T> {
         self.inner.try_write()
