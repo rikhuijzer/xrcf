@@ -203,7 +203,7 @@ impl Block {
             "Found no parent for region {region} when searching for assignment of {name}"
         );
         let op = parent.unwrap();
-        let op = &*op.try_read().unwrap();
+        let op = &*op.re();
         let operation = op.operation();
         let operation = operation.try_read().unwrap();
         if op.is_func() {

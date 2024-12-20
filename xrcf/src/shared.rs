@@ -54,14 +54,14 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// let lock = Arc::new(RwLock::new(42));
 /// assert_eq!(*lock.try_read().unwrap(), 42);
 /// ```
-pub trait SharedExt<T> {
+pub trait SharedExt<T: ?Sized> {
     /// Convenience method for reading.
     fn re(&self) -> RwLockReadGuard<T>;
     /// Convenience method for writing.
     fn wr(&self) -> RwLockWriteGuard<T>;
 }
 
-impl<T> SharedExt<T> for Arc<RwLock<T>> {
+impl<T: ?Sized> SharedExt<T> for Shared<T> {
     fn re(&self) -> RwLockReadGuard<T> {
         self.try_read().unwrap()
     }
