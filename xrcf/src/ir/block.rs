@@ -197,22 +197,17 @@ impl Block {
         let op = parent.unwrap();
         let op = &*op.rd();
         let operation = op.operation();
-        let operation = operation.rd();
         if op.is_func() {
-            let arguments = operation.arguments();
-            let arguments = arguments.vec();
-            let arguments = arguments.rd();
-            for argument in arguments.iter() {
+            for argument in operation.rd().arguments().into_iter() {
                 match &*argument.rd() {
-                    Value::BlockArgument(block_argument) => {
-                        let current_name = block_argument.name();
-                        let current_name = current_name.rd();
-                        if let BlockArgumentName::Name(current_name) = &*current_name {
-                            if current_name == name {
+                    Value::BlockArgument(block_argument) => match &*block_argument.name().rd() {
+                        BlockArgumentName::Name(curr) => {
+                            if curr == name {
                                 return Some(argument.clone());
                             }
                         }
-                    }
+                        _ => {}
+                    },
                     _ => panic!("Expected BlockArgument"),
                 }
             }
