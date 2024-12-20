@@ -32,16 +32,17 @@ impl PrintfOp {
     pub fn text(&self) -> StringAttr {
         let operands = self.operation.operand(0);
         let operand = operands.expect("no operand");
-        let operand = operand.rd();
-        let value = operand.value();
+        let value = operand.rd().value();
         let value = value.rd();
-        let text = match &*value {
-            Value::Constant(constant) => constant,
+        match &*value {
+            Value::Constant(constant) => constant
+                .value()
+                .as_any()
+                .downcast_ref::<StringAttr>()
+                .unwrap()
+                .clone(),
             _ => panic!("expected constant"),
-        };
-        let text = text.value();
-        let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
-        text.clone()
+        }
     }
     /// Set the first operand to `printf`.
     pub fn set_text(&mut self, text: StringAttr) {
