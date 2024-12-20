@@ -110,13 +110,9 @@ impl Op for AllocaOp {
         write!(f, " x ")?;
         write!(f, "{}", self.element_type().expect("no element type"))?;
         write!(f, " : ")?;
-        let array_size_type = array_size.typ().unwrap();
-        let array_size_type = array_size_type.rd();
-        write!(f, "({})", array_size_type)?;
+        write!(f, "({})", array_size.typ().unwrap().rd())?;
         write!(f, " -> ")?;
-        let result_type = operation.result_type(0).unwrap();
-        let result_type = result_type.rd();
-        write!(f, "{result_type}")?;
+        write!(f, "{}", operation.result_type(0).unwrap().rd())?;
         Ok(())
     }
 }
@@ -135,8 +131,7 @@ impl Parse for AllocaOp {
         let array_size =
             parser.parse_op_operand_into(parent.unwrap(), TOKEN_KIND, &mut operation)?;
         parser.parse_keyword("x")?;
-        let element_type = T::parse_type(parser)?;
-        let element_type = element_type.rd();
+        let element_type = T::parse_type(parser)?.rd().to_string();
         parser.expect(TokenKind::Colon)?;
         parser.expect(TokenKind::LParen)?;
 
@@ -150,7 +145,7 @@ impl Parse for AllocaOp {
 
         let op = AllocaOp {
             operation: Shared::new(operation.into()),
-            element_type: Some(element_type.to_string()),
+            element_type: Some(element_type),
         };
         let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
@@ -190,19 +185,15 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest();
-        let dest = dest.unwrap();
-        let dest = dest.rd();
-        write!(f, "{}", dest)?;
+        write!(f, "{}", self.dest().expect("no dest").rd())?;
         let operands = self.operation().operands();
         let operands = operands.vec();
         let operands = operands.rd();
         let operands = operands.iter().skip(1);
-        if 0 < operands.len() {
+        if operands.len() != 0 {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.rd();
-                operand.display_with_type(f)?;
+                operand.rd().display_with_type(f)?;
             }
             write!(f, ")")?;
         }
@@ -220,9 +211,8 @@ impl Parse for BranchOp {
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
 
         let operation = Shared::new(operation.into());
-        let dest = parser.parse_block_dest()?;
-        let dest = Shared::new(dest.into());
-        operation.set_operand(0, dest);
+        let operand = Shared::new(parser.parse_block_dest()?.into());
+        operation.set_operand(0, operand);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
