@@ -125,14 +125,12 @@ pub trait Op {
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
         let parent = self.operation().rd().parent();
         let results = self.operation().rd().results();
-        {
-            for result in results.clone().into_iter() {
-                if let Value::OpResult(res) = &mut *result.wr() {
-                    res.set_defining_op(Some(new.clone()));
-                }
+        for result in results.clone().into_iter() {
+            if let Value::OpResult(res) = &mut *result.wr() {
+                res.set_defining_op(Some(new.clone()));
             }
-            new.rd().operation().wr().set_results(results.clone());
         }
+        new.rd().operation().wr().set_results(results);
         // Root ops do not have a parent, so in that case we don't need to
         // update the parent.
         if let Some(parent) = parent {
