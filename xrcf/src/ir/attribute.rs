@@ -250,11 +250,9 @@ impl Attributes {
         self.map.rd().get(name).cloned()
     }
     pub fn deep_clone(&self) -> Self {
-        let map = self.map.rd();
         let mut out = HashMap::new();
-        for (name, attribute) in map.iter() {
-            let attribute = attribute.clone();
-            out.insert(name.to_string(), attribute);
+        for (name, attribute) in self.map.rd().iter() {
+            out.insert(name.to_string(), attribute.clone());
         }
         let map = Shared::new(out.into());
         Self { map }
@@ -263,14 +261,14 @@ impl Attributes {
 
 impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let map = self.map.rd();
-        if !map.is_empty() {
+        let map = self.map.rd().clone().into_iter();
+        if map.len() != 0 {
             write!(f, "{{")?;
-            for (i, attr) in map.iter().enumerate() {
-                let (name, attribute) = attr;
+            for (i, attr) in map.enumerate() {
                 if 0 < i {
                     write!(f, " ")?;
                 }
+                let (name, attribute) = attr;
                 write!(f, "{name} = {attribute}")?;
             }
             write!(f, "}}")?;
