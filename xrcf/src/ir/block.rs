@@ -93,8 +93,7 @@ impl Block {
         self.label_prefix.clone()
     }
     pub fn set_label(&self, label: BlockName) {
-        let mut label_write = self.label.wr();
-        *label_write = label;
+        *self.label.wr() = label;
     }
     pub fn set_label_prefix(&mut self, label_prefix: String) {
         self.label_prefix = label_prefix;
@@ -113,42 +112,34 @@ impl Block {
     /// ```
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        let label = self.label();
-        let label = label.rd();
-        let label = match &*label {
+        let label = match &*self.label().rd() {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
-            BlockName::Name(label) => Some(label),
+            BlockName::Name(label) => Some(label.clone()),
             // We can still find callers via `Value::BlockPtr`.
             BlockName::Unset => None,
         };
-        let predecessors = self.predecessors();
-        let predecessors = predecessors.expect("expected predecessors");
         let mut callers = vec![];
-        for predecessor in predecessors.iter() {
-            let predecessor = predecessor.rd();
-            let ops = predecessor.ops();
-            let ops = ops.rd();
-            for op in ops.iter() {
-                let operation = op.operation();
-                let operands = operation.operands().vec();
-                let operands = operands.rd();
-                for operand in operands.iter() {
-                    let value = operand.value();
-                    let value = value.rd();
-                    if let Value::BlockPtr(block_ptr) = &*value {
-                        let current = block_ptr.block();
-                        let current = &*current.rd();
-                        if std::ptr::eq(current, self) {
-                            callers.push(op.clone());
-                        }
-                    } else if let Value::BlockLabel(block_label) = &*value {
-                        if let Some(label) = label {
-                            let current = canonicalize_label(&block_label.name());
-                            if current == canonicalize_label(label) {
+        for p in self.predecessors().expect("no predecessors") {
+            for op in p.rd().ops().rd().iter() {
+                for operand in op.operation().operands().into_iter() {
+                    match &*operand.value().rd() {
+                        Value::BlockPtr(block_ptr) => {
+                            let current = block_ptr.block();
+                            let current = &*current.rd();
+                            if std::ptr::eq(current, self) {
                                 callers.push(op.clone());
+                            };
+                        }
+                        Value::BlockLabel(block_label) => {
+                            if let Some(label) = &label {
+                                let current = canonicalize_label(&block_label.name());
+                                if current == canonicalize_label(label) {
+                                    callers.push(op.clone());
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
             }
