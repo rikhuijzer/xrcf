@@ -155,9 +155,8 @@ impl Op for BeginMainOp {
         let operation = self.operation.re();
         write!(f, "{} ", operation.name())?;
         let region = operation.region().unwrap();
-        let region = region.re();
         write!(f, "()")?;
-        region.display(f, indent)?;
+        region.re().display(f, indent)?;
         Ok(())
     }
 }

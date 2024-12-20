@@ -21,8 +21,7 @@ impl Rewrite for CanonicalizeOp {
         Ok(true)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
-        let result = op.canonicalize();
+        let result = op.re().canonicalize();
         Ok(result)
     }
 }
