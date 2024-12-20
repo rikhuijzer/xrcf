@@ -477,9 +477,9 @@ impl Block {
 
 impl Default for Block {
     fn default() -> Self {
-        let label = Arc::new(RwLock::new(BlockName::Unnamed));
+        let label = Shared::new(BlockName::Unnamed.into());
         let arguments = Values::default();
-        let ops = Arc::new(RwLock::new(vec![]));
+        let ops = Shared::new(vec![]);
         let parent = None;
         Self::new(label, arguments, ops, parent)
     }

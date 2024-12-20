@@ -7,6 +7,7 @@ use crate::convert::ConvertSCFToCF;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use clap::Arg;
@@ -119,14 +120,14 @@ impl TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all,
-            writer: Arc::new(RwLock::new(std::io::stderr())),
+            writer: Shared::new(std::io::stderr().into()),
         }
     }
     pub fn from_passes(passes: Passes) -> TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all: false,
-            writer: Arc::new(RwLock::new(std::io::stderr())),
+            writer: Shared::new(std::io::stderr().into()),
         }
     }
     pub fn print_ir_before_all(&self) -> bool {

@@ -1,6 +1,7 @@
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
+use crate::shared::Shared;
 use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
@@ -351,7 +352,7 @@ impl Operation {
         for result_type in result_types.iter() {
             let func_result = AnonymousResult::new(result_type.clone());
             let value = Value::FuncResult(func_result);
-            let value = Arc::new(RwLock::new(value));
+            let value = Shared::new(value.into());
             results.push(value);
         }
         Ok(())
@@ -411,7 +412,7 @@ impl Operation {
         result.set_name(name);
         result.set_typ(typ);
         let op_result = Value::OpResult(result);
-        let op_result = Arc::new(RwLock::new(op_result));
+        let op_result = Shared::new(op_result.into());
         vec.push(op_result.clone());
         UnsetOpResult::new(op_result)
     }

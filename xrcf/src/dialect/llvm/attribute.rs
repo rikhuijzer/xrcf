@@ -18,7 +18,7 @@ impl Attribute for LinkageAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let next = parser.peek();

@@ -59,7 +59,7 @@ pub trait Op {
     where
         Self: Sized,
     {
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         Self::from_operation_arc(operation)
     }
     fn as_any(&self) -> &dyn std::any::Any;

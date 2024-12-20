@@ -6,6 +6,7 @@ use crate::convert::RewriteResult;
 use crate::dialect::cf;
 use crate::dialect::llvm;
 use crate::ir::Op;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
@@ -24,7 +25,7 @@ impl Rewrite for BranchLowering {
         let op = op.re();
         let op = op.as_any().downcast_ref::<cf::BranchOp>().unwrap();
         let new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -43,7 +44,7 @@ impl Rewrite for CondBranchLowering {
         let op = op.re();
         let op = op.as_any().downcast_ref::<cf::CondBranchOp>().unwrap();
         let new_op = llvm::CondBranchOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }

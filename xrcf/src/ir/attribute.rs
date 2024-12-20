@@ -63,7 +63,7 @@ impl Attribute for BooleanAttr {
         Self { value }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(IntegerType::from_str("i1")))
+        Shared::new(IntegerType::from_str("i1").into())
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -113,7 +113,7 @@ impl Attribute for IntegerAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(self.typ))
+        Shared::new(self.typ.into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
@@ -168,7 +168,7 @@ impl Attribute for StringAttr {
         Self { value }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
@@ -203,7 +203,7 @@ impl Attribute for AnyAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let value = parser.advance();
@@ -230,7 +230,7 @@ pub struct Attributes {
 impl Attributes {
     pub fn new() -> Self {
         Self {
-            map: Arc::new(RwLock::new(HashMap::new())),
+            map: Shared::new(HashMap::new()),
         }
     }
     pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
@@ -255,7 +255,7 @@ impl Attributes {
             let attribute = attribute.clone();
             out.insert(name.to_string(), attribute);
         }
-        let map = Arc::new(RwLock::new(out));
+        let map = Shared::new(out);
         Self { map }
     }
 }

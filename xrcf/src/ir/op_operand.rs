@@ -22,7 +22,7 @@ pub struct OpOperand {
 impl OpOperand {
     pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
         let value = Value::from_block(block);
-        let value = Arc::new(RwLock::new(value));
+        let value = Shared::new(value.into());
         OpOperand { value }
     }
     pub fn new(value: Arc<RwLock<Value>>) -> Self {
@@ -110,7 +110,7 @@ impl OpOperands {
     }
     pub fn from_vec(operands: Vec<Arc<RwLock<OpOperand>>>) -> Self {
         OpOperands {
-            operands: Arc::new(RwLock::new(operands)),
+            operands: Shared::new(operands),
         }
     }
     pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
@@ -139,7 +139,7 @@ impl OpOperands {
 impl Default for OpOperands {
     fn default() -> Self {
         OpOperands {
-            operands: Arc::new(RwLock::new(vec![])),
+            operands: Shared::new(vec![]),
         }
     }
 }
@@ -184,22 +184,22 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             };
             let operand = OpOperand::new(assignment);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else if next.kind == TokenKind::CaretIdentifier {
             let identifier = self.expect(TokenKind::CaretIdentifier)?;
             let label = BlockLabel::new(identifier.lexeme.clone());
             let label = Value::BlockLabel(label);
-            let label = Arc::new(RwLock::new(label));
+            let label = Shared::new(label.into());
             let operand = OpOperand::new(label);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else if next.kind == TokenKind::String {
             let text = self.parse_string()?;
             let text = Arc::new(text);
             let text = Constant::new(text);
             let text = Value::Constant(text);
-            let text = Arc::new(RwLock::new(text));
+            let text = Shared::new(text.into());
             let operand = OpOperand::new(text);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else {
             let msg = "Expected operand.";
             let msg = self.error(&next, msg);
@@ -246,7 +246,7 @@ impl<T: ParserDispatch> Parser<T> {
             }
         }
         let operands = OpOperands {
-            operands: Arc::new(RwLock::new(arguments)),
+            operands: Shared::new(arguments),
         };
         Ok(operands)
     }

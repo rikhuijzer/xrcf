@@ -81,10 +81,10 @@ impl Parse for BranchOp {
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
         let dest = parser.parse_block_dest()?;
-        let dest = Arc::new(RwLock::new(dest));
+        let dest = Shared::new(dest.into());
         operation.set_operand(0, dest);
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
 
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
@@ -103,7 +103,7 @@ impl Parse for BranchOp {
         }
 
         let op = BranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -147,9 +147,9 @@ impl Parse for CondBranchOp {
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
         parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CondBranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

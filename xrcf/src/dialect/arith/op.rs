@@ -89,7 +89,7 @@ impl Parse for ConstantOp {
 
         let value = if parser.is_boolean() {
             let typ = IntegerType::new(1);
-            let typ = Arc::new(RwLock::new(typ));
+            let typ = Shared::new(typ.into());
             operation.set_result_type(0, typ)?;
             parser.parse_boolean()?
         } else {
@@ -103,10 +103,10 @@ impl Parse for ConstantOp {
             Arc::new(integer)
         };
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ConstantOp { operation };
         op.set_value(value);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -171,12 +171,12 @@ impl AddiOp {
         let result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
-        let result = Arc::new(RwLock::new(result));
+        let result = Shared::new(result.into());
         results.vec().wr().push(result.clone());
         new_operation.set_results(results);
 
         let new_const = ConstantOp::from_operation(new_operation);
-        let new_const = Arc::new(RwLock::new(new_const));
+        let new_const = Shared::new(new_const.into());
         let mut result = result.wr();
         if let Value::OpResult(result) = &mut *result {
             result.set_defining_op(Some(new_const.clone()));
@@ -234,11 +234,11 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);
-        let result_type = Arc::new(RwLock::new(result_type));
+        let result_type = Shared::new(result_type.into());
         operation.set_result_type(0, result_type)?;
 
         let op = O::from_operation(operation);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }

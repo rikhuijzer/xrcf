@@ -15,6 +15,7 @@ use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
@@ -330,7 +331,7 @@ impl OpResult {
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: Arc::new(RwLock::new(None)),
+            name: Shared::new(None.into()),
             typ: None,
             defining_op: None,
         }
@@ -697,7 +698,7 @@ impl IntoIterator for Values {
 impl Values {
     pub fn from_vec(values: Vec<Arc<RwLock<Value>>>) -> Self {
         Values {
-            values: Arc::new(RwLock::new(values)),
+            values: Shared::new(values.into()),
         }
     }
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Value>>>>> {
@@ -804,7 +805,7 @@ impl Values {
 impl Default for Values {
     fn default() -> Self {
         Values {
-            values: Arc::new(RwLock::new(vec![])),
+            values: Shared::new(vec![].into()),
         }
     }
 }
@@ -833,9 +834,9 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
-            let name = Arc::new(RwLock::new(name));
+            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
-            let operand = Arc::new(RwLock::new(arg));
+            let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
                 self.advance();
             }
@@ -844,9 +845,9 @@ impl<T: ParserDispatch> Parser<T> {
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Anonymous;
-            let name = Arc::new(RwLock::new(name));
+            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
-            let operand = Arc::new(RwLock::new(arg));
+            let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
                 self.advance();
             }
@@ -857,7 +858,7 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Dot)?;
             self.expect(TokenKind::Dot)?;
             let variadic = Value::Variadic;
-            return Ok(Arc::new(RwLock::new(variadic)));
+            return Ok(Shared::new(variadic.into()));
         }
         Err(anyhow::anyhow!("Expected function argument"))
     }
@@ -879,7 +880,7 @@ impl<T: ParserDispatch> Parser<T> {
         let op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
-        Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))
+        Ok(UnsetOpResult::new(Shared::new(result.into())))
     }
     pub fn parse_op_result_into(
         &mut self,
@@ -905,7 +906,7 @@ impl<T: ParserDispatch> Parser<T> {
                 let _comma = self.advance();
             }
         }
-        let results = Arc::new(RwLock::new(results));
+        let results = Shared::new(results.into());
         let values = Values { values: results };
         Ok(UnsetOpResults::new(values))
     }
@@ -949,7 +950,7 @@ impl<T: ParserDispatch> Parser<T> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
         let value = Value::BlockLabel(BlockLabel::new(name));
-        let value = Arc::new(RwLock::new(value));
+        let value = Shared::new(value.into());
         Ok(OpOperand::new(value))
     }
 }

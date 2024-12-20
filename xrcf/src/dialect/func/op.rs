@@ -132,7 +132,7 @@ pub trait Call: Op {
         let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
         op.set_varargs(varargs);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -257,10 +257,10 @@ impl FuncOp {
                 panic!("Expected region to be empty");
             }
             let ops = vec![op.clone()];
-            let ops = Arc::new(RwLock::new(ops));
+            let ops = Shared::new(ops.into());
             let region = Region::default();
             let without_parent = region.add_empty_block();
-            let region = Arc::new(RwLock::new(region));
+            let region = Shared::new(region.into());
             let block = without_parent.set_parent(Some(region.clone()));
             block.set_ops(ops);
             operation.set_region(Some(region));
@@ -381,7 +381,7 @@ impl<T: ParserDispatch> Parser<T> {
             while self.check(TokenKind::IntType) {
                 let typ = self.advance();
                 let typ = AnyType::new(&typ.lexeme);
-                let typ = Arc::new(RwLock::new(typ));
+                let typ = Shared::new(typ.into());
                 result_types.push(typ);
             }
         }
@@ -404,7 +404,7 @@ impl<T: ParserDispatch> Parser<T> {
         let mut op = F::from_operation(operation);
         op.set_identifier(identifier);
         op.set_sym_visibility(visibility);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.parse_region(op.clone())?;
@@ -490,11 +490,11 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
             let return_type = IntegerType::from_str(&return_type.lexeme);
-            let result_type = Arc::new(RwLock::new(return_type));
+            let result_type = Shared::new(return_type.into());
             operation.set_anonymous_result(result_type)?;
         }
         let op = O::from_operation(operation);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

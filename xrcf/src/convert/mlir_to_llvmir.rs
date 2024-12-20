@@ -29,6 +29,7 @@ use crate::ir::Types;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::targ3t;
 use anyhow::Result;
@@ -50,8 +51,8 @@ fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpO
                 let value = op.value();
                 let new_value = Constant::new(value.clone());
                 let new_operand = Value::Constant(new_value);
-                let new_operand = OpOperand::new(Arc::new(RwLock::new(new_operand)));
-                return Some(Arc::new(RwLock::new(new_operand)));
+                let new_operand = OpOperand::new(Shared::new(new_operand.into()));
+                return Some(Shared::new(new_operand.into()));
             }
         }
     }
@@ -85,7 +86,7 @@ impl Rewrite for AddLowering {
         let operation = op.operation();
         let new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -114,7 +115,7 @@ impl Rewrite for AllocaLowering {
         }
         new_op.set_element_type(op.element_type().unwrap());
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -205,7 +206,7 @@ impl Rewrite for BranchLowering {
             .unwrap();
         let operation = op.operation();
         let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -236,7 +237,7 @@ impl Rewrite for CallLowering {
         };
         new_op.set_varargs(varargs);
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -260,7 +261,7 @@ impl Rewrite for CondBranchLowering {
         let operation = op.operation();
         let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -283,11 +284,11 @@ fn lower_block_argument_types(operation: &mut Operation) {
                 let typ = typ.re();
                 if typ.as_any().is::<dialect::llvm::PointerType>() {
                     let typ = targ3t::llvmir::PointerType::from_str("ptr");
-                    let typ = Arc::new(RwLock::new(typ));
+                    let typ = Shared::new(typ.into());
                     let name = BlockArgumentName::Unset;
-                    let name = Arc::new(RwLock::new(name));
+                    let name = Shared::new(name.into());
                     let arg = Value::BlockArgument(BlockArgument::new(name, typ));
-                    new_arguments.push(Arc::new(RwLock::new(arg)));
+                    new_arguments.push(Shared::new(arg.into()));
                 } else {
                     new_arguments.push(argument.clone());
                 }
@@ -320,7 +321,7 @@ impl Rewrite for FuncLowering {
         }
 
         new_op.set_identifier(op.identifier().unwrap());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -448,10 +449,10 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
             BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
             BlockArgumentName::Unset => panic!("Block argument has no name"),
         };
-        let name = Arc::new(RwLock::new(Some(name)));
+        let name = Shared::new(Some(name).into());
         let res = OpResult::new(name, typ, defining_op);
         let new = Value::OpResult(res);
-        let new = Arc::new(RwLock::new(new));
+        let new = Shared::new(new.into());
         operation.set_results(Values::from_vec(vec![new.clone()]));
 
         for user in users.iter() {
@@ -475,14 +476,14 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
     let mut operation = Operation::default();
     operation.set_parent(Some(block.clone()));
 
-    let operation = Arc::new(RwLock::new(operation));
+    let operation = Shared::new(operation.into());
     let mut phi = targ3t::llvmir::PhiOp::new(operation);
     let mut argument_pairs = determine_argument_pairs(&block);
     replace_constant_argument_pairs(&mut argument_pairs);
     verify_argument_pairs(&argument_pairs);
     phi.set_argument_pairs(Some(argument_pairs));
     let argument = arguments.get(0).unwrap();
-    let phi = Arc::new(RwLock::new(phi));
+    let phi = Shared::new(phi.into());
     set_phi_result(phi.clone(), argument);
     arguments.clear();
     block_read.insert_op(phi, 0);
@@ -564,7 +565,7 @@ impl Rewrite for ModuleLowering {
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let operation = op.operation().clone();
         let new_op = targ3t::llvmir::ModuleOp::from_operation_arc(operation);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -588,7 +589,7 @@ impl Rewrite for ReturnLowering {
         let operation = op.operation();
         let new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -623,7 +624,7 @@ impl Rewrite for StoreLowering {
             new_op.set_len(value_typ.num_elements() as usize);
         }
         replace_constant_operands(&new_op);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -638,7 +639,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
         } else {
             panic!("Not implemented for {}", src);
         };
-        Ok(Arc::new(RwLock::new(typ)))
+        Ok(Shared::new(typ.into()))
     }
     fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
         let from_rd = from.re();
@@ -647,7 +648,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
         }
         if from_rd.as_any().is::<dialect::llvm::PointerType>() {
             let typ = targ3t::llvmir::PointerType::new();
-            return Ok(Arc::new(RwLock::new(typ)));
+            return Ok(Shared::new(typ.into()));
         }
         if let Some(typ) = from_rd
             .as_any()
@@ -661,7 +662,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
                 .collect::<Result<Vec<_>>>()?;
             let arguments = Types::from_vec(converted);
             let typ = targ3t::llvmir::FunctionType::new(typ.return_types().clone(), arguments);
-            return Ok(Arc::new(RwLock::new(typ)));
+            return Ok(Shared::new(typ.into()));
         }
         let typ = Self::convert_str(&from_rd.to_string())?;
         Ok(typ)

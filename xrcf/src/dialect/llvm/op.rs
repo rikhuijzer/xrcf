@@ -148,10 +148,10 @@ impl Parse for AllocaOp {
         operation.set_result_type(0, result_type)?;
 
         let op = AllocaOp {
-            operation: Arc::new(RwLock::new(operation)),
+            operation: Shared::new(operation.into()),
             element_type: Some(element_type.to_string()),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -218,9 +218,9 @@ impl Parse for BranchOp {
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let dest = parser.parse_block_dest()?;
-        let dest = Arc::new(RwLock::new(dest));
+        let dest = Shared::new(dest.into());
         operation.set_operand(0, dest);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
@@ -238,7 +238,7 @@ impl Parse for BranchOp {
             parser.expect(TokenKind::RParen)?;
         }
         let op = BranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -347,9 +347,9 @@ impl Parse for CondBranchOp {
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
         parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CondBranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -439,11 +439,11 @@ impl Parse for ConstantOp {
         let typ = T::parse_type(parser)?;
         operation.set_result_type(0, typ)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ConstantOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
 
         Ok(op)
@@ -597,7 +597,7 @@ impl Parse for GlobalOp {
         operation.set_attributes(attributes);
         operation.set_parent(parent);
         let op = GlobalOp::from_operation(operation);
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -713,9 +713,9 @@ impl Parse for StoreOp {
         parser.verify_type(addr, addr_type)?;
 
         let op = StoreOp {
-            operation: Arc::new(RwLock::new(operation)),
+            operation: Shared::new(operation.into()),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 

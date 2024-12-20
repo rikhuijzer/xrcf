@@ -172,11 +172,11 @@ impl Parse for BeginMainOp {
         let name = BeginMainOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = BeginMainOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let region = parser.parse_region(op.clone())?;
         let mut operation = operation.wr();
         operation.set_region(Some(region.clone()));
@@ -227,12 +227,12 @@ impl Parse for CallOp {
         let identifier = identifier.lexeme.clone();
         parser.expect(TokenKind::LParen)?;
         parser.expect(TokenKind::RParen)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CallOp {
             operation: operation.clone(),
             identifier: Some(identifier),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -270,12 +270,12 @@ impl Parse for DeclareIntOp {
         let name = DeclareIntOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = DeclareIntOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         result.set_defining_op(Some(op.clone()));
         let typ = IntegerType::new(16);
-        let typ = Arc::new(RwLock::new(typ));
+        let typ = Shared::new(typ.into());
         result.set_typ(typ);
         Ok(op)
     }
@@ -335,13 +335,13 @@ impl Parse for IfOp {
         let name = IfOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         parser.parse_op_operand_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = IfOp {
             operation: operation.clone(),
             then: None,
             els: None,
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let then = parser.parse_region(op.clone())?;
         let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
         if else_keyword.lexeme != "BULLSHIT" {
@@ -409,13 +409,13 @@ impl Parse for PrintOp {
         operation.set_parent(parent.clone());
         let name = PrintOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let text = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
         let mut op = PrintOp {
             operation: operation.clone(),
         };
         op.set_text(text);
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -459,10 +459,10 @@ impl Parse for SetInitialValueOp {
             parser.parse_arnold_constant_into(&mut operation)?;
         }
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = SetInitialValueOp {
             operation: operation.clone(),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }

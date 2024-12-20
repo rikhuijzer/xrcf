@@ -119,13 +119,13 @@ impl Parse for IfOp {
             parser.expect(TokenKind::RParen)?;
         }
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation);
         let op = IfOp {
             operation,
             then: None,
             els: None,
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let then = parser.parse_region(op.clone())?;
         let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
         if else_keyword.lexeme() != "else" {
@@ -187,9 +187,9 @@ impl Parse for YieldOp {
         parser.expect(TokenKind::Colon)?;
         parser.parse_type_for_op_operand(operand)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = YieldOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

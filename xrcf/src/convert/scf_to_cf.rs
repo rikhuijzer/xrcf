@@ -63,20 +63,20 @@ fn lower_yield_op(
 ) -> Result<Arc<RwLock<dyn Op>>> {
     let operation = op.operation();
     let var = operation.operand(0).unwrap();
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
+    let operand = Shared::new(OpOperand::from_block(after.into()));
     operation.set_operand(0, operand);
     operation.set_operand(1, var);
     let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
-    let new_op = Arc::new(RwLock::new(new_op));
+    let new_op = Shared::new(new_op.into());
     Ok(new_op)
 }
 
 fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
+    let operand = Shared::new(OpOperand::from_block(after.into()));
     new_op.set_dest(operand);
-    let new_op = Arc::new(RwLock::new(new_op));
+    let new_op = Shared::new(new_op.into());
     new_op
 }
 
@@ -136,7 +136,7 @@ fn move_successors_to_exit_block(
         let op = op.re();
         op.set_parent(exit_block.clone());
     }
-    exit_block.set_ops(Arc::new(RwLock::new(return_ops)));
+    exit_block.set_ops(Shared::new(return_ops.into()));
     ops.drain(if_op_index + 1..);
     Ok(())
 }
@@ -156,11 +156,11 @@ fn add_merge_block(
     operation.set_parent(Some(merge.clone()));
     let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
 
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(exit)));
+    let operand = Shared::new(OpOperand::from_block(exit.into()));
     merge_op.set_dest(operand);
 
-    let merge_op = Arc::new(RwLock::new(merge_op));
-    merge.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
+    let merge_op = Shared::new(merge_op.into());
+    merge.set_ops(Shared::new(vec![merge_op.clone()]));
     Ok((merge, merge_block_arguments))
 }
 
@@ -187,11 +187,11 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
         let name = result.name();
         let typ = result.typ().unwrap();
         let name = BlockArgumentName::Name(name.unwrap());
-        let name = Arc::new(RwLock::new(name));
+        let name = Shared::new(name.into());
         let mut arg = BlockArgument::new(name, typ);
         arg.set_parent(Some(parent.clone()));
         let arg = Value::BlockArgument(arg);
-        let arg = Arc::new(RwLock::new(arg));
+        let arg = Shared::new(arg.into());
         out.push(arg);
     }
     Ok(Values::from_vec(out))
@@ -304,12 +304,12 @@ impl Rewrite for IfLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
-        let then_operand = Arc::new(RwLock::new(OpOperand::from_block(then)));
+        let then_operand = Shared::new(OpOperand::from_block(then.into()));
         operation.set_operand(1, then_operand);
-        let els_operand = Arc::new(RwLock::new(OpOperand::from_block(els)));
+        let els_operand = Shared::new(OpOperand::from_block(els.into()));
         operation.set_operand(2, els_operand);
         let new = dialect::cf::CondBranchOp::from_operation(operation);
-        let new: Arc<RwLock<dyn Op>> = Arc::new(RwLock::new(new));
+        let new = Shared::new(new.into());
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.

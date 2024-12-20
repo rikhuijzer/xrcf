@@ -4,6 +4,7 @@ use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -91,7 +92,7 @@ impl Region {
     }
     pub fn add_empty_block(&self) -> UnsetBlock {
         let block = Block::default();
-        let block = Arc::new(RwLock::new(block));
+        let block = Shared::new(block.into());
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let mut blocks = blocks.wr();
@@ -102,7 +103,7 @@ impl Region {
         let index = self.index_of(&block.re()).unwrap();
 
         let new = Block::default();
-        let new = Arc::new(RwLock::new(new));
+        let new = Shared::new(new.into());
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let mut blocks = blocks.wr();
@@ -159,7 +160,7 @@ impl Display for Region {
 impl Default for Region {
     fn default() -> Self {
         Self {
-            blocks: Blocks::new(Arc::new(RwLock::new(vec![]))),
+            blocks: Blocks::new(Shared::new(vec![].into())),
             parent: None,
         }
     }

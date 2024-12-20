@@ -84,11 +84,11 @@ impl Parse for ModuleOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "module");
         operation.set_name(ModuleOp::operation_name());
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ModuleOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
 
         let region = parser.parse_region(op.clone());
         let mut operation = operation.wr();
