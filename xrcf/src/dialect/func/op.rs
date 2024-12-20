@@ -264,8 +264,7 @@ impl FuncOp {
             block.set_ops(ops);
             operation.set_region(Some(region));
         } else {
-            let last = ops.last().unwrap();
-            last.insert_after(op.clone());
+            ops.last().unwrap().insert_after(op.clone());
         }
         UnsetOp::new(op.clone())
     }
@@ -300,14 +299,12 @@ impl FuncOp {
         f: &mut Formatter<'_>,
         indent: i32,
     ) -> std::fmt::Result {
-        let name = op.operation().rd().name();
-        write!(f, "{name} ")?;
+        write!(f, "{} ", op.operation().rd().name())?;
         if let Some(visibility) = FuncOp::display_visibility(op) {
             write!(f, "{visibility} ")?;
         }
         write!(f, "{identifier}(")?;
-        let arguments = op.operation().arguments();
-        write!(f, "{}", arguments)?;
+        write!(f, "{}", op.operation().arguments())?;
         write!(f, ")")?;
         let operation = op.operation();
         let result_types = operation.results().types();
@@ -318,8 +315,7 @@ impl FuncOp {
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        let region = op.operation().region();
-        if let Some(region) = region {
+        if let Some(region) = op.operation().region() {
             region.display(f, indent)?;
         }
         Ok(())
@@ -330,8 +326,7 @@ impl FuncOp {
     ) -> Option<String> {
         if expected_name == &FuncOp::operation_name() {
             if parser.check(TokenKind::BareIdentifier) {
-                let token = parser.advance();
-                let sym_visibility = token.lexeme.clone();
+                let sym_visibility = parser.advance().lexeme.clone();
                 return Some(sym_visibility);
             }
         }
@@ -411,12 +406,9 @@ impl<T: ParserDispatch> Parser<T> {
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
 
-            {
-                let blocks = region.blocks();
-                let block = blocks.into_iter().next().unwrap();
-                for argument in arguments.into_iter() {
-                    argument.set_parent(Some(block.clone()));
-                }
+            let block = region.blocks().into_iter().next().unwrap();
+            for argument in arguments.into_iter() {
+                argument.set_parent(Some(block.clone()));
             }
         }
 
@@ -443,14 +435,12 @@ impl ReturnOp {
         let operation = op.operation();
         let name = operation.name();
         write!(f, "{name}")?;
-        let operands = operation.operands().vec();
-        let operands = operands.rd();
-        if !operands.is_empty() {
-            for operand in operands.iter() {
+        let operands = operation.operands().into_iter();
+        if operands.len() != 0 {
+            for operand in operands {
                 write!(f, " {}", operand.rd())?;
             }
-            let result_types = operation.results().types();
-            write!(f, " : {}", result_types)?;
+            write!(f, " : {}", operation.results().types())?;
         }
         Ok(())
     }
