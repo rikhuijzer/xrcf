@@ -6,8 +6,6 @@ use crate::ir::Op;
 use crate::ir::UnsetBlock;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::ops::Deref;
-use std::ops::DerefMut;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -164,70 +162,6 @@ impl Default for Region {
             parent: None,
         }
     }
-}
-
-struct Shared<T> {
-    inner: Arc<RwLock<T>>,
-}
-
-impl<T> Shared<T> {
-    fn new(inner: T) -> Self {
-        Self {
-            inner: Arc::new(RwLock::new(inner)),
-        }
-    }
-    fn read(&self) -> std::sync::RwLockReadGuard<T> {
-        self.inner.try_read().unwrap()
-    }
-    fn write(&self) -> std::sync::RwLockWriteGuard<T> {
-        self.inner.try_write().unwrap()
-    }
-}
-
-pub struct ReadRef<'a, T> {
-    guard: std::sync::RwLockReadGuard<'a, T>,
-}
-
-impl<'a, T> Deref for ReadRef<'a, T> {
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.guard
-    }
-}
-
-#[allow(dead_code)]
-pub struct SharedRegion {
-    inner: Shared<Region>,
-}
-
-impl SharedRegion {
-    #[allow(dead_code)]
-    pub fn new(region: Region) -> Self {
-        Self {
-            inner: Shared::new(region),
-        }
-    }
-    #[allow(dead_code)]
-    pub fn read(&self) -> ReadRef<Region> {
-        ReadRef {
-            guard: self.inner.read(),
-        }
-    }
-}
-
-#[test]
-fn tmp() {
-    // Via this SharedRegion API.
-    let region = Region::default();
-    let _unset_block = region.add_empty_block();
-    let shared = SharedRegion::new(region);
-    assert_eq!(shared.read().blocks().into_iter().len(), 1);
-
-    // Via the Arc<RwLock<Region>> API.
-    let region = Region::default();
-    let _unset_block = region.add_empty_block();
-    let shared = Arc::new(RwLock::new(region));
-    assert_eq!(shared.try_read().unwrap().blocks().into_iter().len(), 1);
 }
 
 pub trait GuardedRegion {
