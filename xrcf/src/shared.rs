@@ -18,7 +18,7 @@ use std::sync::RwLockWriteGuard;
 /// can also be used together with [SharedExt].
 pub type Shared<T> = Arc<RwLock<T>>;
 
-/// A convenience trait for the `RwLock` API.
+/// A convenience trait around [RwLock].
 ///
 /// This trait makes using [RwLock] less verbose. Is this trait pretty? No. But
 /// in the end it's just a convenience trait that could easily be removed later.
@@ -71,7 +71,7 @@ impl<T: ?Sized> SharedExt<T> for Shared<T> {
 }
 
 #[test]
-/// Just another test that runs even if the docstrings don't.
+/// Just another test that runs even if the docstrings would not.
 fn test_shared() {
     let lock = Shared::new(42.into());
     assert_eq!(*lock.re(), 42);
