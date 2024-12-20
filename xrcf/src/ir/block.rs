@@ -220,16 +220,8 @@ impl Block {
         None
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
-        let ops = self.ops();
-        let ops = ops.rd();
-        for op in ops.iter() {
-            let op = op.rd();
-            let values = op.assignments();
-            assert!(values.is_ok());
-            let values = values.unwrap();
-            let values = values.vec();
-            let values = values.rd();
-            for value in values.iter() {
+        for op in self.ops().rd().iter() {
+            for value in op.rd().assignments().unwrap().into_iter() {
                 match &*value.rd() {
                     Value::BlockArgument(_block_argument) => {
                         // Ignore this case because we are looking for
@@ -241,10 +233,8 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        let current_name = op_result.name();
-                        let current_name = current_name.rd();
-                        if let Some(current_name) = &*current_name {
-                            if current_name == name {
+                        if let Some(curr) = &*op_result.name().rd() {
+                            if curr == name {
                                 return Some(value.clone());
                             }
                         }
