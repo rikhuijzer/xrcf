@@ -6,6 +6,7 @@ use crate::ir::Op;
 use crate::ir::UnsetBlock;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::ops::Deref;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -163,6 +164,33 @@ impl Default for Region {
         }
     }
 }
+
+struct Shared<T> {
+    inner: Arc<RwLock<T>>,
+}
+
+impl<T> Shared<T> {
+    fn new(inner: T) -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(inner)),
+        }
+    }
+    fn read(&self) -> std::sync::RwLockReadGuard<T> {
+        self.inner.try_read().unwrap()
+    }
+    fn write(&self) -> std::sync::RwLockWriteGuard<T> {
+        self.inner.try_write().unwrap()
+    }
+}
+
+impl<T> Deref for Shared<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        let guard = self.read();
+        unsafe { &*(guard.deref() as *const T) }
+    }
+}
+// pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
 
 pub trait GuardedRegion {
     fn add_empty_block(&self) -> UnsetBlock;
