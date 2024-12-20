@@ -378,21 +378,16 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let results = self.operation().results();
-        let results = results.vec();
-        let results = results.rd();
-        let result = results.get(0).expect("no result");
-        let result = result.rd();
-        write!(f, "{} = {}", result, Self::operation_name())?;
+        write!(
+            f,
+            "{} = ",
+            self.operation().results().into_iter().next().unwrap().rd()
+        )?;
+        write!(f, "{}", Self::operation_name())?;
         write!(f, "(")?;
-        let value = self.value();
-        write!(f, "{}", value)?;
+        write!(f, "{}", self.value())?;
         write!(f, ")")?;
-
-        let typ = self.operation().result_type(0).expect("no result type");
-        let typ = typ.rd();
-        write!(f, " : {typ}")?;
-
+        write!(f, " : {}", self.operation().result_type(0).unwrap().rd())?;
         Ok(())
     }
 }
@@ -534,9 +529,9 @@ impl Parse for FuncOp {
             let text = text.lexeme.clone();
             if text == "attributes" {
                 parser.advance();
-                let attributes = parser.parse_attributes()?;
-                let op = op.rd();
-                op.operation().set_attributes(attributes);
+                op.rd()
+                    .operation()
+                    .set_attributes(parser.parse_attributes()?);
             }
         }
         Ok(op)
@@ -639,14 +634,10 @@ impl StoreOp {
         self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.rd();
-        let operand = operation.operand(1).expect("no address set");
-        operand
+        self.operation.rd().operand(1).expect("no addr")
     }
     pub fn set_addr(&mut self, addr: Arc<RwLock<OpOperand>>) {
-        let operation = self.operation.rd();
-        let mut operands = operation.operands();
-        operands.set_operand(1, addr);
+        self.operation.rd().operands().set_operand(1, addr);
     }
 }
 
@@ -667,12 +658,8 @@ impl Op for StoreOp {
         let operation = self.operation().rd();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
-        write!(f, " : ")?;
-        let value = self.value();
-        write!(f, "{}", value.typ().unwrap().rd())?;
-        write!(f, ", ")?;
-        let addr = self.addr();
-        write!(f, "{}", addr.typ().unwrap().rd())?;
+        write!(f, " : {}", self.value().typ().unwrap().rd())?;
+        write!(f, ", {}", self.addr().typ().unwrap().rd())?;
         Ok(())
     }
 }
