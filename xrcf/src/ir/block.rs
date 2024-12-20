@@ -8,6 +8,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -479,7 +480,7 @@ impl Default for Block {
     fn default() -> Self {
         let label = Shared::new(BlockName::Unnamed.into());
         let arguments = Values::default();
-        let ops = Shared::new(vec![]);
+        let ops = Shared::new(vec![].into());
         let parent = None;
         Self::new(label, arguments, ops, parent)
     }

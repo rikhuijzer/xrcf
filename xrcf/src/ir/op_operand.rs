@@ -8,6 +8,7 @@ use crate::ir::Value;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
@@ -110,7 +111,7 @@ impl OpOperands {
     }
     pub fn from_vec(operands: Vec<Arc<RwLock<OpOperand>>>) -> Self {
         OpOperands {
-            operands: Shared::new(operands),
+            operands: Shared::new(operands.into()),
         }
     }
     pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
@@ -139,7 +140,7 @@ impl OpOperands {
 impl Default for OpOperands {
     fn default() -> Self {
         OpOperands {
-            operands: Shared::new(vec![]),
+            operands: Shared::new(vec![].into()),
         }
     }
 }
@@ -246,7 +247,7 @@ impl<T: ParserDispatch> Parser<T> {
             }
         }
         let operands = OpOperands {
-            operands: Shared::new(arguments),
+            operands: Shared::new(arguments.into()),
         };
         Ok(operands)
     }

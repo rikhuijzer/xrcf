@@ -105,6 +105,7 @@ mod tests {
     use std::sync::Arc;
     use std::sync::RwLock;
     use xrcf::convert::RewriteResult;
+    use xrcf::shared::Shared;
     use xrcf::tester::Tester;
 
     fn run_app(
@@ -165,7 +166,7 @@ mod tests {
             "--print-ir-before-all",
         ];
         tracing::info!("\nBefore {args:?}:\n{src}");
-        let out: Arc<RwLock<Vec<u8>>> = Shared::new(Vec::new()));
+        let out: Arc<RwLock<Vec<u8>>> = Shared::new(Vec::new().into());
         let result = run_app(Some(out.clone()), args.clone(), &src);
         assert!(result.is_ok());
         let actual = match result.unwrap() {

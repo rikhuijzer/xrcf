@@ -1,7 +1,6 @@
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
-use crate::shared::Shared;
 use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
@@ -18,6 +17,7 @@ use crate::ir::Values;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::default::Default;

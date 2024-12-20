@@ -33,7 +33,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// use std::sync::RwLock;
 /// use xrcf::shared::SharedExt;
 ///
-/// let lock = Shared::new(42));
+/// let lock = Arc::new(RwLock::new(42));
 /// assert_eq!(*lock.re(), 42);
 /// ```
 /// and with `Shared`:
@@ -51,7 +51,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// use std::sync::Arc;
 /// use std::sync::RwLock;
 ///
-/// let lock = Shared::new(42));
+/// let lock = Arc::new(RwLock::new(42));
 /// assert_eq!(*lock.try_read().unwrap(), 42);
 /// ```
 pub trait SharedExt<T: ?Sized> {

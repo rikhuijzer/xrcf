@@ -19,6 +19,7 @@ use crate::ir::Region;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
@@ -63,7 +64,7 @@ fn lower_yield_op(
 ) -> Result<Arc<RwLock<dyn Op>>> {
     let operation = op.operation();
     let var = operation.operand(0).unwrap();
-    let operand = Shared::new(OpOperand::from_block(after.into()));
+    let operand = Shared::new(OpOperand::from_block(after).into());
     operation.set_operand(0, operand);
     operation.set_operand(1, var);
     let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
@@ -74,7 +75,7 @@ fn lower_yield_op(
 fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
-    let operand = Shared::new(OpOperand::from_block(after.into()));
+    let operand = Shared::new(OpOperand::from_block(after).into());
     new_op.set_dest(operand);
     let new_op = Shared::new(new_op.into());
     new_op
@@ -156,11 +157,11 @@ fn add_merge_block(
     operation.set_parent(Some(merge.clone()));
     let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
 
-    let operand = Shared::new(OpOperand::from_block(exit.into()));
+    let operand = Shared::new(OpOperand::from_block(exit).into());
     merge_op.set_dest(operand);
 
     let merge_op = Shared::new(merge_op.into());
-    merge.set_ops(Shared::new(vec![merge_op.clone()]));
+    merge.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
     Ok((merge, merge_block_arguments))
 }
 
@@ -304,16 +305,16 @@ impl Rewrite for IfLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
-        let then_operand = Shared::new(OpOperand::from_block(then.into()));
+        let then_operand = Shared::new(OpOperand::from_block(then).into());
         operation.set_operand(1, then_operand);
-        let els_operand = Shared::new(OpOperand::from_block(els.into()));
+        let els_operand = Shared::new(OpOperand::from_block(els).into());
         operation.set_operand(2, els_operand);
         let new = dialect::cf::CondBranchOp::from_operation(operation);
         let new = Shared::new(new.into());
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
-        new.operation().set_results(Values::default());
+        new.re().operation().set_results(Values::default());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

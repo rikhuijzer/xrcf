@@ -9,6 +9,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
@@ -119,7 +120,7 @@ impl Parse for IfOp {
             parser.expect(TokenKind::RParen)?;
         }
 
-        let operation = Shared::new(operation);
+        let operation = Shared::new(operation.into());
         let op = IfOp {
             operation,
             then: None,

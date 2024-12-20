@@ -4,6 +4,7 @@ use crate::ir::Type;
 use crate::ir::TypeParse;
 use crate::ir::Types;
 use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;

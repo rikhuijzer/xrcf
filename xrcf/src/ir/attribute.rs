@@ -9,6 +9,7 @@ use crate::ir::Type;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::collections::HashMap;
@@ -203,7 +204,7 @@ impl Attribute for AnyAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Shared::new(StringType::new())
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let value = parser.advance();
@@ -230,7 +231,7 @@ pub struct Attributes {
 impl Attributes {
     pub fn new() -> Self {
         Self {
-            map: Shared::new(HashMap::new()),
+            map: Shared::new(HashMap::new().into()),
         }
     }
     pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
@@ -255,7 +256,7 @@ impl Attributes {
             let attribute = attribute.clone();
             out.insert(name.to_string(), attribute);
         }
-        let map = Shared::new(out);
+        let map = Shared::new(out.into());
         Self { map }
     }
 }
