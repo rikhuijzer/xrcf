@@ -49,22 +49,23 @@ pub trait Call: Op {
         let results = operation.results();
         let has_results = !results.vec().rd().is_empty();
         if has_results {
-            write!(f, "{} = ", operation.results())?;
+            write!(f, "{} = ", results)?;
         }
         write!(f, "{}", operation.name())?;
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
         if let Some(varargs) = self.varargs() {
-            let varargs = varargs.rd();
-            write!(f, " vararg({})", varargs)?;
+            write!(f, " vararg({})", varargs.rd())?;
         }
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
         if has_results {
-            let result_type = operation.result_type(0).expect("no result type");
-            let result_type = result_type.rd();
-            write!(f, "{}", result_type)?;
+            write!(
+                f,
+                "{}",
+                operation.result_type(0).expect("no result type").rd()
+            )?;
         } else {
             write!(f, "()")?;
         }
@@ -220,10 +221,7 @@ pub trait Func: Op {
         }
     }
     fn arguments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.rd();
-        let arguments = operation.arguments();
-        Ok(arguments.clone())
+        Ok(self.operation().rd().arguments().clone())
     }
     fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
         self.operation().results().types().vec()
