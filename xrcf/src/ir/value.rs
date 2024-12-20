@@ -61,8 +61,7 @@ impl BlockArgument {
         self.parent.clone()
     }
     pub fn set_name(&self, name: BlockArgumentName) {
-        let mut arg_name = self.name.wr();
-        *arg_name = name;
+        *self.name.wr() = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;

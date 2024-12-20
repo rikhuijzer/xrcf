@@ -210,7 +210,7 @@ impl Display for Types {
             .types
             .iter()
             .map(|t| t.rd().to_string())
-            .collect::<Vec<String>>()
+            .collect::<Vec<_>>()
             .join(", ");
         write!(f, "{}", joined)
     }

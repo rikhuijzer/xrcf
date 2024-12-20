@@ -71,11 +71,8 @@ impl Region {
     }
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
-        let blocks = self.blocks();
-        for block in blocks.into_iter() {
-            let ops = block.ops();
-            let ops = ops.rd();
-            for op in ops.iter() {
+        for block in self.blocks().into_iter() {
+            for op in block.ops().rd().iter() {
                 result.push(op.clone());
             }
         }
@@ -93,10 +90,7 @@ impl Region {
     pub fn add_empty_block(&self) -> UnsetBlock {
         let block = Block::default();
         let block = Shared::new(block.into());
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let mut blocks = blocks.wr();
-        blocks.push(block.clone());
+        self.blocks().vec().wr().push(block.clone());
         UnsetBlock::new(block)
     }
     pub fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
@@ -104,10 +98,7 @@ impl Region {
 
         let new = Block::default();
         let new = Shared::new(new.into());
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let mut blocks = blocks.wr();
-        blocks.insert(index, new.clone());
+        self.blocks().vec().wr().insert(index, new.clone());
         UnsetBlock::new(new)
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
@@ -120,20 +111,15 @@ impl Region {
         let blocks = blocks.rd();
         set_fresh_block_labels(&blocks);
         for block in blocks.iter() {
-            let block = block.rd();
-            block.display(f, indent + 1)?;
+            block.rd().display(f, indent + 1)?;
         }
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}}}")
+        write!(f, "{}}}", crate::ir::spaces(indent))
     }
     /// Find a unique name for a block (for example, `bb2`).
     pub fn unique_block_name(&self) -> String {
         let mut new_name: i32 = 0;
         for block in self.blocks().into_iter() {
-            let block = block.rd();
-            let label = block.label();
-            let label = label.rd();
-            match &*label {
+            match &*block.rd().label().rd() {
                 BlockName::Name(name) => {
                     let name = name.trim_start_matches("bb").trim_start_matches("^bb");
                     if let Ok(num) = name.parse::<i32>() {
