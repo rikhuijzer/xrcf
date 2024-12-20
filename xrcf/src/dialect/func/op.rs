@@ -45,9 +45,9 @@ pub trait Call: Op {
     fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
     fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let operation = self.operation().re();
+        let operation = self.operation().rd();
         let results = operation.results();
-        let has_results = !results.vec().re().is_empty();
+        let has_results = !results.vec().rd().is_empty();
         if has_results {
             write!(f, "{} = ", operation.results())?;
         }
@@ -55,7 +55,7 @@ pub trait Call: Op {
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
         if let Some(varargs) = self.varargs() {
-            let varargs = varargs.re();
+            let varargs = varargs.rd();
             write!(f, " vararg({})", varargs)?;
         }
         write!(f, " : ")?;
@@ -63,7 +63,7 @@ pub trait Call: Op {
         write!(f, " -> ")?;
         if has_results {
             let result_type = operation.result_type(0).expect("no result type");
-            let result_type = result_type.re();
+            let result_type = result_type.rd();
             write!(f, "{}", result_type)?;
         } else {
             write!(f, "()")?;
@@ -116,7 +116,7 @@ pub trait Call: Op {
 
         // (i32) or (!llvm.ptr, i32)
         parser.expect(TokenKind::LParen)?;
-        if !operands.vec().re().is_empty() {
+        if !operands.vec().rd().is_empty() {
             parser.parse_types_for_op_operands(operands)?;
         }
         parser.expect(TokenKind::RParen)?;
@@ -221,7 +221,7 @@ pub trait Func: Op {
     }
     fn arguments(&self) -> Result<Values> {
         let operation = self.operation();
-        let operation = operation.re();
+        let operation = operation.rd();
         let arguments = operation.arguments();
         Ok(arguments.clone())
     }
@@ -249,7 +249,7 @@ pub struct FuncOp {
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
-        let read = op.re();
+        let read = op.rd();
         let ops = read.ops();
         if ops.is_empty() {
             let operation = self.operation();
@@ -302,7 +302,7 @@ impl FuncOp {
         f: &mut Formatter<'_>,
         indent: i32,
     ) -> std::fmt::Result {
-        let name = op.operation().re().name();
+        let name = op.operation().rd().name();
         write!(f, "{name} ")?;
         if let Some(visibility) = FuncOp::display_visibility(op) {
             write!(f, "{visibility} ")?;
@@ -409,7 +409,7 @@ impl<T: ParserDispatch> Parser<T> {
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.parse_region(op.clone())?;
-            let op_rd = op.re();
+            let op_rd = op.rd();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
 
@@ -446,10 +446,10 @@ impl ReturnOp {
         let name = operation.name();
         write!(f, "{name}")?;
         let operands = operation.operands().vec();
-        let operands = operands.re();
+        let operands = operands.rd();
         if !operands.is_empty() {
             for operand in operands.iter() {
-                write!(f, " {}", operand.re())?;
+                write!(f, " {}", operand.rd())?;
             }
             let result_types = operation.results().types();
             write!(f, " : {}", result_types)?;

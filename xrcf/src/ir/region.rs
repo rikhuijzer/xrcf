@@ -32,10 +32,10 @@ pub struct Region {
 fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
-        let block = block.re();
+        let block = block.rd();
         let label_prefix = block.label_prefix();
         let label = block.label();
-        let label_read = label.re();
+        let label_read = label.rd();
         match &*label_read {
             BlockName::Name(_name) => {
                 drop(label_read);
@@ -74,7 +74,7 @@ impl Region {
         let blocks = self.blocks();
         for block in blocks.into_iter() {
             let ops = block.ops();
-            let ops = ops.re();
+            let ops = ops.rd();
             for op in ops.iter() {
                 result.push(op.clone());
             }
@@ -100,7 +100,7 @@ impl Region {
         UnsetBlock::new(block)
     }
     pub fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
-        let index = self.index_of(&block.re()).unwrap();
+        let index = self.index_of(&block.rd()).unwrap();
 
         let new = Block::default();
         let new = Shared::new(new.into());
@@ -117,10 +117,10 @@ impl Region {
         write!(f, " {{\n")?;
         let blocks = self.blocks();
         let blocks = blocks.vec();
-        let blocks = blocks.re();
+        let blocks = blocks.rd();
         set_fresh_block_labels(&blocks);
         for block in blocks.iter() {
-            let block = block.re();
+            let block = block.rd();
             block.display(f, indent + 1)?;
         }
         let spaces = crate::ir::spaces(indent);
@@ -130,9 +130,9 @@ impl Region {
     pub fn unique_block_name(&self) -> String {
         let mut new_name: i32 = 0;
         for block in self.blocks().into_iter() {
-            let block = block.re();
+            let block = block.rd();
             let label = block.label();
-            let label = label.re();
+            let label = label.rd();
             match &*label {
                 BlockName::Name(name) => {
                     let name = name.trim_start_matches("bb").trim_start_matches("^bb");
@@ -179,19 +179,19 @@ pub trait GuardedRegion {
 
 impl GuardedRegion for Arc<RwLock<Region>> {
     fn add_empty_block(&self) -> UnsetBlock {
-        self.re().add_empty_block()
+        self.rd().add_empty_block()
     }
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
-        self.re().add_empty_block_before(block)
+        self.rd().add_empty_block_before(block)
     }
     fn blocks(&self) -> Blocks {
-        self.re().blocks()
+        self.rd().blocks()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.re().display(f, indent)
+        self.rd().display(f, indent)
     }
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.re().ops()
+        self.rd().ops()
     }
     fn set_blocks(&self, blocks: Blocks) {
         self.wr().set_blocks(blocks);
@@ -200,6 +200,6 @@ impl GuardedRegion for Arc<RwLock<Region>> {
         self.wr().set_parent(parent);
     }
     fn unique_block_name(&self) -> String {
-        self.re().unique_block_name()
+        self.rd().unique_block_name()
     }
 }

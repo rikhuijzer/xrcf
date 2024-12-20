@@ -36,7 +36,7 @@ fn test_constant() {
     "#};
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
-    let module = module.re();
+    let module = module.rd();
     assert!(module.as_any().is::<targ3t::llvmir::ModuleOp>());
     Tester::check_lines_contain(&actual, expected, Location::caller());
 }

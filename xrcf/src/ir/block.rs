@@ -114,7 +114,7 @@ impl Block {
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
         let label = self.label();
-        let label = label.re();
+        let label = label.rd();
         let label = match &*label {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
@@ -126,19 +126,19 @@ impl Block {
         let predecessors = predecessors.expect("expected predecessors");
         let mut callers = vec![];
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.re();
+            let predecessor = predecessor.rd();
             let ops = predecessor.ops();
-            let ops = ops.re();
+            let ops = ops.rd();
             for op in ops.iter() {
                 let operation = op.operation();
                 let operands = operation.operands().vec();
-                let operands = operands.re();
+                let operands = operands.rd();
                 for operand in operands.iter() {
                     let value = operand.value();
-                    let value = value.re();
+                    let value = value.rd();
                     if let Value::BlockPtr(block_ptr) = &*value {
                         let current = block_ptr.block();
-                        let current = &*current.re();
+                        let current = &*current.rd();
                         if std::ptr::eq(current, self) {
                             callers.push(op.clone());
                         }
@@ -164,7 +164,7 @@ impl Block {
     pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.re();
+        let region = region.rd();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let predecessors = match index {
@@ -179,7 +179,7 @@ impl Block {
     pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.re();
+        let region = region.rd();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let successors = match index {
@@ -197,25 +197,25 @@ impl Block {
         let region = self.parent();
         assert!(region.is_some());
         let region = region.unwrap();
-        let region = region.re();
+        let region = region.rd();
         let parent = region.parent();
         assert!(
             parent.is_some(),
             "Found no parent for region {region} when searching for assignment of {name}"
         );
         let op = parent.unwrap();
-        let op = &*op.re();
+        let op = &*op.rd();
         let operation = op.operation();
-        let operation = operation.re();
+        let operation = operation.rd();
         if op.is_func() {
             let arguments = operation.arguments();
             let arguments = arguments.vec();
-            let arguments = arguments.re();
+            let arguments = arguments.rd();
             for argument in arguments.iter() {
-                match &*argument.re() {
+                match &*argument.rd() {
                     Value::BlockArgument(block_argument) => {
                         let current_name = block_argument.name();
-                        let current_name = current_name.re();
+                        let current_name = current_name.rd();
                         if let BlockArgumentName::Name(current_name) = &*current_name {
                             if current_name == name {
                                 return Some(argument.clone());
@@ -235,16 +235,16 @@ impl Block {
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let ops = self.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         for op in ops.iter() {
-            let op = op.re();
+            let op = op.rd();
             let values = op.assignments();
             assert!(values.is_ok());
             let values = values.unwrap();
             let values = values.vec();
-            let values = values.re();
+            let values = values.rd();
             for value in values.iter() {
-                match &*value.re() {
+                match &*value.rd() {
                     Value::BlockArgument(_block_argument) => {
                         // Ignore this case because we are looking for
                         // assignment in ops.
@@ -256,7 +256,7 @@ impl Block {
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
                         let current_name = op_result.name();
-                        let current_name = current_name.re();
+                        let current_name = current_name.rd();
                         if let Some(current_name) = &*current_name {
                             if current_name == name {
                                 return Some(value.clone());
@@ -276,12 +276,12 @@ impl Block {
     pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
         let arguments = self.arguments();
         let arguments = arguments.vec();
-        let arguments = arguments.re();
+        let arguments = arguments.rd();
         for argument in arguments.iter() {
-            match &*argument.re() {
+            match &*argument.rd() {
                 Value::BlockArgument(block_argument) => {
                     let current_name = block_argument.name();
-                    let current_name = current_name.re();
+                    let current_name = current_name.rd();
                     if let BlockArgumentName::Name(current_name) = &*current_name {
                         if current_name == name {
                             return Some(argument.clone());
@@ -323,7 +323,7 @@ impl Block {
         let predecessors = self.predecessors();
         let predecessors = predecessors.expect("expected predecessors");
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.re();
+            let predecessor = predecessor.rd();
             if let Some(value) = predecessor.assignment_in_func_arguments(name) {
                 return Some(value);
             }
@@ -341,16 +341,16 @@ impl Block {
     /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
         let ops = self.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         ops.iter().position(|current| {
-            let current = current.re();
+            let current = current.rd();
             let current = current.operation();
-            let current = &*current.re();
+            let current = &*current.rd();
             std::ptr::eq(current, op)
         })
     }
     pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.index_of(&*op.re())
+        self.index_of(&*op.rd())
     }
     /// Move the blocks that belong to `region` before `self`.
     ///
@@ -413,12 +413,12 @@ impl Block {
     }
     pub fn used_names_without_predecessors(&self) -> Vec<String> {
         let ops = self.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         let mut used_names = vec![];
         for op in ops.iter() {
-            let op = op.re();
+            let op = op.rd();
             let operation = op.operation();
-            let operation = operation.re();
+            let operation = operation.rd();
             let result_names = operation.result_names();
             used_names.extend(result_names);
         }
@@ -429,7 +429,7 @@ impl Block {
         let mut used_names = self.used_names_without_predecessors();
         if let Some(predecessors) = predecessors {
             for predecessor in predecessors.iter() {
-                let predecessor = predecessor.re();
+                let predecessor = predecessor.rd();
                 used_names.extend(Self::used_names_without_predecessors(&predecessor));
             }
         }
@@ -452,7 +452,7 @@ impl Block {
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let label = self.label();
-        let label = label.re();
+        let label = label.rd();
         if let BlockName::Name(name) = &*label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             let spaces = crate::ir::spaces(label_indent);
@@ -464,11 +464,11 @@ impl Block {
             write!(f, ":\n")?;
         }
         let ops = self.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         for op in ops.iter() {
             let spaces = crate::ir::spaces(indent);
             write!(f, "{spaces}")?;
-            let op = op.re();
+            let op = op.rd();
             op.display(f, indent)?;
             write!(f, "\n")?;
         }
@@ -535,40 +535,40 @@ pub trait GuardedBlock {
 
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn arguments(&self) -> Values {
-        self.re().arguments()
+        self.rd().arguments()
     }
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        self.re().callers()
+        self.rd().callers()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.re().display(f, indent)
+        self.rd().display(f, indent)
     }
     fn index_of(&self, op: &Operation) -> Option<usize> {
-        self.re().index_of(op)
+        self.rd().index_of(op)
     }
     fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.re().index_of_arc(op)
+        self.rd().index_of_arc(op)
     }
     fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        self.re().inline_region_before(region);
+        self.rd().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         self.wr().insert_after(earlier, later);
     }
     fn label(&self) -> Arc<RwLock<BlockName>> {
-        self.re().label()
+        self.rd().label()
     }
     fn label_prefix(&self) -> String {
-        self.re().label_prefix()
+        self.rd().label_prefix()
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
-        self.re().ops()
+        self.rd().ops()
     }
     fn parent(&self) -> Option<Arc<RwLock<Region>>> {
-        self.re().parent()
+        self.rd().parent()
     }
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.re().predecessors()
+        self.rd().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
         self.wr().remove(op);
@@ -586,10 +586,10 @@ impl GuardedBlock for Arc<RwLock<Block>> {
         self.wr().set_ops(ops);
     }
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.re().successors()
+        self.rd().successors()
     }
     fn unique_value_name(&self, prefix: &str) -> String {
-        self.re().unique_value_name(prefix)
+        self.rd().unique_value_name(prefix)
     }
 }
 
@@ -603,7 +603,7 @@ impl IntoIterator for Blocks {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let vec = self.vec.re();
+        let vec = self.vec.rd();
         vec.clone().into_iter()
     }
 }
@@ -620,12 +620,12 @@ impl Blocks {
     /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         let vec = self.vec();
-        let vec = vec.re();
+        let vec = vec.rd();
         if vec.is_empty() {
             panic!("Trying to find block in empty set of blocks");
         }
         vec.iter().position(|b| {
-            let b = &*b.re();
+            let b = &*b.rd();
             std::ptr::eq(b, block)
         })
     }

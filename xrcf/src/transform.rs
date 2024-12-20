@@ -233,7 +233,7 @@ pub fn transform<T: TransformDispatch>(
             writeln!(
                 &mut *options.writer.wr(),
                 "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
-                op.re()
+                op.rd()
             )?;
         }
         let new_result = T::dispatch(op.clone(), pass)?;

@@ -87,7 +87,7 @@ fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
     let mut ops = ops.wr();
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
-    let last_op = last_op.re();
+    let last_op = last_op.rd();
     let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
     if let Some(yield_op) = yield_op {
         let new_op = lower_yield_op(&yield_op, after.clone()).unwrap();
@@ -128,13 +128,13 @@ fn move_successors_to_exit_block(
 ) -> Result<()> {
     let if_op_parent = op.operation().parent().expect("Expected parent");
     let if_op_index = if_op_parent
-        .index_of(&op.operation().re())
+        .index_of(&op.operation().rd())
         .expect("Expected index");
     let ops = if_op_parent.ops();
     let mut ops = ops.wr();
     let return_ops = ops[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
-        let op = op.re();
+        let op = op.rd();
         op.set_parent(exit_block.clone());
     }
     exit_block.set_ops(Shared::new(return_ops.into()));
@@ -181,10 +181,10 @@ fn add_exit_block(
 /// Necessary to translate `%result = scf.if` to `^merge:(%result)`.
 fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
     let results = results.vec();
-    let results = results.re();
+    let results = results.rd();
     let mut out = vec![];
     for result in results.iter() {
-        let result = result.re();
+        let result = result.rd();
         let name = result.name();
         let typ = result.typ().unwrap();
         let name = BlockArgumentName::Name(name.unwrap());
@@ -200,10 +200,10 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
 
 fn results_users(results: Values) -> Vec<Users> {
     let results = results.vec();
-    let results = results.re();
+    let results = results.rd();
     let mut out = vec![];
     for result in results.iter() {
-        let result = result.re();
+        let result = result.rd();
         let users = result.users();
         out.push(users);
     }
@@ -260,7 +260,7 @@ fn add_blocks(
         let (merge, merge_block_arguments) =
             add_merge_block(parent_region.clone(), results.clone(), exit.clone())?;
         let merge_block_arguments = merge_block_arguments.vec();
-        let merge_block_arguments = merge_block_arguments.re();
+        let merge_block_arguments = merge_block_arguments.rd();
 
         assert!(results_users.len() == merge_block_arguments.len());
         for i in 0..results_users.len() {
@@ -295,7 +295,7 @@ impl Rewrite for IfLowering {
         Ok(op.as_any().is::<dialect::scf::IfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let parent = op.operation().parent().expect("Expected parent");
         let parent_region = parent.parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
@@ -314,7 +314,7 @@ impl Rewrite for IfLowering {
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
-        new.re().operation().set_results(Values::default());
+        new.rd().operation().set_results(Values::default());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

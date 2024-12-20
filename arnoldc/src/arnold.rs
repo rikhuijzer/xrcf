@@ -152,11 +152,11 @@ impl Op for BeginMainOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation.re();
+        let operation = self.operation.rd();
         write!(f, "{} ", operation.name())?;
         let region = operation.region().unwrap();
         write!(f, "()")?;
-        region.re().display(f, indent)?;
+        region.rd().display(f, indent)?;
         Ok(())
     }
 }
@@ -255,7 +255,7 @@ impl Op for DeclareIntOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.operation().re().results())?;
+        write!(f, " {}", self.operation().rd().results())?;
         Ok(())
     }
 }
@@ -395,7 +395,7 @@ impl Op for PrintOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.text().re())?;
+        write!(f, " {}", self.text().rd())?;
         Ok(())
     }
 }

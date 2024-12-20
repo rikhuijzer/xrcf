@@ -128,7 +128,7 @@ impl AddiOp {
     fn addi_add_constant(&self) -> RewriteResult {
         let operands = self.operation.operands();
         let operands = operands.vec();
-        let operands = operands.re();
+        let operands = operands.rd();
         assert!(operands.len() == 2);
 
         let lhs = operands.get(0).unwrap();
@@ -138,7 +138,7 @@ impl AddiOp {
                 return RewriteResult::Unchanged;
             }
         };
-        let lhs = lhs.re();
+        let lhs = lhs.rd();
         let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
             Some(lhs) => lhs,
             None => return RewriteResult::Unchanged,
@@ -149,7 +149,7 @@ impl AddiOp {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
         };
-        let rhs = rhs.re();
+        let rhs = rhs.rd();
         let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
@@ -186,11 +186,11 @@ impl AddiOp {
         self.replace(new_const.clone());
 
         {
-            let new_const = new_const.re();
-            let new_const = new_const.operation().re();
+            let new_const = new_const.rd();
+            let new_const = new_const.operation().rd();
             let results = new_const.results();
             let results = results.vec();
-            let results = results.re();
+            let results = results.rd();
             assert!(results.len() == 1);
             results[0].rename("%c3_i64");
         }

@@ -48,7 +48,7 @@ impl Op for AddOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().re())
+        write!(f, "{}", self.operation().rd())
     }
 }
 
@@ -101,21 +101,21 @@ impl Op for AllocaOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().re();
+        let operation = self.operation().rd();
         write!(f, "{} = ", operation.results())?;
         write!(f, "{} ", operation.name())?;
         let array_size = self.array_size();
-        let array_size = array_size.re();
+        let array_size = array_size.rd();
         write!(f, "{}", array_size)?;
         write!(f, " x ")?;
         write!(f, "{}", self.element_type().expect("no element type"))?;
         write!(f, " : ")?;
         let array_size_type = array_size.typ().unwrap();
-        let array_size_type = array_size_type.re();
+        let array_size_type = array_size_type.rd();
         write!(f, "({})", array_size_type)?;
         write!(f, " -> ")?;
         let result_type = operation.result_type(0).unwrap();
-        let result_type = result_type.re();
+        let result_type = result_type.rd();
         write!(f, "{result_type}")?;
         Ok(())
     }
@@ -136,7 +136,7 @@ impl Parse for AllocaOp {
             parser.parse_op_operand_into(parent.unwrap(), TOKEN_KIND, &mut operation)?;
         parser.parse_keyword("x")?;
         let element_type = T::parse_type(parser)?;
-        let element_type = element_type.re();
+        let element_type = element_type.rd();
         parser.expect(TokenKind::Colon)?;
         parser.expect(TokenKind::LParen)?;
 
@@ -192,16 +192,16 @@ impl Op for BranchOp {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest();
         let dest = dest.unwrap();
-        let dest = dest.re();
+        let dest = dest.rd();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
         let operands = operands.vec();
-        let operands = operands.re();
+        let operands = operands.rd();
         let operands = operands.iter().skip(1);
         if 0 < operands.len() {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.re();
+                let operand = operand.rd();
                 operand.display_with_type(f)?;
             }
             write!(f, ")")?;
@@ -390,9 +390,9 @@ impl Op for ConstantOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let results = self.operation().results();
         let results = results.vec();
-        let results = results.re();
+        let results = results.rd();
         let result = results.get(0).expect("no result");
-        let result = result.re();
+        let result = result.rd();
         write!(f, "{} = {}", result, Self::operation_name())?;
         write!(f, "(")?;
         let value = self.value();
@@ -400,7 +400,7 @@ impl Op for ConstantOp {
         write!(f, ")")?;
 
         let typ = self.operation().result_type(0).expect("no result type");
-        let typ = typ.re();
+        let typ = typ.rd();
         write!(f, " : {typ}")?;
 
         Ok(())
@@ -470,7 +470,7 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let attributes = self.operation().attributes().map();
-        let attributes = attributes.re();
+        let attributes = attributes.rd();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
         }
@@ -545,7 +545,7 @@ impl Parse for FuncOp {
             if text == "attributes" {
                 parser.advance();
                 let attributes = parser.parse_attributes()?;
-                let op = op.re();
+                let op = op.rd();
                 op.operation().set_attributes(attributes);
             }
         }
@@ -649,12 +649,12 @@ impl StoreOp {
         self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.re();
+        let operation = self.operation.rd();
         let operand = operation.operand(1).expect("no address set");
         operand
     }
     pub fn set_addr(&mut self, addr: Arc<RwLock<OpOperand>>) {
-        let operation = self.operation.re();
+        let operation = self.operation.rd();
         let mut operands = operation.operands();
         operands.set_operand(1, addr);
     }
@@ -674,15 +674,15 @@ impl Op for StoreOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().re();
+        let operation = self.operation().rd();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
         write!(f, " : ")?;
         let value = self.value();
-        write!(f, "{}", value.typ().unwrap().re())?;
+        write!(f, "{}", value.typ().unwrap().rd())?;
         write!(f, ", ")?;
         let addr = self.addr();
-        write!(f, "{}", addr.typ().unwrap().re())?;
+        write!(f, "{}", addr.typ().unwrap().rd())?;
         Ok(())
     }
 }

@@ -210,7 +210,7 @@ mod tests {
                 panic!("Expected changes");
             }
         };
-        let actual = new_root_op.re().to_string();
+        let actual = new_root_op.rd().to_string();
         print_heading("After", &actual, &passes);
         (new_root_op, actual)
     }

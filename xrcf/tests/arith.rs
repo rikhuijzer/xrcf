@@ -49,25 +49,25 @@ fn parse_addi() {
     let (module, actual) = Tester::parse(src);
     Tester::verify(module.clone());
 
-    let module = module.re();
-    let module_operation = module.operation().re();
+    let module = module.rd();
+    let module_operation = module.operation().rd();
     let module_parent = module_operation.parent();
     assert!(module_parent.is_none());
 
     let ops = module.ops();
     assert_eq!(ops.len(), 1);
-    let func_op = ops[0].re();
-    let func_operation = func_op.operation().re();
+    let func_op = ops[0].rd();
+    let func_operation = func_op.operation().rd();
     assert_eq!(func_operation.name(), FuncOp::operation_name());
     let func_parent = func_operation.parent();
     assert!(func_parent.is_some());
 
     let func_op = ops[0].clone();
-    let func_op = func_op.re();
+    let func_op = func_op.rd();
     let func_parent = func_op.parent_op();
     assert!(func_parent.is_some());
     let func_parent = func_parent.unwrap();
-    let func_parent = func_parent.re();
+    let func_parent = func_parent.rd();
     assert_eq!(func_parent.name().to_string(), "module");
 
     Tester::check_lines_contain(&actual, expected, caller);

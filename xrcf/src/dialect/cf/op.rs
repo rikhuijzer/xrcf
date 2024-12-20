@@ -55,16 +55,16 @@ impl Op for BranchOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
         let dest = self.dest().expect("Dest not set");
-        let dest = dest.re();
+        let dest = dest.rd();
         write!(f, "{}", dest)?;
         let operands = self.operation().operands();
         let operands = operands.vec();
-        let operands = operands.re();
+        let operands = operands.rd();
         let operands = operands.iter().skip(1);
         if 0 < operands.len() {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.re();
+                let operand = operand.rd();
                 operand.display_with_type(f)?;
             }
             write!(f, ")")?;

@@ -56,13 +56,13 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// ```
 pub trait SharedExt<T: ?Sized> {
     /// Convenience method for reading.
-    fn re(&self) -> RwLockReadGuard<T>;
+    fn rd(&self) -> RwLockReadGuard<T>;
     /// Convenience method for writing.
     fn wr(&self) -> RwLockWriteGuard<T>;
 }
 
 impl<T: ?Sized> SharedExt<T> for Shared<T> {
-    fn re(&self) -> RwLockReadGuard<T> {
+    fn rd(&self) -> RwLockReadGuard<T> {
         self.try_read().unwrap()
     }
     fn wr(&self) -> RwLockWriteGuard<T> {
@@ -74,5 +74,5 @@ impl<T: ?Sized> SharedExt<T> for Shared<T> {
 /// Just another test that runs even if the docstrings would not.
 fn test_shared() {
     let lock = Shared::new(42.into());
-    assert_eq!(*lock.re(), 42);
+    assert_eq!(*lock.rd(), 42);
 }

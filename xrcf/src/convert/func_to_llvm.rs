@@ -26,7 +26,7 @@ impl Rewrite for AddLowering {
         Ok(op.as_any().is::<arith::AddiOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let lowered = llvm::AddOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
@@ -45,7 +45,7 @@ impl Rewrite for CallLowering {
         Ok(op.as_any().is::<func::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::CallOp>().unwrap();
         let mut new_op = llvm::CallOp::from_operation_arc(op.operation().clone());
         new_op.set_identifier(op.identifier().unwrap());
@@ -66,7 +66,7 @@ impl Rewrite for ConstantOpLowering {
         Ok(op.as_any().is::<arith::ConstantOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let lowered = llvm::ConstantOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
@@ -85,7 +85,7 @@ impl Rewrite for FuncLowering {
         Ok(op.as_any().is::<func::FuncOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let operation = op.operation();
         {
@@ -120,7 +120,7 @@ impl Rewrite for ReturnLowering {
         Ok(op.as_any().is::<func::ReturnOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.re();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
         let lowered = llvm::ReturnOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());

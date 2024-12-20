@@ -21,7 +21,7 @@ impl Rewrite for CanonicalizeOp {
         Ok(true)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let result = op.re().canonicalize();
+        let result = op.rd().canonicalize();
         Ok(result)
     }
 }
@@ -37,11 +37,11 @@ impl Rewrite for DeadCodeElimination {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let readonly = op.clone();
-        let readonly = readonly.re();
+        let readonly = readonly.rd();
         if !readonly.is_pure() {
             return Ok(RewriteResult::Unchanged);
         }
-        let operation = readonly.operation().re();
+        let operation = readonly.operation().rd();
         let users = operation.users();
         match users {
             Users::HasNoOpResults => Ok(RewriteResult::Unchanged),

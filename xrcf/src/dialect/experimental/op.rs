@@ -32,9 +32,9 @@ impl PrintfOp {
     pub fn text(&self) -> StringAttr {
         let operands = self.operation.operand(0);
         let operand = operands.expect("no operand");
-        let operand = operand.re();
+        let operand = operand.rd();
         let value = operand.value();
-        let value = value.re();
+        let value = value.rd();
         let text = match &*value {
             Value::Constant(constant) => constant,
             _ => panic!("expected constant"),

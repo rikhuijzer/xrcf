@@ -107,7 +107,7 @@ impl Tester {
         Self::print_heading("Before parse", src);
         let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
         let read_module = module.clone();
-        let read_module = read_module.re();
+        let read_module = read_module.rd();
         let actual = format!("{}", read_module);
         Self::print_heading("After parse", &actual);
         (module, actual)
@@ -132,13 +132,13 @@ impl Tester {
                 panic!("Expected changes");
             }
         };
-        let actual = format!("{}", new_root_op.re());
+        let actual = format!("{}", new_root_op.rd());
         let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }
     fn verify_core(op: Arc<RwLock<dyn Op>>) {
-        let op = op.re();
+        let op = op.rd();
         if !op.name().to_string().contains("module") {
             let parent = op.operation().parent();
             assert!(
@@ -148,13 +148,13 @@ impl Tester {
             );
             let parent = parent.unwrap();
             let operation = op.operation();
-            let operation = operation.re();
+            let operation = operation.rd();
             assert!(parent.index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
             let results = op.operation().results();
-            for result in results.vec().re().iter() {
-                let value = result.re();
+            for result in results.vec().rd().iter() {
+                let value = result.rd();
                 assert!(value.typ().is_ok(), "type was not set for {value}");
             }
         }

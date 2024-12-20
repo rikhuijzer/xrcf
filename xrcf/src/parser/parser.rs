@@ -179,7 +179,7 @@ enum Dialects {
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
     let label = block.label();
-    let label = label.re();
+    let label = label.rd();
     let label = match &*label {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
@@ -189,17 +189,17 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     // Assumes the current block was not yet added to the parent region.
     let predecessors = parent.blocks();
     for predecessor in predecessors.into_iter() {
-        let predecessor = predecessor.re();
+        let predecessor = predecessor.rd();
         let ops = predecessor.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         for op in ops.iter() {
-            let op = op.re();
+            let op = op.rd();
             let operands = op.operation().operands().vec();
-            let operands = operands.re();
+            let operands = operands.rd();
             for operand in operands.iter() {
                 let mut operand = operand.wr();
                 let value = operand.value();
-                let value = value.re();
+                let value = value.rd();
                 if let Value::BlockLabel(current_label) = &*value {
                     if current_label.name() == label {
                         let block_ptr = BlockPtr::new(block.clone());
@@ -299,7 +299,7 @@ impl<T: ParserDispatch> Parser<T> {
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Shared::new(block.into());
         replace_block_labels(block.clone());
-        for argument in arguments.vec().re().iter() {
+        for argument in arguments.vec().rd().iter() {
             let mut argument = argument.wr();
             if let Value::BlockArgument(arg) = &mut *argument {
                 arg.set_parent(Some(block.clone()));
@@ -313,13 +313,13 @@ impl<T: ParserDispatch> Parser<T> {
             let mut ops = ops.wr();
             ops.push(op.clone());
         }
-        if ops.re().is_empty() {
+        if ops.rd().is_empty() {
             let token = self.peek();
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
         let ops = block.ops();
-        let ops = ops.re();
+        let ops = ops.rd();
         for op in ops.iter() {
             op.operation().set_parent(Some(block.clone()));
         }
@@ -389,7 +389,7 @@ impl<T: ParserDispatch> Parser<T> {
         };
         let op = T::parse_op(&mut parser, None)?;
         let opp = op.clone();
-        let opp = opp.re();
+        let opp = opp.rd();
         let casted = opp.as_any().downcast_ref::<ModuleOp>();
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
@@ -410,7 +410,7 @@ impl<T: ParserDispatch> Parser<T> {
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Shared::new(block.into());
             {
-                let ops = ops.re();
+                let ops = ops.rd();
                 for child_op in ops.iter() {
                     child_op.operation().set_parent(Some(block.clone()));
                 }

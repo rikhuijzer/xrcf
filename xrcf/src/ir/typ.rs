@@ -43,7 +43,7 @@ pub trait TypeConvert {
     /// This method can be reimplemented to compare types directly instead of
     /// converting to a string first.
     fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
-        let from = from.re();
+        let from = from.rd();
         let typ = Self::convert_str(&from.to_string())?;
         Ok(typ)
     }
@@ -201,7 +201,7 @@ impl Display for Types {
         let joined = self
             .types
             .iter()
-            .map(|t| t.re().to_string())
+            .map(|t| t.rd().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)
@@ -218,11 +218,11 @@ impl<T: ParserDispatch> Parser<T> {
         operand: Arc<RwLock<OpOperand>>,
         typ: Arc<RwLock<dyn Type>>,
     ) -> Result<()> {
-        let operand = operand.re();
+        let operand = operand.rd();
         let operand_typ = operand.typ()?;
-        let operand_typ = operand_typ.re();
+        let operand_typ = operand_typ.rd();
         let token = self.previous().clone();
-        let typ = typ.re();
+        let typ = typ.rd();
         if operand_typ.to_string() != typ.to_string() {
             let msg = format!(
                 "Expected {} due to {}, but got {}",
@@ -270,16 +270,16 @@ impl<T: ParserDispatch> Parser<T> {
     /// ```
     pub fn parse_types_for_op_operands(&mut self, operands: OpOperands) -> Result<()> {
         let types = self.parse_types()?;
-        if types.len() != operands.vec().re().len() {
+        if types.len() != operands.vec().rd().len() {
             let msg = format!(
                 "Expected {} types but got {}",
-                operands.vec().re().len(),
+                operands.vec().rd().len(),
                 types.len()
             );
             return Err(anyhow::anyhow!(msg));
         }
         let operands = operands.vec();
-        let operands = operands.re();
+        let operands = operands.rd();
         for x in operands.iter().zip(types.iter()) {
             let (operand, typ) = x;
             self.verify_type(operand.clone(), typ.clone())?;
