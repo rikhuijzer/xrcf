@@ -378,9 +378,8 @@ impl Block {
     }
     /// Find a unique name for a value (for example, `%4 = ...`).
     pub fn unique_value_name(&self, prefix: &str) -> String {
-        let used_names = self.used_names_with_predecessors();
         let mut new_name: i32 = -1;
-        for name in used_names.iter() {
+        for name in self.used_names_with_predecessors().iter() {
             let name = name.trim_start_matches(prefix);
             if let Ok(num) = name.parse::<i32>() {
                 // Ensure new_name is greater than any used name.
@@ -392,25 +391,18 @@ impl Block {
         format!("{prefix}{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let label = self.label();
-        let label = label.rd();
-        if let BlockName::Name(name) = &*label {
+        if let BlockName::Name(name) = &*self.label.rd() {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
-            let spaces = crate::ir::spaces(label_indent);
-            write!(f, "{spaces}{name}")?;
+            write!(f, "{}{name}", crate::ir::spaces(label_indent))?;
             let arguments = self.arguments();
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
             }
             write!(f, ":\n")?;
         }
-        let ops = self.ops();
-        let ops = ops.rd();
-        for op in ops.iter() {
-            let spaces = crate::ir::spaces(indent);
-            write!(f, "{spaces}")?;
-            let op = op.rd();
-            op.display(f, indent)?;
+        for op in self.ops().rd().iter() {
+            write!(f, "{}", crate::ir::spaces(indent))?;
+            op.rd().display(f, indent)?;
             write!(f, "\n")?;
         }
         Ok(())
@@ -446,8 +438,7 @@ impl UnsetBlock {
         self.block.clone()
     }
     pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
-        let mut block = self.block.wr();
-        block.set_parent(parent);
+        self.block.wr().set_parent(parent);
         self.block.clone()
     }
 }
