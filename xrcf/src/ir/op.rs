@@ -116,11 +116,11 @@ pub trait Op {
     }
     /// Replace self with `new` by moving the results of the old operation to
     /// the results of the specified new op, and pointing the
-    /// `result.defining_op` to the new op.  In effect, this makes all the uses
+    /// `result.defining_op` to the new op. In effect, this makes all the uses
     /// of the old op refer to the new op instead.
     ///
     /// Note that this function assumes that `self` will be dropped after this
-    /// function call.  Therefore, the old op can still have references to
+    /// function call. Therefore, the old op can still have references to
     /// objects that are now part of the new op.
     fn replace(&self, new: Arc<RwLock<dyn Op>>) {
         let parent = self.operation().rd().parent();
@@ -144,30 +144,24 @@ pub trait Op {
     /// not located inside the main region of the op. For example, the `scf.if`
     /// operation contains two regions: the "then" region and the "else" region.
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        let region = self.region();
-        if let Some(region) = region {
+        if let Some(region) = self.region() {
             region.ops()
         } else {
             vec![]
         }
     }
     fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let operation = self.operation().rd();
-        operation.parent_op()
+        self.operation().rd().parent_op()
     }
     fn set_parent(&self, parent: Arc<RwLock<Block>>) {
-        let operation = self.operation();
-        let mut operation = operation.wr();
-        operation.set_parent(Some(parent));
+        self.operation().wr().set_parent(Some(parent));
     }
     /// Return the result at the given index.
     ///
     /// Convenience function which makes it easier to set an operand to the
     /// result of an operation.
     fn result(&self, index: usize) -> Arc<RwLock<Value>> {
-        let operation = self.operation().rd();
-        let value = operation.result(index).unwrap();
-        value
+        self.operation().rd().result(index).unwrap()
     }
     /// Display the operation with the given indentation.
     ///
@@ -176,8 +170,7 @@ pub trait Op {
     /// `display` recursively while continuously increasing the indentation
     /// level.
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().rd();
-        operation.display(f, 0)
+        self.operation().rd().display(f, 0)
     }
 }
 
@@ -201,8 +194,7 @@ impl UnsetOp {
         UnsetOp(op)
     }
     pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
-        let op = self.0.rd();
-        op.set_parent(parent);
+        self.0.rd().set_parent(parent);
         self.0.clone()
     }
 }
