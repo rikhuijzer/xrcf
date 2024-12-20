@@ -45,7 +45,7 @@ impl<T> SharedExt<T> for Shared<T> {
 /// use xrcf::shared::RwLockExt;
 ///
 /// let lock = Arc::new(RwLock::new(42));
-/// assert_eq!(*lock.rd(), 42);
+/// assert_eq!(*lock.re(), 42);
 /// ```
 /// and with `Shared`:
 /// ```
@@ -55,7 +55,7 @@ impl<T> SharedExt<T> for Shared<T> {
 /// use xrcf::shared::Shared;
 ///
 /// let lock = Shared::new(42.into());
-/// assert_eq!(*lock.rd(), 42);
+/// assert_eq!(*lock.re(), 42);
 /// ```
 /// Without this trait:
 /// ```
@@ -67,13 +67,13 @@ impl<T> SharedExt<T> for Shared<T> {
 /// ```
 pub trait RwLockExt<T> {
     /// Convenience method for reading.
-    fn rd(&self) -> RwLockReadGuard<T>;
+    fn re(&self) -> RwLockReadGuard<T>;
     /// Convenience method for writing.
     fn wr(&self) -> RwLockWriteGuard<T>;
 }
 
 impl<T> RwLockExt<T> for Arc<RwLock<T>> {
-    fn rd(&self) -> RwLockReadGuard<T> {
+    fn re(&self) -> RwLockReadGuard<T> {
         self.try_read().unwrap()
     }
     fn wr(&self) -> RwLockWriteGuard<T> {
@@ -85,5 +85,5 @@ impl<T> RwLockExt<T> for Arc<RwLock<T>> {
 /// Just another test that runs even if the docstrings don't.
 fn test_shared() {
     let lock = Shared::new(42.into());
-    assert_eq!(*lock.rd(), 42);
+    assert_eq!(*lock.re(), 42);
 }
