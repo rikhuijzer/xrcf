@@ -17,6 +17,7 @@ use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
+use xrcf::shared::RwLockExt;
 
 /// The token kind used for variables in ArnoldC.
 ///
@@ -348,7 +349,7 @@ impl Parse for IfOp {
         }
         let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
-        let mut op_write = op_write.try_write().unwrap();
+        let mut op_write = op_write.wr();
         op_write.then = Some(then);
         op_write.els = Some(els);
         Ok(op)

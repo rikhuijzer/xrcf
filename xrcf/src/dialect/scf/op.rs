@@ -9,6 +9,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -132,7 +133,7 @@ impl Parse for IfOp {
         }
         let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
-        let mut op_write = op_write.try_write().unwrap();
+        let mut op_write = op_write.wr();
         op_write.then = Some(then);
         op_write.els = Some(els);
         results.set_defining_op(op.clone());

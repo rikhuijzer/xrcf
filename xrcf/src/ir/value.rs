@@ -15,6 +15,7 @@ use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -59,7 +60,7 @@ impl BlockArgument {
         self.parent.clone()
     }
     pub fn set_name(&self, name: BlockArgumentName) {
-        let mut arg_name = self.name.try_write().unwrap();
+        let mut arg_name = self.name.wr();
         *arg_name = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
@@ -291,7 +292,7 @@ impl OpResult {
         self.defining_op.clone()
     }
     pub fn set_name(&self, name: &str) {
-        let mut name_write = self.name.try_write().unwrap();
+        let mut name_write = self.name.wr();
         *name_write = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
@@ -362,10 +363,10 @@ impl UnsetOpResult {
         UnsetOpResult { result }
     }
     pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
-        self.result.try_write().unwrap().set_defining_op(op);
+        self.result.wr().set_defining_op(op);
     }
     pub fn set_typ(&self, typ: Arc<RwLock<dyn Type>>) {
-        self.result.try_write().unwrap().set_type(typ);
+        self.result.wr().set_type(typ);
     }
 }
 
@@ -391,7 +392,7 @@ impl UnsetOpResults {
         let results = results.try_read().unwrap();
         assert!(types.len() == results.len());
         for (result, typ) in results.iter().zip(types) {
-            let mut result = result.try_write().unwrap();
+            let mut result = result.wr();
             result.set_type(typ);
         }
     }
@@ -660,11 +661,11 @@ impl GuardedValue for Arc<RwLock<Value>> {
         value.name()
     }
     fn rename(&self, new_name: &str) {
-        let mut value = self.try_write().unwrap();
+        let mut value = self.wr();
         value.set_name(new_name);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
-        let mut value = self.try_write().unwrap();
+        let mut value = self.wr();
         value.set_parent(parent);
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
@@ -720,7 +721,7 @@ impl Values {
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         let values = self.values.try_read().unwrap();
         for value in values.iter() {
-            let mut value = value.try_write().unwrap();
+            let mut value = value.wr();
             let name = value.name().unwrap();
             value.set_name(&renamer.rename(&name));
         }
@@ -747,7 +748,7 @@ impl Values {
             ));
         }
         for (i, value) in values.iter().enumerate() {
-            let mut container = value.try_write().unwrap();
+            let mut container = value.wr();
             container.set_type(types[i].clone());
         }
         Ok(())
@@ -762,7 +763,7 @@ impl Values {
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
         let results = self.values.read().unwrap();
         for result in results.iter() {
-            let mut mut_result = result.try_write().unwrap();
+            let mut mut_result = result.wr();
             match &mut *mut_result {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
@@ -791,7 +792,7 @@ impl Values {
     pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
         let values = self.values.try_read().unwrap();
         for value in values.iter() {
-            let mut value = value.try_write().unwrap();
+            let mut value = value.wr();
             let typ = value.typ().unwrap();
             let typ = T::convert_type(&typ)?;
             value.set_type(typ);

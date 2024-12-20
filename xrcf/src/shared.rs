@@ -18,17 +18,6 @@ use std::sync::RwLockWriteGuard;
 /// can also be used together with [SharedExt].
 pub type Shared<T> = Arc<RwLock<T>>;
 
-/// A trait for creating new Arc<RwLock<T>> values
-pub trait SharedExt<T> {
-    fn new(value: T) -> Self;
-}
-
-impl<T> SharedExt<T> for Shared<T> {
-    fn new(value: T) -> Self {
-        Arc::new(RwLock::new(value))
-    }
-}
-
 /// A convenience trait for the `RwLock` API.
 ///
 /// This trait makes using [RwLock] less verbose. Is this trait pretty? No. But

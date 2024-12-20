@@ -8,6 +8,7 @@ use crate::ir::Value;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -94,7 +95,7 @@ impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
         self.try_read().unwrap().value()
     }
     fn set_value(&mut self, value: Arc<RwLock<Value>>) {
-        self.try_write().unwrap().set_value(value);
+        self.wr().set_value(value);
     }
 }
 
@@ -113,7 +114,7 @@ impl OpOperands {
         }
     }
     pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
-        let mut operands = self.operands.try_write().unwrap();
+        let mut operands = self.operands.wr();
         if operands.len() == index {
             operands.push(operand);
         } else {

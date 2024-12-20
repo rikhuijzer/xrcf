@@ -19,6 +19,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -224,7 +225,7 @@ impl Parse for BranchOp {
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
-            let mut operands = operands.try_write().unwrap();
+            let mut operands = operands.wr();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
                 operands.push(operand);

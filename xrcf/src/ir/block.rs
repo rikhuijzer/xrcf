@@ -8,6 +8,7 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::RwLockExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -91,7 +92,7 @@ impl Block {
         self.label_prefix.clone()
     }
     pub fn set_label(&self, label: BlockName) {
-        let mut label_write = self.label.try_write().unwrap();
+        let mut label_write = self.label.wr();
         *label_write = label;
     }
     pub fn set_label_prefix(&mut self, label_prefix: String) {
@@ -359,7 +360,7 @@ impl Block {
         parent.blocks().splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
-        self.ops.try_write().unwrap().insert(index, op);
+        self.ops.wr().insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
         let index = self.index_of_arc(earlier.clone());
@@ -390,7 +391,7 @@ impl Block {
             }
         };
         let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
+        let mut ops = ops.wr();
         ops[index] = new;
     }
     pub fn remove(&self, op: Arc<RwLock<Operation>>) {
@@ -398,7 +399,7 @@ impl Block {
         match index {
             Some(index) => {
                 let ops = self.ops();
-                let mut ops = ops.try_write().unwrap();
+                let mut ops = ops.wr();
                 ops.remove(index);
             }
             None => {
@@ -503,7 +504,7 @@ impl UnsetBlock {
         self.block.clone()
     }
     pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
-        let mut block = self.block.try_write().unwrap();
+        let mut block = self.block.wr();
         block.set_parent(parent);
         self.block.clone()
     }
@@ -551,7 +552,7 @@ impl GuardedBlock for Arc<RwLock<Block>> {
         self.try_read().unwrap().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        self.try_write().unwrap().insert_after(earlier, later);
+        self.wr().insert_after(earlier, later);
     }
     fn label(&self) -> Arc<RwLock<BlockName>> {
         self.try_read().unwrap().label()
@@ -569,19 +570,19 @@ impl GuardedBlock for Arc<RwLock<Block>> {
         self.try_read().unwrap().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
-        self.try_write().unwrap().remove(op);
+        self.wr().remove(op);
     }
     fn set_arguments(&self, arguments: Values) {
-        self.try_write().unwrap().set_arguments(arguments);
+        self.wr().set_arguments(arguments);
     }
     fn set_label(&self, label: BlockName) {
-        self.try_write().unwrap().set_label(label);
+        self.wr().set_label(label);
     }
     fn set_label_prefix(&self, label_prefix: String) {
-        self.try_write().unwrap().set_label_prefix(label_prefix);
+        self.wr().set_label_prefix(label_prefix);
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
-        self.try_write().unwrap().set_ops(ops);
+        self.wr().set_ops(ops);
     }
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         self.try_read().unwrap().successors()
@@ -636,14 +637,14 @@ impl Blocks {
             }
         };
         let vec = self.vec();
-        let mut vec = vec.try_write().unwrap();
+        let mut vec = vec.wr();
         let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
+        let mut blocks = blocks.wr();
         vec.splice(index..index, blocks.iter().cloned());
         {
             let parent = before.parent();
             for block in blocks.iter() {
-                let mut block = block.try_write().unwrap();
+                let mut block = block.wr();
                 block.set_parent(parent.clone());
             }
         }

@@ -18,6 +18,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -171,12 +172,12 @@ impl AddiOp {
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
         let result = Arc::new(RwLock::new(result));
-        results.vec().try_write().unwrap().push(result.clone());
+        results.vec().wr().push(result.clone());
         new_operation.set_results(results);
 
         let new_const = ConstantOp::from_operation(new_operation);
         let new_const = Arc::new(RwLock::new(new_const));
-        let mut result = result.try_write().unwrap();
+        let mut result = result.wr();
         if let Value::OpResult(result) = &mut *result {
             result.set_defining_op(Some(new_const.clone()));
         }

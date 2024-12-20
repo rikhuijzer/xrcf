@@ -8,6 +8,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -90,7 +91,7 @@ impl Parse for ModuleOp {
         let op = Arc::new(RwLock::new(op));
 
         let region = parser.parse_region(op.clone());
-        let mut operation = operation.try_write().unwrap();
+        let mut operation = operation.wr();
         operation.set_region(Some(region?));
         operation.set_parent(parent.clone());
 

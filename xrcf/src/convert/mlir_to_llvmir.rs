@@ -29,6 +29,7 @@ use crate::ir::Types;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::RwLockExt;
 use crate::targ3t;
 use anyhow::Result;
 use std::sync::Arc;
@@ -61,7 +62,7 @@ fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpO
 fn replace_constant_operands(op: &dyn Op) {
     let operation = op.operation();
     let operands = operation.operands().vec();
-    let mut operands = operands.try_write().unwrap();
+    let mut operands = operands.wr();
     for i in 0..operands.len() {
         let operand = &operands[i];
         let new_operand = constant_op_operand(operand.clone());
@@ -314,7 +315,7 @@ impl Rewrite for FuncLowering {
         let mut new_op = targ3t::llvmir::FuncOp::from_operation_arc(operation.clone());
 
         {
-            let mut operation = operation.try_write().unwrap();
+            let mut operation = operation.wr();
             lower_block_argument_types(&mut operation);
         }
 
@@ -454,7 +455,7 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
         operation.set_results(Values::from_vec(vec![new.clone()]));
 
         for user in users.iter() {
-            let mut user = user.try_write().unwrap();
+            let mut user = user.wr();
             user.set_value(new.clone());
         }
     } else {
@@ -466,7 +467,7 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
 fn insert_phi(block: Arc<RwLock<Block>>) {
     let block_read = block.try_read().unwrap();
     let arguments = block_read.arguments().vec();
-    let mut arguments = arguments.try_write().unwrap();
+    let mut arguments = arguments.wr();
     assert!(
         arguments.len() == 1,
         "Not implemented for multiple arguments"
@@ -508,7 +509,7 @@ fn remove_caller_operands(block: Arc<RwLock<Block>>) {
         let caller = caller.operation();
         let operands = caller.operands();
         let operands = operands.vec();
-        let mut operands = operands.try_write().unwrap();
+        let mut operands = operands.wr();
         operands.pop();
     }
 }

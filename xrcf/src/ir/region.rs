@@ -4,6 +4,7 @@ use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
+use crate::shared::RwLockExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -93,7 +94,7 @@ impl Region {
         let block = Arc::new(RwLock::new(block));
         let blocks = self.blocks();
         let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
+        let mut blocks = blocks.wr();
         blocks.push(block.clone());
         UnsetBlock::new(block)
     }
@@ -104,7 +105,7 @@ impl Region {
         let new = Arc::new(RwLock::new(new));
         let blocks = self.blocks();
         let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
+        let mut blocks = blocks.wr();
         blocks.insert(index, new.clone());
         UnsetBlock::new(new)
     }
@@ -192,10 +193,10 @@ impl GuardedRegion for Arc<RwLock<Region>> {
         self.try_read().unwrap().ops()
     }
     fn set_blocks(&self, blocks: Blocks) {
-        self.try_write().unwrap().set_blocks(blocks);
+        self.wr().set_blocks(blocks);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>) {
-        self.try_write().unwrap().set_parent(parent);
+        self.wr().set_parent(parent);
     }
     fn unique_block_name(&self) -> String {
         self.try_read().unwrap().unique_block_name()

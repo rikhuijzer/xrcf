@@ -10,6 +10,7 @@ use crate::ir::Value;
 use crate::ir::Values;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -42,7 +43,7 @@ pub trait Op {
         {
             let name = Self::operation_name();
             let operation_write = operation.clone();
-            let mut operation_write = operation_write.try_write().unwrap();
+            let mut operation_write = operation_write.wr();
             operation_write.set_name(name);
         }
         let op = Self::new(operation);
@@ -145,13 +146,13 @@ pub trait Op {
         };
         {
             for result in results.vec().try_read().unwrap().iter() {
-                let mut result = result.try_write().unwrap();
+                let mut result = result.wr();
                 if let Value::OpResult(res) = &mut *result {
                     res.set_defining_op(Some(new.clone()));
                 }
             }
             let new_read = new.try_read().unwrap();
-            let mut new_operation = new_read.operation().try_write().unwrap();
+            let mut new_operation = new_read.operation().wr();
             new_operation.set_results(results.clone());
         }
         let old_operation = self.operation().try_read().unwrap();
@@ -183,7 +184,7 @@ pub trait Op {
     }
     fn set_parent(&self, parent: Arc<RwLock<Block>>) {
         let operation = self.operation();
-        let mut operation = operation.try_write().unwrap();
+        let mut operation = operation.wr();
         operation.set_parent(Some(parent));
     }
     /// Return the result at the given index.

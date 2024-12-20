@@ -19,6 +19,7 @@ use crate::ir::Region;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -82,7 +83,7 @@ fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
 /// Add a `cf.br` to the end of `block` with destination `after`.
 fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
     let ops = block.ops();
-    let mut ops = ops.try_write().unwrap();
+    let mut ops = ops.wr();
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
     let last_op = last_op.try_read().unwrap();
@@ -129,7 +130,7 @@ fn move_successors_to_exit_block(
         .index_of(&op.operation().try_read().unwrap())
         .expect("Expected index");
     let ops = if_op_parent.ops();
-    let mut ops = ops.try_write().unwrap();
+    let mut ops = ops.wr();
     let return_ops = ops[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
         let op = op.try_read().unwrap();
@@ -270,7 +271,7 @@ fn add_blocks(
             println!("users.len: {}", users.len());
             let arg = merge_block_arguments[i].clone();
             for user in users.iter() {
-                let mut user = user.try_write().unwrap();
+                let mut user = user.wr();
                 user.set_value(arg.clone());
             }
         }

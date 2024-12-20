@@ -27,6 +27,7 @@ use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -195,7 +196,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
             let operands = op.operation().operands().vec();
             let operands = operands.try_read().unwrap();
             for operand in operands.iter() {
-                let mut operand = operand.try_write().unwrap();
+                let mut operand = operand.wr();
                 let value = operand.value();
                 let value = value.try_read().unwrap();
                 if let Value::BlockLabel(current_label) = &*value {
@@ -298,7 +299,7 @@ impl<T: ParserDispatch> Parser<T> {
         let block = Arc::new(RwLock::new(block));
         replace_block_labels(block.clone());
         for argument in arguments.vec().try_read().unwrap().iter() {
-            let mut argument = argument.try_write().unwrap();
+            let mut argument = argument.wr();
             if let Value::BlockArgument(arg) = &mut *argument {
                 arg.set_parent(Some(block.clone()));
             } else {
@@ -342,7 +343,7 @@ impl<T: ParserDispatch> Parser<T> {
         region.set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
-            let mut blocks = blocks.try_write().unwrap();
+            let mut blocks = blocks.wr();
             blocks.push(block);
         }
         self.expect(TokenKind::RBrace)?;

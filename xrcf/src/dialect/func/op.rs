@@ -19,6 +19,7 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::RwLockExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -210,7 +211,7 @@ pub trait Func: Op {
     fn set_sym_visibility(&mut self, visibility: Option<String>) {
         if let Some(visibility) = visibility {
             let operation = self.operation();
-            let operation = operation.try_write().unwrap();
+            let operation = operation.wr();
             let attributes = operation.attributes();
             let attribute = StringAttr::from_str(&visibility);
             let attribute = Arc::new(attribute);
