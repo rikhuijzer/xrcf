@@ -180,13 +180,11 @@ fn add_exit_block(
 ///
 /// Necessary to translate `%result = scf.if` to `^merge:(%result)`.
 fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
-    let results = results.vec();
-    let results = results.rd();
     let mut out = vec![];
-    for result in results.iter() {
-        let result = result.rd();
-        let name = result.name();
-        let typ = result.typ().unwrap();
+    for result in results.into_iter() {
+        let result_rd = result.rd();
+        let name = result_rd.name();
+        let typ = result_rd.typ().unwrap();
         let name = BlockArgumentName::Name(name.unwrap());
         let name = Shared::new(name.into());
         let mut arg = BlockArgument::new(name, typ);
@@ -199,13 +197,9 @@ fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Val
 }
 
 fn results_users(results: Values) -> Vec<Users> {
-    let results = results.vec();
-    let results = results.rd();
     let mut out = vec![];
-    for result in results.iter() {
-        let result = result.rd();
-        let users = result.users();
-        out.push(users);
+    for result in results.into_iter() {
+        out.push(result.rd().users());
     }
     out
 }
