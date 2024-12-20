@@ -250,16 +250,11 @@ impl Block {
     /// Returns a [Value] if the block contains an assignment for the given
     /// `name`. Return `None` if no assignment is found.
     pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
-        let arguments = self.arguments();
-        let arguments = arguments.vec();
-        let arguments = arguments.rd();
-        for argument in arguments.iter() {
+        for argument in self.arguments().into_iter() {
             match &*argument.rd() {
-                Value::BlockArgument(block_argument) => {
-                    let current_name = block_argument.name();
-                    let current_name = current_name.rd();
-                    if let BlockArgumentName::Name(current_name) = &*current_name {
-                        if current_name == name {
+                Value::BlockArgument(arg) => {
+                    if let BlockArgumentName::Name(curr) = &*arg.name().rd() {
+                        if curr == name {
                             return Some(argument.clone());
                         }
                     }
@@ -296,17 +291,15 @@ impl Block {
         // A talk with much more details is called "(Correctly) Extending
         // Dominance to MLIR Regions" and is available at
         // https://www.youtube.com/watch?v=VJORFvHJKWE.
-        let predecessors = self.predecessors();
-        let predecessors = predecessors.expect("expected predecessors");
-        for predecessor in predecessors.iter() {
-            let predecessor = predecessor.rd();
-            if let Some(value) = predecessor.assignment_in_func_arguments(name) {
+        for p in self.predecessors().unwrap().iter() {
+            let p = p.rd();
+            if let Some(value) = p.assignment_in_func_arguments(name) {
                 return Some(value);
             }
-            if let Some(value) = predecessor.assignment_in_ops(name) {
+            if let Some(value) = p.assignment_in_ops(name) {
                 return Some(value);
             }
-            if let Some(value) = predecessor.assignment_in_block_arguments(name) {
+            if let Some(value) = p.assignment_in_block_arguments(name) {
                 return Some(value);
             }
         }
@@ -316,72 +309,50 @@ impl Block {
     ///
     /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
-        let ops = self.ops();
-        let ops = ops.rd();
-        ops.iter().position(|current| {
+        self.ops().rd().iter().position(|current| {
             let current = current.rd();
             let current = current.operation();
             let current = &*current.rd();
             std::ptr::eq(current, op)
         })
     }
-    pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.index_of(&*op.rd())
-    }
     /// Move the blocks that belong to `region` before `self`.
     ///
     /// The caller is in charge of transferring the control flow to the region
     /// and pass it the correct block arguments.
     pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        let parent = self.parent().expect("no parent");
-        parent.blocks().splice(self, region.blocks());
+        self.parent()
+            .expect("no parent")
+            .blocks()
+            .splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         self.ops.wr().insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of_arc(earlier.clone());
-        let index = match index {
-            Some(index) => index,
+        match self.index_of(&*earlier.rd()) {
+            Some(index) => self.insert_op(later, index + 1),
             None => {
                 panic!("Could not find op in block during insert_after");
             }
-        };
-        self.insert_op(later, index + 1);
+        }
     }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
-        let index = self.index_of_arc(later);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Could not find op in block during insert_before");
-            }
-        };
-        self.insert_op(earlier, index);
+        match self.index_of(&*later.rd()) {
+            Some(index) => self.insert_op(earlier, index),
+            None => panic!("could not find op in block"),
+        }
     }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of_arc(old);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Replace could not find op in block during replace");
-            }
-        };
-        let ops = self.ops();
-        let mut ops = ops.wr();
-        ops[index] = new;
+        match self.index_of(&*old.rd()) {
+            Some(index) => self.ops().wr()[index] = new,
+            None => panic!("could not find op in block"),
+        }
     }
     pub fn remove(&self, op: Arc<RwLock<Operation>>) {
-        let index = self.index_of_arc(op);
-        match index {
-            Some(index) => {
-                let ops = self.ops();
-                let mut ops = ops.wr();
-                ops.remove(index);
-            }
-            None => {
-                panic!("Remove could not find op in block");
-            }
+        match self.index_of(&*op.rd()) {
+            Some(index) => self.ops().wr().remove(index),
+            None => panic!("could not find op in block"),
         };
     }
     fn set_arguments(&mut self, arguments: Values) {
@@ -492,7 +463,6 @@ pub trait GuardedBlock {
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
-    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Arc<RwLock<BlockName>>;
@@ -521,9 +491,6 @@ impl GuardedBlock for Arc<RwLock<Block>> {
     }
     fn index_of(&self, op: &Operation) -> Option<usize> {
         self.rd().index_of(op)
-    }
-    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.rd().index_of_arc(op)
     }
     fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
         self.rd().inline_region_before(region);
