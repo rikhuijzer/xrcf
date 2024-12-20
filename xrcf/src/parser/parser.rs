@@ -309,7 +309,7 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            let mut ops = ops.write().unwrap();
+            let mut ops = ops.wr();
             ops.push(op.clone());
         }
         if ops.re().is_empty() {

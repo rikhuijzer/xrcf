@@ -230,7 +230,7 @@ pub fn transform<T: TransformDispatch>(
     for pass in options.passes().vec() {
         if options.print_ir_before_all() {
             writeln!(
-                &mut *options.writer.write().unwrap(),
+                &mut *options.writer.wr(),
                 "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
                 op.re()
             )?;
