@@ -36,10 +36,8 @@ impl Op for ModuleOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation().rd();
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}")?;
-        operation.display(f, indent)
+        write!(f, "{}", crate::ir::spaces(indent))?;
+        self.operation().rd().display(f, indent)
     }
 }
 
@@ -54,25 +52,21 @@ impl ModuleOp {
         Ok(self.operation().rd().region())
     }
     pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
-        let body_region = self.get_body_region()?;
-        let region = match body_region {
+        let region = match self.get_body_region()? {
             Some(region) => region,
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
         };
-        let blocks = region.blocks();
-        let block = match blocks.into_iter().next() {
+        let block = match region.blocks().into_iter().next() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        let ops = block.rd().ops();
-        let ops = ops.rd();
-        let op = ops.first();
-        if op.is_none() {
-            return Err(anyhow::anyhow!("Expected 1 op, got 0"));
-        } else {
-            let op = op.unwrap().clone();
-            Ok(op)
-        }
+        let x = match block.rd().ops().rd().first() {
+            None => {
+                return Err(anyhow::anyhow!("Expected 1 op, got 0"));
+            }
+            Some(op) => Ok(op.clone()),
+        };
+        x
     }
 }
 
