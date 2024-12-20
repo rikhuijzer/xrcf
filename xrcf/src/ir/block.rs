@@ -358,26 +358,20 @@ impl Block {
     fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn used_names_without_predecessors(&self) -> Vec<String> {
+    pub fn used_names(&self) -> Vec<String> {
         let ops = self.ops();
         let ops = ops.rd();
         let mut used_names = vec![];
         for op in ops.iter() {
-            let op = op.rd();
-            let operation = op.operation();
-            let operation = operation.rd();
-            let result_names = operation.result_names();
-            used_names.extend(result_names);
+            used_names.extend(op.rd().operation().rd().result_names());
         }
         used_names
     }
     fn used_names_with_predecessors(&self) -> Vec<String> {
-        let predecessors = self.predecessors();
-        let mut used_names = self.used_names_without_predecessors();
-        if let Some(predecessors) = predecessors {
-            for predecessor in predecessors.iter() {
-                let predecessor = predecessor.rd();
-                used_names.extend(Self::used_names_without_predecessors(&predecessor));
+        let mut used_names = self.used_names();
+        if let Some(predecessors) = self.predecessors() {
+            for p in predecessors.iter() {
+                used_names.extend(p.rd().used_names());
             }
         }
         used_names

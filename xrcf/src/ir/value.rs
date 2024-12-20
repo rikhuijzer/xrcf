@@ -314,7 +314,7 @@ impl OpResult {
         let block_predecessors = block_predecessors.expect("expected predecessors");
         for predecessor in block_predecessors.iter() {
             let predecessor = predecessor.rd();
-            let names_in_block = predecessor.used_names_without_predecessors();
+            let names_in_block = predecessor.used_names();
             used_names.extend(names_in_block);
         }
 
