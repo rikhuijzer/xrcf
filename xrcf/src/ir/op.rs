@@ -68,11 +68,11 @@ pub trait Op {
     /// This is a convenience method for `self.operation().name()`.
     /// Unlike `self.operation_name()`, this method is available on a `dyn Op`.
     fn name(&self) -> OperationName {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         operation.name()
     }
     fn region(&self) -> Option<Arc<RwLock<Region>>> {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         operation.region()
     }
     /// Returns the values which this `Op` assigns to.
@@ -80,7 +80,7 @@ pub trait Op {
     /// But for some other ops like `FuncOp`, this can be different.
     fn assignments(&self) -> Result<Values> {
         let operation = self.operation();
-        let operation = operation.read().unwrap();
+        let operation = operation.re();
         let results = operation.results();
         Ok(results.clone())
     }
@@ -100,10 +100,10 @@ pub trait Op {
         false
     }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         let attributes = operation.attributes();
         let attributes = attributes.map();
-        let attributes = attributes.read().unwrap();
+        let attributes = attributes.re();
         let value = attributes.get(key)?;
         Some(value.clone())
     }
@@ -127,9 +127,9 @@ pub trait Op {
     }
     /// Remove the operation from its parent block.
     fn remove(&self) {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         let block = operation.parent().expect("no parent");
-        let block = block.read().unwrap();
+        let block = block.re();
         block.remove(self.operation().clone());
     }
     /// Replace self with `new` by moving the results of the old operation to

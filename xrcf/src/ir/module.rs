@@ -35,7 +35,7 @@ impl Op for ModuleOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         let spaces = crate::ir::spaces(indent);
         write!(f, "{spaces}")?;
         operation.display(f, indent)
@@ -44,13 +44,13 @@ impl Op for ModuleOp {
 
 impl Display for ModuleOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        write!(f, "{}", self.operation().re())
     }
 }
 
 impl ModuleOp {
     pub fn get_body_region(&self) -> Result<Option<Arc<RwLock<Region>>>> {
-        Ok(self.operation().read().unwrap().region())
+        Ok(self.operation().re().region())
     }
     pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
         let body_region = self.get_body_region()?;
@@ -63,8 +63,8 @@ impl ModuleOp {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        let ops = block.read().unwrap().ops();
-        let ops = ops.read().unwrap();
+        let ops = block.re().ops();
+        let ops = ops.re();
         let op = ops.first();
         if op.is_none() {
             return Err(anyhow::anyhow!("Expected 1 op, got 0"));

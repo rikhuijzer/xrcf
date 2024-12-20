@@ -73,7 +73,7 @@ impl Region {
         let blocks = self.blocks();
         for block in blocks.into_iter() {
             let ops = block.ops();
-            let ops = ops.read().unwrap();
+            let ops = ops.re();
             for op in ops.iter() {
                 result.push(op.clone());
             }

@@ -47,7 +47,7 @@ impl Op for AddOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        write!(f, "{}", self.operation().re())
     }
 }
 
@@ -100,7 +100,7 @@ impl Op for AllocaOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         write!(f, "{} = ", operation.results())?;
         write!(f, "{} ", operation.name())?;
         let array_size = self.array_size();
@@ -469,7 +469,7 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let attributes = self.operation().attributes().map();
-        let attributes = attributes.read().unwrap();
+        let attributes = attributes.re();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
         }
@@ -673,7 +673,7 @@ impl Op for StoreOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
         write!(f, " : ")?;

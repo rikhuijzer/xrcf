@@ -1,5 +1,6 @@
 use crate::ir::Type;
 use crate::ir::Types;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ impl ArrayType {
 
 impl Type for ArrayType {
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let element_type = self.element_type.read().unwrap();
+        let element_type = self.element_type.re();
         write!(f, "[{} x {}]", self.num_elements, element_type)
     }
     fn as_any(&self) -> &dyn std::any::Any {

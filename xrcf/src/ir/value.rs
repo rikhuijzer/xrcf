@@ -761,7 +761,7 @@ impl Values {
     /// Calling this on block arguments (like function arguments) will panic since
     /// block arguments do not specify a defining op.
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
-        let results = self.values.read().unwrap();
+        let results = self.values.re();
         for result in results.iter() {
             let mut mut_result = result.wr();
             match &mut *mut_result {

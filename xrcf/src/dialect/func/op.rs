@@ -44,7 +44,7 @@ pub trait Call: Op {
     fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
     fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().re();
         let results = operation.results();
         let has_results = !results.vec().re().is_empty();
         if has_results {
@@ -220,7 +220,7 @@ pub trait Func: Op {
     }
     fn arguments(&self) -> Result<Values> {
         let operation = self.operation();
-        let operation = operation.read().unwrap();
+        let operation = operation.re();
         let arguments = operation.arguments();
         Ok(arguments.clone())
     }
@@ -448,7 +448,7 @@ impl ReturnOp {
         let operands = operands.re();
         if !operands.is_empty() {
             for operand in operands.iter() {
-                write!(f, " {}", operand.read().unwrap())?;
+                write!(f, " {}", operand.re())?;
             }
             let result_types = operation.results().types();
             write!(f, " : {}", result_types)?;

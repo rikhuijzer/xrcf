@@ -312,7 +312,7 @@ impl<T: ParserDispatch> Parser<T> {
             let mut ops = ops.write().unwrap();
             ops.push(op.clone());
         }
-        if ops.read().unwrap().is_empty() {
+        if ops.re().is_empty() {
             let token = self.peek();
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
@@ -388,7 +388,7 @@ impl<T: ParserDispatch> Parser<T> {
         };
         let op = T::parse_op(&mut parser, None)?;
         let opp = op.clone();
-        let opp = opp.read().unwrap();
+        let opp = opp.re();
         let casted = opp.as_any().downcast_ref::<ModuleOp>();
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
@@ -409,7 +409,7 @@ impl<T: ParserDispatch> Parser<T> {
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Arc::new(RwLock::new(block));
             {
-                let ops = ops.read().unwrap();
+                let ops = ops.re();
                 for child_op in ops.iter() {
                     child_op.operation().set_parent(Some(block.clone()));
                 }

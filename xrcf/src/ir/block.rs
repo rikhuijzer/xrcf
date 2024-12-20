@@ -196,7 +196,7 @@ impl Block {
         let region = self.parent();
         assert!(region.is_some());
         let region = region.unwrap();
-        let region = region.read().unwrap();
+        let region = region.re();
         let parent = region.parent();
         assert!(
             parent.is_some(),

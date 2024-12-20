@@ -9,6 +9,7 @@ use crate::ir::Type;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -236,7 +237,7 @@ impl Attributes {
         self.map.clone()
     }
     pub fn is_empty(&self) -> bool {
-        self.map.read().unwrap().is_empty()
+        self.map.re().is_empty()
     }
     pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
         self.map
@@ -245,10 +246,10 @@ impl Attributes {
             .insert(name.to_string(), attribute);
     }
     pub fn get(&self, name: &str) -> Option<Arc<dyn Attribute>> {
-        self.map.read().unwrap().get(name).cloned()
+        self.map.re().get(name).cloned()
     }
     pub fn deep_clone(&self) -> Self {
-        let map = self.map.read().unwrap();
+        let map = self.map.re();
         let mut out = HashMap::new();
         for (name, attribute) in map.iter() {
             let attribute = attribute.clone();
@@ -261,7 +262,7 @@ impl Attributes {
 
 impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let map = self.map.read().unwrap();
+        let map = self.map.re();
         if !map.is_empty() {
             write!(f, "{{")?;
             for (i, attr) in map.iter().enumerate() {

@@ -255,7 +255,7 @@ impl Op for DeclareIntOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.operation().read().unwrap().results())?;
+        write!(f, " {}", self.operation().re().results())?;
         Ok(())
     }
 }

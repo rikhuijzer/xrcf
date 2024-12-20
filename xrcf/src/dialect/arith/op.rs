@@ -137,7 +137,7 @@ impl AddiOp {
                 return RewriteResult::Unchanged;
             }
         };
-        let lhs = lhs.read().unwrap();
+        let lhs = lhs.re();
         let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
             Some(lhs) => lhs,
             None => return RewriteResult::Unchanged,
@@ -148,7 +148,7 @@ impl AddiOp {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
         };
-        let rhs = rhs.read().unwrap();
+        let rhs = rhs.re();
         let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
