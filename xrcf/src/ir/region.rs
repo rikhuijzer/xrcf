@@ -184,39 +184,50 @@ impl<T> Shared<T> {
     }
 }
 
-pub struct RegionRef<'a> {
-    guard: std::sync::RwLockReadGuard<'a, Region>,
+pub struct ReadRef<'a, T> {
+    guard: std::sync::RwLockReadGuard<'a, T>,
 }
 
-impl<'a> Deref for RegionRef<'a> {
-    type Target = Region;
+impl<'a, T> Deref for ReadRef<'a, T> {
+    type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.guard
     }
 }
 
+#[allow(dead_code)]
 pub struct SharedRegion {
     inner: Shared<Region>,
 }
 
 impl SharedRegion {
+    #[allow(dead_code)]
     pub fn new(region: Region) -> Self {
         Self {
             inner: Shared::new(region),
         }
     }
-    pub fn read(&self) -> RegionRef {
-        RegionRef {
+    #[allow(dead_code)]
+    pub fn read(&self) -> ReadRef<Region> {
+        ReadRef {
             guard: self.inner.read(),
         }
     }
 }
 
+#[test]
 fn tmp() {
+    // Via this SharedRegion API.
     let region = Region::default();
+    let _unset_block = region.add_empty_block();
     let shared = SharedRegion::new(region);
-    let region = shared.read();
-    let blocks = region.blocks();
+    assert_eq!(shared.read().blocks().into_iter().len(), 1);
+
+    // Via the Arc<RwLock<Region>> API.
+    let region = Region::default();
+    let _unset_block = region.add_empty_block();
+    let shared = Arc::new(RwLock::new(region));
+    assert_eq!(shared.try_read().unwrap().blocks().into_iter().len(), 1);
 }
 
 pub trait GuardedRegion {
