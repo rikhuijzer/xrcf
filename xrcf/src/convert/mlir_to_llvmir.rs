@@ -180,19 +180,13 @@ impl Rewrite for BranchLowering {
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         if op.as_any().is::<dialect::llvm::BranchOp>() {
-            let operands = op.operation().operands().vec();
             // Check whether [MergeLowering] has already removed the operands.
-            for operand in operands.rd().iter() {
+            Ok(op.operation().operands().into_iter().all(|operand| {
                 let operand = operand.rd();
                 let value = operand.value();
                 let value = value.rd();
-                match &*value {
-                    Value::BlockLabel(_) => {}
-                    Value::BlockPtr(_) => {}
-                    _ => return Ok(false),
-                }
-            }
-            Ok(true)
+                matches!(&*value, Value::BlockLabel(_) | Value::BlockPtr(_))
+            }))
         } else {
             Ok(false)
         }

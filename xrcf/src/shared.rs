@@ -34,7 +34,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// use xrcf::shared::SharedExt;
 ///
 /// let lock = Arc::new(RwLock::new(42));
-/// assert_eq!(*lock.re(), 42);
+/// assert_eq!(*lock.rd(), 42);
 /// ```
 /// and with `Shared`:
 /// ```
@@ -44,7 +44,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// use xrcf::shared::SharedExt;
 ///
 /// let lock = Shared::new(42.into());
-/// assert_eq!(*lock.re(), 42);
+/// assert_eq!(*lock.rd(), 42);
 /// ```
 /// Without this trait:
 /// ```

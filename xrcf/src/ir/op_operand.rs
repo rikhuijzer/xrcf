@@ -105,6 +105,14 @@ pub struct OpOperands {
     operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
 }
 
+impl IntoIterator for OpOperands {
+    type Item = Arc<RwLock<OpOperand>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.operands.rd().clone().into_iter()
+    }
+}
+
 impl OpOperands {
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
         self.operands.clone()

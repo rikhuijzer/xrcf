@@ -690,8 +690,7 @@ impl IntoIterator for Values {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let vec = self.values.rd();
-        vec.clone().into_iter()
+        self.values.rd().clone().into_iter()
     }
 }
 
