@@ -26,6 +26,7 @@ use crate::ir::Values;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Interface to add custom operations to the parser.
@@ -104,7 +105,7 @@ pub fn default_dispatch<T: ParserDispatch>(
 pub fn default_parse_type<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<Shared<dyn Type>> {
     if parser.check(TokenKind::IntType) {
         let typ = parser.advance();
-        let typ = IntegerType::from_str(&typ.lexeme);
+        let typ = IntegerType::from_str(&typ.lexeme).unwrap();
         return Ok(Shared::new(typ.into()));
     }
     let text = parser.parse_type_text()?;

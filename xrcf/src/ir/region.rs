@@ -26,7 +26,7 @@ pub struct Region {
 /// will point to blocks that occur later. If we would refresh the name during
 /// printing of the block (like we do with ssa variables), then the operands
 /// would print outdated names.
-fn set_fresh_block_labels(blocks: &Vec<Shared<Block>>) {
+fn set_fresh_block_labels(blocks: &[Shared<Block>]) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
         let block = block.rd();
@@ -102,7 +102,7 @@ impl Region {
         self.parent = parent;
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        write!(f, " {{\n")?;
+        writeln!(f, " {{")?;
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.rd();

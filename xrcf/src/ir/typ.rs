@@ -8,7 +8,7 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
-
+use std::str::FromStr;
 pub trait Type {
     /// Display the type.
     ///
@@ -88,10 +88,14 @@ impl IntegerType {
     pub fn new(num_bits: u64) -> Self {
         Self { num_bits }
     }
-    pub fn from_str(s: &str) -> Self {
+}
+
+impl std::str::FromStr for IntegerType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.strip_prefix("i").expect("no i prefix");
         let num_bits = s.parse::<u64>().unwrap();
-        Self { num_bits }
+        Ok(Self { num_bits })
     }
 }
 
@@ -145,7 +149,7 @@ impl APInt {
         }
     }
     pub fn from_str(typ: &str, value: &str) -> Self {
-        let typ = IntegerType::from_str(typ);
+        let typ = IntegerType::from_str(typ).unwrap();
         let value = value.parse::<u64>().unwrap();
         Self::new(typ.num_bits, value, true)
     }
@@ -175,7 +179,7 @@ impl Display for APInt {
 /// A collection of `Type`s.
 ///
 /// Provides some convenience methods around [Type]s.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Types {
     types: Vec<Shared<dyn Type>>,
 }
@@ -194,12 +198,6 @@ impl Types {
     }
     pub fn vec(&self) -> Vec<Shared<dyn Type>> {
         self.types.clone()
-    }
-}
-
-impl Default for Types {
-    fn default() -> Self {
-        Self { types: vec![] }
     }
 }
 

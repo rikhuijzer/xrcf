@@ -23,6 +23,7 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use dialect::experimental::PrintfOp;
+use std::str::FromStr;
 use std::sync::Arc;
 
 struct PrintLowering;
@@ -50,7 +51,7 @@ impl PrintLowering {
     fn len_specifier(parent: &Shared<Block>, len: usize) -> Shared<dyn Op> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        let typ = IntegerType::from_str("i16");
+        let typ = IntegerType::from_str("i16").unwrap();
         let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
@@ -117,7 +118,7 @@ impl PrintLowering {
             let var = var.expect("expected vararg");
             operation.set_operand(1, var);
         }
-        let typ = IntegerType::from_str("i32");
+        let typ = IntegerType::from_str("i32").unwrap();
         let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
@@ -171,7 +172,7 @@ impl PrintLowering {
     fn printf_func_def(parent: Shared<Block>, set_varargs: bool) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        let result_type = crate::ir::IntegerType::from_str("i32");
+        let result_type = IntegerType::from_str("i32").unwrap();
         let result_type = Shared::new(result_type.into());
         operation.set_anonymous_result(result_type)?;
 

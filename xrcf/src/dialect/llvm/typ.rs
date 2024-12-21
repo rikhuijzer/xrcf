@@ -8,6 +8,7 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::str::FromStr;
 
 /// Represent an integer type such as i32 or i64.
 ///
@@ -31,7 +32,7 @@ impl ArrayType {
         };
         let (num_elements, element_type) = s.split_once('x').unwrap();
         let num_elements = num_elements.parse::<u32>().unwrap();
-        let element_type = IntegerType::from_str(element_type);
+        let element_type = IntegerType::from_str(element_type).unwrap();
         let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
@@ -43,7 +44,7 @@ impl ArrayType {
         let text = s.to_string();
         let text = text.trim_matches('"');
         let num_elements = text.as_bytes().len() as u32;
-        let element_type = IntegerType::from_str("i8");
+        let element_type = IntegerType::from_str("i8").unwrap();
         let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
@@ -52,7 +53,7 @@ impl ArrayType {
     }
     pub fn for_bytes(bytes: &Vec<u8>) -> Self {
         let num_elements = bytes.len() as u32;
-        let element_type = IntegerType::from_str("i8");
+        let element_type = IntegerType::from_str("i8").unwrap();
         let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
@@ -107,9 +108,9 @@ impl FunctionType {
     pub fn from_str(s: &str) -> Self {
         assert!(s.starts_with("!llvm.func<"));
         let s = s.strip_prefix("!llvm.func<").unwrap();
-        let (return_types, arguments) = s.split_once('(').unwrap();
+        let (ret_types, arguments) = s.split_once('(').unwrap();
 
-        let return_type = IntegerType::from_str(return_types.trim());
+        let return_type = IntegerType::from_str(ret_types.trim()).unwrap();
         let return_type = Shared::new(return_type.into());
         let return_types = Types::from_vec(vec![return_type]);
 

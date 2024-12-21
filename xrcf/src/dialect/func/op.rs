@@ -18,6 +18,7 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
+use std::str::FromStr;
 use std::sync::Arc;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
@@ -469,7 +470,7 @@ impl<T: ParserDispatch> Parser<T> {
             operation.set_operands(self.parse_op_operands(parent.clone().unwrap(), TOKEN_KIND)?);
             self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
-            let return_type = IntegerType::from_str(&return_type.lexeme);
+            let return_type = IntegerType::from_str(&return_type.lexeme).unwrap();
             let result_type = Shared::new(return_type.into());
             operation.set_anonymous_result(result_type)?;
         }
