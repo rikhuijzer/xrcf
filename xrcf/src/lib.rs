@@ -37,6 +37,7 @@
 //!
 //! So, the long-term goal of this project is to provide an easy-to-use set of tools that can be used to build your own compiler.
 //! In other words, it should be easy to build a compiler that can transform your favorite language to this project's core IR, and then it should be easy to transform this to various platforms such as GPUs, CPUs, and TPUs.
+#![allow(clippy::new_without_default)]
 
 mod canonicalize;
 pub mod convert;

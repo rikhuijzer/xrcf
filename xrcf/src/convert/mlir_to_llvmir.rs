@@ -27,6 +27,7 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::targ3t;
 use anyhow::Result;
+use std::str::FromStr;
 
 struct AddLowering;
 
@@ -265,7 +266,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
                 let typ = argument.rd().typ().unwrap();
                 let typ = typ.rd();
                 if typ.as_any().is::<dialect::llvm::PointerType>() {
-                    let typ = targ3t::llvmir::PointerType::from_str("ptr");
+                    let typ = targ3t::llvmir::PointerType::from_str("ptr").unwrap();
                     let typ = Shared::new(typ.into());
                     let name = BlockArgumentName::Unset;
                     let name = Shared::new(name.into());

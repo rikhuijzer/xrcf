@@ -137,7 +137,7 @@ impl Scanner {
         Ok(())
     }
     fn is_int_type(word: &str) -> bool {
-        let types = vec!["i1", "i4", "i8", "i16", "i32", "i64", "i128"];
+        let types = ["i1", "i4", "i8", "i16", "i32", "i64", "i128"];
         types.contains(&word)
     }
     fn int_type(&mut self, c: char) -> Result<()> {
