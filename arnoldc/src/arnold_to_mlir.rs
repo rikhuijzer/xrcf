@@ -152,7 +152,6 @@ impl Rewrite for IfLowering {
         let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
         let operation = op.operation();
         let mut new_op = scf::IfOp::from_operation_arc(operation.clone());
-        new_op.set_parent(operation.rd().parent().clone().unwrap());
         new_op.set_then(op.then().clone());
         new_op.set_els(op.els().clone());
         let new_op = Shared::new(new_op.into());
