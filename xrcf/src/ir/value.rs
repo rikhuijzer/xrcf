@@ -286,8 +286,7 @@ impl OpResult {
         self.defining_op.clone()
     }
     pub fn set_name(&self, name: &str) {
-        let mut name_write = self.name.wr();
-        *name_write = Some(name.to_string());
+        *self.name.wr() = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = Some(typ);
@@ -301,21 +300,17 @@ impl OpResult {
         let defining_op = defining_op.rd();
         let mut used_names = vec![];
 
-        let parent_block = defining_op.operation().parent();
-        let parent_block = parent_block.expect("defining op has no parent");
-        let block_predecessors = parent_block.predecessors();
-        let block_predecessors = block_predecessors.expect("expected predecessors");
-        for predecessor in block_predecessors.iter() {
-            let predecessor = predecessor.rd();
-            let names_in_block = predecessor.used_names();
-            used_names.extend(names_in_block);
+        let parent = defining_op.operation().parent();
+        let parent = parent.expect("defining op has no parent");
+        let blocks_preds = parent.predecessors();
+        let blocks_preds = blocks_preds.expect("no predecessors");
+        for pred in blocks_preds.iter() {
+            used_names.extend(pred.rd().used_names());
         }
 
         let predecessors = defining_op.operation().predecessors();
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.rd();
-            let result_names = predecessor.operation().result_names();
-            used_names.extend(result_names);
+            used_names.extend(predecessor.rd().operation().result_names());
         }
         generate_new_name(used_names, "%")
     }
@@ -381,13 +376,10 @@ impl UnsetOpResults {
         values.set_defining_op(op);
     }
     pub fn set_types(&self, types: Vec<Arc<RwLock<dyn Type>>>) {
-        let results = self.values();
-        let results = results.vec();
-        let results = results.rd();
+        let results = self.values().into_iter();
         assert!(types.len() == results.len());
-        for (result, typ) in results.iter().zip(types) {
-            let mut result = result.wr();
-            result.set_type(typ);
+        for (result, typ) in results.zip(types) {
+            result.wr().set_type(typ);
         }
     }
 }
@@ -469,32 +461,20 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => {
-                let name = arg.name();
-                let name = name.rd();
-                match &*name {
-                    BlockArgumentName::Anonymous => None,
-                    BlockArgumentName::Name(name) => Some(name.clone()),
-                    BlockArgumentName::Unset => None,
-                }
-            }
+            Value::BlockArgument(arg) => match &*arg.name().rd() {
+                BlockArgumentName::Anonymous => None,
+                BlockArgumentName::Name(name) => Some(name.clone()),
+                BlockArgumentName::Unset => None,
+            },
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(block_ptr) => {
-                let label = block_ptr.block().label();
-                let label = label.rd();
-                match &*label {
-                    BlockName::Name(name) => Some(name.clone()),
-                    BlockName::Unnamed => None,
-                    BlockName::Unset => None,
-                }
-            }
+            Value::BlockPtr(ptr) => match &*ptr.block().label().rd() {
+                BlockName::Name(name) => Some(name.clone()),
+                BlockName::Unnamed => None,
+                BlockName::Unset => None,
+            },
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => {
-                let name = result.name();
-                let name = name.rd();
-                name.clone()
-            }
+            Value::OpResult(result) => result.name().rd().clone(),
             Value::Variadic => None,
         }
     }
@@ -548,8 +528,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => {
-                let arg_name = BlockArgumentName::Name(name.to_string());
-                arg.set_name(arg_name);
+                arg.set_name(BlockArgumentName::Name(name.to_string()));
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::BlockPtr(_) => todo!(),
@@ -566,16 +545,9 @@ impl Value {
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
-            let operation = op.operation();
-            let operation = operation.rd();
-            let operands = operation.operands().vec();
-            let operands = operands.rd();
-            for operand in operands.iter() {
-                let operand_clone = operand.clone();
-                let operand_clone = operand_clone.rd();
-                let value = operand_clone.value();
-                let value = value.rd();
-                if std::ptr::eq(&*value as *const Value, self as *const Value) {
+            for operand in op.operation().rd().operands().into_iter() {
+                let value = operand.rd().value();
+                if std::ptr::eq(&*value.rd() as *const Value, self as *const Value) {
                     out.push(operand.clone());
                 }
             }
