@@ -17,7 +17,6 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 pub enum BlockArgumentName {
     /// Anonymous block arguments are used for functions without an implementation.

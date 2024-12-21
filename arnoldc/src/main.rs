@@ -102,8 +102,7 @@ mod tests {
     use anyhow::Result;
     use indoc::indoc;
     use std::panic::Location;
-    use std::sync::Arc;
-    use std::sync::RwLock;
+
     use xrcf::convert::RewriteResult;
     use xrcf::shared::Shared;
     use xrcf::tester::Tester;

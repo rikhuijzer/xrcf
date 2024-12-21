@@ -23,8 +23,6 @@ use anyhow::Result;
 use std::default::Default;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OperationName {

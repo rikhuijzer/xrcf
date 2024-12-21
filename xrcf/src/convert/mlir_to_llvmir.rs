@@ -27,8 +27,6 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::targ3t;
 use anyhow::Result;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 struct AddLowering;
 

@@ -1,7 +1,6 @@
 use crate::arnold;
 use anyhow::Result;
 use std::sync::Arc;
-use std::sync::RwLock;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;

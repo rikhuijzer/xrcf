@@ -21,7 +21,6 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 /// The token kind used for variables in this dialect.
 ///

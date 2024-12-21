@@ -23,7 +23,6 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 

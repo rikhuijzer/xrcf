@@ -16,8 +16,6 @@ use clap::ArgMatches;
 use std::env::ArgsOs;
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
-use std::sync::RwLock;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;

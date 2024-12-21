@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
