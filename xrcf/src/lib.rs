@@ -1,4 +1,4 @@
-//! XRCF is a set of tools to build your own compiler.
+//! xrcf is an easy(ier)-to-use infrastructure for building compilers.
 //!
 //! Below is a a high-level overview of xrcf.
 //! To instead see the code in action, see the example compiler in the
