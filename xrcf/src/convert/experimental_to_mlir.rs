@@ -129,7 +129,7 @@ impl PrintLowering {
         op.set_identifier("@printf".to_string());
         if set_varargs {
             let varargs = "!llvm.func<i32 (!llvm.ptr, ...)>";
-            let varargs = llvm::FunctionType::from_str(varargs);
+            let varargs = llvm::FunctionType::from_str(varargs).unwrap();
             let varargs = Shared::new(varargs.into());
             op.set_varargs(Some(varargs));
         }

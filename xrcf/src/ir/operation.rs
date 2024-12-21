@@ -137,16 +137,14 @@ pub fn display_region_inside_func(
 /// Set the value at `index` or grow the vector by one if `index` equals the
 /// length of the vector.
 fn set_or_grow_by_one<T>(vec: &mut Vec<T>, index: usize, value: T) {
-    if index < vec.len() {
-        vec[index] = value;
-    } else if index == vec.len() {
-        vec.push(value);
-    } else {
-        panic!(
+    match index.cmp(&vec.len()) {
+        std::cmp::Ordering::Less => vec[index] = value,
+        std::cmp::Ordering::Equal => vec.push(value),
+        std::cmp::Ordering::Greater => panic!(
             "tried to set value at index {} but length is {}",
             index,
             vec.len()
-        );
+        ),
     }
 }
 

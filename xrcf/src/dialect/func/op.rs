@@ -196,11 +196,8 @@ pub trait Func: Op {
         let operation = self.operation();
         let attributes = operation.rd().attributes();
         let attribute = attributes.get("sym_visibility");
-        match attribute {
-            Some(attribute) => Some(attribute.to_string()),
-            // It is legal to not have set visibility.
-            None => None,
-        }
+        // Returns None when attribute is not set (which is legal).
+        attribute.map(|attribute| attribute.to_string())
     }
     /// Set the symbol visibility.
     ///

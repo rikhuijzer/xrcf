@@ -51,7 +51,7 @@ impl ArrayType {
             element_type,
         }
     }
-    pub fn for_bytes(bytes: &Vec<u8>) -> Self {
+    pub fn for_bytes(bytes: &[u8]) -> Self {
         let num_elements = bytes.len() as u32;
         let element_type = IntegerType::from_str("i8").unwrap();
         let element_type = Shared::new(element_type.into());
@@ -104,8 +104,12 @@ impl FunctionType {
     pub fn arguments(&self) -> &Types {
         &self.arguments
     }
+}
+
+impl FromStr for FunctionType {
+    type Err = ();
     /// Parse `!llvm.func<i32(i32, ...)>`.
-    pub fn from_str(s: &str) -> Self {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         assert!(s.starts_with("!llvm.func<"));
         let s = s.strip_prefix("!llvm.func<").unwrap();
         let (ret_types, arguments) = s.split_once('(').unwrap();
@@ -123,10 +127,10 @@ impl FunctionType {
         }
         let arguments = Types::from_vec(arguments);
 
-        Self {
+        Ok(Self {
             return_types,
             arguments,
-        }
+        })
     }
 }
 
@@ -150,8 +154,12 @@ impl PointerType {
     pub fn new() -> Self {
         Self {}
     }
-    pub fn from_str(_s: &str) -> Self {
-        Self {}
+}
+
+impl FromStr for PointerType {
+    type Err = ();
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {})
     }
 }
 
@@ -171,9 +179,13 @@ impl VariadicType {
     pub fn new() -> Self {
         Self {}
     }
-    pub fn from_str(s: &str) -> Self {
+}
+
+impl FromStr for VariadicType {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         assert!(s == "...", "Expected '...', but got {s}");
-        Self {}
+        Ok(Self {})
     }
 }
 
@@ -192,16 +204,16 @@ impl TypeParse for LLVM {
             return Ok(Shared::new(ArrayType::parse_str(src).into()));
         }
         if src.starts_with("!llvm.func") {
-            return Ok(Shared::new(FunctionType::from_str(src).into()));
+            return Ok(Shared::new(FunctionType::from_str(src).unwrap().into()));
         }
         if src.starts_with("!llvm.ptr") {
-            return Ok(Shared::new(PointerType::from_str(src).into()));
+            return Ok(Shared::new(PointerType::from_str(src).unwrap().into()));
         }
         if src.starts_with("ptr") {
-            return Ok(Shared::new(PointerType::from_str(src).into()));
+            return Ok(Shared::new(PointerType::from_str(src).unwrap().into()));
         }
         if src == "..." {
-            return Ok(Shared::new(VariadicType::from_str(src).into()));
+            return Ok(Shared::new(VariadicType::from_str(src).unwrap().into()));
         }
         todo!("Not yet implemented for {}", src)
     }

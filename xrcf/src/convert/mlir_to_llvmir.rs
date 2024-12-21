@@ -367,16 +367,16 @@ fn determine_argument_pairs(block: &Shared<Block>) -> Vec<(Shared<OpOperand>, Sh
 
 /// Replace the operands of the argument pairs by constants if possible.
 fn replace_constant_argument_pairs(pairs: &mut Vec<(Shared<OpOperand>, Shared<Block>)>) {
-    for i in 0..pairs.len() {
-        let (op_operand, block) = pairs[i].clone();
+    for pair in pairs {
+        let (op_operand, block) = pair.clone();
         let new = constant_op_operand(op_operand);
         if let Some(new) = new {
-            pairs[i] = (new, block);
+            *pair = (new, block);
         }
     }
 }
 
-fn verify_argument_pairs(pairs: &Vec<(Shared<OpOperand>, Shared<Block>)>) {
+fn verify_argument_pairs(pairs: &[(Shared<OpOperand>, Shared<Block>)]) {
     if pairs.len() != 2 {
         panic!("Expected two callers");
     }
@@ -461,7 +461,7 @@ fn insert_phi(block: Shared<Block>) {
     replace_constant_argument_pairs(&mut argument_pairs);
     verify_argument_pairs(&argument_pairs);
     phi.set_argument_pairs(Some(argument_pairs));
-    let argument = arguments.get(0).unwrap();
+    let argument = arguments.first().unwrap();
     let phi = Shared::new(phi.into());
     set_phi_result(phi.clone(), argument);
     arguments.clear();
