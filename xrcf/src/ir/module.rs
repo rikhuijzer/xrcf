@@ -58,7 +58,9 @@ impl ModuleOp {
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
         match block.rd().ops().rd().first() {
+            #[allow(clippy::needless_return)]
             None => return Err(anyhow::anyhow!("Expected 1 op, got 0")),
+            #[allow(clippy::needless_return)]
             Some(op) => return Ok(op.clone()),
         };
     }
