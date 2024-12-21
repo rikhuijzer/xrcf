@@ -327,7 +327,7 @@ impl Op for FuncOp {
         write!(f, ")")?;
 
         let operation = self.operation().rd();
-        display_region_inside_func(f, &*operation, indent)
+        display_region_inside_func(f, &operation, indent)
     }
 }
 

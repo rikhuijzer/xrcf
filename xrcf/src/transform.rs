@@ -43,9 +43,6 @@ impl SinglePass {
             pass: pass.to_string(),
         }
     }
-    pub fn to_string(&self) -> String {
-        self.pass.clone()
-    }
 }
 
 /// A collection of [SinglePass]es.

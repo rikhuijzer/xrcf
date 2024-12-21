@@ -25,11 +25,7 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
         && parser.peek_n(1).unwrap().kind == TokenKind::LParen;
     let known_keyword = {
         if let TokenKind::BareIdentifier = parser.peek().kind {
-            match parser.peek().lexeme.as_str() {
-                "def" => true,
-                "print" => true,
-                _ => false,
-            }
+            matches!(parser.peek().lexeme.as_str(), "def" | "print")
         } else {
             false
         }
@@ -75,9 +71,7 @@ impl ParserDispatch for ArnoldParserDispatch {
             // Ignore nothing (e.g., `<op name> x, y`).
             parser.peek().clone()
         };
-        match name.lexeme.clone().as_str() {
-            _ => default_dispatch(name, parser, parent),
-        }
+        default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {
         default_parse_type(parser)
@@ -103,6 +97,7 @@ impl TransformDispatch for ArnoldTransformDispatch {
 fn preprocess(src: &str) -> String {
     let mut result = String::new();
     for line in src.lines() {
+        #[allow(clippy::if_same_then_else)]
         if line.contains("IT'S SHOWTIME") {
             result.push_str(&format!("{} {{", line));
         } else if line.contains("BECAUSE I'M GOING TO SAY PLEASE") {
