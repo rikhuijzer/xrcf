@@ -125,7 +125,7 @@ pub fn display_region_inside_func(
     if let Some(region) = region {
         let region = region.rd();
         if region.blocks().into_iter().next().is_none() {
-            write!(f, "\n")
+            writeln!(f)
         } else {
             region.display(f, indent)
         }

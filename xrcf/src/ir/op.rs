@@ -83,7 +83,7 @@ pub trait Op {
         false
     }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
-        Some(self.operation().rd().attributes().get(key)?)
+        self.operation().rd().attributes().get(key)
     }
     /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Shared<dyn Op>) {

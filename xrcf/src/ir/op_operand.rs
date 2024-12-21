@@ -180,7 +180,7 @@ impl<T: ParserDispatch> Parser<T> {
             Ok(Shared::new(operand.into()))
         } else {
             let msg = "Expected operand.";
-            let msg = self.error(&next, msg);
+            let msg = self.error(next, msg);
             return Err(anyhow::anyhow!(msg));
         }
     }
