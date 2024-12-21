@@ -18,7 +18,6 @@ use std::fmt;
 use std::fmt::Display;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
-use tracing_subscriber;
 
 /// A transformation pass (e.g., `--convert-func-to-llvm`).
 #[derive(Clone)]

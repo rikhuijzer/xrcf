@@ -316,11 +316,10 @@ impl FuncOp {
         parser: &mut Parser<T>,
         expected_name: &OperationName,
     ) -> Option<String> {
-        if expected_name == &FuncOp::operation_name() {
-            if parser.check(TokenKind::BareIdentifier) {
-                let sym_visibility = parser.advance().lexeme.clone();
-                return Some(sym_visibility);
-            }
+        let name_match = expected_name == &FuncOp::operation_name();
+        if name_match && parser.check(TokenKind::BareIdentifier) {
+            let sym_visibility = parser.advance().lexeme.clone();
+            return Some(sym_visibility);
         }
         None
     }
