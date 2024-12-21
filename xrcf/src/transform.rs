@@ -230,10 +230,10 @@ pub fn transform<T: TransformDispatch>(
     let mut result = RewriteResult::Unchanged;
     for pass in options.passes().vec() {
         if options.print_ir_before_all() {
+            let op = op.rd();
             writeln!(
                 &mut *options.writer.wr(),
-                "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
-                op.rd()
+                "// ----- // IR Dump before {pass} //----- //\n{op}\n\n",
             )?;
         }
         let new_result = T::dispatch(op.clone(), pass)?;

@@ -49,12 +49,9 @@ fn parse_addi() {
     let (module, actual) = Tester::parse(src);
     Tester::verify(module.clone());
 
-    let module = module.rd();
-    let module_operation = module.operation().rd();
-    let module_parent = module_operation.parent();
-    assert!(module_parent.is_none());
+    assert!(module.rd().operation().rd().parent().is_none());
 
-    let ops = module.ops();
+    let ops = module.rd().ops();
     assert_eq!(ops.len(), 1);
     let func_op = ops[0].rd();
     let func_operation = func_op.operation().rd();

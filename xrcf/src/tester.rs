@@ -50,8 +50,7 @@ impl Tester {
         let expected = expected.trim();
         let l = max(actual.lines().count(), expected.lines().count());
         for i in 0..l {
-            let actual_line = actual.lines().nth(i);
-            let actual_line = match actual_line {
+            let actual_line = match actual.lines().nth(i) {
                 None => {
                     panic!(
                         "Expected line {i} not found in output: called from {}",
@@ -60,8 +59,7 @@ impl Tester {
                 }
                 Some(actual_line) => actual_line,
             };
-            let expected_line = expected.lines().nth(i);
-            let expected_line = match expected_line {
+            let expected_line = match expected.lines().nth(i) {
                 None => {
                     panic!(
                         "Expected line {i} not found in output: called from {}",
@@ -103,12 +101,9 @@ impl Tester {
         info!("{msg}:\n```\n{src}\n```\n");
     }
     pub fn parse(src: &str) -> (Arc<RwLock<dyn Op>>, String) {
-        let src = src.trim();
-        Self::print_heading("Before parse", src);
+        Self::print_heading("Before parse", src.trim());
         let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
-        let read_module = module.clone();
-        let read_module = read_module.rd();
-        let actual = format!("{}", read_module);
+        let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
@@ -152,8 +147,7 @@ impl Tester {
             assert!(parent.index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
-            let results = op.operation().results();
-            for result in results.vec().rd().iter() {
+            for result in operation.results().vec().rd().iter() {
                 let value = result.rd();
                 assert!(value.typ().is_ok(), "type was not set for {value}");
             }

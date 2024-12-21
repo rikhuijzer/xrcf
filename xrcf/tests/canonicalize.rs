@@ -36,15 +36,11 @@ fn determine_users() {
 
     let op0 = ops[0].rd();
     let op0 = op0.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
-    let operation = op0.operation().rd();
-    let users = operation.users();
-    assert_eq!(users.len(), 0);
+    assert_eq!(op0.operation().rd().users().len(), 0);
 
     let op1 = ops[1].rd();
     let op1 = op1.as_any().downcast_ref::<arith::ConstantOp>().unwrap();
-    let operation = op1.operation().rd();
-    let users = operation.users();
-    assert_eq!(users.len(), 1);
+    assert_eq!(op1.operation().rd().users().len(), 1);
 }
 
 #[test]
