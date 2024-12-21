@@ -1,3 +1,7 @@
+use crate::frontend::Parse;
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::Block;
 use crate::ir::Constant;
 use crate::ir::Op;
@@ -6,10 +10,6 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::StringAttr;
 use crate::ir::Value;
-use crate::parser::Parse;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;

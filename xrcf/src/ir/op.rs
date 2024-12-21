@@ -1,4 +1,6 @@
 use crate::convert::RewriteResult;
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::Operation;
@@ -6,8 +8,6 @@ use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -83,7 +83,7 @@ pub trait Op {
         false
     }
     fn attribute(&self, key: &str) -> Option<Arc<dyn Attribute>> {
-        Some(self.operation().rd().attributes().get(key)?)
+        self.operation().rd().attributes().get(key)
     }
     /// Insert `earlier` before `self` inside `self`'s parent block.
     fn insert_before(&self, earlier: Shared<dyn Op>) {

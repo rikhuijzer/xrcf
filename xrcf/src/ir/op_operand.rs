@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::Block;
 use crate::ir::BlockLabel;
 use crate::ir::Constant;
@@ -5,9 +8,6 @@ use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::Value;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -180,7 +180,7 @@ impl<T: ParserDispatch> Parser<T> {
             Ok(Shared::new(operand.into()))
         } else {
             let msg = "Expected operand.";
-            let msg = self.error(&next, msg);
+            let msg = self.error(next, msg);
             return Err(anyhow::anyhow!(msg));
         }
     }

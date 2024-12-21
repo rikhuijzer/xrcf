@@ -1,8 +1,8 @@
 use crate::convert::RewriteResult;
+use crate::frontend::DefaultParserDispatch;
+use crate::frontend::Parser;
 use crate::init_subscriber;
 use crate::ir::Op;
-use crate::parser::DefaultParserDispatch;
-use crate::parser::Parser;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::transform;

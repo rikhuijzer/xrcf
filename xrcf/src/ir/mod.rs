@@ -86,11 +86,12 @@ fn test_llvm_string_to_bytes() {
 
 /// Convert a vector of bytes to a string while handling LLVM escape sequences.
 ///
-// Explicitly print the null byte too or else the vector length will not match
-// the text that is shown.
-
-// A backslash with two hex characters defines the byte in LLVM IR in hex, so
-// \00 is the null byte in LLVM IR.
+/// Explicitly print the null byte too or else the vector length will not match
+/// the text that is shown.
+///
+/// A backslash with two hex characters defines the byte in LLVM IR in hex, so A
+/// backslash with two hex characters defines the byte in LLVM IR in hex, so \00
+/// is the null byte in LLVM IR.
 pub fn bytes_to_llvm_string(bytes: &[u8]) -> String {
     let src = String::from_utf8(bytes.to_vec()).unwrap();
     src.replace("\0", "\\00").replace("\n", "\\0A")
@@ -104,13 +105,11 @@ fn test_bytes_to_llvm_string() {
 }
 
 pub fn escape(src: &str) -> String {
-    let src = src.replace("\n", "\\n");
-    src
+    src.replace("\n", "\\n")
 }
 
 pub fn unescape(src: &str) -> String {
-    let src = src.replace("\\n", "\n");
-    src
+    src.replace("\\n", "\n")
 }
 
 /// Generate a new name as part of printing.

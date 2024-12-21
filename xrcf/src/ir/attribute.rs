@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::bytes_to_llvm_string;
 use crate::ir::escape;
 use crate::ir::llvm_string_to_bytes;
@@ -6,15 +9,13 @@ use crate::ir::APInt;
 use crate::ir::IntegerType;
 use crate::ir::StringType;
 use crate::ir::Type;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fmt::Formatter;
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Attributes are known-constant values of operations (a variable is not allowed).
@@ -63,7 +64,7 @@ impl Attribute for BooleanAttr {
         Self { value }
     }
     fn typ(&self) -> Shared<dyn Type> {
-        Shared::new(IntegerType::from_str("i1").into())
+        Shared::new(IntegerType::from_str("i1").unwrap().into())
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -282,7 +283,7 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = self.expect(TokenKind::Colon)?;
 
         let num_bits = self.expect(TokenKind::IntType)?;
-        let typ = IntegerType::from_str(&num_bits.lexeme);
+        let typ = IntegerType::from_str(&num_bits.lexeme).unwrap();
         let value = APInt::from_str(&num_bits.lexeme, &value);
         let integer = IntegerAttr::new(typ, value);
         Ok(integer)

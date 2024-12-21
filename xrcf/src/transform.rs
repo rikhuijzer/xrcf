@@ -18,7 +18,6 @@ use std::fmt;
 use std::fmt::Display;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
-use tracing_subscriber;
 
 /// A transformation pass (e.g., `--convert-func-to-llvm`).
 #[derive(Clone)]
@@ -42,9 +41,6 @@ impl SinglePass {
         SinglePass {
             pass: pass.to_string(),
         }
-    }
-    pub fn to_string(&self) -> String {
-        self.pass.clone()
     }
 }
 
@@ -173,7 +169,7 @@ impl TransformDispatch for DefaultTransformDispatch {
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
             ConvertSCFToCF::NAME => ConvertSCFToCF::convert(op.clone()),
-            _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
+            _ => Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
     }
 }

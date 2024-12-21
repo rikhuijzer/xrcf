@@ -3,9 +3,9 @@ use clap::Args;
 use clap::Command;
 use std::io::Read;
 use xrcf::convert::RewriteResult;
+use xrcf::frontend::DefaultParserDispatch;
+use xrcf::frontend::Parser;
 use xrcf::init_subscriber;
-use xrcf::parser::DefaultParserDispatch;
-use xrcf::parser::Parser;
 use xrcf::shared::SharedExt;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
@@ -26,8 +26,7 @@ struct XRCFArgs {
 
 fn cli() -> Command {
     let cli = Command::new("xrcf").args(xrcf::default_arguments());
-    let cli = XRCFArgs::augment_args(cli);
-    cli
+    XRCFArgs::augment_args(cli)
 }
 
 fn remove_comments(src: &str) -> String {

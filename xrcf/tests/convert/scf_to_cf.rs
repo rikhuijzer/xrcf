@@ -46,7 +46,7 @@ fn test_if_with_yield() {
     "#};
     let (module, actual) = Tester::parse(src);
     Tester::verify(module);
-    Tester::check_lines_contain(&actual, &src, Location::caller());
+    Tester::check_lines_contain(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_exact(&actual, expected, Location::caller());
@@ -84,7 +84,7 @@ fn test_if_without_yield() {
     "#};
     let (module, actual) = Tester::parse(src);
     Tester::verify(module);
-    Tester::check_lines_contain(&actual, &src, Location::caller());
+    Tester::check_lines_contain(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());

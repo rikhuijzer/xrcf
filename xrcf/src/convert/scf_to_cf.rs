@@ -68,8 +68,7 @@ fn branch_op(after: Shared<Block>) -> Shared<dyn Op> {
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
     let operand = Shared::new(OpOperand::from_block(after).into());
     new_op.set_dest(operand);
-    let new_op = Shared::new(new_op.into());
-    new_op
+    Shared::new(new_op.into())
 }
 
 /// Add a `cf.br` to the end of `block` with destination `after`.
@@ -81,7 +80,7 @@ fn add_branch_to_after(block: Shared<Block>, after: Shared<Block>) {
     let last_op = last_op.rd();
     let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
     if let Some(yield_op) = yield_op {
-        let new_op = lower_yield_op(&yield_op, after.clone()).unwrap();
+        let new_op = lower_yield_op(yield_op, after.clone()).unwrap();
         ops.pop();
         ops.push(new_op.clone());
     } else {
@@ -282,7 +281,7 @@ impl Rewrite for IfLowering {
         let parent_region = parent.rd().parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
 
-        let (then, els) = add_blocks(&op, parent_region.clone())?;
+        let (then, els) = add_blocks(op, parent_region.clone())?;
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));

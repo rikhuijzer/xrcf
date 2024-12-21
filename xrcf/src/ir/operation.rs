@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
@@ -14,9 +17,6 @@ use crate::ir::UnsetOpResult;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -125,7 +125,7 @@ pub fn display_region_inside_func(
     if let Some(region) = region {
         let region = region.rd();
         if region.blocks().into_iter().next().is_none() {
-            write!(f, "\n")
+            writeln!(f)
         } else {
             region.display(f, indent)
         }
@@ -137,16 +137,14 @@ pub fn display_region_inside_func(
 /// Set the value at `index` or grow the vector by one if `index` equals the
 /// length of the vector.
 fn set_or_grow_by_one<T>(vec: &mut Vec<T>, index: usize, value: T) {
-    if index < vec.len() {
-        vec[index] = value;
-    } else if index == vec.len() {
-        vec.push(value);
-    } else {
-        panic!(
+    match index.cmp(&vec.len()) {
+        std::cmp::Ordering::Less => vec[index] = value,
+        std::cmp::Ordering::Equal => vec.push(value),
+        std::cmp::Ordering::Greater => panic!(
             "tried to set value at index {} but length is {}",
             index,
             vec.len()
-        );
+        ),
     }
 }
 

@@ -5,6 +5,9 @@ use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
+use crate::frontend::scanner::Scanner;
+use crate::frontend::token::Token;
+use crate::frontend::token::TokenKind;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
@@ -20,12 +23,10 @@ use crate::ir::Type;
 use crate::ir::TypeParse;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::scanner::Scanner;
-use crate::parser::token::Token;
-use crate::parser::token::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
+use std::str::FromStr;
 use std::sync::Arc;
 
 /// Interface to add custom operations to the parser.
@@ -96,7 +97,7 @@ pub fn default_dispatch<T: ParserDispatch>(
         "scf.yield" => <scf::YieldOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
-            return Err(anyhow::anyhow!(msg));
+            Err(anyhow::anyhow!(msg))
         }
     }
 }
@@ -104,7 +105,7 @@ pub fn default_dispatch<T: ParserDispatch>(
 pub fn default_parse_type<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<Shared<dyn Type>> {
     if parser.check(TokenKind::IntType) {
         let typ = parser.advance();
-        let typ = IntegerType::from_str(&typ.lexeme);
+        let typ = IntegerType::from_str(&typ.lexeme).unwrap();
         return Ok(Shared::new(typ.into()));
     }
     let text = parser.parse_type_text()?;
@@ -153,12 +154,13 @@ pub struct Parser<T: ParserDispatch> {
     src: String,
     tokens: Vec<Token>,
     current: usize,
-    parse_op: std::marker::PhantomData<T>,
+    _marker: std::marker::PhantomData<T>,
 }
 
 #[allow(dead_code)]
 enum Dialects {
     Builtin,
+    #[allow(clippy::upper_case_acronyms)]
     LLVM,
 }
 
@@ -289,7 +291,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         if ops.rd().is_empty() {
             let token = self.peek();
-            let msg = self.error(&token, "Could not find operations in block");
+            let msg = self.error(token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
         for op in block.rd().ops().rd().iter() {
@@ -357,7 +359,7 @@ impl<T: ParserDispatch> Parser<T> {
             src: src.to_string(),
             tokens: Scanner::scan(src)?,
             current: 0,
-            parse_op: std::marker::PhantomData,
+            _marker: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
         let op_rd = op.clone();

@@ -1,12 +1,12 @@
+use crate::frontend::Parse;
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::Block;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
-use crate::parser::Parse;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -58,7 +58,9 @@ impl ModuleOp {
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
         match block.rd().ops().rd().first() {
+            #[allow(clippy::needless_return)]
             None => return Err(anyhow::anyhow!("Expected 1 op, got 0")),
+            #[allow(clippy::needless_return)]
             Some(op) => return Ok(op.clone()),
         };
     }

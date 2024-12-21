@@ -188,8 +188,7 @@ impl ModuleLowering {
         let operand = Shared::new(operand.into());
         ret.set_operand(0, operand);
         let ret = func::ReturnOp::from_operation(ret);
-        let ret = Shared::new(ret.into());
-        ret
+        Shared::new(ret.into())
     }
     fn return_zero(func: Shared<dyn Op>) {
         let typ = IntegerType::new(32);

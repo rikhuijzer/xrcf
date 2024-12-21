@@ -3,15 +3,15 @@ use crate::arnold_to_mlir::ConvertArnoldToMLIR;
 use anyhow::Result;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
+use xrcf::frontend::default_dispatch;
+use xrcf::frontend::default_parse_type;
+use xrcf::frontend::Parse;
+use xrcf::frontend::Parser;
+use xrcf::frontend::ParserDispatch;
+use xrcf::frontend::TokenKind;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Type;
-use xrcf::parser::default_dispatch;
-use xrcf::parser::default_parse_type;
-use xrcf::parser::Parse;
-use xrcf::parser::Parser;
-use xrcf::parser::ParserDispatch;
-use xrcf::parser::TokenKind;
 use xrcf::shared::Shared;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
@@ -25,11 +25,7 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
         && parser.peek_n(1).unwrap().kind == TokenKind::LParen;
     let known_keyword = {
         if let TokenKind::BareIdentifier = parser.peek().kind {
-            match parser.peek().lexeme.as_str() {
-                "def" => true,
-                "print" => true,
-                _ => false,
-            }
+            matches!(parser.peek().lexeme.as_str(), "def" | "print")
         } else {
             false
         }
@@ -75,9 +71,7 @@ impl ParserDispatch for ArnoldParserDispatch {
             // Ignore nothing (e.g., `<op name> x, y`).
             parser.peek().clone()
         };
-        match name.lexeme.clone().as_str() {
-            _ => default_dispatch(name, parser, parent),
-        }
+        default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {
         default_parse_type(parser)
@@ -103,6 +97,7 @@ impl TransformDispatch for ArnoldTransformDispatch {
 fn preprocess(src: &str) -> String {
     let mut result = String::new();
     for line in src.lines() {
+        #[allow(clippy::if_same_then_else)]
         if line.contains("IT'S SHOWTIME") {
             result.push_str(&format!("{} {{", line));
         } else if line.contains("BECAUSE I'M GOING TO SAY PLEASE") {
@@ -114,7 +109,7 @@ fn preprocess(src: &str) -> String {
         } else if line.contains("BULLSHIT") {
             result.push_str(&line.replace("BULLSHIT", "} BULLSHIT {"));
         } else {
-            result.push_str(&line);
+            result.push_str(line);
         }
         result.push('\n');
     }
@@ -134,7 +129,6 @@ mod tests {
     use crate::compile_passes;
     use indoc::indoc;
     use std::panic::Location;
-    use tracing;
     use xrcf::shared::SharedExt;
     use xrcf::tester::Tester;
     use xrcf::Passes;

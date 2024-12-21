@@ -194,6 +194,7 @@ impl Block {
         if op.is_func() {
             for argument in operation.rd().arguments().into_iter() {
                 match &*argument.rd() {
+                    #[allow(clippy::single_match)]
                     Value::BlockArgument(arg) => match &*arg.name().rd() {
                         BlockArgumentName::Name(curr) => {
                             if curr == name {
@@ -325,7 +326,7 @@ impl Block {
         self.ops.wr().insert(index, op);
     }
     pub fn insert_after(&self, earlier: Shared<Operation>, later: Shared<dyn Op>) {
-        match self.index_of(&*earlier.rd()) {
+        match self.index_of(&earlier.rd()) {
             Some(index) => self.insert_op(later, index + 1),
             None => {
                 panic!("Could not find op in block during insert_after");
@@ -333,19 +334,19 @@ impl Block {
         }
     }
     pub fn insert_before(&self, earlier: Shared<dyn Op>, later: Shared<Operation>) {
-        match self.index_of(&*later.rd()) {
+        match self.index_of(&later.rd()) {
             Some(index) => self.insert_op(earlier, index),
             None => panic!("could not find op in block"),
         }
     }
     pub fn replace(&self, old: Shared<Operation>, new: Shared<dyn Op>) {
-        match self.index_of(&*old.rd()) {
+        match self.index_of(&old.rd()) {
             Some(index) => self.ops().wr()[index] = new,
             None => panic!("could not find op in block"),
         }
     }
     pub fn remove(&self, op: Shared<Operation>) {
-        match self.index_of(&*op.rd()) {
+        match self.index_of(&op.rd()) {
             Some(index) => self.ops().wr().remove(index),
             None => panic!("could not find op in block"),
         };
@@ -393,12 +394,12 @@ impl Block {
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
             }
-            write!(f, ":\n")?;
+            writeln!(f, ":")?;
         }
         for op in self.ops().rd().iter() {
             write!(f, "{}", crate::ir::spaces(indent))?;
             op.rd().display(f, indent)?;
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         Ok(())
     }

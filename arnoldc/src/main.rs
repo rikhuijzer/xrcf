@@ -1,3 +1,4 @@
+#![allow(clippy::arc_with_non_send_sync)]
 mod arnold;
 mod arnold_to_mlir;
 mod transform;
@@ -36,8 +37,8 @@ struct ArnoldcArgs {
 
 fn cli() -> Command {
     let cli = Command::new("arnoldc").args(xrcf::default_arguments());
-    let cli = ArnoldcArgs::augment_args(cli);
-    cli
+
+    ArnoldcArgs::augment_args(cli)
 }
 
 fn compile_passes() -> Vec<&'static str> {
@@ -166,7 +167,7 @@ mod tests {
         ];
         tracing::info!("\nBefore {args:?}:\n{src}");
         let out: Shared<Vec<u8>> = Shared::new(Vec::new().into());
-        let result = run_app(Some(out.clone()), args.clone(), &src);
+        let result = run_app(Some(out.clone()), args.clone(), src);
         assert!(result.is_ok());
         let actual = match result.unwrap() {
             RewriteResult::Changed(op) => {

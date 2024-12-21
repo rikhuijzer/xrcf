@@ -1,3 +1,7 @@
+use crate::frontend::Parse;
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
@@ -10,14 +14,11 @@ use crate::ir::StringAttr;
 use crate::ir::Type;
 use crate::ir::UnsetOp;
 use crate::ir::Values;
-use crate::parser::Parse;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
+use std::str::FromStr;
 use std::sync::Arc;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
@@ -195,11 +196,8 @@ pub trait Func: Op {
         let operation = self.operation();
         let attributes = operation.rd().attributes();
         let attribute = attributes.get("sym_visibility");
-        match attribute {
-            Some(attribute) => Some(attribute.to_string()),
-            // It is legal to not have set visibility.
-            None => None,
-        }
+        // Returns None when attribute is not set (which is legal).
+        attribute.map(|attribute| attribute.to_string())
     }
     /// Set the symbol visibility.
     ///
@@ -318,11 +316,10 @@ impl FuncOp {
         parser: &mut Parser<T>,
         expected_name: &OperationName,
     ) -> Option<String> {
-        if expected_name == &FuncOp::operation_name() {
-            if parser.check(TokenKind::BareIdentifier) {
-                let sym_visibility = parser.advance().lexeme.clone();
-                return Some(sym_visibility);
-            }
+        let name_match = expected_name == &FuncOp::operation_name();
+        if name_match && parser.check(TokenKind::BareIdentifier) {
+            let sym_visibility = parser.advance().lexeme.clone();
+            return Some(sym_visibility);
         }
         None
     }
@@ -469,7 +466,7 @@ impl<T: ParserDispatch> Parser<T> {
             operation.set_operands(self.parse_op_operands(parent.clone().unwrap(), TOKEN_KIND)?);
             self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
-            let return_type = IntegerType::from_str(&return_type.lexeme);
+            let return_type = IntegerType::from_str(&return_type.lexeme).unwrap();
             let result_type = Shared::new(return_type.into());
             operation.set_anonymous_result(result_type)?;
         }

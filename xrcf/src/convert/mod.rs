@@ -55,7 +55,7 @@ pub enum RewriteResult {
 impl RewriteResult {
     pub fn is_changed(&self) -> Option<&ChangedOp> {
         match self {
-            RewriteResult::Changed(op) => Some(&op),
+            RewriteResult::Changed(op) => Some(op),
             RewriteResult::Unchanged => None,
         }
     }
@@ -93,7 +93,7 @@ fn apply_rewrites_helper(
         for nested_op in ops.iter() {
             let indent = indent + 1;
             let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
-            if let Some(_) = result.is_changed() {
+            if result.is_changed().is_some() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
                 return Ok(root_passthrough);
@@ -110,7 +110,7 @@ fn apply_rewrites_helper(
         if rewrite.is_match(&*root_read)? {
             debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;
-            if let Some(_) = root_rewrite.is_changed() {
+            if root_rewrite.is_changed().is_some() {
                 debug!("{}----> Changed", spaces(indent));
                 return Ok(root_rewrite);
             }

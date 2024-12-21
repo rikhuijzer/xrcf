@@ -23,6 +23,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '${{ env.RUST_TOOLCHAIN }}'
+          components: 'clippy'
 
       # Compile, but don't run.
       - run: cargo test --no-run
@@ -44,6 +45,8 @@ jobs:
           cd xrcf/
           # Deny warnings.
           RUSTDOCFLAGS="-D warnings" cargo doc
+
+      - run: cargo clippy -- -Dwarnings
 
   typos:
     runs-on: ubuntu-22.04

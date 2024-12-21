@@ -3,10 +3,10 @@ extern crate xrcf;
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::dialect::arith;
+use xrcf::frontend::DefaultParserDispatch;
+use xrcf::frontend::Parser;
 use xrcf::ir;
 use xrcf::ir::Op;
-use xrcf::parser::DefaultParserDispatch;
-use xrcf::parser::Parser;
 use xrcf::shared::SharedExt;
 use xrcf::tester::Tester;
 

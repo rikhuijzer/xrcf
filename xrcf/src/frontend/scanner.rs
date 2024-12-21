@@ -1,6 +1,6 @@
-use crate::parser::token::Location;
-use crate::parser::token::Token;
-use crate::parser::token::TokenKind;
+use crate::frontend::token::Location;
+use crate::frontend::token::Token;
+use crate::frontend::token::TokenKind;
 use anyhow::Result;
 
 pub struct Scanner {
@@ -63,12 +63,11 @@ impl Scanner {
                 }
             };
         }
-        let word = if let Some(c) = already_matched {
+        if let Some(c) = already_matched {
             format!("{}{}", c, word)
         } else {
             word
-        };
-        word
+        }
     }
     fn add_token(&mut self, kind: TokenKind) {
         let lexeme = if kind == TokenKind::Eof {
@@ -82,16 +81,16 @@ impl Scanner {
         self.tokens.push(Token::new(kind, lexeme, location));
     }
     fn number(&mut self) -> Result<()> {
-        while self.peek().is_digit(10) {
+        while self.peek().is_ascii_digit() {
             self.advance();
         }
         let mut is_float = false;
-        if self.peek() == '.' && self.peek_next().is_digit(10) {
+        if self.peek() == '.' && self.peek_next().is_ascii_digit() {
             if self.peek() == '.' {
                 is_float = true;
             }
             self.advance();
-            while self.peek().is_digit(10) {
+            while self.peek().is_ascii_digit() {
                 self.advance();
             }
         }
@@ -108,7 +107,7 @@ impl Scanner {
     }
     // Whether the character is a valid identifier character.
     fn is_identifier(c: char) -> bool {
-        c.is_alphabetic() || c == '_' || c == '.' || c.is_digit(10)
+        c.is_alphabetic() || c == '_' || c == '.' || c.is_ascii_digit()
     }
     // Scan identifiers and keywords.
     fn identifier(&mut self) -> Result<()> {
@@ -137,7 +136,7 @@ impl Scanner {
         Ok(())
     }
     fn is_int_type(word: &str) -> bool {
-        let types = vec!["i1", "i4", "i8", "i16", "i32", "i64", "i128"];
+        let types = ["i1", "i4", "i8", "i16", "i32", "i64", "i128"];
         types.contains(&word)
     }
     fn int_type(&mut self, c: char) -> Result<()> {
@@ -205,7 +204,7 @@ impl Scanner {
             '-' => self.arrow_or_minus()?,
             '"' => self.string()?,
             s if self.is_int_type_start(s) => self.int_type(s)?,
-            s if s.is_digit(10) => self.number()?,
+            s if s.is_ascii_digit() => self.number()?,
             s if Scanner::is_identifier_start(s) => self.identifier()?,
             s if self.is_comment(s) => self.comment()?,
             _ => {
