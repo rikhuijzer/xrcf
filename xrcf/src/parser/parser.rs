@@ -178,30 +178,19 @@ enum Dialects {
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
-    let label = block.label();
-    let label = label.rd();
-    let label = match &*label {
+    let label = match &*block.label().rd() {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
         BlockName::Unset => return,
     };
-    let parent = block.parent().expect("No parent");
+    let parent = block.parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
-    let predecessors = parent.blocks();
-    for predecessor in predecessors.into_iter() {
-        let predecessor = predecessor.rd();
-        let ops = predecessor.ops();
-        let ops = ops.rd();
-        for op in ops.iter() {
-            let op = op.rd();
-            let operands = op.operation().operands().vec();
-            let operands = operands.rd();
-            for operand in operands.iter() {
+    for predecessor in parent.blocks().into_iter() {
+        for op in predecessor.rd().ops().rd().iter() {
+            for operand in op.rd().operation().operands().into_iter() {
                 let mut operand = operand.wr();
-                let value = operand.value();
-                let value = value.rd();
-                if let Value::BlockLabel(current_label) = &*value {
-                    if current_label.name() == label {
+                if let Value::BlockLabel(curr) = &*operand.value().rd() {
+                    if curr.name() == label {
                         let block_ptr = BlockPtr::new(block.clone());
                         let block_ptr = Value::BlockPtr(block_ptr);
                         let block_ptr = Shared::new(block_ptr.into());
