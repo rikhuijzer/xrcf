@@ -1,7 +1,5 @@
+use parking_lot::RwLock;
 use std::sync::Arc;
-use std::sync::RwLock;
-use std::sync::RwLockReadGuard;
-use std::sync::RwLockWriteGuard;
 
 /// A convenience type alias for `Arc<RwLock<T>>`.
 ///
@@ -32,16 +30,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 ///
 /// # Example
 ///
-/// With this trait:
-/// ```
-/// use std::sync::Arc;
-/// use std::sync::RwLock;
-/// use xrcf::shared::SharedExt;
-///
-/// let lock = Arc::new(RwLock::new(42));
-/// assert_eq!(*lock.rd(), 42);
-/// ```
-/// and with `Shared`:
+/// With this trait and with `Shared`:
 /// ```
 /// use std::sync::Arc;
 /// use std::sync::RwLock;
@@ -61,17 +50,17 @@ pub type Shared<T> = Arc<RwLock<T>>;
 /// ```
 pub trait SharedExt<T: ?Sized> {
     /// Convenience method for reading.
-    fn rd(&self) -> RwLockReadGuard<T>;
+    fn rd(&self) -> parking_lot::RwLockReadGuard<T>;
     /// Convenience method for writing.
-    fn wr(&self) -> RwLockWriteGuard<T>;
+    fn wr(&self) -> parking_lot::RwLockWriteGuard<T>;
 }
 
 impl<T: ?Sized> SharedExt<T> for Shared<T> {
-    fn rd(&self) -> RwLockReadGuard<T> {
-        self.try_read().unwrap()
+    fn rd(&self) -> parking_lot::RwLockReadGuard<T> {
+        self.read()
     }
-    fn wr(&self) -> RwLockWriteGuard<T> {
-        self.try_write().unwrap()
+    fn wr(&self) -> parking_lot::RwLockWriteGuard<T> {
+        self.write()
     }
 }
 

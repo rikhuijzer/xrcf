@@ -1,7 +1,6 @@
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
@@ -131,14 +130,14 @@ impl<T: ParserDispatch> ArnoldParse for Parser<T> {
 /// }
 /// ```
 pub struct BeginMainOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for BeginMainOp {
     fn operation_name() -> OperationName {
         OperationName::new("IT'S SHOWTIME".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         BeginMainOp { operation }
     }
     fn is_func(&self) -> bool {
@@ -147,7 +146,7 @@ impl Op for BeginMainOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -163,8 +162,8 @@ impl Op for BeginMainOp {
 impl Parse for BeginMainOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
 
@@ -184,7 +183,7 @@ impl Parse for BeginMainOp {
 }
 
 pub struct CallOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     identifier: Option<String>,
 }
 
@@ -198,7 +197,7 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("call".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CallOp {
             operation,
             identifier: None,
@@ -207,7 +206,7 @@ impl Op for CallOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -218,8 +217,8 @@ impl Op for CallOp {
 impl Parse for CallOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
@@ -236,20 +235,20 @@ impl Parse for CallOp {
 }
 
 pub struct DeclareIntOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for DeclareIntOp {
     fn operation_name() -> OperationName {
         OperationName::new("HEY CHRISTMAS TREE".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         DeclareIntOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -262,8 +261,8 @@ impl Op for DeclareIntOp {
 impl Parse for DeclareIntOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let name = DeclareIntOp::operation_name();
@@ -291,16 +290,16 @@ impl Parse for DeclareIntOp {
 /// YOU HAVE NO RESPECT FOR LOGIC
 /// ```
 pub struct IfOp {
-    operation: Arc<RwLock<Operation>>,
-    then: Option<Arc<RwLock<Region>>>,
-    els: Option<Arc<RwLock<Region>>>,
+    operation: Shared<Operation>,
+    then: Option<Shared<Region>>,
+    els: Option<Shared<Region>>,
 }
 
 impl IfOp {
-    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn then(&self) -> Option<Shared<Region>> {
         self.then.clone()
     }
-    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn els(&self) -> Option<Shared<Region>> {
         self.els.clone()
     }
 }
@@ -309,7 +308,7 @@ impl Op for IfOp {
     fn operation_name() -> OperationName {
         OperationName::new("BECAUSE I'M GOING TO SAY PLEASE".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         IfOp {
             operation,
             then: None,
@@ -319,7 +318,7 @@ impl Op for IfOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
 }
@@ -327,8 +326,8 @@ impl Op for IfOp {
 impl Parse for IfOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let name = IfOp::operation_name();
@@ -364,18 +363,18 @@ impl Parse for IfOp {
 /// TALK TO THE HAND x
 /// ```
 pub struct PrintOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl PrintOp {
     const TEXT_INDEX: usize = 0;
-    pub fn text(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn text(&self) -> Shared<OpOperand> {
         self.operation
             .rd()
             .operand(Self::TEXT_INDEX)
             .expect("Operand not set")
     }
-    pub fn set_text(&mut self, text: Arc<RwLock<OpOperand>>) {
+    pub fn set_text(&mut self, text: Shared<OpOperand>) {
         self.operation.wr().set_operand(Self::TEXT_INDEX, text);
     }
 }
@@ -384,13 +383,13 @@ impl Op for PrintOp {
     fn operation_name() -> OperationName {
         OperationName::new("TALK TO THE HAND".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         PrintOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -403,8 +402,8 @@ impl Op for PrintOp {
 impl Parse for PrintOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let name = PrintOp::operation_name();
@@ -420,7 +419,7 @@ impl Parse for PrintOp {
 }
 
 pub struct SetInitialValueOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl SetInitialValueOp {
@@ -433,13 +432,13 @@ impl Op for SetInitialValueOp {
     fn operation_name() -> OperationName {
         OperationName::new("YOU SET US UP".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         SetInitialValueOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
 }
@@ -447,8 +446,8 @@ impl Op for SetInitialValueOp {
 impl Parse for SetInitialValueOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let name = SetInitialValueOp::operation_name();

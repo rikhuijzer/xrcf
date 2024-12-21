@@ -3,6 +3,7 @@ use crate::init_subscriber;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
@@ -10,8 +11,6 @@ use crate::Passes;
 use crate::TransformOptions;
 use std::cmp::max;
 use std::panic::Location;
-use std::sync::Arc;
-use std::sync::RwLock;
 use tracing::info;
 
 pub struct Tester;
@@ -97,14 +96,14 @@ impl Tester {
     fn print_heading(msg: &str, src: &str) {
         info!("{msg}:\n```\n{src}\n```\n");
     }
-    pub fn parse(src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn parse(src: &str) -> (Shared<dyn Op>, String) {
         Self::print_heading("Before parse", src.trim());
         let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
         let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
-    pub fn transform(arguments: Vec<&str>, src: &str) -> (Arc<RwLock<dyn Op>>, String) {
+    pub fn transform(arguments: Vec<&str>, src: &str) -> (Shared<dyn Op>, String) {
         let src = src.trim();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
         let msg = format!("Before (transform {arguments:?})");
@@ -129,7 +128,7 @@ impl Tester {
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }
-    fn verify_core(op: Arc<RwLock<dyn Op>>) {
+    fn verify_core(op: Shared<dyn Op>) {
         let op = op.rd();
         if !op.name().to_string().contains("module") {
             let parent = op.operation().rd().parent();
@@ -162,7 +161,7 @@ impl Tester {
     /// visible in the textual representation. For example, whether an op is
     /// added to it's parent is visible or the op wouldn't be printed, but
     /// whether the op has also a pointer to the parent is not visible.
-    pub fn verify(op: Arc<RwLock<dyn Op>>) {
+    pub fn verify(op: Shared<dyn Op>) {
         Self::verify_core(op.clone());
         let ops = op.rd().ops();
         for op in ops {

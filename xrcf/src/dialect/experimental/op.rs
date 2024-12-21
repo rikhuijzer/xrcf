@@ -15,7 +15,6 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
@@ -24,7 +23,7 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 /// This operation is lowered to LLVM IR by default, so might not be usable on
 /// all platforms.
 pub struct PrintfOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl PrintfOp {
@@ -58,13 +57,13 @@ impl Op for PrintfOp {
     fn operation_name() -> OperationName {
         OperationName::new("experimental.printf".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         PrintfOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -77,8 +76,8 @@ impl Op for PrintfOp {
 impl Parse for PrintfOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         parser.parse_operation_name_into::<PrintfOp>(&mut operation)?;
         operation.set_parent(parent.clone());

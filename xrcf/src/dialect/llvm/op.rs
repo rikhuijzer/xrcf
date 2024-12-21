@@ -23,26 +23,25 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 /// `llvm.add`
 pub struct AddOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for AddOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.add".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         AddOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -53,8 +52,8 @@ impl Op for AddOp {
 impl Parse for AddOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::parse_add::<AddOp>(parser, parent)?;
         Ok(op)
     }
@@ -66,7 +65,7 @@ impl Parse for AddOp {
 /// `llvm.alloca` `inalloca`? $array_size `x` type attribute-dict? `:` type `->` type
 /// ```
 pub struct AllocaOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     element_type: Option<String>,
 }
 
@@ -77,7 +76,7 @@ impl AllocaOp {
     pub fn set_element_type(&mut self, element_type: String) {
         self.element_type = Some(element_type);
     }
-    pub fn array_size(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn array_size(&self) -> Shared<OpOperand> {
         self.operation.rd().operand(0).expect("no operand")
     }
 }
@@ -86,7 +85,7 @@ impl Op for AllocaOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.alloca".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         AllocaOp {
             operation,
             element_type: None,
@@ -95,7 +94,7 @@ impl Op for AllocaOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -118,8 +117,8 @@ impl Op for AllocaOp {
 impl Parse for AllocaOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
@@ -153,14 +152,14 @@ impl Parse for AllocaOp {
 
 /// `llvm.br`
 pub struct BranchOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl BranchOp {
-    pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
+    pub fn dest(&self) -> Option<Shared<OpOperand>> {
         self.operation.rd().operand(0)
     }
-    pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
+    pub fn set_dest(&mut self, dest: Shared<OpOperand>) {
         self.operation.wr().set_operand(0, dest);
     }
 }
@@ -169,7 +168,7 @@ impl Op for BranchOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.br".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -178,7 +177,7 @@ impl Op for BranchOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -202,8 +201,8 @@ impl Op for BranchOp {
 impl Parse for BranchOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
@@ -244,9 +243,9 @@ impl Display for BranchOp {
 /// `llvm.call` $callee `(` $operands `)` attr-dict `:` `(` type($operands) `)` -> type($results)
 /// ```
 pub struct CallOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     identifier: Option<String>,
-    varargs: Option<Arc<RwLock<dyn Type>>>,
+    varargs: Option<Shared<dyn Type>>,
 }
 
 impl Call for CallOp {
@@ -256,10 +255,10 @@ impl Call for CallOp {
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
     }
-    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    fn varargs(&self) -> Option<Shared<dyn Type>> {
         self.varargs.clone()
     }
-    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+    fn set_varargs(&mut self, varargs: Option<Shared<dyn Type>>) {
         self.varargs = varargs;
     }
 }
@@ -268,7 +267,7 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.call".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CallOp {
             operation,
             identifier: None,
@@ -278,7 +277,7 @@ impl Op for CallOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -295,8 +294,8 @@ impl CallOp {
 impl Parse for CallOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let allow_varargs = true;
         let op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(op)
@@ -305,14 +304,14 @@ impl Parse for CallOp {
 
 /// `llvm.cond_br`
 pub struct CondBranchOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for CondBranchOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.cond_br".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CondBranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -321,7 +320,7 @@ impl Op for CondBranchOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
 }
@@ -329,8 +328,8 @@ impl Op for CondBranchOp {
 impl Parse for CondBranchOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
@@ -344,7 +343,7 @@ impl Parse for CondBranchOp {
 }
 
 pub struct ConstantOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl ConstantOp {
@@ -365,7 +364,7 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.constant".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ConstantOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -377,7 +376,7 @@ impl Op for ConstantOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -414,8 +413,8 @@ impl Display for ConstantOp {
 impl Parse for ConstantOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
@@ -449,20 +448,20 @@ impl Parse for ConstantOp {
     }
 }
 pub struct GlobalOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for GlobalOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.global".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         GlobalOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -485,7 +484,7 @@ impl Op for GlobalOp {
 
 pub struct FuncOp {
     identifier: Option<String>,
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl FuncOp {
@@ -501,7 +500,7 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.func".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         FuncOp {
             identifier: None,
             operation,
@@ -513,7 +512,7 @@ impl Op for FuncOp {
     fn is_func(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -534,8 +533,8 @@ impl Func for FuncOp {
 impl Parse for FuncOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::parse_func::<FuncOp>(parser, parent)?;
         if parser.check(TokenKind::BareIdentifier) {
             let text = parser.peek();
@@ -555,16 +554,15 @@ impl Parse for FuncOp {
 impl Parse for GlobalOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let _operation_name = parser.advance();
         let attributes = Attributes::new();
         if parser.check(TokenKind::BareIdentifier) {
             if let Some(attribute) = LinkageAttr::parse(parser) {
                 attributes
                     .map()
-                    .write()
-                    .unwrap()
+                    .wr()
                     .insert("linkage".to_string(), Arc::new(attribute));
             }
         }
@@ -578,8 +576,7 @@ impl Parse for GlobalOp {
         if let Some(attribute) = StringAttr::parse(parser) {
             attributes
                 .map()
-                .write()
-                .unwrap()
+                .wr()
                 .insert("symbol_name".to_string(), Arc::new(attribute));
         }
         if parser.check(TokenKind::LParen) {
@@ -587,8 +584,7 @@ impl Parse for GlobalOp {
             if let Some(attribute) = AnyAttr::parse(parser) {
                 attributes
                     .map()
-                    .write()
-                    .unwrap()
+                    .wr()
                     .insert("value".to_string(), Arc::new(attribute));
             }
         }
@@ -602,11 +598,11 @@ impl Parse for GlobalOp {
 }
 
 pub struct ReturnOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl ReturnOp {
-    pub fn operand(&self) -> Option<Arc<RwLock<OpOperand>>> {
+    pub fn operand(&self) -> Option<Shared<OpOperand>> {
         self.operation.rd().operand(0)
     }
 }
@@ -615,13 +611,13 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.return".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -637,20 +633,20 @@ impl Op for ReturnOp {
 ///   attr-dict `:` type($value) `,` qualified(type($addr))
 /// ```
 pub struct StoreOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl StoreOp {
-    pub fn value(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn value(&self) -> Shared<OpOperand> {
         self.operation.rd().operand(0).expect("no value set")
     }
-    pub fn set_value(&mut self, value: Arc<RwLock<OpOperand>>) {
+    pub fn set_value(&mut self, value: Shared<OpOperand>) {
         self.operation().wr().set_operand(0, value);
     }
-    pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn addr(&self) -> Shared<OpOperand> {
         self.operation.rd().operand(1).expect("no addr")
     }
-    pub fn set_addr(&mut self, addr: Arc<RwLock<OpOperand>>) {
+    pub fn set_addr(&mut self, addr: Shared<OpOperand>) {
         self.operation.rd().operands().set_operand(1, addr);
     }
 }
@@ -659,13 +655,13 @@ impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.store".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         StoreOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -681,8 +677,8 @@ impl Op for StoreOp {
 impl Parse for StoreOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         let name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(name.lexeme == StoreOp::operation_name().to_string());
@@ -714,8 +710,8 @@ impl Parse for StoreOp {
 impl Parse for ReturnOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::return_op::<ReturnOp>(parser, parent)?;
         Ok(op)
     }

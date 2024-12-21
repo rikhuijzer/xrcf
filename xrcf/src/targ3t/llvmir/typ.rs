@@ -1,15 +1,14 @@
 use crate::ir::Type;
 use crate::ir::Types;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 #[derive(Clone)]
 pub struct ArrayType {
     num_elements: u32,
-    element_type: Arc<RwLock<dyn Type>>,
+    element_type: Shared<dyn Type>,
 }
 
 impl ArrayType {

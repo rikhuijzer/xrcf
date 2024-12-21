@@ -8,8 +8,6 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 /// Represent an integer type such as i32 or i64.
 ///
@@ -18,7 +16,7 @@ use std::sync::RwLock;
 #[derive(Clone)]
 pub struct ArrayType {
     num_elements: u32,
-    element_type: Arc<RwLock<dyn Type>>,
+    element_type: Shared<dyn Type>,
 }
 
 impl ArrayType {
@@ -188,7 +186,7 @@ impl Type for VariadicType {
 }
 
 impl TypeParse for LLVM {
-    fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
+    fn parse_type(src: &str) -> Result<Shared<dyn Type>> {
         if src.starts_with("!llvm.array") {
             return Ok(Shared::new(ArrayType::parse_str(src).into()));
         }

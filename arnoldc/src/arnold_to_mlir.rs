@@ -1,7 +1,6 @@
 use crate::arnold;
 use anyhow::Result;
 use std::sync::Arc;
-use std::sync::RwLock;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
@@ -38,7 +37,7 @@ impl Rewrite for CallLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::CallOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
@@ -72,7 +71,7 @@ impl Rewrite for DeclareIntLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::DeclareIntOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
         op.operation().rd().rename_variables(&RENAMER)?;
@@ -105,7 +104,7 @@ impl Rewrite for FuncLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::BeginMainOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
         let identifier = "@main";
@@ -145,7 +144,7 @@ impl Rewrite for IfLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::IfOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
         let operation = op.operation();
@@ -161,7 +160,7 @@ impl Rewrite for IfLowering {
 struct ModuleLowering;
 
 impl ModuleLowering {
-    fn constant_op(parent: &Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+    fn constant_op(parent: &Shared<Block>) -> Shared<dyn Op> {
         let mut constant = Operation::default();
         constant.set_parent(Some(parent.clone()));
         constant.set_name(arith::ConstantOp::operation_name());
@@ -177,10 +176,7 @@ impl ModuleLowering {
         result.set_defining_op(Some(constant.clone()));
         constant
     }
-    fn return_op(
-        parent: &Arc<RwLock<Block>>,
-        constant: Arc<RwLock<dyn Op>>,
-    ) -> Arc<RwLock<dyn Op>> {
+    fn return_op(parent: &Shared<Block>, constant: Shared<dyn Op>) -> Shared<dyn Op> {
         let typ = IntegerType::new(32);
         let result_type = Shared::new(typ.into());
         let mut ret = Operation::default();
@@ -195,7 +191,7 @@ impl ModuleLowering {
         let ret = Shared::new(ret.into());
         ret
     }
-    fn return_zero(func: Arc<RwLock<dyn Op>>) {
+    fn return_zero(func: Shared<dyn Op>) {
         let typ = IntegerType::new(32);
         func.rd()
             .operation()
@@ -217,13 +213,13 @@ impl ModuleLowering {
         let ret = Self::return_op(&block, constant.clone());
         constant.rd().insert_after(ret.clone());
     }
-    fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
+    fn returns_something(func: Shared<dyn Op>) -> bool {
         let func = func.rd();
         let func_op = func.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let result = func_op.operation().rd().results();
         result.vec().rd().len() == 1
     }
-    fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn ensure_main_returns_zero(module: Shared<dyn Op>) -> Result<RewriteResult> {
         let ops = module.rd().ops();
         let last = ops.last().unwrap();
         if !Self::returns_something(last.clone()) {
@@ -242,7 +238,7 @@ impl Rewrite for ModuleLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<xrcf::ir::ModuleOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         Self::ensure_main_returns_zero(op.clone())
     }
 }
@@ -256,7 +252,7 @@ impl Rewrite for PrintLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arnold::PrintOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
         let mut operation = Operation::default();
@@ -293,7 +289,7 @@ pub struct ConvertArnoldToMLIR;
 
 impl Pass for ConvertArnoldToMLIR {
     const NAME: &'static str = "convert-arnold-to-mlir";
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &CallLowering,
             &DeclareIntLowering,

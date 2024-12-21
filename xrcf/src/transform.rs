@@ -16,8 +16,6 @@ use clap::ArgMatches;
 use std::env::ArgsOs;
 use std::fmt;
 use std::fmt::Display;
-use std::sync::Arc;
-use std::sync::RwLock;
 use tracing::subscriber::SetGlobalDefaultError;
 use tracing::Level;
 use tracing_subscriber;
@@ -111,7 +109,7 @@ pub struct TransformOptions {
     /// parsing, but seeing the IR after the last pass is already the final
     /// output.
     print_ir_before_all: bool,
-    writer: Arc<RwLock<dyn std::io::Write + Send>>,
+    writer: Shared<dyn std::io::Write + Send>,
 }
 
 impl TransformOptions {
@@ -139,14 +137,14 @@ impl TransformOptions {
     pub fn set_print_ir_before_all(&mut self, print_ir_before_all: bool) {
         self.print_ir_before_all = print_ir_before_all;
     }
-    pub fn set_writer(&mut self, writer: Arc<RwLock<dyn std::io::Write + Send>>) {
+    pub fn set_writer(&mut self, writer: Shared<dyn std::io::Write + Send>) {
         self.writer = writer;
     }
 }
 
 /// Interface to add custom passes to the compiler.
 pub trait TransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult>;
+    fn dispatch(op: Shared<dyn Op>, pass: &SinglePass) -> Result<RewriteResult>;
 }
 
 /// Default implementation of [TransformDispatch].
@@ -166,7 +164,7 @@ pub fn init_subscriber(level: Level) -> Result<(), SetGlobalDefaultError> {
 }
 
 impl TransformDispatch for DefaultTransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
+    fn dispatch(op: Shared<dyn Op>, pass: &SinglePass) -> Result<RewriteResult> {
         let pass = pass.to_string();
         match pass.as_str() {
             Canonicalize::NAME => Canonicalize::convert(op.clone()),
@@ -224,7 +222,7 @@ pub fn default_arguments() -> Vec<Arg> {
 /// decompilers (i.e., for security research where the assembly is decompiled to
 /// a more readable form).
 pub fn transform<T: TransformDispatch>(
-    op: Arc<RwLock<dyn Op>>,
+    op: Shared<dyn Op>,
     options: &TransformOptions,
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;

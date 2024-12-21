@@ -21,7 +21,6 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 /// The token kind used for variables in this dialect.
 ///
@@ -30,7 +29,7 @@ use std::sync::RwLock;
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
 pub struct ConstantOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl ConstantOp {
@@ -50,7 +49,7 @@ impl Op for ConstantOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.constant".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ConstantOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -62,7 +61,7 @@ impl Op for ConstantOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -77,8 +76,8 @@ impl Op for ConstantOp {
 impl Parse for ConstantOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
@@ -117,7 +116,7 @@ impl Display for ConstantOp {
 }
 
 pub struct AddiOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl AddiOp {
@@ -199,7 +198,7 @@ impl Op for AddiOp {
     fn operation_name() -> OperationName {
         OperationName::new("arith.addi".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         AddiOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -208,7 +207,7 @@ impl Op for AddiOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn canonicalize(&self) -> RewriteResult {
@@ -219,8 +218,8 @@ impl Op for AddiOp {
 impl<T: ParserDispatch> Parser<T> {
     pub fn parse_add<O: Op + 'static>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<O>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<O>> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
@@ -244,8 +243,8 @@ impl<T: ParserDispatch> Parser<T> {
 impl Parse for AddiOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::parse_add::<AddiOp>(parser, parent)?;
         Ok(op)
     }

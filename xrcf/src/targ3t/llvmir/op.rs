@@ -12,14 +12,14 @@ use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Type;
 use crate::ir::Value;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
-fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
+fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::fmt::Result {
     match &*operand.rd().value().rd() {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name();
@@ -73,20 +73,20 @@ fn display_operands(f: &mut Formatter<'_>, operands: &OpOperands) -> std::fmt::R
 
 /// `add`
 pub struct AddOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for AddOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::add".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         AddOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -105,7 +105,7 @@ impl Display for AddOp {
 
 /// `alloca`
 pub struct AllocaOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     element_type: Option<String>,
 }
 
@@ -125,7 +125,7 @@ impl Op for AllocaOp {
     fn operation_name() -> OperationName {
         OperationName::new("alloca".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         AllocaOp {
             operation,
             element_type: None,
@@ -134,7 +134,7 @@ impl Op for AllocaOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -158,9 +158,9 @@ impl Display for AllocaOp {
 
 /// `call`
 pub struct CallOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     identifier: Option<String>,
-    varargs: Option<Arc<RwLock<dyn Type>>>,
+    varargs: Option<Shared<dyn Type>>,
 }
 
 impl Call for CallOp {
@@ -170,10 +170,10 @@ impl Call for CallOp {
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
     }
-    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    fn varargs(&self) -> Option<Shared<dyn Type>> {
         self.varargs.clone()
     }
-    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+    fn set_varargs(&mut self, varargs: Option<Shared<dyn Type>>) {
         self.varargs = varargs;
     }
 }
@@ -182,7 +182,7 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("call".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CallOp {
             operation,
             identifier: None,
@@ -192,7 +192,7 @@ impl Op for CallOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -229,20 +229,20 @@ impl Display for CallOp {
 /// Can be a conditional as well as an unconditional branch. Branch targets
 /// are stored as operands.
 pub struct BranchOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for BranchOp {
     fn operation_name() -> OperationName {
         OperationName::new("branch".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -259,7 +259,7 @@ impl Display for BranchOp {
 }
 
 pub struct FuncOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     identifier: Option<String>,
 }
 
@@ -273,7 +273,7 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("target::llvmir::func".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         FuncOp {
             operation,
             identifier: None,
@@ -282,7 +282,7 @@ impl Op for FuncOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn is_func(&self) -> bool {
@@ -347,7 +347,7 @@ impl Display for FuncOp {
 }
 
 pub struct ModuleOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     module_id: String,
     source_filename: String,
     module_flags: String,
@@ -358,7 +358,7 @@ impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("llvm.mlir.module".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ModuleOp {
             operation,
             module_id: "LLVMDialectModule".to_string(),
@@ -370,7 +370,7 @@ impl Op for ModuleOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -396,15 +396,15 @@ impl Display for ModuleOp {
 
 /// `phi`
 pub struct PhiOp {
-    operation: Arc<RwLock<Operation>>,
-    argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
+    operation: Shared<Operation>,
+    argument_pairs: Option<Vec<(Shared<OpOperand>, Shared<Block>)>>,
 }
 
 impl Op for PhiOp {
     fn operation_name() -> OperationName {
         OperationName::new("phi".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         PhiOp {
             operation,
             argument_pairs: None,
@@ -413,7 +413,7 @@ impl Op for PhiOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -452,12 +452,12 @@ impl Op for PhiOp {
 }
 
 impl PhiOp {
-    pub fn argument_pairs(&self) -> Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>> {
+    pub fn argument_pairs(&self) -> Option<Vec<(Shared<OpOperand>, Shared<Block>)>> {
         self.argument_pairs.clone()
     }
     pub fn set_argument_pairs(
         &mut self,
-        argument_pairs: Option<Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)>>,
+        argument_pairs: Option<Vec<(Shared<OpOperand>, Shared<Block>)>>,
     ) {
         self.argument_pairs = argument_pairs;
     }
@@ -465,20 +465,20 @@ impl PhiOp {
 
 /// `ret`
 pub struct ReturnOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("ret".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -501,15 +501,15 @@ impl Display for ReturnOp {
 
 /// `store`
 pub struct StoreOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     len: Option<usize>,
 }
 
 impl StoreOp {
-    pub fn value(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn value(&self) -> Shared<OpOperand> {
         self.operation.rd().operand(0).unwrap()
     }
-    pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
+    pub fn addr(&self) -> Shared<OpOperand> {
         self.operation.rd().operand(1).unwrap()
     }
     pub fn set_len(&mut self, len: usize) {
@@ -524,7 +524,7 @@ impl Op for StoreOp {
     fn operation_name() -> OperationName {
         OperationName::new("store".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         StoreOp {
             operation,
             len: None,
@@ -533,7 +533,7 @@ impl Op for StoreOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {

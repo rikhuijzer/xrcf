@@ -19,7 +19,6 @@ use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
@@ -29,16 +28,16 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 /// `func.call` $callee `(` $operands `)` attr-dict `:` `(` type($operands) `)` -> type($results)
 /// ```
 pub struct CallOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
     identifier: Option<String>,
-    varargs: Option<Arc<RwLock<dyn Type>>>,
+    varargs: Option<Shared<dyn Type>>,
 }
 
 pub trait Call: Op {
     fn identifier(&self) -> Option<String>;
     fn set_identifier(&mut self, identifier: String);
-    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
-    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
+    fn varargs(&self) -> Option<Shared<dyn Type>>;
+    fn set_varargs(&mut self, varargs: Option<Shared<dyn Type>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let operation = self.operation().rd();
         let results = operation.results();
@@ -80,9 +79,9 @@ pub trait Call: Op {
     /// ```
     fn parse_call_op<T: ParserDispatch, O: Call + 'static>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
+        parent: Option<Shared<Block>>,
         allow_varargs: bool,
-    ) -> Result<Arc<RwLock<O>>> {
+    ) -> Result<Shared<O>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
@@ -142,10 +141,10 @@ impl Call for CallOp {
     fn set_identifier(&mut self, identifier: String) {
         self.identifier = Some(identifier);
     }
-    fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    fn varargs(&self) -> Option<Shared<dyn Type>> {
         self.varargs.clone()
     }
-    fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>) {
+    fn set_varargs(&mut self, varargs: Option<Shared<dyn Type>>) {
         self.varargs = varargs;
     }
 }
@@ -154,7 +153,7 @@ impl Op for CallOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.call".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CallOp {
             operation,
             identifier: None,
@@ -164,7 +163,7 @@ impl Op for CallOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -181,8 +180,8 @@ impl CallOp {
 impl Parse for CallOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let allow_varargs = false;
         let call_op = CallOp::parse_call_op::<T, CallOp>(parser, parent, allow_varargs)?;
         Ok(call_op)
@@ -218,10 +217,10 @@ pub trait Func: Op {
     fn arguments(&self) -> Result<Values> {
         Ok(self.operation().rd().arguments().clone())
     }
-    fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
+    fn return_types(&self) -> Vec<Shared<dyn Type>> {
         self.operation().rd().results().types().vec()
     }
-    fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
+    fn return_type(&self) -> Result<Shared<dyn Type>> {
         let return_types = self.return_types();
         assert!(!return_types.is_empty(), "Expected result types to be set");
         assert!(return_types.len() == 1, "Expected single result type");
@@ -236,12 +235,12 @@ pub trait Func: Op {
 pub struct FuncOp {
     identifier: Option<String>,
     sym_visibility: Option<String>,
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
-    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
+    pub fn insert_op(&self, op: Shared<dyn Op>) -> UnsetOp {
         let read = op.rd();
         let ops = read.ops();
         if ops.is_empty() {
@@ -333,7 +332,7 @@ impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func.func".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         FuncOp {
             identifier: None,
             sym_visibility: None,
@@ -346,7 +345,7 @@ impl Op for FuncOp {
     fn is_func(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn assignments(&self) -> Result<Values> {
@@ -361,8 +360,8 @@ impl Op for FuncOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    fn result_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
-        let mut result_types: Vec<Arc<RwLock<dyn Type>>> = vec![];
+    fn result_types(&mut self) -> Result<Vec<Shared<dyn Type>>> {
+        let mut result_types: Vec<Shared<dyn Type>> = vec![];
         if !self.check(TokenKind::Arrow) {
             return Ok(result_types);
         } else {
@@ -378,8 +377,8 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<F>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<F>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         parser.parse_operation_name_into::<F>(&mut operation)?;
@@ -414,15 +413,15 @@ impl<T: ParserDispatch> Parser<T> {
 impl Parse for FuncOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::parse_func::<FuncOp>(parser, parent)?;
         Ok(op)
     }
 }
 
 pub struct ReturnOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl ReturnOp {
@@ -445,13 +444,13 @@ impl Op for ReturnOp {
     fn operation_name() -> OperationName {
         OperationName::new("return".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         ReturnOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -460,10 +459,7 @@ impl Op for ReturnOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    pub fn return_op<O: Op>(
-        &mut self,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<O>>> {
+    pub fn return_op<O: Op>(&mut self, parent: Option<Shared<Block>>) -> Result<Shared<O>> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
@@ -486,8 +482,8 @@ impl<T: ParserDispatch> Parser<T> {
 impl Parse for ReturnOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let op = Parser::<T>::return_op::<ReturnOp>(parser, parent)?;
         Ok(op)
     }

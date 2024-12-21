@@ -14,35 +14,34 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 pub struct OpOperand {
-    value: Arc<RwLock<Value>>,
+    value: Shared<Value>,
 }
 
 impl OpOperand {
-    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+    pub fn from_block(block: Shared<Block>) -> Self {
         let value = Value::from_block(block);
         let value = Shared::new(value.into());
         OpOperand { value }
     }
-    pub fn new(value: Arc<RwLock<Value>>) -> Self {
+    pub fn new(value: Shared<Value>) -> Self {
         OpOperand { value }
     }
     pub fn name(&self) -> String {
         self.value().rd().name().expect("no name")
     }
-    pub fn value(&self) -> Arc<RwLock<Value>> {
+    pub fn value(&self) -> Shared<Value> {
         self.value.clone()
     }
-    pub fn set_value(&mut self, value: Arc<RwLock<Value>>) {
+    pub fn set_value(&mut self, value: Shared<Value>) {
         self.value = value;
     }
     /// If this `OpOperand` is the result of an operation, return the operation
     /// that defines it.
     ///
     /// Returns `None` if the operand is not a [Value::OpResult].
-    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+    pub fn defining_op(&self) -> Option<Shared<dyn Op>> {
         match &*self.value().rd() {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
@@ -56,7 +55,7 @@ impl OpOperand {
     pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{self} : {}", self.typ().unwrap().rd())
     }
-    pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
+    pub fn typ(&self) -> Result<Shared<dyn Type>> {
         self.value.rd().typ()
     }
 }
@@ -72,11 +71,11 @@ impl Display for OpOperand {
 
 #[derive(Clone)]
 pub struct OpOperands {
-    operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
+    operands: Shared<Vec<Shared<OpOperand>>>,
 }
 
 impl IntoIterator for OpOperands {
-    type Item = Arc<RwLock<OpOperand>>;
+    type Item = Shared<OpOperand>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
     fn into_iter(self) -> Self::IntoIter {
         self.operands.rd().clone().into_iter()
@@ -84,15 +83,15 @@ impl IntoIterator for OpOperands {
 }
 
 impl OpOperands {
-    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
+    pub fn vec(&self) -> Shared<Vec<Shared<OpOperand>>> {
         self.operands.clone()
     }
-    pub fn from_vec(operands: Vec<Arc<RwLock<OpOperand>>>) -> Self {
+    pub fn from_vec(operands: Vec<Shared<OpOperand>>) -> Self {
         OpOperands {
             operands: Shared::new(operands.into()),
         }
     }
-    pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
+    pub fn set_operand(&mut self, index: usize, operand: Shared<OpOperand>) {
         let mut operands = self.operands.wr();
         if operands.len() == index {
             operands.push(operand);
@@ -145,9 +144,9 @@ impl<T: ParserDispatch> Parser<T> {
     /// different syntax (e.g., Python would use `x` in `c = x + y`).
     pub fn parse_op_operand(
         &mut self,
-        parent: Arc<RwLock<Block>>,
+        parent: Shared<Block>,
         var_token_kind: TokenKind,
-    ) -> Result<Arc<RwLock<OpOperand>>> {
+    ) -> Result<Shared<OpOperand>> {
         let next = self.peek();
         if next.kind == var_token_kind {
             let identifier = self.expect(var_token_kind)?;
@@ -188,10 +187,10 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse a single operand into the given operation.
     pub fn parse_op_operand_into(
         &mut self,
-        parent: Arc<RwLock<Block>>,
+        parent: Shared<Block>,
         var_token_kind: TokenKind,
         operation: &mut Operation,
-    ) -> Result<Arc<RwLock<OpOperand>>> {
+    ) -> Result<Shared<OpOperand>> {
         let operand = self.parse_op_operand(parent, var_token_kind)?;
         operation.set_operand(0, operand.clone());
         Ok(operand)
@@ -208,7 +207,7 @@ impl<T: ParserDispatch> Parser<T> {
     /// task for the caller.
     pub fn parse_op_operands(
         &mut self,
-        parent: Arc<RwLock<Block>>,
+        parent: Shared<Block>,
         var_token_kind: TokenKind,
     ) -> Result<OpOperands> {
         let mut arguments = vec![];
@@ -232,7 +231,7 @@ impl<T: ParserDispatch> Parser<T> {
     /// Parse %0, %1, %0, "hello", or nothing into the given operation.
     pub fn parse_op_operands_into(
         &mut self,
-        parent: Arc<RwLock<Block>>,
+        parent: Shared<Block>,
         var_token_kind: TokenKind,
         operation: &mut Operation,
     ) -> Result<OpOperands> {
