@@ -18,8 +18,6 @@ use crate::ir::Values;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 /// Lower `scf.if` to `cf.cond_br`.
 ///
@@ -151,9 +149,10 @@ fn add_merge_block(
     let operand = Shared::new(OpOperand::from_block(exit).into());
     merge_op.set_dest(operand);
 
-    let merge_op = Shared::new(merge_op.into());
-    let ops = vec![merge_op.clone()];
-    merge.wr().set_ops(Shared::new(ops.into()));
+    let merge_op: Shared<dyn Op> = Shared::new(merge_op.into());
+    merge
+        .wr()
+        .set_ops(Shared::new(vec![merge_op.clone()].into()));
     Ok((merge, merge_block_arguments))
 }
 

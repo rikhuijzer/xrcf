@@ -30,16 +30,7 @@ pub type Shared<T> = Arc<RwLock<T>>;
 ///
 /// # Example
 ///
-/// With this trait:
-/// ```
-/// use std::sync::Arc;
-/// use std::sync::RwLock;
-/// use xrcf::shared::SharedExt;
-///
-/// let lock = Arc::new(RwLock::new(42));
-/// assert_eq!(*lock.rd(), 42);
-/// ```
-/// and with `Shared`:
+/// With this trait and with `Shared`:
 /// ```
 /// use std::sync::Arc;
 /// use std::sync::RwLock;
