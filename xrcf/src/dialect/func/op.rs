@@ -1,11 +1,6 @@
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
-use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -199,7 +194,7 @@ pub trait Func: Op {
     fn set_identifier(&mut self, identifier: String);
     fn sym_visibility(&self) -> Option<String> {
         let operation = self.operation();
-        let attributes = operation.attributes();
+        let attributes = operation.rd().attributes();
         let attribute = attributes.get("sym_visibility");
         match attribute {
             Some(attribute) => Some(attribute.to_string()),
@@ -224,7 +219,7 @@ pub trait Func: Op {
         Ok(self.operation().rd().arguments().clone())
     }
     fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
-        self.operation().results().types().vec()
+        self.operation().rd().results().types().vec()
     }
     fn return_type(&self) -> Result<Arc<RwLock<dyn Type>>> {
         let return_types = self.return_types();
@@ -251,7 +246,7 @@ impl FuncOp {
         let ops = read.ops();
         if ops.is_empty() {
             let operation = self.operation();
-            let region = operation.region();
+            let region = operation.rd().region();
             if region.is_some() {
                 panic!("Expected region to be empty");
             }
@@ -261,10 +256,10 @@ impl FuncOp {
             let without_parent = region.add_empty_block();
             let region = Shared::new(region.into());
             let block = without_parent.set_parent(Some(region.clone()));
-            block.set_ops(ops);
-            operation.set_region(Some(region));
+            block.wr().set_ops(ops);
+            operation.wr().set_region(Some(region));
         } else {
-            ops.last().unwrap().insert_after(op.clone());
+            ops.last().unwrap().rd().insert_after(op.clone());
         }
         UnsetOp::new(op.clone())
     }
@@ -304,19 +299,19 @@ impl FuncOp {
             write!(f, "{visibility} ")?;
         }
         write!(f, "{identifier}(")?;
-        write!(f, "{}", op.operation().arguments())?;
+        write!(f, "{}", op.operation().rd().arguments())?;
         write!(f, ")")?;
         let operation = op.operation();
-        let result_types = operation.results().types();
+        let result_types = operation.rd().results().types();
         if !result_types.vec().is_empty() {
             write!(f, " -> {}", result_types)?;
         }
-        let attributes = operation.attributes();
+        let attributes = operation.rd().attributes();
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        if let Some(region) = op.operation().region() {
-            region.display(f, indent)?;
+        if let Some(region) = op.operation().rd().region() {
+            region.rd().display(f, indent)?;
         }
         Ok(())
     }
@@ -356,7 +351,7 @@ impl Op for FuncOp {
     }
     fn assignments(&self) -> Result<Values> {
         let operation = self.operation();
-        let arguments = operation.arguments();
+        let arguments = operation.rd().arguments();
         Ok(arguments.clone())
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -403,12 +398,12 @@ impl<T: ParserDispatch> Parser<T> {
         if has_implementation {
             let region = parser.parse_region(op.clone())?;
             let op_rd = op.rd();
-            op_rd.operation().set_region(Some(region.clone()));
-            region.set_parent(Some(op.clone()));
+            op_rd.operation().wr().set_region(Some(region.clone()));
+            region.wr().set_parent(Some(op.clone()));
 
-            let block = region.blocks().into_iter().next().unwrap();
+            let block = region.rd().blocks().into_iter().next().unwrap();
             for argument in arguments.into_iter() {
-                argument.set_parent(Some(block.clone()));
+                argument.wr().set_parent(Some(block.clone()));
             }
         }
 
@@ -433,14 +428,14 @@ pub struct ReturnOp {
 impl ReturnOp {
     pub fn display_return(op: &dyn Op, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = op.operation();
-        let name = operation.name();
+        let name = operation.rd().name();
         write!(f, "{name}")?;
-        let operands = operation.operands().into_iter();
+        let operands = operation.rd().operands().into_iter();
         if operands.len() != 0 {
             for operand in operands {
                 write!(f, " {}", operand.rd())?;
             }
-            write!(f, " : {}", operation.results().types())?;
+            write!(f, " : {}", operation.rd().results().types())?;
         }
         Ok(())
     }

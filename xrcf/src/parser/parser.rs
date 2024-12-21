@@ -11,10 +11,6 @@ use crate::ir::BlockName;
 use crate::ir::BlockPtr;
 use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
@@ -178,16 +174,16 @@ enum Dialects {
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
-    let label = match &*block.label().rd() {
+    let label = match &*block.rd().label().rd() {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
         BlockName::Unset => return,
     };
-    let parent = block.parent().expect("no parent");
+    let parent = block.rd().parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
-    for predecessor in parent.blocks().into_iter() {
+    for predecessor in parent.rd().blocks().into_iter() {
         for op in predecessor.rd().ops().rd().iter() {
-            for operand in op.rd().operation().operands().into_iter() {
+            for operand in op.rd().operation().rd().operands().into_iter() {
                 let mut operand = operand.wr();
                 if let Value::BlockLabel(curr) = &*operand.value().rd() {
                     if curr.name() == label {
@@ -305,8 +301,8 @@ impl<T: ParserDispatch> Parser<T> {
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        for op in block.ops().rd().iter() {
-            op.operation().set_parent(Some(block.clone()));
+        for op in block.rd().ops().rd().iter() {
+            op.rd().operation().wr().set_parent(Some(block.clone()));
         }
         Ok(block)
     }
@@ -326,7 +322,7 @@ impl<T: ParserDispatch> Parser<T> {
         self.expect(TokenKind::LBrace)?;
         let blocks = vec![];
         let blocks = Shared::new(blocks.into());
-        region.set_blocks(Blocks::new(blocks.clone()));
+        region.wr().set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.wr();
@@ -396,7 +392,11 @@ impl<T: ParserDispatch> Parser<T> {
             let block = Shared::new(block.into());
             {
                 for child_op in ops.rd().iter() {
-                    child_op.operation().set_parent(Some(block.clone()));
+                    child_op
+                        .rd()
+                        .operation()
+                        .wr()
+                        .set_parent(Some(block.clone()));
                 }
             }
             module_region
@@ -412,7 +412,7 @@ impl<T: ParserDispatch> Parser<T> {
             module_operation.set_region(Some(module_region.clone()));
             let module_op = ModuleOp::from_operation(module_operation);
             let module_op = Shared::new(module_op.into());
-            module_region.set_parent(Some(module_op.clone()));
+            module_region.wr().set_parent(Some(module_op.clone()));
             module_op
         };
         Ok(op)

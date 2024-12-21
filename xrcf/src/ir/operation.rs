@@ -3,7 +3,6 @@ use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::Blocks;
-use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -338,8 +337,8 @@ impl Operation {
     }
     pub fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent().expect("no parent");
-        match parent.index_of(self) {
-            Some(index) => parent.ops().rd()[..index].to_vec(),
+        match parent.clone().rd().index_of(self) {
+            Some(index) => parent.rd().ops().rd()[..index].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
@@ -350,8 +349,8 @@ impl Operation {
     }
     pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent().expect("no parent");
-        match parent.index_of(self) {
-            Some(index) => parent.ops().rd()[index + 1..].to_vec(),
+        match parent.clone().rd().index_of(self) {
+            Some(index) => parent.rd().ops().rd()[index + 1..].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
@@ -446,108 +445,5 @@ impl Default for Operation {
 impl Display for Operation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
-    }
-}
-
-pub trait GuardedOperation {
-    fn arguments(&self) -> Values;
-    fn attributes(&self) -> Attributes;
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn name(&self) -> OperationName;
-    fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>>;
-    fn operands(&self) -> OpOperands;
-    fn parent(&self) -> Option<Arc<RwLock<Block>>>;
-    fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-    fn region(&self) -> Option<Arc<RwLock<Region>>>;
-    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()>;
-    fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>>;
-    fn result_names(&self) -> Vec<String>;
-    fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>>;
-    fn results(&self) -> Values;
-    fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()>;
-    fn set_argument(&self, index: usize, argument: Arc<RwLock<Value>>);
-    fn set_attributes(&self, attributes: Attributes);
-    fn set_name(&self, name: OperationName);
-    fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>);
-    fn set_operands(&self, operands: OpOperands);
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
-    fn set_region(&self, region: Option<Arc<RwLock<Region>>>);
-    fn set_results(&self, results: Values);
-    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-}
-
-impl GuardedOperation for Arc<RwLock<Operation>> {
-    fn arguments(&self) -> Values {
-        self.rd().arguments()
-    }
-    fn attributes(&self) -> Attributes {
-        self.rd().attributes()
-    }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.rd().display(f, indent)
-    }
-    fn name(&self) -> OperationName {
-        self.rd().name()
-    }
-    fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
-        self.rd().operand(index)
-    }
-    fn operands(&self) -> OpOperands {
-        self.rd().operands()
-    }
-    fn parent(&self) -> Option<Arc<RwLock<Block>>> {
-        let operation = self.rd();
-        operation.parent()
-    }
-    fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.rd().predecessors()
-    }
-    fn region(&self) -> Option<Arc<RwLock<Region>>> {
-        self.rd().region()
-    }
-    fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
-        self.rd().rename_variables(renamer)
-    }
-    fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>> {
-        self.rd().result(index)
-    }
-    fn result_names(&self) -> Vec<String> {
-        self.rd().result_names()
-    }
-    fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
-        self.rd().result_type(index)
-    }
-    fn results(&self) -> Values {
-        self.rd().results()
-    }
-    fn set_anonymous_result(&self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
-        self.try_write().unwrap().set_anonymous_result(result_type)
-    }
-    fn set_argument(&self, index: usize, argument: Arc<RwLock<Value>>) {
-        self.try_write().unwrap().set_argument(index, argument);
-    }
-    fn set_attributes(&self, attributes: Attributes) {
-        self.try_write().unwrap().set_attributes(attributes);
-    }
-    fn set_name(&self, name: OperationName) {
-        self.try_write().unwrap().set_name(name);
-    }
-    fn set_operand(&self, index: usize, operand: Arc<RwLock<OpOperand>>) {
-        self.try_write().unwrap().set_operand(index, operand);
-    }
-    fn set_operands(&self, operands: OpOperands) {
-        self.try_write().unwrap().set_operands(operands);
-    }
-    fn set_region(&self, region: Option<Arc<RwLock<Region>>>) {
-        self.try_write().unwrap().set_region(region);
-    }
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
-        self.try_write().unwrap().set_parent(parent);
-    }
-    fn set_results(&self, results: Values) {
-        self.try_write().unwrap().set_results(results);
-    }
-    fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.rd().successors()
     }
 }

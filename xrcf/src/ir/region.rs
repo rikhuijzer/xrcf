@@ -1,7 +1,6 @@
 use crate::ir::block::Block;
 use crate::ir::BlockName;
 use crate::ir::Blocks;
-use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
 use crate::shared::Shared;
@@ -72,7 +71,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
         for block in self.blocks().into_iter() {
-            for op in block.ops().rd().iter() {
+            for op in block.rd().ops().rd().iter() {
                 result.push(op.clone());
             }
         }
@@ -149,43 +148,5 @@ impl Default for Region {
             blocks: Blocks::new(Shared::new(vec![].into())),
             parent: None,
         }
-    }
-}
-
-pub trait GuardedRegion {
-    fn add_empty_block(&self) -> UnsetBlock;
-    fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock;
-    fn blocks(&self) -> Blocks;
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-    fn set_blocks(&self, blocks: Blocks);
-    fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>);
-    fn unique_block_name(&self) -> String;
-}
-
-impl GuardedRegion for Arc<RwLock<Region>> {
-    fn add_empty_block(&self) -> UnsetBlock {
-        self.rd().add_empty_block()
-    }
-    fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
-        self.rd().add_empty_block_before(block)
-    }
-    fn blocks(&self) -> Blocks {
-        self.rd().blocks()
-    }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.rd().display(f, indent)
-    }
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.rd().ops()
-    }
-    fn set_blocks(&self, blocks: Blocks) {
-        self.wr().set_blocks(blocks);
-    }
-    fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>) {
-        self.wr().set_parent(parent);
-    }
-    fn unique_block_name(&self) -> String {
-        self.rd().unique_block_name()
     }
 }

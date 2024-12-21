@@ -2,9 +2,6 @@ use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -78,13 +75,13 @@ impl BlockArgument {
     pub fn new_name(&self) -> String {
         let parent = self.parent().expect("no parent");
         let mut used_names = vec![];
-        for argument in parent.arguments().into_iter() {
+        for argument in parent.rd().arguments().into_iter() {
             if let Value::BlockArgument(argument) = &*argument.rd() {
                 if std::ptr::eq(self, argument) {
                     break;
                 }
             };
-            if let Some(name) = argument.name() {
+            if let Some(name) = argument.rd().name() {
                 used_names.push(name);
             }
         }
@@ -300,17 +297,17 @@ impl OpResult {
         let defining_op = defining_op.rd();
         let mut used_names = vec![];
 
-        let parent = defining_op.operation().parent();
+        let parent = defining_op.operation().rd().parent();
         let parent = parent.expect("defining op has no parent");
-        let blocks_preds = parent.predecessors();
+        let blocks_preds = parent.rd().predecessors();
         let blocks_preds = blocks_preds.expect("no predecessors");
         for pred in blocks_preds.iter() {
             used_names.extend(pred.rd().used_names());
         }
 
-        let predecessors = defining_op.operation().predecessors();
+        let predecessors = defining_op.operation().rd().predecessors();
         for predecessor in predecessors.iter() {
-            used_names.extend(predecessor.rd().operation().result_names());
+            used_names.extend(predecessor.rd().operation().rd().result_names());
         }
         generate_new_name(used_names, "%")
     }
@@ -467,7 +464,7 @@ impl Value {
                 BlockArgumentName::Unset => None,
             },
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(ptr) => match &*ptr.block().label().rd() {
+            Value::BlockPtr(ptr) => match &*ptr.block().rd().label().rd() {
                 BlockName::Name(name) => Some(name.clone()),
                 BlockName::Unnamed => None,
                 BlockName::Unset => None,
@@ -545,7 +542,7 @@ impl Value {
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
-            for operand in op.operation().rd().operands().into_iter() {
+            for operand in op.rd().operation().rd().operands().into_iter() {
                 let value = operand.rd().value();
                 if std::ptr::eq(&*value.rd() as *const Value, self as *const Value) {
                     out.push(operand.clone());
@@ -562,8 +559,8 @@ impl Value {
             panic!("BlockArgument {arg} has no parent operation");
         };
         let mut ops = parent.rd().ops().rd().clone();
-        for successor in parent.successors().unwrap().iter() {
-            ops.extend(successor.ops().rd().clone());
+        for successor in parent.rd().successors().unwrap().iter() {
+            ops.extend(successor.rd().ops().rd().clone());
         }
         self.find_users(&ops)
     }
@@ -574,7 +571,7 @@ impl Value {
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
-        let ops = op.rd().operation().successors();
+        let ops = op.rd().operation().rd().successors();
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {
@@ -601,32 +598,6 @@ impl Display for Value {
             Value::OpResult(result) => write!(f, "{result}"),
             Value::Variadic => write!(f, "..."),
         }
-    }
-}
-
-pub trait GuardedValue {
-    fn name(&self) -> Option<String>;
-    fn rename(&self, new_name: &str);
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
-}
-
-impl GuardedValue for Arc<RwLock<Value>> {
-    fn name(&self) -> Option<String> {
-        let value = self.rd();
-        value.name()
-    }
-    fn rename(&self, new_name: &str) {
-        let mut value = self.wr();
-        value.set_name(new_name);
-    }
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
-        let mut value = self.wr();
-        value.set_parent(parent);
-    }
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.rd();
-        value.typ()
     }
 }
 
@@ -676,7 +647,7 @@ impl Values {
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         let values = self.values.rd();
         for value in values.iter() {
-            let name = value.name().unwrap();
+            let name = value.rd().name().unwrap();
             value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
@@ -689,7 +660,7 @@ impl Values {
             .values
             .rd()
             .iter()
-            .map(|value| value.typ().unwrap())
+            .map(|value| value.rd().typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
@@ -743,7 +714,7 @@ impl Values {
     /// `operation`s that define the operands.
     pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
         for value in self.values.rd().iter() {
-            let typ = value.typ().unwrap();
+            let typ = value.rd().typ().unwrap();
             value.wr().set_type(T::convert_type(&typ)?);
         }
         Ok(())

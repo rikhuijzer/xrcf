@@ -1,7 +1,6 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedRegion;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -144,7 +143,7 @@ pub trait Op {
     /// operation contains two regions: the "then" region and the "else" region.
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         if let Some(region) = self.region() {
-            region.ops()
+            region.rd().ops()
         } else {
             vec![]
         }
@@ -195,55 +194,5 @@ impl UnsetOp {
     pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
         self.0.rd().set_parent(parent);
         self.0.clone()
-    }
-}
-
-pub trait GuardedOp {
-    fn insert_after(&self, later: Arc<RwLock<dyn Op>>);
-    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>);
-    fn is_const(&self) -> bool;
-    fn name(&self) -> OperationName;
-    fn operation(&self) -> Arc<RwLock<Operation>>;
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>>;
-    fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
-    fn remove(&self);
-    fn replace(&self, new: Arc<RwLock<dyn Op>>);
-    fn result(&self, index: usize) -> Arc<RwLock<Value>>;
-    fn set_parent(&self, parent: Arc<RwLock<Block>>);
-}
-
-impl GuardedOp for Arc<RwLock<dyn Op>> {
-    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
-        self.rd().insert_after(later);
-    }
-    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
-        self.rd().insert_before(earlier);
-    }
-    fn is_const(&self) -> bool {
-        self.rd().is_const()
-    }
-    fn name(&self) -> OperationName {
-        self.rd().name()
-    }
-    fn operation(&self) -> Arc<RwLock<Operation>> {
-        self.rd().operation().clone()
-    }
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.rd().ops()
-    }
-    fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        self.rd().parent_op()
-    }
-    fn remove(&self) {
-        self.rd().remove();
-    }
-    fn replace(&self, new: Arc<RwLock<dyn Op>>) {
-        self.rd().replace(new);
-    }
-    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
-        self.rd().result(index)
-    }
-    fn set_parent(&self, parent: Arc<RwLock<Block>>) {
-        self.rd().set_parent(parent);
     }
 }

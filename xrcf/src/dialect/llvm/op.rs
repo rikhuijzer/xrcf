@@ -6,8 +6,6 @@ use crate::ir::AnyAttr;
 use crate::ir::Attribute;
 use crate::ir::Attributes;
 use crate::ir::Block;
-use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -80,7 +78,7 @@ impl AllocaOp {
         self.element_type = Some(element_type);
     }
     pub fn array_size(&self) -> Arc<RwLock<OpOperand>> {
-        self.operation().operand(0).expect("no operand")
+        self.operation.rd().operand(0).expect("no operand")
     }
 }
 
@@ -160,10 +158,10 @@ pub struct BranchOp {
 
 impl BranchOp {
     pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
-        self.operation().operand(0)
+        self.operation.rd().operand(0)
     }
     pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
-        self.operation().set_operand(0, dest);
+        self.operation.wr().set_operand(0, dest);
     }
 }
 
@@ -184,9 +182,9 @@ impl Op for BranchOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} ", self.operation.name())?;
+        write!(f, "{} ", self.operation.rd().name())?;
         write!(f, "{}", self.dest().expect("no dest").rd())?;
-        let operands = self.operation().operands();
+        let operands = self.operation.rd().operands();
         let operands = operands.vec();
         let operands = operands.rd();
         let operands = operands.iter().skip(1);
@@ -212,10 +210,10 @@ impl Parse for BranchOp {
 
         let operation = Shared::new(operation.into());
         let operand = Shared::new(parser.parse_block_dest()?.into());
-        operation.set_operand(0, operand);
+        operation.wr().set_operand(0, operand);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
-            let operands = operation.operands().vec();
+            let operands = operation.rd().operands().vec();
             let mut operands = operands.wr();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
@@ -351,10 +349,15 @@ pub struct ConstantOp {
 
 impl ConstantOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
-        self.operation().attributes().get("value").unwrap().clone()
+        self.operation()
+            .rd()
+            .attributes()
+            .get("value")
+            .unwrap()
+            .clone()
     }
     pub fn set_value(&self, value: Arc<dyn Attribute>) {
-        self.operation().attributes().insert("value", value);
+        self.operation().rd().attributes().insert("value", value);
     }
 }
 
@@ -381,13 +384,23 @@ impl Op for ConstantOp {
         write!(
             f,
             "{} = ",
-            self.operation().results().into_iter().next().unwrap().rd()
+            self.operation()
+                .rd()
+                .results()
+                .into_iter()
+                .next()
+                .unwrap()
+                .rd()
         )?;
         write!(f, "{}", Self::operation_name())?;
         write!(f, "(")?;
         write!(f, "{}", self.value())?;
         write!(f, ")")?;
-        write!(f, " : {}", self.operation().result_type(0).unwrap().rd())?;
+        write!(
+            f,
+            " : {}",
+            self.operation().rd().result_type(0).unwrap().rd()
+        )?;
         Ok(())
     }
 }
@@ -454,7 +467,7 @@ impl Op for GlobalOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
-        let attributes = self.operation().attributes().map();
+        let attributes = self.operation().rd().attributes().map();
         let attributes = attributes.rd();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
@@ -531,6 +544,7 @@ impl Parse for FuncOp {
                 parser.advance();
                 op.rd()
                     .operation()
+                    .wr()
                     .set_attributes(parser.parse_attributes()?);
             }
         }
@@ -593,7 +607,7 @@ pub struct ReturnOp {
 
 impl ReturnOp {
     pub fn operand(&self) -> Option<Arc<RwLock<OpOperand>>> {
-        self.operation().operand(0)
+        self.operation.rd().operand(0)
     }
 }
 
@@ -628,10 +642,10 @@ pub struct StoreOp {
 
 impl StoreOp {
     pub fn value(&self) -> Arc<RwLock<OpOperand>> {
-        self.operation().operand(0).expect("no value set")
+        self.operation.rd().operand(0).expect("no value set")
     }
     pub fn set_value(&mut self, value: Arc<RwLock<OpOperand>>) {
-        self.operation().set_operand(0, value);
+        self.operation().wr().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
         self.operation.rd().operand(1).expect("no addr")
@@ -658,8 +672,8 @@ impl Op for StoreOp {
         let operation = self.operation().rd();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
-        write!(f, " : {}", self.value().typ().unwrap().rd())?;
-        write!(f, ", {}", self.addr().typ().unwrap().rd())?;
+        write!(f, " : {}", self.value().rd().typ().unwrap().rd())?;
+        write!(f, ", {}", self.addr().rd().typ().unwrap().rd())?;
         Ok(())
     }
 }

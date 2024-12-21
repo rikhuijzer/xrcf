@@ -5,7 +5,6 @@ use std::sync::RwLock;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
-use xrcf::ir::GuardedOperation;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
@@ -372,11 +371,12 @@ impl PrintOp {
     const TEXT_INDEX: usize = 0;
     pub fn text(&self) -> Arc<RwLock<OpOperand>> {
         self.operation
+            .rd()
             .operand(Self::TEXT_INDEX)
             .expect("Operand not set")
     }
     pub fn set_text(&mut self, text: Arc<RwLock<OpOperand>>) {
-        self.operation.set_operand(Self::TEXT_INDEX, text);
+        self.operation.wr().set_operand(Self::TEXT_INDEX, text);
     }
 }
 
@@ -425,7 +425,7 @@ pub struct SetInitialValueOp {
 
 impl SetInitialValueOp {
     pub fn value(&self) -> Arc<dyn Attribute> {
-        self.operation.attributes().get("value").unwrap()
+        self.operation.rd().attributes().get("value").unwrap()
     }
 }
 

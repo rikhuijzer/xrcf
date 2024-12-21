@@ -12,12 +12,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::Constant;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
-use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -42,9 +36,9 @@ struct AddLowering;
 ///
 /// Otherwise, return `None`.
 fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpOperand>>> {
-    let op = operand.defining_op();
+    let op = operand.rd().defining_op();
     if let Some(op) = op {
-        if op.is_const() {
+        if op.rd().is_const() {
             let op = op.rd();
             let op = op.as_any().downcast_ref::<dialect::llvm::ConstantOp>();
             if let Some(op) = op {
@@ -62,7 +56,7 @@ fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpO
 /// Replace the operands that point to a constant operation by a [Constant].
 fn replace_constant_operands(op: &dyn Op) {
     let operation = op.operation();
-    let operands = operation.operands().vec();
+    let operands = operation.rd().operands().vec();
     let mut operands = operands.wr();
     for i in 0..operands.len() {
         let operand = &operands[i];
@@ -147,11 +141,10 @@ impl Rewrite for BlockLowering {
         if !op.is_func() {
             return Ok(false);
         }
-        let region = op.operation().region();
+        let region = op.operation().rd().region();
         if let Some(region) = region {
-            let blocks = region.blocks();
-            for block in blocks.into_iter() {
-                let label_prefix = block.label_prefix();
+            for block in region.rd().blocks().into_iter() {
+                let label_prefix = block.rd().label_prefix();
                 if label_prefix == "^" {
                     return Ok(true);
                 }
@@ -160,8 +153,8 @@ impl Rewrite for BlockLowering {
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        for block in op.operation().rd().blocks().into_iter() {
-            block.set_label_prefix("".to_string());
+        for block in op.rd().operation().rd().blocks().into_iter() {
+            block.wr().set_label_prefix("".to_string());
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }
@@ -180,7 +173,7 @@ impl Rewrite for BranchLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         if op.as_any().is::<dialect::llvm::BranchOp>() {
             // Check whether [MergeLowering] has already removed the operands.
-            Ok(op.operation().operands().into_iter().all(|operand| {
+            Ok(op.operation().rd().operands().into_iter().all(|operand| {
                 let operand = operand.rd();
                 let value = operand.value();
                 let value = value.rd();
@@ -271,7 +264,7 @@ fn lower_block_argument_types(operation: &mut Operation) {
             if let Value::Variadic = &*argument.rd() {
                 new_arguments.push(argument.clone());
             } else {
-                let typ = argument.typ().unwrap();
+                let typ = argument.rd().typ().unwrap();
                 let typ = typ.rd();
                 if typ.as_any().is::<dialect::llvm::PointerType>() {
                     let typ = targ3t::llvmir::PointerType::from_str("ptr");
@@ -360,7 +353,7 @@ struct MergeLowering;
 fn determine_argument_pairs(
     block: &Arc<RwLock<Block>>,
 ) -> Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)> {
-    let callers = block.callers();
+    let callers = block.rd().callers();
     if callers.is_none() {
         return vec![];
     }
@@ -368,8 +361,8 @@ fn determine_argument_pairs(
     let mut argument_pairs = vec![];
     for caller in callers.iter() {
         let caller = caller.rd();
-        let caller_operand = caller.operation().operand(1).unwrap();
-        let caller_block = caller.operation().parent().unwrap();
+        let caller_operand = caller.operation().rd().operand(1).unwrap();
+        let caller_block = caller.operation().rd().parent().unwrap();
         argument_pairs.push((caller_operand, caller_block.clone()));
     }
     argument_pairs
@@ -392,7 +385,7 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
     }
     let mut typ: Option<Arc<RwLock<dyn Type>>> = None;
     for (op_operand, _) in pairs.iter() {
-        let value_typ = op_operand.rd().value().typ().unwrap();
+        let value_typ = op_operand.rd().value().rd().typ().unwrap();
         if let Some(typ) = &typ {
             let typ = typ.rd().to_string();
             let value_typ = value_typ.rd().to_string();
@@ -417,7 +410,6 @@ fn verify_argument_pairs(pairs: &Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>
 ///   %result = phi i32 [ 3, %then ], [ 4, %else ]
 /// ```
 fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
-    let operation = phi.operation();
     let argument = argument.rd();
 
     let users = argument.users();
@@ -440,7 +432,10 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
         let res = OpResult::new(name, typ, defining_op);
         let new = Value::OpResult(res);
         let new = Shared::new(new.into());
-        operation.set_results(Values::from_vec(vec![new.clone()]));
+        phi.rd()
+            .operation()
+            .wr()
+            .set_results(Values::from_vec(vec![new.clone()]));
 
         for user in users.iter() {
             let mut user = user.wr();
@@ -488,14 +483,13 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
 /// ```
 /// on line 3, `%1 : i32` in `llvm.br ^merge(%1 : i32)` will be removed.
 fn remove_caller_operands(block: Arc<RwLock<Block>>) {
-    let callers = block.callers();
+    let callers = block.rd().callers();
     if callers.is_none() {
         return;
     }
     let callers = callers.unwrap();
     for caller in callers.iter() {
-        let caller = caller.operation();
-        let operands = caller.operands();
+        let operands = caller.rd().operation().rd().operands();
         let operands = operands.vec();
         let mut operands = operands.wr();
         operands.pop();
@@ -513,7 +507,7 @@ impl Rewrite for MergeLowering {
             return Ok(false);
         }
         let operation = op.operation();
-        if operation.region().is_none() {
+        if operation.rd().region().is_none() {
             return Ok(false);
         }
         for block in operation.rd().blocks().into_iter() {
@@ -526,7 +520,7 @@ impl Rewrite for MergeLowering {
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let blocks = op.operation().region().unwrap().blocks();
+        let blocks = op.rd().operation().rd().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
             let block_read = block.rd();
             let has_argument = !block_read.arguments().vec().rd().is_empty();
@@ -549,10 +543,10 @@ impl Rewrite for ModuleLowering {
         Ok(op.as_any().is::<ir::ModuleOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let operation = op.operation().clone();
+        let operation = op.rd().operation().clone();
         let new_op = targ3t::llvmir::ModuleOp::from_operation_arc(operation);
         let new_op = Shared::new(new_op.into());
-        op.replace(new_op.clone());
+        op.rd().replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
 }
@@ -600,8 +594,8 @@ impl Rewrite for StoreLowering {
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         {
             let op_operand = op.value();
-            let value = op_operand.value();
-            let value_typ = value.typ().unwrap();
+            let value = op_operand.rd().value();
+            let value_typ = value.rd().typ().unwrap();
             let value_typ = value_typ.rd();
             let value_typ = value_typ
                 .as_any()

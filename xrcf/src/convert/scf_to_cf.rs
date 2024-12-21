@@ -8,10 +8,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -63,10 +59,10 @@ fn lower_yield_op(
     after: Arc<RwLock<Block>>,
 ) -> Result<Arc<RwLock<dyn Op>>> {
     let operation = op.operation();
-    let var = operation.operand(0).unwrap();
+    let var = operation.rd().operand(0).unwrap();
     let operand = Shared::new(OpOperand::from_block(after).into());
-    operation.set_operand(0, operand);
-    operation.set_operand(1, var);
+    operation.wr().set_operand(0, operand);
+    operation.wr().set_operand(1, var);
     let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
     let new_op = Shared::new(new_op.into());
     Ok(new_op)
@@ -83,7 +79,7 @@ fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
 
 /// Add a `cf.br` to the end of `block` with destination `after`.
 fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
-    let ops = block.ops();
+    let ops = block.rd().ops();
     let mut ops = ops.wr();
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
@@ -95,7 +91,7 @@ fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
         ops.push(new_op.clone());
     } else {
         let new_op = branch_op(after.clone());
-        new_op.set_parent(block.clone());
+        new_op.rd().set_parent(block.clone());
         ops.push(new_op.clone());
     };
 }
@@ -126,18 +122,19 @@ fn move_successors_to_exit_block(
     op: &dialect::scf::IfOp,
     exit_block: Arc<RwLock<Block>>,
 ) -> Result<()> {
-    let if_op_parent = op.operation().parent().expect("Expected parent");
+    let if_op_parent = op.operation().rd().parent().expect("Expected parent");
     let if_op_index = if_op_parent
+        .rd()
         .index_of(&op.operation().rd())
         .expect("Expected index");
-    let ops = if_op_parent.ops();
+    let ops = if_op_parent.rd().ops();
     let mut ops = ops.wr();
     let return_ops = ops[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
         let op = op.rd();
         op.set_parent(exit_block.clone());
     }
-    exit_block.set_ops(Shared::new(return_ops.into()));
+    exit_block.wr().set_ops(Shared::new(return_ops.into()));
     ops.drain(if_op_index + 1..);
     Ok(())
 }
@@ -147,11 +144,11 @@ fn add_merge_block(
     results: Values,
     exit: Arc<RwLock<Block>>,
 ) -> Result<(Arc<RwLock<Block>>, Values)> {
-    let unset_block = parent_region.add_empty_block_before(exit.clone());
+    let unset_block = parent_region.rd().add_empty_block_before(exit.clone());
     let merge = unset_block.set_parent(Some(parent_region.clone()));
     let merge_block_arguments = as_block_arguments(results, merge.clone())?;
-    merge.set_arguments(merge_block_arguments.clone());
-    merge.set_label(BlockName::Unset);
+    merge.wr().set_arguments(merge_block_arguments.clone());
+    merge.wr().set_label(BlockName::Unset);
 
     let mut operation = Operation::default();
     operation.set_parent(Some(merge.clone()));
@@ -161,7 +158,9 @@ fn add_merge_block(
     merge_op.set_dest(operand);
 
     let merge_op = Shared::new(merge_op.into());
-    merge.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
+    merge
+        .wr()
+        .set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
     Ok((merge, merge_block_arguments))
 }
 
@@ -169,9 +168,9 @@ fn add_exit_block(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<Arc<RwLock<Block>>> {
-    let unset_block = parent_region.add_empty_block();
+    let unset_block = parent_region.rd().add_empty_block();
     let exit = unset_block.set_parent(Some(parent_region.clone()));
-    exit.set_label(BlockName::Unset);
+    exit.wr().set_label(BlockName::Unset);
     move_successors_to_exit_block(op, exit.clone())?;
     Ok(exit)
 }
@@ -235,20 +234,20 @@ fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<(Arc<RwLock<Block>>, Arc<RwLock<Block>>)> {
-    let results = op.operation().results();
+    let results = op.operation().rd().results();
     let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
     let has_results = !results.is_empty();
 
     let then_region = op.then().expect("Expected `then` region");
-    let then = then_region.blocks().into_iter().next().unwrap();
-    then.set_label(BlockName::Unset);
-    exit.inline_region_before(then_region.clone());
+    let then = then_region.rd().blocks().into_iter().next().unwrap();
+    then.wr().set_label(BlockName::Unset);
+    exit.rd().inline_region_before(then_region.clone());
 
     let else_region = op.els().expect("Expected `else` region");
-    let els = else_region.blocks().into_iter().next().unwrap();
-    els.set_label(BlockName::Unset);
-    exit.inline_region_before(else_region.clone());
+    let els = else_region.rd().blocks().into_iter().next().unwrap();
+    els.wr().set_label(BlockName::Unset);
+    exit.rd().inline_region_before(else_region.clone());
 
     let after = if has_results {
         let (merge, merge_block_arguments) =
@@ -290,15 +289,15 @@ impl Rewrite for IfLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.rd();
-        let parent = op.operation().parent().expect("Expected parent");
-        let parent_region = parent.parent().expect("Expected parent region");
+        let parent = op.operation().rd().parent().expect("Expected parent");
+        let parent_region = parent.rd().parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
 
         let (then, els) = add_blocks(&op, parent_region.clone())?;
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        operation.set_operand(0, op.operation().operand(0).clone().unwrap());
+        operation.set_operand(0, op.operation().rd().operand(0).clone().unwrap());
         let then_operand = Shared::new(OpOperand::from_block(then).into());
         operation.set_operand(1, then_operand);
         let els_operand = Shared::new(OpOperand::from_block(els).into());
@@ -308,7 +307,7 @@ impl Rewrite for IfLowering {
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
-        new.rd().operation().set_results(Values::default());
+        new.rd().operation().wr().set_results(Values::default());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

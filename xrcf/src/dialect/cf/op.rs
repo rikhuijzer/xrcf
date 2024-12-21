@@ -1,5 +1,4 @@
 use crate::ir::Block;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -29,10 +28,10 @@ pub struct BranchOp {
 
 impl BranchOp {
     pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
-        self.operation().operand(0)
+        self.operation.rd().operand(0)
     }
     pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
-        self.operation().set_operand(0, dest);
+        self.operation.wr().set_operand(0, dest);
     }
 }
 
@@ -53,9 +52,9 @@ impl Op for BranchOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} ", self.operation.name())?;
+        write!(f, "{} ", self.operation.rd().name())?;
         write!(f, "{}", self.dest().expect("dest not set").rd())?;
-        let operands = self.operation().operands().into_iter().skip(1);
+        let operands = self.operation().rd().operands().into_iter().skip(1);
         if 0 < operands.len() {
             write!(f, "(")?;
             for operand in operands {
@@ -83,7 +82,7 @@ impl Parse for BranchOp {
 
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
-            let operands = operation.operands().vec();
+            let operands = operation.rd().operands().vec();
             let mut operands = operands.wr();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;

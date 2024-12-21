@@ -1,8 +1,5 @@
 use crate::convert::RewriteResult;
 use crate::init_subscriber;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
@@ -135,16 +132,16 @@ impl Tester {
     fn verify_core(op: Arc<RwLock<dyn Op>>) {
         let op = op.rd();
         if !op.name().to_string().contains("module") {
-            let parent = op.operation().parent();
+            let parent = op.operation().rd().parent();
             assert!(
-                op.operation().parent().is_some(),
+                op.operation().rd().parent().is_some(),
                 "Parent was not set for:\n{}",
                 op
             );
             let parent = parent.unwrap();
             let operation = op.operation();
             let operation = operation.rd();
-            assert!(parent.index_of(&operation).is_some(),
+            assert!(parent.rd().index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
             for result in operation.results().vec().rd().iter() {
@@ -167,7 +164,7 @@ impl Tester {
     /// whether the op has also a pointer to the parent is not visible.
     pub fn verify(op: Arc<RwLock<dyn Op>>) {
         Self::verify_core(op.clone());
-        let ops = op.ops();
+        let ops = op.rd().ops();
         for op in ops {
             Self::verify(op);
         }

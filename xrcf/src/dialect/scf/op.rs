@@ -1,6 +1,4 @@
 use crate::ir::Block;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
@@ -64,22 +62,22 @@ impl Op for IfOp {
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut ops = vec![];
         if let Some(then) = self.then() {
-            ops.extend(then.ops());
+            ops.extend(then.rd().ops());
         }
         if let Some(els) = self.els() {
-            ops.extend(els.ops());
+            ops.extend(els.rd().ops());
         }
         ops
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let has_results = !self.operation.results().is_empty();
+        let has_results = !self.operation.rd().results().is_empty();
         if has_results {
-            write!(f, "{} = ", self.operation.results())?;
+            write!(f, "{} = ", self.operation.rd().results())?;
         }
-        write!(f, "{} ", self.operation.name())?;
-        write!(f, "{}", self.operation.operands())?;
+        write!(f, "{} ", self.operation.rd().name())?;
+        write!(f, "{}", self.operation.rd().operands())?;
         if has_results {
-            write!(f, " -> ({})", self.operation.results().types())?;
+            write!(f, " -> ({})", self.operation.rd().results().types())?;
         }
         self.then()
             .expect("no `then` region")
@@ -171,8 +169,8 @@ impl Op for YieldOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} ", self.operation.name())?;
-        self.operation.operands().display_with_types(f)?;
+        write!(f, "{} ", self.operation.rd().name())?;
+        self.operation.rd().operands().display_with_types(f)?;
         Ok(())
     }
 }

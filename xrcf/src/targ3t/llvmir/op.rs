@@ -5,10 +5,6 @@ use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::GuardedBlock;
-use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -24,9 +20,7 @@ use std::sync::RwLock;
 
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
-    let value = operand.value();
-    let value = value.rd();
-    match &*operand.value().rd() {
+    match &*operand.rd().value().rd() {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name();
             let name = name.rd();
@@ -60,7 +54,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             op_result.set_name(&name);
             write!(f, "{} {name}", op_result.typ().expect("no type").rd())
         }
-        _ => panic!("Unexpected operand value type for {value}"),
+        _ => panic!(
+            "Unexpected operand value type for {}",
+            operand.rd().value().rd()
+        ),
     }
 }
 
@@ -114,7 +111,7 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        match &*self.operation().operand(0).unwrap().rd().value().rd() {
+        match &*self.operation().rd().operand(0).unwrap().rd().value().rd() {
             Value::Constant(constant) => constant.value().clone(),
             _ => panic!("Unexpected"),
         }
@@ -141,7 +138,7 @@ impl Op for AllocaOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} = ", self.operation().results())?;
+        write!(f, "{} = ", self.operation().rd().results())?;
         write!(f, "{} ", AllocaOp::operation_name())?;
         write!(f, "{}", self.element_type.as_ref().unwrap())?;
         let array_size = self.array_size();
@@ -250,7 +247,7 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "br ")?;
-        display_operands(f, &self.operation().operands())?;
+        display_operands(f, &self.operation().rd().operands())?;
         Ok(())
     }
 }
@@ -268,7 +265,7 @@ pub struct FuncOp {
 
 impl FuncOp {
     fn has_implementation(&self) -> bool {
-        self.operation().region().is_some()
+        self.operation().rd().region().is_some()
     }
 }
 
@@ -380,9 +377,9 @@ impl Op for ModuleOp {
         write!(f, "; ModuleID = '{}'\n", self.module_id)?;
         write!(f, r#"source_filename = "{}""#, self.source_filename)?;
         write!(f, "\n\n")?;
-        if let Some(region) = self.operation().region() {
-            for block in region.blocks().into_iter() {
-                block.display(f, indent)?;
+        if let Some(region) = self.operation().rd().region() {
+            for block in region.rd().blocks().into_iter() {
+                block.rd().display(f, indent)?;
             }
         }
         write!(f, "\n!llvm.module.flags = {}", self.module_flags)?;
@@ -420,7 +417,7 @@ impl Op for PhiOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} = ", self.operation.results())?;
+        write!(f, "{} = ", self.operation.rd().results())?;
         write!(f, "phi ")?;
         let pairs = self.argument_pairs().unwrap();
         assert!(pairs.len() == 2, "Expected two callers");
@@ -485,7 +482,7 @@ impl Op for ReturnOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operands = self.operation().operands();
+        let operands = self.operation().rd().operands();
         let name = Self::operation_name();
         if operands.vec().rd().is_empty() {
             write!(f, "{name} void")
