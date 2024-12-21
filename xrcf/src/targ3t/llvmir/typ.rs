@@ -11,8 +11,9 @@ pub struct ArrayType {
     element_type: Shared<dyn Type>,
 }
 
-impl ArrayType {
-    pub fn from_str(s: &str) -> Self {
+impl std::str::FromStr for ArrayType {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         assert!(s.starts_with("["), "Expected {} to start with [", s);
         todo!("ArrayType not impl")
     }
@@ -69,8 +70,12 @@ impl PointerType {
     pub fn new() -> Self {
         Self {}
     }
-    pub fn from_str(_s: &str) -> Self {
-        Self {}
+}
+
+impl std::str::FromStr for PointerType {
+    type Err = anyhow::Error;
+    fn from_str(_s: &str) -> Result<Self, Self::Err> {
+        Ok(Self {})
     }
 }
 

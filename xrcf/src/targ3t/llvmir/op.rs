@@ -93,7 +93,7 @@ impl Op for AddOp {
         let operation = self.operation().rd();
         write!(f, "{} = add ", operation.results())?;
         display_operands(f, &operation.operands())?;
-        write!(f, "\n")
+        writeln!(f)
     }
 }
 
@@ -327,7 +327,7 @@ impl Op for FuncOp {
         write!(f, ")")?;
 
         let operation = self.operation().rd();
-        display_region_inside_func(f, &*operation, indent)
+        display_region_inside_func(f, &operation, indent)
     }
 }
 
@@ -374,9 +374,9 @@ impl Op for ModuleOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        write!(f, "; ModuleID = '{}'\n", self.module_id)?;
+        writeln!(f, "; ModuleID = '{}'", self.module_id)?;
         write!(f, r#"source_filename = "{}""#, self.source_filename)?;
-        write!(f, "\n\n")?;
+        writeln!(f, "\n")?;
         if let Some(region) = self.operation().rd().region() {
             for block in region.rd().blocks().into_iter() {
                 block.rd().display(f, indent)?;
@@ -517,6 +517,9 @@ impl StoreOp {
     }
     pub fn len(&self) -> Option<usize> {
         self.len
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len() == Some(0)
     }
 }
 

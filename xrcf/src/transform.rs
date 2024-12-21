@@ -43,9 +43,6 @@ impl SinglePass {
             pass: pass.to_string(),
         }
     }
-    pub fn to_string(&self) -> String {
-        self.pass.clone()
-    }
 }
 
 /// A collection of [SinglePass]es.
@@ -173,7 +170,7 @@ impl TransformDispatch for DefaultTransformDispatch {
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
             ConvertSCFToCF::NAME => ConvertSCFToCF::convert(op.clone()),
-            _ => return Err(anyhow::anyhow!("Unknown pass: {}", pass)),
+            _ => Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
     }
 }

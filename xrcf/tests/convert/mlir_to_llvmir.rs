@@ -76,7 +76,7 @@ fn test_add_one() {
     }
     "#};
     let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, &src, Location::caller());
+    Tester::check_lines_contain(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
@@ -119,7 +119,7 @@ fn test_hello_world() {
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
     let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, &src, Location::caller());
+    Tester::check_lines_contain(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_contain(&actual, expected, Location::caller());
@@ -233,7 +233,7 @@ fn test_if_else() {
     !0 = !{i32 2, !"Debug Info Version", i32 3}
     "#};
     let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_exact(&actual, &src, Location::caller());
+    Tester::check_lines_exact(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module);
     Tester::check_lines_exact(&actual, expected, Location::caller());
