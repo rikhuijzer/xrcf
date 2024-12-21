@@ -10,7 +10,6 @@ use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -62,10 +61,10 @@ fn lower_yield_op(
     after: Arc<RwLock<Block>>,
 ) -> Result<Arc<RwLock<dyn Op>>> {
     let operation = op.operation();
-    let var = operation.operand(0).unwrap();
+    let var = operation.rd().operand(0).unwrap();
     let operand = Shared::new(OpOperand::from_block(after).into());
-    operation.set_operand(0, operand);
-    operation.set_operand(1, var);
+    operation.wr().set_operand(0, operand);
+    operation.wr().set_operand(1, var);
     let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
     let new_op = Shared::new(new_op.into());
     Ok(new_op)
@@ -125,7 +124,7 @@ fn move_successors_to_exit_block(
     op: &dialect::scf::IfOp,
     exit_block: Arc<RwLock<Block>>,
 ) -> Result<()> {
-    let if_op_parent = op.operation().parent().expect("Expected parent");
+    let if_op_parent = op.operation().rd().parent().expect("Expected parent");
     let if_op_index = if_op_parent
         .index_of(&op.operation().rd())
         .expect("Expected index");
@@ -234,7 +233,7 @@ fn add_blocks(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<(Arc<RwLock<Block>>, Arc<RwLock<Block>>)> {
-    let results = op.operation().results();
+    let results = op.operation().rd().results();
     let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
     let has_results = !results.is_empty();
@@ -289,7 +288,7 @@ impl Rewrite for IfLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op = op.rd();
-        let parent = op.operation().parent().expect("Expected parent");
+        let parent = op.operation().rd().parent().expect("Expected parent");
         let parent_region = parent.parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
 
@@ -297,7 +296,7 @@ impl Rewrite for IfLowering {
 
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
-        operation.set_operand(0, op.operation().operand(0).clone().unwrap());
+        operation.set_operand(0, op.operation().rd().operand(0).clone().unwrap());
         let then_operand = Shared::new(OpOperand::from_block(then).into());
         operation.set_operand(1, then_operand);
         let els_operand = Shared::new(OpOperand::from_block(els).into());
@@ -307,7 +306,7 @@ impl Rewrite for IfLowering {
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
-        new.rd().operation().set_results(Values::default());
+        new.rd().operation().wr().set_results(Values::default());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

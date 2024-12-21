@@ -14,7 +14,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::IntegerAttr;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -117,7 +116,7 @@ impl PrintLowering {
             operation.set_operand(0, text_addr);
         }
         if set_varargs {
-            let var = op.operation().operand(1);
+            let var = op.operation().rd().operand(1);
             let var = var.expect("expected vararg");
             operation.set_operand(1, var);
         }
@@ -197,12 +196,12 @@ impl PrintLowering {
             let value = Value::BlockArgument(argument);
             let value = Shared::new(value.into());
             let operation = op.operation();
-            operation.set_argument(0, value);
+            operation.wr().set_argument(0, value);
         }
         if set_varargs {
             let value = Value::Variadic;
             let value = Shared::new(value.into());
-            op.operation().set_argument(1, value);
+            op.operation().wr().set_argument(1, value);
         }
         let op = Shared::new(op.into());
         Ok(op)
@@ -213,7 +212,7 @@ impl PrintLowering {
         if !Self::contains_printf(top_level_op.clone()) {
             let ops = top_level_op.ops();
             let op = ops[0].clone();
-            let parent = op.operation().parent().unwrap();
+            let parent = op.operation().rd().parent().unwrap();
             op.insert_before(Self::printf_func_def(parent, set_varargs)?);
         }
         Ok(())
@@ -229,13 +228,13 @@ impl Rewrite for PrintLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op_clone = op.clone();
-        let set_varargs = 1 < op.operation().operands().vec().rd().len();
+        let set_varargs = 1 < op.operation().rd().operands().vec().rd().len();
         let op_rd = op_clone.rd();
         let op_rd = op_rd
             .as_any()
             .downcast_ref::<dialect::experimental::PrintfOp>()
             .unwrap();
-        let parent = op_rd.operation().parent();
+        let parent = op_rd.operation().rd().parent();
         let parent = parent.expect("no parent");
         let (text, len) = PrintLowering::text_constant(&parent, op_rd);
         op_rd.insert_before(text.clone());

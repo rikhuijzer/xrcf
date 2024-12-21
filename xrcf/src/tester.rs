@@ -2,7 +2,6 @@ use crate::convert::RewriteResult;
 use crate::init_subscriber;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
@@ -135,9 +134,9 @@ impl Tester {
     fn verify_core(op: Arc<RwLock<dyn Op>>) {
         let op = op.rd();
         if !op.name().to_string().contains("module") {
-            let parent = op.operation().parent();
+            let parent = op.operation().rd().parent();
             assert!(
-                op.operation().parent().is_some(),
+                op.operation().rd().parent().is_some(),
                 "Parent was not set for:\n{}",
                 op
             );

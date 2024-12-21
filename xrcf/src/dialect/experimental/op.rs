@@ -1,6 +1,5 @@
 use crate::ir::Block;
 use crate::ir::Constant;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -30,7 +29,7 @@ pub struct PrintfOp {
 
 impl PrintfOp {
     pub fn text(&self) -> StringAttr {
-        let operands = self.operation.operand(0);
+        let operands = self.operation.rd().operand(0);
         let operand = operands.expect("no operand");
         let value = operand.rd().value();
         let value = value.rd();
@@ -51,7 +50,7 @@ impl PrintfOp {
         let value = Shared::new(value.into());
         let operand = OpOperand::new(value);
         let operand = Shared::new(operand.into());
-        self.operation.set_operand(0, operand);
+        self.operation.wr().set_operand(0, operand);
     }
 }
 
@@ -69,8 +68,8 @@ impl Op for PrintfOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().name())?;
-        write!(f, "({})", self.operation().operands())?;
+        write!(f, "{}", self.operation().rd().name())?;
+        write!(f, "({})", self.operation().rd().operands())?;
         Ok(())
     }
 }

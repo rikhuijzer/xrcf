@@ -8,7 +8,6 @@ use crate::dialect::func;
 use crate::dialect::func::Call;
 use crate::dialect::func::Func;
 use crate::dialect::llvm;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
@@ -89,11 +88,11 @@ impl Rewrite for FuncLowering {
         let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let operation = op.operation();
         {
-            let name = operation.name();
+            let name = operation.rd().name();
             assert!(name == func::FuncOp::operation_name());
-            operation.set_name(name.clone());
+            operation.wr().set_name(name.clone());
 
-            let parent = operation.parent();
+            let parent = operation.rd().parent();
             assert!(
                 parent.is_some(),
                 "maybe parent was not set during parsing for {name}?",

@@ -4,7 +4,6 @@ use crate::ir::Block;
 use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
-use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -300,7 +299,7 @@ impl OpResult {
         let defining_op = defining_op.rd();
         let mut used_names = vec![];
 
-        let parent = defining_op.operation().parent();
+        let parent = defining_op.operation().rd().parent();
         let parent = parent.expect("defining op has no parent");
         let blocks_preds = parent.predecessors();
         let blocks_preds = blocks_preds.expect("no predecessors");
@@ -308,9 +307,9 @@ impl OpResult {
             used_names.extend(pred.rd().used_names());
         }
 
-        let predecessors = defining_op.operation().predecessors();
+        let predecessors = defining_op.operation().rd().predecessors();
         for predecessor in predecessors.iter() {
-            used_names.extend(predecessor.rd().operation().result_names());
+            used_names.extend(predecessor.rd().operation().rd().result_names());
         }
         generate_new_name(used_names, "%")
     }
@@ -574,7 +573,7 @@ impl Value {
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
-        let ops = op.rd().operation().successors();
+        let ops = op.rd().operation().rd().successors();
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {

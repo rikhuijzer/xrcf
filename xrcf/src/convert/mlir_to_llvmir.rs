@@ -15,7 +15,6 @@ use crate::ir::Constant;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedOperation;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -61,7 +60,7 @@ fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpO
 /// Replace the operands that point to a constant operation by a [Constant].
 fn replace_constant_operands(op: &dyn Op) {
     let operation = op.operation();
-    let operands = operation.operands().vec();
+    let operands = operation.rd().operands().vec();
     let mut operands = operands.wr();
     for i in 0..operands.len() {
         let operand = &operands[i];
@@ -146,7 +145,7 @@ impl Rewrite for BlockLowering {
         if !op.is_func() {
             return Ok(false);
         }
-        let region = op.operation().region();
+        let region = op.operation().rd().region();
         if let Some(region) = region {
             for block in region.rd().blocks().into_iter() {
                 let label_prefix = block.label_prefix();
@@ -178,7 +177,7 @@ impl Rewrite for BranchLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         if op.as_any().is::<dialect::llvm::BranchOp>() {
             // Check whether [MergeLowering] has already removed the operands.
-            Ok(op.operation().operands().into_iter().all(|operand| {
+            Ok(op.operation().rd().operands().into_iter().all(|operand| {
                 let operand = operand.rd();
                 let value = operand.value();
                 let value = value.rd();
@@ -366,8 +365,8 @@ fn determine_argument_pairs(
     let mut argument_pairs = vec![];
     for caller in callers.iter() {
         let caller = caller.rd();
-        let caller_operand = caller.operation().operand(1).unwrap();
-        let caller_block = caller.operation().parent().unwrap();
+        let caller_operand = caller.operation().rd().operand(1).unwrap();
+        let caller_block = caller.operation().rd().parent().unwrap();
         argument_pairs.push((caller_operand, caller_block.clone()));
     }
     argument_pairs
@@ -438,7 +437,9 @@ fn set_phi_result(phi: Arc<RwLock<dyn Op>>, argument: &Arc<RwLock<Value>>) {
         let res = OpResult::new(name, typ, defining_op);
         let new = Value::OpResult(res);
         let new = Shared::new(new.into());
-        operation.set_results(Values::from_vec(vec![new.clone()]));
+        operation
+            .wr()
+            .set_results(Values::from_vec(vec![new.clone()]));
 
         for user in users.iter() {
             let mut user = user.wr();
@@ -493,7 +494,7 @@ fn remove_caller_operands(block: Arc<RwLock<Block>>) {
     let callers = callers.unwrap();
     for caller in callers.iter() {
         let caller = caller.operation();
-        let operands = caller.operands();
+        let operands = caller.rd().operands();
         let operands = operands.vec();
         let mut operands = operands.wr();
         operands.pop();
@@ -511,7 +512,7 @@ impl Rewrite for MergeLowering {
             return Ok(false);
         }
         let operation = op.operation();
-        if operation.region().is_none() {
+        if operation.rd().region().is_none() {
             return Ok(false);
         }
         for block in operation.rd().blocks().into_iter() {
@@ -524,7 +525,7 @@ impl Rewrite for MergeLowering {
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let blocks = op.operation().region().unwrap().rd().blocks();
+        let blocks = op.operation().rd().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
             let block_read = block.rd();
             let has_argument = !block_read.arguments().vec().rd().is_empty();

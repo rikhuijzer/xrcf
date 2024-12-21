@@ -32,7 +32,6 @@ pub use op_operand::GuardedOpOperand;
 pub use op_operand::OpOperand;
 pub use op_operand::OpOperands;
 pub use operation::display_region_inside_func;
-pub use operation::GuardedOperation;
 pub use operation::Operation;
 pub use operation::OperationName;
 pub use operation::RenameBareToPercent;
