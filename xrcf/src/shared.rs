@@ -20,10 +20,15 @@ pub type Shared<T> = Arc<RwLock<T>>;
 
 /// A convenience trait around [RwLock].
 ///
-/// This trait makes using [RwLock] less verbose. Is this trait pretty? No. But
-/// in the end it's just a convenience trait that could easily be removed later.
-/// It does add some cognitive load for the read, but compared to
-/// `try_read().unwrap()` it saves a **lot** of typing.
+/// This trait makes using [RwLock] less verbose. It has two benefits. One is
+/// obviously that it saves a lot of typing. Another one is that one-liners are
+/// particularly powerful in Rust due to when variables are freed, see
+/// <https://xrcf.org/blog/iterators/> for more information.
+///
+/// Regarding the lost access to error handling (now it just always crashes),
+/// that's for now the default behavior until the project starts to support
+/// multithreading. Until that feature is introduced, any blocking should crash
+/// since it will hang anyway.
 ///
 /// # Example
 ///
