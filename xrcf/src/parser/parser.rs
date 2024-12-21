@@ -96,7 +96,7 @@ pub fn default_dispatch<T: ParserDispatch>(
         "scf.yield" => <scf::YieldOp as Parse>::op(parser, parent),
         _ => {
             let msg = parser.error(&name, &format!("Unknown operation: {}", name.lexeme));
-            return Err(anyhow::anyhow!(msg));
+            Err(anyhow::anyhow!(msg))
         }
     }
 }
