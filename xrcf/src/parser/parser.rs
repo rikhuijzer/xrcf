@@ -14,7 +14,6 @@ use crate::ir::BooleanAttr;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
@@ -185,7 +184,7 @@ fn replace_block_labels(block: Arc<RwLock<Block>>) {
     };
     let parent = block.parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
-    for predecessor in parent.blocks().into_iter() {
+    for predecessor in parent.rd().blocks().into_iter() {
         for op in predecessor.rd().ops().rd().iter() {
             for operand in op.rd().operation().operands().into_iter() {
                 let mut operand = operand.wr();
@@ -326,7 +325,7 @@ impl<T: ParserDispatch> Parser<T> {
         self.expect(TokenKind::LBrace)?;
         let blocks = vec![];
         let blocks = Shared::new(blocks.into());
-        region.set_blocks(Blocks::new(blocks.clone()));
+        region.wr().set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.wr();
@@ -412,7 +411,7 @@ impl<T: ParserDispatch> Parser<T> {
             module_operation.set_region(Some(module_region.clone()));
             let module_op = ModuleOp::from_operation(module_operation);
             let module_op = Shared::new(module_op.into());
-            module_region.set_parent(Some(module_op.clone()));
+            module_region.wr().set_parent(Some(module_op.clone()));
             module_op
         };
         Ok(op)

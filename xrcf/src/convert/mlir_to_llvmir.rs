@@ -16,7 +16,6 @@ use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -149,8 +148,7 @@ impl Rewrite for BlockLowering {
         }
         let region = op.operation().region();
         if let Some(region) = region {
-            let blocks = region.blocks();
-            for block in blocks.into_iter() {
+            for block in region.rd().blocks().into_iter() {
                 let label_prefix = block.label_prefix();
                 if label_prefix == "^" {
                     return Ok(true);
@@ -526,7 +524,7 @@ impl Rewrite for MergeLowering {
         Ok(false)
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let blocks = op.operation().region().unwrap().blocks();
+        let blocks = op.operation().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
             let block_read = block.rd();
             let has_argument = !block_read.arguments().vec().rd().is_empty();

@@ -8,7 +8,6 @@ use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -381,7 +380,7 @@ impl Op for ModuleOp {
         write!(f, r#"source_filename = "{}""#, self.source_filename)?;
         write!(f, "\n\n")?;
         if let Some(region) = self.operation().region() {
-            for block in region.blocks().into_iter() {
+            for block in region.rd().blocks().into_iter() {
                 block.display(f, indent)?;
             }
         }

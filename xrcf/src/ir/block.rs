@@ -2,7 +2,6 @@ use crate::ir::BlockArgumentName;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::Region;
@@ -323,8 +322,9 @@ impl Block {
     pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
         self.parent()
             .expect("no parent")
+            .rd()
             .blocks()
-            .splice(self, region.blocks());
+            .splice(self, region.rd().blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
         self.ops.wr().insert(index, op);

@@ -4,7 +4,6 @@ use crate::ir::Block;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -316,7 +315,7 @@ impl FuncOp {
             write!(f, " attributes {attributes}")?;
         }
         if let Some(region) = op.operation().region() {
-            region.display(f, indent)?;
+            region.rd().display(f, indent)?;
         }
         Ok(())
     }
@@ -404,9 +403,9 @@ impl<T: ParserDispatch> Parser<T> {
             let region = parser.parse_region(op.clone())?;
             let op_rd = op.rd();
             op_rd.operation().set_region(Some(region.clone()));
-            region.set_parent(Some(op.clone()));
+            region.wr().set_parent(Some(op.clone()));
 
-            let block = region.blocks().into_iter().next().unwrap();
+            let block = region.rd().blocks().into_iter().next().unwrap();
             for argument in arguments.into_iter() {
                 argument.set_parent(Some(block.clone()));
             }

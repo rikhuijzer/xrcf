@@ -1,6 +1,5 @@
 use crate::ir::Block;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
@@ -64,10 +63,10 @@ impl Op for IfOp {
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut ops = vec![];
         if let Some(then) = self.then() {
-            ops.extend(then.ops());
+            ops.extend(then.rd().ops());
         }
         if let Some(els) = self.els() {
-            ops.extend(els.ops());
+            ops.extend(els.rd().ops());
         }
         ops
     }

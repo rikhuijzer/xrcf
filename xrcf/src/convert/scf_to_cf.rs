@@ -11,7 +11,6 @@ use crate::ir::BlockName;
 use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOperation;
-use crate::ir::GuardedRegion;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -147,7 +146,7 @@ fn add_merge_block(
     results: Values,
     exit: Arc<RwLock<Block>>,
 ) -> Result<(Arc<RwLock<Block>>, Values)> {
-    let unset_block = parent_region.add_empty_block_before(exit.clone());
+    let unset_block = parent_region.rd().add_empty_block_before(exit.clone());
     let merge = unset_block.set_parent(Some(parent_region.clone()));
     let merge_block_arguments = as_block_arguments(results, merge.clone())?;
     merge.set_arguments(merge_block_arguments.clone());
@@ -169,7 +168,7 @@ fn add_exit_block(
     op: &dialect::scf::IfOp,
     parent_region: Arc<RwLock<Region>>,
 ) -> Result<Arc<RwLock<Block>>> {
-    let unset_block = parent_region.add_empty_block();
+    let unset_block = parent_region.rd().add_empty_block();
     let exit = unset_block.set_parent(Some(parent_region.clone()));
     exit.set_label(BlockName::Unset);
     move_successors_to_exit_block(op, exit.clone())?;
@@ -241,12 +240,12 @@ fn add_blocks(
     let has_results = !results.is_empty();
 
     let then_region = op.then().expect("Expected `then` region");
-    let then = then_region.blocks().into_iter().next().unwrap();
+    let then = then_region.rd().blocks().into_iter().next().unwrap();
     then.set_label(BlockName::Unset);
     exit.inline_region_before(then_region.clone());
 
     let else_region = op.els().expect("Expected `else` region");
-    let els = else_region.blocks().into_iter().next().unwrap();
+    let els = else_region.rd().blocks().into_iter().next().unwrap();
     els.set_label(BlockName::Unset);
     exit.inline_region_before(else_region.clone());
 

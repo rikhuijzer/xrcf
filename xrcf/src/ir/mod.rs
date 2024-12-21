@@ -37,7 +37,6 @@ pub use operation::Operation;
 pub use operation::OperationName;
 pub use operation::RenameBareToPercent;
 pub use operation::VariableRenamer;
-pub use region::GuardedRegion;
 pub use region::Region;
 pub use typ::APInt;
 pub use typ::AnyType;

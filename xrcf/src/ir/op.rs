@@ -1,7 +1,6 @@
 use crate::convert::RewriteResult;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedRegion;
 use crate::ir::Operation;
 use crate::ir::OperationName;
 use crate::ir::Region;
@@ -144,7 +143,7 @@ pub trait Op {
     /// operation contains two regions: the "then" region and the "else" region.
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         if let Some(region) = self.region() {
-            region.ops()
+            region.rd().ops()
         } else {
             vec![]
         }
