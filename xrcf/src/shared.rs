@@ -3,7 +3,7 @@ use std::sync::RwLock;
 use std::sync::RwLockReadGuard;
 use std::sync::RwLockWriteGuard;
 
-/// A convenience type alias for [Arc<RwLock<T>>].
+/// A convenience type alias for `Arc<RwLock<T>>`.
 ///
 /// # Example
 ///
