@@ -46,7 +46,7 @@ jobs:
           # Deny warnings.
           RUSTDOCFLAGS="-D warnings" cargo doc
 
-      - run: cargo clippy
+      - run: cargo clippy -- -D warnings
 
   typos:
     runs-on: ubuntu-22.04
