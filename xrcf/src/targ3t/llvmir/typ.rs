@@ -1,5 +1,6 @@
 use crate::ir::Type;
 use crate::ir::Types;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;

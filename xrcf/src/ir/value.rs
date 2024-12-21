@@ -77,7 +77,7 @@ impl BlockArgument {
         let mut used_names = vec![];
         for argument in parent.rd().arguments().into_iter() {
             if let Value::BlockArgument(argument) = &*argument.rd() {
-                if std::ptr::eq(self, &argument) {
+                if std::ptr::eq(self, argument) {
                     break;
                 }
             };
@@ -608,7 +608,7 @@ impl Display for Value {
 /// operation result.
 #[derive(Clone)]
 pub struct Values {
-    values: Shared<Vec<Arc<RwLock<Value>>>>,
+    values: Shared<Vec<Shared<Value>>>,
 }
 
 impl IntoIterator for Values {
@@ -626,7 +626,7 @@ impl Values {
             values: Shared::new(values.into()),
         }
     }
-    pub fn vec(&self) -> Shared<Vec<Arc<RwLock<Value>>>> {
+    pub fn vec(&self) -> Shared<Vec<Shared<Value>>> {
         self.values.clone()
     }
     pub fn names(&self) -> Vec<String> {

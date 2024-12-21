@@ -5,6 +5,7 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
 use crate::ir::Users;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;

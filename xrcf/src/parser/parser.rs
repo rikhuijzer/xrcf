@@ -27,7 +27,6 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 /// Interface to add custom operations to the parser.
 ///
@@ -392,8 +391,7 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             }
             module_region
-                .write()
-                .unwrap()
+                .wr()
                 .blocks()
                 .vec()
                 .try_write()

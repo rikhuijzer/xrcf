@@ -563,8 +563,7 @@ impl Parse for GlobalOp {
             if let Some(attribute) = LinkageAttr::parse(parser) {
                 attributes
                     .map()
-                    .write()
-                    .unwrap()
+                    .wr()
                     .insert("linkage".to_string(), Arc::new(attribute));
             }
         }
@@ -578,8 +577,7 @@ impl Parse for GlobalOp {
         if let Some(attribute) = StringAttr::parse(parser) {
             attributes
                 .map()
-                .write()
-                .unwrap()
+                .wr()
                 .insert("symbol_name".to_string(), Arc::new(attribute));
         }
         if parser.check(TokenKind::LParen) {
@@ -587,8 +585,7 @@ impl Parse for GlobalOp {
             if let Some(attribute) = AnyAttr::parse(parser) {
                 attributes
                     .map()
-                    .write()
-                    .unwrap()
+                    .wr()
                     .insert("value".to_string(), Arc::new(attribute));
             }
         }

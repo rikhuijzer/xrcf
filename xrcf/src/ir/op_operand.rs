@@ -72,7 +72,7 @@ impl Display for OpOperand {
 
 #[derive(Clone)]
 pub struct OpOperands {
-    operands: Shared<Vec<Arc<RwLock<OpOperand>>>>,
+    operands: Shared<Vec<Shared<OpOperand>>>,
 }
 
 impl IntoIterator for OpOperands {
@@ -84,7 +84,7 @@ impl IntoIterator for OpOperands {
 }
 
 impl OpOperands {
-    pub fn vec(&self) -> Shared<Vec<Arc<RwLock<OpOperand>>>> {
+    pub fn vec(&self) -> Shared<Vec<Shared<OpOperand>>> {
         self.operands.clone()
     }
     pub fn from_vec(operands: Vec<Shared<OpOperand>>) -> Self {

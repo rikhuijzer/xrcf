@@ -3,6 +3,7 @@ use crate::init_subscriber;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
@@ -10,8 +11,6 @@ use crate::Passes;
 use crate::TransformOptions;
 use std::cmp::max;
 use std::panic::Location;
-use std::sync::Arc;
-use std::sync::RwLock;
 use tracing::info;
 
 pub struct Tester;

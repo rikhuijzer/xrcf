@@ -152,9 +152,8 @@ fn add_merge_block(
     merge_op.set_dest(operand);
 
     let merge_op = Shared::new(merge_op.into());
-    merge
-        .wr()
-        .set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
+    let ops = vec![merge_op.clone()];
+    merge.wr().set_ops(Shared::new(ops.into()));
     Ok((merge, merge_block_arguments))
 }
 

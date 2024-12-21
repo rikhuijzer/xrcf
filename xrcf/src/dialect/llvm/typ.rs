@@ -188,7 +188,7 @@ impl Type for VariadicType {
 }
 
 impl TypeParse for LLVM {
-    fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
+    fn parse_type(src: &str) -> Result<Shared<dyn Type>> {
         if src.starts_with("!llvm.array") {
             return Ok(Shared::new(ArrayType::parse_str(src).into()));
         }
