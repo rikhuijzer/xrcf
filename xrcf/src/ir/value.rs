@@ -561,30 +561,20 @@ impl Value {
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };
-        let successors = parent.successors().unwrap();
-        let parent = parent.rd();
-        let ops = parent.ops();
-        let mut ops = ops.rd().clone();
-        for successor in successors.iter() {
-            let current_ops = successor.ops();
-            let current_ops = current_ops.rd().clone();
-            ops.extend(current_ops);
+        let mut ops = parent.rd().ops().rd().clone();
+        for successor in parent.successors().unwrap().iter() {
+            ops.extend(successor.ops().rd().clone());
         }
         self.find_users(&ops)
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
-        let op = if op.is_some() {
+        let op = if op_res.defining_op().is_some() {
             op.unwrap()
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
-        println!("here");
-        let op = op.rd();
-        println!("op: {}", op);
-
-        let ops = op.operation().successors();
-        println!("ops.len: {}", ops.len());
+        let ops = op.rd().operation().successors();
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {
@@ -686,9 +676,8 @@ impl Values {
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         let values = self.values.rd();
         for value in values.iter() {
-            let mut value = value.wr();
             let name = value.name().unwrap();
-            value.set_name(&renamer.rename(&name));
+            value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
     }
@@ -696,15 +685,16 @@ impl Values {
         self.len() == 0
     }
     pub fn types(&self) -> Types {
-        let values = self.values.rd();
-        let types = values
+        let types = self
+            .values
+            .rd()
             .iter()
             .map(|value| value.typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
     pub fn update_types(&mut self, types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
-        let values = self.values.rd();
+        let values = self.values.rd().clone().into_iter();
         if values.len() != types.len() {
             return Err(anyhow::anyhow!(
                 "Expected {} types, but got {}",
@@ -712,9 +702,8 @@ impl Values {
                 types.len()
             ));
         }
-        for (i, value) in values.iter().enumerate() {
-            let mut container = value.wr();
-            container.set_type(types[i].clone());
+        for (i, value) in values.enumerate() {
+            value.wr().set_type(types[i].clone());
         }
         Ok(())
     }
@@ -726,10 +715,8 @@ impl Values {
     /// Calling this on block arguments (like function arguments) will panic since
     /// block arguments do not specify a defining op.
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
-        let results = self.values.rd();
-        for result in results.iter() {
-            let mut mut_result = result.wr();
-            match &mut *mut_result {
+        for result in self.values.rd().iter() {
+            match &mut *result.wr() {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
                 }
@@ -755,12 +742,9 @@ impl Values {
     /// To modify `operation.operand_types()`, call this method on the
     /// `operation`s that define the operands.
     pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
-        let values = self.values.rd();
-        for value in values.iter() {
-            let mut value = value.wr();
+        for value in self.values.rd().iter() {
             let typ = value.typ().unwrap();
-            let typ = T::convert_type(&typ)?;
-            value.set_type(typ);
+            value.wr().set_type(T::convert_type(&typ)?);
         }
         Ok(())
     }
@@ -885,8 +869,7 @@ impl<T: ParserDispatch> Parser<T> {
         operation: &mut Operation,
     ) -> Result<UnsetOpResults> {
         let results = self.parse_op_results(token_kind)?;
-        let values = results.values();
-        operation.set_results(values.clone());
+        operation.set_results(results.values().clone());
         Ok(results)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`, or `(i64, !llvm.ptr)`.
