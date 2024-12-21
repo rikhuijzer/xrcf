@@ -27,6 +27,8 @@ use crate::ir::Values;
 use crate::parser::scanner::Scanner;
 use crate::parser::token::Token;
 use crate::parser::token::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -113,7 +115,7 @@ pub fn default_parse_type<T: ParserDispatch>(
     if parser.check(TokenKind::IntType) {
         let typ = parser.advance();
         let typ = IntegerType::from_str(&typ.lexeme);
-        return Ok(Arc::new(RwLock::new(typ)));
+        return Ok(Shared::new(typ.into()));
     }
     let text = parser.parse_type_text()?;
     if text.is_empty() {
@@ -176,33 +178,22 @@ enum Dialects {
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
-    let label = block.label();
-    let label = label.try_read().unwrap();
-    let label = match &*label {
+    let label = match &*block.label().rd() {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
         BlockName::Unset => return,
     };
-    let parent = block.parent().expect("No parent");
+    let parent = block.parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
-    let predecessors = parent.blocks();
-    for predecessor in predecessors.into_iter() {
-        let predecessor = predecessor.try_read().unwrap();
-        let ops = predecessor.ops();
-        let ops = ops.try_read().unwrap();
-        for op in ops.iter() {
-            let op = op.try_read().unwrap();
-            let operands = op.operation().operands().vec();
-            let operands = operands.try_read().unwrap();
-            for operand in operands.iter() {
-                let mut operand = operand.try_write().unwrap();
-                let value = operand.value();
-                let value = value.try_read().unwrap();
-                if let Value::BlockLabel(current_label) = &*value {
-                    if current_label.name() == label {
+    for predecessor in parent.blocks().into_iter() {
+        for op in predecessor.rd().ops().rd().iter() {
+            for operand in op.rd().operation().operands().into_iter() {
+                let mut operand = operand.wr();
+                if let Value::BlockLabel(curr) = &*operand.value().rd() {
+                    if curr.name() == label {
                         let block_ptr = BlockPtr::new(block.clone());
                         let block_ptr = Value::BlockPtr(block_ptr);
-                        let block_ptr = Arc::new(RwLock::new(block_ptr));
+                        let block_ptr = Shared::new(block_ptr.into());
                         operand.set_value(block_ptr.clone());
                     }
                 }
@@ -292,14 +283,13 @@ impl<T: ParserDispatch> Parser<T> {
         };
 
         let ops = vec![];
-        let ops = Arc::new(RwLock::new(ops));
-        let label = Arc::new(RwLock::new(label));
+        let ops = Shared::new(ops.into());
+        let label = Shared::new(label.into());
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
-        let block = Arc::new(RwLock::new(block));
+        let block = Shared::new(block.into());
         replace_block_labels(block.clone());
-        for argument in arguments.vec().try_read().unwrap().iter() {
-            let mut argument = argument.try_write().unwrap();
-            if let Value::BlockArgument(arg) = &mut *argument {
+        for argument in arguments.vec().rd().iter() {
+            if let Value::BlockArgument(arg) = &mut *argument.wr() {
                 arg.set_parent(Some(block.clone()));
             } else {
                 panic!("Expected a block argument");
@@ -308,17 +298,14 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            let mut ops = ops.write().unwrap();
-            ops.push(op.clone());
+            ops.wr().push(op.clone());
         }
-        if ops.read().unwrap().is_empty() {
+        if ops.rd().is_empty() {
             let token = self.peek();
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        let ops = block.ops();
-        let ops = ops.try_read().unwrap();
-        for op in ops.iter() {
+        for op in block.ops().rd().iter() {
             op.operation().set_parent(Some(block.clone()));
         }
         Ok(block)
@@ -335,14 +322,14 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
-        let region = Arc::new(RwLock::new(region));
+        let region = Shared::new(region.into());
         self.expect(TokenKind::LBrace)?;
         let blocks = vec![];
-        let blocks = Arc::new(RwLock::new(blocks));
+        let blocks = Shared::new(blocks.into());
         region.set_blocks(Blocks::new(blocks.clone()));
         while !self.is_region_end() {
             let block = self.parse_block(Some(region.clone()))?;
-            let mut blocks = blocks.try_write().unwrap();
+            let mut blocks = blocks.wr();
             blocks.push(block);
         }
         self.expect(TokenKind::RBrace)?;
@@ -386,14 +373,14 @@ impl<T: ParserDispatch> Parser<T> {
             parse_op: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
-        let opp = op.clone();
-        let opp = opp.read().unwrap();
-        let casted = opp.as_any().downcast_ref::<ModuleOp>();
+        let op_rd = op.clone();
+        let op_rd = op_rd.rd();
+        let casted = op_rd.as_any().downcast_ref::<ModuleOp>();
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
         } else {
             let module_region = Region::default();
-            let module_region = Arc::new(RwLock::new(module_region));
+            let module_region = Shared::new(module_region.into());
             let mut ops = vec![op.clone()];
 
             if parser.peek_op() {
@@ -402,14 +389,13 @@ impl<T: ParserDispatch> Parser<T> {
                     ops.push(op.clone());
                 }
             }
-            let ops = Arc::new(RwLock::new(ops));
+            let ops = Shared::new(ops.into());
             let arguments = Values::default();
-            let label = Arc::new(RwLock::new(BlockName::Unnamed));
+            let label = Shared::new(BlockName::Unnamed.into());
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
-            let block = Arc::new(RwLock::new(block));
+            let block = Shared::new(block.into());
             {
-                let ops = ops.read().unwrap();
-                for child_op in ops.iter() {
+                for child_op in ops.rd().iter() {
                     child_op.operation().set_parent(Some(block.clone()));
                 }
             }
@@ -425,7 +411,7 @@ impl<T: ParserDispatch> Parser<T> {
             module_operation.set_name(ModuleOp::operation_name());
             module_operation.set_region(Some(module_region.clone()));
             let module_op = ModuleOp::from_operation(module_operation);
-            let module_op = Arc::new(RwLock::new(module_op));
+            let module_op = Shared::new(module_op.into());
             module_region.set_parent(Some(module_op.clone()));
             module_op
         };

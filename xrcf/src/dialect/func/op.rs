@@ -19,6 +19,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -43,26 +45,27 @@ pub trait Call: Op {
     fn varargs(&self) -> Option<Arc<RwLock<dyn Type>>>;
     fn set_varargs(&mut self, varargs: Option<Arc<RwLock<dyn Type>>>);
     fn display_call_op(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().rd();
         let results = operation.results();
-        let has_results = !results.vec().try_read().unwrap().is_empty();
+        let has_results = !results.vec().rd().is_empty();
         if has_results {
-            write!(f, "{} = ", operation.results())?;
+            write!(f, "{} = ", results)?;
         }
         write!(f, "{}", operation.name())?;
         write!(f, " {}", self.identifier().unwrap())?;
         write!(f, "({})", operation.operands())?;
         if let Some(varargs) = self.varargs() {
-            let varargs = varargs.try_read().unwrap();
-            write!(f, " vararg({})", varargs)?;
+            write!(f, " vararg({})", varargs.rd())?;
         }
         write!(f, " : ")?;
         write!(f, "({})", operation.operand_types())?;
         write!(f, " -> ")?;
         if has_results {
-            let result_type = operation.result_type(0).expect("no result type");
-            let result_type = result_type.try_read().unwrap();
-            write!(f, "{}", result_type)?;
+            write!(
+                f,
+                "{}",
+                operation.result_type(0).expect("no result type").rd()
+            )?;
         } else {
             write!(f, "()")?;
         }
@@ -114,7 +117,7 @@ pub trait Call: Op {
 
         // (i32) or (!llvm.ptr, i32)
         parser.expect(TokenKind::LParen)?;
-        if !operands.vec().try_read().unwrap().is_empty() {
+        if !operands.vec().rd().is_empty() {
             parser.parse_types_for_op_operands(operands)?;
         }
         parser.expect(TokenKind::RParen)?;
@@ -131,7 +134,7 @@ pub trait Call: Op {
         let mut op = O::from_operation(operation);
         op.set_identifier(identifier);
         op.set_varargs(varargs);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -210,7 +213,7 @@ pub trait Func: Op {
     fn set_sym_visibility(&mut self, visibility: Option<String>) {
         if let Some(visibility) = visibility {
             let operation = self.operation();
-            let operation = operation.try_write().unwrap();
+            let operation = operation.wr();
             let attributes = operation.attributes();
             let attribute = StringAttr::from_str(&visibility);
             let attribute = Arc::new(attribute);
@@ -218,10 +221,7 @@ pub trait Func: Op {
         }
     }
     fn arguments(&self) -> Result<Values> {
-        let operation = self.operation();
-        let operation = operation.read().unwrap();
-        let arguments = operation.arguments();
-        Ok(arguments.clone())
+        Ok(self.operation().rd().arguments().clone())
     }
     fn return_types(&self) -> Vec<Arc<RwLock<dyn Type>>> {
         self.operation().results().types().vec()
@@ -247,7 +247,7 @@ pub struct FuncOp {
 impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>) -> UnsetOp {
-        let read = op.try_read().unwrap();
+        let read = op.rd();
         let ops = read.ops();
         if ops.is_empty() {
             let operation = self.operation();
@@ -256,16 +256,15 @@ impl FuncOp {
                 panic!("Expected region to be empty");
             }
             let ops = vec![op.clone()];
-            let ops = Arc::new(RwLock::new(ops));
+            let ops = Shared::new(ops.into());
             let region = Region::default();
             let without_parent = region.add_empty_block();
-            let region = Arc::new(RwLock::new(region));
+            let region = Shared::new(region.into());
             let block = without_parent.set_parent(Some(region.clone()));
             block.set_ops(ops);
             operation.set_region(Some(region));
         } else {
-            let last = ops.last().unwrap();
-            last.insert_after(op.clone());
+            ops.last().unwrap().insert_after(op.clone());
         }
         UnsetOp::new(op.clone())
     }
@@ -300,14 +299,12 @@ impl FuncOp {
         f: &mut Formatter<'_>,
         indent: i32,
     ) -> std::fmt::Result {
-        let name = op.operation().try_read().unwrap().name();
-        write!(f, "{name} ")?;
+        write!(f, "{} ", op.operation().rd().name())?;
         if let Some(visibility) = FuncOp::display_visibility(op) {
             write!(f, "{visibility} ")?;
         }
         write!(f, "{identifier}(")?;
-        let arguments = op.operation().arguments();
-        write!(f, "{}", arguments)?;
+        write!(f, "{}", op.operation().arguments())?;
         write!(f, ")")?;
         let operation = op.operation();
         let result_types = operation.results().types();
@@ -318,8 +315,7 @@ impl FuncOp {
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        let region = op.operation().region();
-        if let Some(region) = region {
+        if let Some(region) = op.operation().region() {
             region.display(f, indent)?;
         }
         Ok(())
@@ -330,8 +326,7 @@ impl FuncOp {
     ) -> Option<String> {
         if expected_name == &FuncOp::operation_name() {
             if parser.check(TokenKind::BareIdentifier) {
-                let token = parser.advance();
-                let sym_visibility = token.lexeme.clone();
+                let sym_visibility = parser.advance().lexeme.clone();
                 return Some(sym_visibility);
             }
         }
@@ -380,7 +375,7 @@ impl<T: ParserDispatch> Parser<T> {
             while self.check(TokenKind::IntType) {
                 let typ = self.advance();
                 let typ = AnyType::new(&typ.lexeme);
-                let typ = Arc::new(RwLock::new(typ));
+                let typ = Shared::new(typ.into());
                 result_types.push(typ);
             }
         }
@@ -403,20 +398,17 @@ impl<T: ParserDispatch> Parser<T> {
         let mut op = F::from_operation(operation);
         op.set_identifier(identifier);
         op.set_sym_visibility(visibility);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
             let region = parser.parse_region(op.clone())?;
-            let op_rd = op.try_read().unwrap();
+            let op_rd = op.rd();
             op_rd.operation().set_region(Some(region.clone()));
             region.set_parent(Some(op.clone()));
 
-            {
-                let blocks = region.blocks();
-                let block = blocks.into_iter().next().unwrap();
-                for argument in arguments.into_iter() {
-                    argument.set_parent(Some(block.clone()));
-                }
+            let block = region.blocks().into_iter().next().unwrap();
+            for argument in arguments.into_iter() {
+                argument.set_parent(Some(block.clone()));
             }
         }
 
@@ -443,14 +435,12 @@ impl ReturnOp {
         let operation = op.operation();
         let name = operation.name();
         write!(f, "{name}")?;
-        let operands = operation.operands().vec();
-        let operands = operands.try_read().unwrap();
-        if !operands.is_empty() {
-            for operand in operands.iter() {
-                write!(f, " {}", operand.read().unwrap())?;
+        let operands = operation.operands().into_iter();
+        if operands.len() != 0 {
+            for operand in operands {
+                write!(f, " {}", operand.rd())?;
             }
-            let result_types = operation.results().types();
-            write!(f, " : {}", result_types)?;
+            write!(f, " : {}", operation.results().types())?;
         }
         Ok(())
     }
@@ -489,11 +479,11 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Colon)?;
             let return_type = self.expect(TokenKind::IntType)?;
             let return_type = IntegerType::from_str(&return_type.lexeme);
-            let result_type = Arc::new(RwLock::new(return_type));
+            let result_type = Shared::new(return_type.into());
             operation.set_anonymous_result(result_type)?;
         }
         let op = O::from_operation(operation);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

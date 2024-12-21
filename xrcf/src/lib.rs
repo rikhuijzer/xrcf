@@ -43,6 +43,7 @@ pub mod convert;
 pub mod dialect;
 pub mod ir;
 pub mod parser;
+pub mod shared;
 pub mod targ3t;
 #[cfg(feature = "test-utils")]
 pub mod tester;

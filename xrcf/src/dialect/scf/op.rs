@@ -9,6 +9,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -79,13 +81,15 @@ impl Op for IfOp {
         if has_results {
             write!(f, " -> ({})", self.operation.results().types())?;
         }
-        let then = self.then.clone().expect("Expected `then` region");
-        let then = then.try_read().unwrap();
-        then.display(f, indent)?;
-        let els = self.els.clone().expect("Expected `else` region");
-        let els = els.try_read().unwrap();
+        self.then()
+            .expect("no `then` region")
+            .rd()
+            .display(f, indent)?;
         write!(f, " else")?;
-        els.display(f, indent)?;
+        self.els()
+            .expect("no `else` region")
+            .rd()
+            .display(f, indent)?;
         Ok(())
     }
 }
@@ -118,13 +122,13 @@ impl Parse for IfOp {
             parser.expect(TokenKind::RParen)?;
         }
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = IfOp {
             operation,
             then: None,
             els: None,
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let then = parser.parse_region(op.clone())?;
         let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
         if else_keyword.lexeme() != "else" {
@@ -132,7 +136,7 @@ impl Parse for IfOp {
         }
         let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
-        let mut op_write = op_write.try_write().unwrap();
+        let mut op_write = op_write.wr();
         op_write.then = Some(then);
         op_write.els = Some(els);
         results.set_defining_op(op.clone());
@@ -186,9 +190,9 @@ impl Parse for YieldOp {
         parser.expect(TokenKind::Colon)?;
         parser.parse_type_for_op_operand(operand)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = YieldOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

@@ -17,6 +17,8 @@ use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
+use xrcf::shared::Shared;
+use xrcf::shared::SharedExt;
 
 /// The token kind used for variables in ArnoldC.
 ///
@@ -150,12 +152,11 @@ impl Op for BeginMainOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation.try_read().unwrap();
+        let operation = self.operation.rd();
         write!(f, "{} ", operation.name())?;
         let region = operation.region().unwrap();
-        let region = region.try_read().unwrap();
         write!(f, "()")?;
-        region.display(f, indent)?;
+        region.rd().display(f, indent)?;
         Ok(())
     }
 }
@@ -171,13 +172,13 @@ impl Parse for BeginMainOp {
         let name = BeginMainOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = BeginMainOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let region = parser.parse_region(op.clone())?;
-        let mut operation = operation.write().unwrap();
+        let mut operation = operation.wr();
         operation.set_region(Some(region.clone()));
         Ok(op)
     }
@@ -226,12 +227,12 @@ impl Parse for CallOp {
         let identifier = identifier.lexeme.clone();
         parser.expect(TokenKind::LParen)?;
         parser.expect(TokenKind::RParen)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CallOp {
             operation: operation.clone(),
             identifier: Some(identifier),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -254,7 +255,7 @@ impl Op for DeclareIntOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.operation().read().unwrap().results())?;
+        write!(f, " {}", self.operation().rd().results())?;
         Ok(())
     }
 }
@@ -269,12 +270,12 @@ impl Parse for DeclareIntOp {
         let name = DeclareIntOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = DeclareIntOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         result.set_defining_op(Some(op.clone()));
         let typ = IntegerType::new(16);
-        let typ = Arc::new(RwLock::new(typ));
+        let typ = Shared::new(typ.into());
         result.set_typ(typ);
         Ok(op)
     }
@@ -334,13 +335,13 @@ impl Parse for IfOp {
         let name = IfOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
         parser.parse_op_operand_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = IfOp {
             operation: operation.clone(),
             then: None,
             els: None,
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         let then = parser.parse_region(op.clone())?;
         let else_keyword = parser.expect(TokenKind::BareIdentifier)?;
         if else_keyword.lexeme != "BULLSHIT" {
@@ -348,7 +349,7 @@ impl Parse for IfOp {
         }
         let els = parser.parse_region(op.clone())?;
         let op_write = op.clone();
-        let mut op_write = op_write.try_write().unwrap();
+        let mut op_write = op_write.wr();
         op_write.then = Some(then);
         op_write.els = Some(els);
         Ok(op)
@@ -394,7 +395,7 @@ impl Op for PrintOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
-        write!(f, " {}", self.text().try_read().unwrap())?;
+        write!(f, " {}", self.text().rd())?;
         Ok(())
     }
 }
@@ -408,13 +409,13 @@ impl Parse for PrintOp {
         operation.set_parent(parent.clone());
         let name = PrintOp::operation_name();
         parser.parse_arnold_operation_name_into(name, &mut operation)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let text = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
         let mut op = PrintOp {
             operation: operation.clone(),
         };
         op.set_text(text);
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -458,10 +459,10 @@ impl Parse for SetInitialValueOp {
             parser.parse_arnold_constant_into(&mut operation)?;
         }
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = SetInitialValueOp {
             operation: operation.clone(),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }

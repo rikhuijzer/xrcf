@@ -11,6 +11,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -30,24 +32,25 @@ impl PrintfOp {
     pub fn text(&self) -> StringAttr {
         let operands = self.operation.operand(0);
         let operand = operands.expect("no operand");
-        let operand = operand.try_read().unwrap();
-        let value = operand.value();
-        let value = value.try_read().unwrap();
-        let text = match &*value {
-            Value::Constant(constant) => constant,
+        let value = operand.rd().value();
+        let value = value.rd();
+        match &*value {
+            Value::Constant(constant) => constant
+                .value()
+                .as_any()
+                .downcast_ref::<StringAttr>()
+                .unwrap()
+                .clone(),
             _ => panic!("expected constant"),
-        };
-        let text = text.value();
-        let text = text.as_any().downcast_ref::<StringAttr>().unwrap();
-        text.clone()
+        }
     }
     /// Set the first operand to `printf`.
     pub fn set_text(&mut self, text: StringAttr) {
         let value = Constant::new(Arc::new(text));
         let value = Value::Constant(value);
-        let value = Arc::new(RwLock::new(value));
+        let value = Shared::new(value.into());
         let operand = OpOperand::new(value);
-        let operand = Arc::new(RwLock::new(operand));
+        let operand = Shared::new(operand.into());
         self.operation.set_operand(0, operand);
     }
 }
@@ -84,9 +87,9 @@ impl Parse for PrintfOp {
         parser.expect(TokenKind::LParen)?;
         parser.parse_op_operands_into(parent.expect("no parent"), TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::RParen)?;
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = PrintfOp { operation };
 
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }

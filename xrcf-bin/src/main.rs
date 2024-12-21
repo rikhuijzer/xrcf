@@ -6,6 +6,7 @@ use xrcf::convert::RewriteResult;
 use xrcf::init_subscriber;
 use xrcf::parser::DefaultParserDispatch;
 use xrcf::parser::Parser;
+use xrcf::shared::SharedExt;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
 use xrcf::Passes;
@@ -38,7 +39,7 @@ fn parse_and_transform(src: &str, options: &TransformOptions) -> String {
     let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
     let result = transform::<DefaultTransformDispatch>(module, options).unwrap();
     let result = match result {
-        RewriteResult::Changed(op) => op.op.try_read().unwrap().to_string(),
+        RewriteResult::Changed(op) => op.op.rd().to_string(),
         RewriteResult::Unchanged => src.to_string(),
     };
     result

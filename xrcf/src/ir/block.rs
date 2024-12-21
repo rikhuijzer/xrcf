@@ -8,6 +8,8 @@ use crate::ir::Operation;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -91,8 +93,7 @@ impl Block {
         self.label_prefix.clone()
     }
     pub fn set_label(&self, label: BlockName) {
-        let mut label_write = self.label.try_write().unwrap();
-        *label_write = label;
+        *self.label.wr() = label;
     }
     pub fn set_label_prefix(&mut self, label_prefix: String) {
         self.label_prefix = label_prefix;
@@ -111,42 +112,34 @@ impl Block {
     /// ```
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        let label = self.label();
-        let label = label.try_read().unwrap();
-        let label = match &*label {
+        let label = match &*self.label().rd() {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
-            BlockName::Name(label) => Some(label),
+            BlockName::Name(label) => Some(label.clone()),
             // We can still find callers via `Value::BlockPtr`.
             BlockName::Unset => None,
         };
-        let predecessors = self.predecessors();
-        let predecessors = predecessors.expect("expected predecessors");
         let mut callers = vec![];
-        for predecessor in predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
-            let ops = predecessor.ops();
-            let ops = ops.try_read().unwrap();
-            for op in ops.iter() {
-                let operation = op.operation();
-                let operands = operation.operands().vec();
-                let operands = operands.try_read().unwrap();
-                for operand in operands.iter() {
-                    let value = operand.value();
-                    let value = value.try_read().unwrap();
-                    if let Value::BlockPtr(block_ptr) = &*value {
-                        let current = block_ptr.block();
-                        let current = &*current.try_read().unwrap();
-                        if std::ptr::eq(current, self) {
-                            callers.push(op.clone());
-                        }
-                    } else if let Value::BlockLabel(block_label) = &*value {
-                        if let Some(label) = label {
-                            let current = canonicalize_label(&block_label.name());
-                            if current == canonicalize_label(label) {
+        for p in self.predecessors().expect("no predecessors") {
+            for op in p.rd().ops().rd().iter() {
+                for operand in op.operation().operands().into_iter() {
+                    match &*operand.value().rd() {
+                        Value::BlockPtr(block_ptr) => {
+                            let current = block_ptr.block();
+                            let current = &*current.rd();
+                            if std::ptr::eq(current, self) {
                                 callers.push(op.clone());
+                            };
+                        }
+                        Value::BlockLabel(block_label) => {
+                            if let Some(label) = &label {
+                                let current = canonicalize_label(&block_label.name());
+                                if current == canonicalize_label(label) {
+                                    callers.push(op.clone());
+                                }
                             }
                         }
+                        _ => {}
                     }
                 }
             }
@@ -162,7 +155,7 @@ impl Block {
     pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.try_read().unwrap();
+        let region = region.rd();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let predecessors = match index {
@@ -177,7 +170,7 @@ impl Block {
     pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
         let region = self.parent();
         let region = region.expect("no parent");
-        let region = region.try_read().unwrap();
+        let region = region.rd();
         let index = region.index_of(self);
         let blocks = region.blocks();
         let successors = match index {
@@ -195,31 +188,26 @@ impl Block {
         let region = self.parent();
         assert!(region.is_some());
         let region = region.unwrap();
-        let region = region.read().unwrap();
+        let region = region.rd();
         let parent = region.parent();
         assert!(
             parent.is_some(),
             "Found no parent for region {region} when searching for assignment of {name}"
         );
         let op = parent.unwrap();
-        let op = &*op.try_read().unwrap();
+        let op = &*op.rd();
         let operation = op.operation();
-        let operation = operation.try_read().unwrap();
         if op.is_func() {
-            let arguments = operation.arguments();
-            let arguments = arguments.vec();
-            let arguments = arguments.try_read().unwrap();
-            for argument in arguments.iter() {
-                match &*argument.try_read().unwrap() {
-                    Value::BlockArgument(block_argument) => {
-                        let current_name = block_argument.name();
-                        let current_name = current_name.try_read().unwrap();
-                        if let BlockArgumentName::Name(current_name) = &*current_name {
-                            if current_name == name {
+            for argument in operation.rd().arguments().into_iter() {
+                match &*argument.rd() {
+                    Value::BlockArgument(arg) => match &*arg.name().rd() {
+                        BlockArgumentName::Name(curr) => {
+                            if curr == name {
                                 return Some(argument.clone());
                             }
                         }
-                    }
+                        _ => {}
+                    },
                     _ => panic!("Expected BlockArgument"),
                 }
             }
@@ -232,17 +220,9 @@ impl Block {
         None
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
-        let ops = self.ops();
-        let ops = ops.try_read().unwrap();
-        for op in ops.iter() {
-            let op = op.try_read().unwrap();
-            let values = op.assignments();
-            assert!(values.is_ok());
-            let values = values.unwrap();
-            let values = values.vec();
-            let values = values.try_read().unwrap();
-            for value in values.iter() {
-                match &*value.try_read().unwrap() {
+        for op in self.ops().rd().iter() {
+            for value in op.rd().assignments().unwrap().into_iter() {
+                match &*value.rd() {
                     Value::BlockArgument(_block_argument) => {
                         // Ignore this case because we are looking for
                         // assignment in ops.
@@ -253,10 +233,8 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        let current_name = op_result.name();
-                        let current_name = current_name.try_read().unwrap();
-                        if let Some(current_name) = &*current_name {
-                            if current_name == name {
+                        if let Some(curr) = &*op_result.name().rd() {
+                            if curr == name {
                                 return Some(value.clone());
                             }
                         }
@@ -272,16 +250,11 @@ impl Block {
     /// Returns a [Value] if the block contains an assignment for the given
     /// `name`. Return `None` if no assignment is found.
     pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
-        let arguments = self.arguments();
-        let arguments = arguments.vec();
-        let arguments = arguments.try_read().unwrap();
-        for argument in arguments.iter() {
-            match &*argument.try_read().unwrap() {
-                Value::BlockArgument(block_argument) => {
-                    let current_name = block_argument.name();
-                    let current_name = current_name.try_read().unwrap();
-                    if let BlockArgumentName::Name(current_name) = &*current_name {
-                        if current_name == name {
+        for argument in self.arguments().into_iter() {
+            match &*argument.rd() {
+                Value::BlockArgument(arg) => {
+                    if let BlockArgumentName::Name(curr) = &*arg.name().rd() {
+                        if curr == name {
                             return Some(argument.clone());
                         }
                     }
@@ -318,17 +291,15 @@ impl Block {
         // A talk with much more details is called "(Correctly) Extending
         // Dominance to MLIR Regions" and is available at
         // https://www.youtube.com/watch?v=VJORFvHJKWE.
-        let predecessors = self.predecessors();
-        let predecessors = predecessors.expect("expected predecessors");
-        for predecessor in predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
-            if let Some(value) = predecessor.assignment_in_func_arguments(name) {
+        for p in self.predecessors().unwrap().iter() {
+            let p = p.rd();
+            if let Some(value) = p.assignment_in_func_arguments(name) {
                 return Some(value);
             }
-            if let Some(value) = predecessor.assignment_in_ops(name) {
+            if let Some(value) = p.assignment_in_ops(name) {
                 return Some(value);
             }
-            if let Some(value) = predecessor.assignment_in_block_arguments(name) {
+            if let Some(value) = p.assignment_in_block_arguments(name) {
                 return Some(value);
             }
         }
@@ -338,110 +309,77 @@ impl Block {
     ///
     /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
-        let ops = self.ops();
-        let ops = ops.try_read().unwrap();
-        ops.iter().position(|current| {
-            let current = current.try_read().unwrap();
+        self.ops().rd().iter().position(|current| {
+            let current = current.rd();
             let current = current.operation();
-            let current = &*current.try_read().unwrap();
+            let current = &*current.rd();
             std::ptr::eq(current, op)
         })
-    }
-    pub fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.index_of(&*op.try_read().unwrap())
     }
     /// Move the blocks that belong to `region` before `self`.
     ///
     /// The caller is in charge of transferring the control flow to the region
     /// and pass it the correct block arguments.
     pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        let parent = self.parent();
-        let parent = parent.expect("no parent");
-        let blocks = parent.blocks();
-        blocks.splice(self, region.blocks());
+        self.parent()
+            .expect("no parent")
+            .blocks()
+            .splice(self, region.blocks());
     }
     pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
-        let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        ops.insert(index, op);
+        self.ops.wr().insert(index, op);
     }
     pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of_arc(earlier.clone());
-        let index = match index {
-            Some(index) => index,
+        match self.index_of(&*earlier.rd()) {
+            Some(index) => self.insert_op(later, index + 1),
             None => {
                 panic!("Could not find op in block during insert_after");
             }
-        };
-        self.insert_op(later, index + 1);
+        }
     }
     pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
-        let index = self.index_of_arc(later);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Could not find op in block during insert_before");
-            }
-        };
-        self.insert_op(earlier, index);
+        match self.index_of(&*later.rd()) {
+            Some(index) => self.insert_op(earlier, index),
+            None => panic!("could not find op in block"),
+        }
     }
     pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
-        let index = self.index_of_arc(old);
-        let index = match index {
-            Some(index) => index,
-            None => {
-                panic!("Replace could not find op in block during replace");
-            }
-        };
-        let ops = self.ops();
-        let mut ops = ops.try_write().unwrap();
-        ops[index] = new;
+        match self.index_of(&*old.rd()) {
+            Some(index) => self.ops().wr()[index] = new,
+            None => panic!("could not find op in block"),
+        }
     }
     pub fn remove(&self, op: Arc<RwLock<Operation>>) {
-        let index = self.index_of_arc(op);
-        match index {
-            Some(index) => {
-                let ops = self.ops();
-                let mut ops = ops.try_write().unwrap();
-                ops.remove(index);
-            }
-            None => {
-                panic!("Remove could not find op in block");
-            }
+        match self.index_of(&*op.rd()) {
+            Some(index) => self.ops().wr().remove(index),
+            None => panic!("could not find op in block"),
         };
     }
     fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn used_names_without_predecessors(&self) -> Vec<String> {
+    pub fn used_names(&self) -> Vec<String> {
         let ops = self.ops();
-        let ops = ops.try_read().unwrap();
+        let ops = ops.rd();
         let mut used_names = vec![];
         for op in ops.iter() {
-            let op = op.try_read().unwrap();
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            let result_names = operation.result_names();
-            used_names.extend(result_names);
+            used_names.extend(op.rd().operation().rd().result_names());
         }
         used_names
     }
     fn used_names_with_predecessors(&self) -> Vec<String> {
-        let predecessors = self.predecessors();
-        let mut used_names = self.used_names_without_predecessors();
-        if let Some(predecessors) = predecessors {
-            for predecessor in predecessors.iter() {
-                let predecessor = predecessor.try_read().unwrap();
-                used_names.extend(Self::used_names_without_predecessors(&predecessor));
+        let mut used_names = self.used_names();
+        if let Some(predecessors) = self.predecessors() {
+            for p in predecessors.iter() {
+                used_names.extend(p.rd().used_names());
             }
         }
         used_names
     }
     /// Find a unique name for a value (for example, `%4 = ...`).
     pub fn unique_value_name(&self, prefix: &str) -> String {
-        let used_names = self.used_names_with_predecessors();
         let mut new_name: i32 = -1;
-        for name in used_names.iter() {
+        for name in self.used_names_with_predecessors().iter() {
             let name = name.trim_start_matches(prefix);
             if let Ok(num) = name.parse::<i32>() {
                 // Ensure new_name is greater than any used name.
@@ -453,25 +391,18 @@ impl Block {
         format!("{prefix}{new_name}")
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let label = self.label();
-        let label = label.try_read().unwrap();
-        if let BlockName::Name(name) = &*label {
+        if let BlockName::Name(name) = &*self.label.rd() {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
-            let spaces = crate::ir::spaces(label_indent);
-            write!(f, "{spaces}{name}")?;
+            write!(f, "{}{name}", crate::ir::spaces(label_indent))?;
             let arguments = self.arguments();
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
             }
             write!(f, ":\n")?;
         }
-        let ops = self.ops();
-        let ops = ops.try_read().unwrap();
-        for op in ops.iter() {
-            let spaces = crate::ir::spaces(indent);
-            write!(f, "{spaces}")?;
-            let op = op.try_read().unwrap();
-            op.display(f, indent)?;
+        for op in self.ops().rd().iter() {
+            write!(f, "{}", crate::ir::spaces(indent))?;
+            op.rd().display(f, indent)?;
             write!(f, "\n")?;
         }
         Ok(())
@@ -480,9 +411,9 @@ impl Block {
 
 impl Default for Block {
     fn default() -> Self {
-        let label = Arc::new(RwLock::new(BlockName::Unnamed));
+        let label = Shared::new(BlockName::Unnamed.into());
         let arguments = Values::default();
-        let ops = Arc::new(RwLock::new(vec![]));
+        let ops = Shared::new(vec![].into());
         let parent = None;
         Self::new(label, arguments, ops, parent)
     }
@@ -507,8 +438,7 @@ impl UnsetBlock {
         self.block.clone()
     }
     pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
-        let mut block = self.block.try_write().unwrap();
-        block.set_parent(parent);
+        self.block.wr().set_parent(parent);
         self.block.clone()
     }
 }
@@ -518,7 +448,6 @@ pub trait GuardedBlock {
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
     fn index_of(&self, op: &Operation) -> Option<usize>;
-    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize>;
     fn inline_region_before(&self, region: Arc<RwLock<Region>>);
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
     fn label(&self) -> Arc<RwLock<BlockName>>;
@@ -537,61 +466,58 @@ pub trait GuardedBlock {
 
 impl GuardedBlock for Arc<RwLock<Block>> {
     fn arguments(&self) -> Values {
-        self.try_read().unwrap().arguments()
+        self.rd().arguments()
     }
     fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        self.try_read().unwrap().callers()
+        self.rd().callers()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.try_read().unwrap().display(f, indent)
+        self.rd().display(f, indent)
     }
     fn index_of(&self, op: &Operation) -> Option<usize> {
-        self.try_read().unwrap().index_of(op)
-    }
-    fn index_of_arc(&self, op: Arc<RwLock<Operation>>) -> Option<usize> {
-        self.try_read().unwrap().index_of_arc(op)
+        self.rd().index_of(op)
     }
     fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        self.try_read().unwrap().inline_region_before(region);
+        self.rd().inline_region_before(region);
     }
     fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        self.try_write().unwrap().insert_after(earlier, later);
+        self.wr().insert_after(earlier, later);
     }
     fn label(&self) -> Arc<RwLock<BlockName>> {
-        self.try_read().unwrap().label()
+        self.rd().label()
     }
     fn label_prefix(&self) -> String {
-        self.try_read().unwrap().label_prefix()
+        self.rd().label_prefix()
     }
     fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
-        self.try_read().unwrap().ops()
+        self.rd().ops()
     }
     fn parent(&self) -> Option<Arc<RwLock<Region>>> {
-        self.try_read().unwrap().parent()
+        self.rd().parent()
     }
     fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.try_read().unwrap().predecessors()
+        self.rd().predecessors()
     }
     fn remove(&self, op: Arc<RwLock<Operation>>) {
-        self.try_write().unwrap().remove(op);
+        self.wr().remove(op);
     }
     fn set_arguments(&self, arguments: Values) {
-        self.try_write().unwrap().set_arguments(arguments);
+        self.wr().set_arguments(arguments);
     }
     fn set_label(&self, label: BlockName) {
-        self.try_write().unwrap().set_label(label);
+        self.wr().set_label(label);
     }
     fn set_label_prefix(&self, label_prefix: String) {
-        self.try_write().unwrap().set_label_prefix(label_prefix);
+        self.wr().set_label_prefix(label_prefix);
     }
     fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
-        self.try_write().unwrap().set_ops(ops);
+        self.wr().set_ops(ops);
     }
     fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.try_read().unwrap().successors()
+        self.rd().successors()
     }
     fn unique_value_name(&self, prefix: &str) -> String {
-        self.try_read().unwrap().unique_value_name(prefix)
+        self.rd().unique_value_name(prefix)
     }
 }
 
@@ -605,7 +531,7 @@ impl IntoIterator for Blocks {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let vec = self.vec.try_read().unwrap();
+        let vec = self.vec.rd();
         vec.clone().into_iter()
     }
 }
@@ -622,12 +548,12 @@ impl Blocks {
     /// Returns `None` if `block` is not found in `self`.
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         let vec = self.vec();
-        let vec = vec.try_read().unwrap();
+        let vec = vec.rd();
         if vec.is_empty() {
             panic!("Trying to find block in empty set of blocks");
         }
         vec.iter().position(|b| {
-            let b = &*b.try_read().unwrap();
+            let b = &*b.rd();
             std::ptr::eq(b, block)
         })
     }
@@ -640,14 +566,14 @@ impl Blocks {
             }
         };
         let vec = self.vec();
-        let mut vec = vec.try_write().unwrap();
+        let mut vec = vec.wr();
         let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
+        let mut blocks = blocks.wr();
         vec.splice(index..index, blocks.iter().cloned());
         {
             let parent = before.parent();
             for block in blocks.iter() {
-                let mut block = block.try_write().unwrap();
+                let mut block = block.wr();
                 block.set_parent(parent.clone());
             }
         }

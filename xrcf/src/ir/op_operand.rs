@@ -8,6 +8,8 @@ use crate::ir::Value;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -21,15 +23,14 @@ pub struct OpOperand {
 impl OpOperand {
     pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
         let value = Value::from_block(block);
-        let value = Arc::new(RwLock::new(value));
+        let value = Shared::new(value.into());
         OpOperand { value }
     }
     pub fn new(value: Arc<RwLock<Value>>) -> Self {
         OpOperand { value }
     }
     pub fn name(&self) -> String {
-        let value = self.value.try_read().unwrap();
-        value.name().expect("no name")
+        self.value().rd().name().expect("no name")
     }
     pub fn value(&self) -> Arc<RwLock<Value>> {
         self.value.clone()
@@ -42,9 +43,7 @@ impl OpOperand {
     ///
     /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let value = self.value();
-        let value = &*value.try_read().unwrap();
-        match value {
+        match &*self.value().rd() {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
             Value::BlockPtr(_) => None,
@@ -55,20 +54,16 @@ impl OpOperand {
         }
     }
     pub fn display_with_type(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let typ = self.typ().unwrap();
-        let typ = typ.try_read().unwrap();
-        write!(f, "{self} : {typ}")
+        write!(f, "{self} : {}", self.typ().unwrap().rd())
     }
     pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.value.try_read().unwrap();
-        value.typ()
+        self.value.rd().typ()
     }
 }
 
 impl Display for OpOperand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value = self.value.try_read().unwrap();
-        match &*value {
+        match &*self.value.rd() {
             Value::Constant(constant) => write!(f, "{constant}"),
             _ => write!(f, "{}", self.name()),
         }
@@ -84,17 +79,17 @@ pub trait GuardedOpOperand {
 
 impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
     fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let op = self.try_read().unwrap();
+        let op = self.rd();
         op.defining_op()
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        self.try_read().unwrap().typ()
+        self.rd().typ()
     }
     fn value(&self) -> Arc<RwLock<Value>> {
-        self.try_read().unwrap().value()
+        self.rd().value()
     }
     fn set_value(&mut self, value: Arc<RwLock<Value>>) {
-        self.try_write().unwrap().set_value(value);
+        self.wr().set_value(value);
     }
 }
 
@@ -103,17 +98,25 @@ pub struct OpOperands {
     operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,
 }
 
+impl IntoIterator for OpOperands {
+    type Item = Arc<RwLock<OpOperand>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.operands.rd().clone().into_iter()
+    }
+}
+
 impl OpOperands {
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>> {
         self.operands.clone()
     }
     pub fn from_vec(operands: Vec<Arc<RwLock<OpOperand>>>) -> Self {
         OpOperands {
-            operands: Arc::new(RwLock::new(operands)),
+            operands: Shared::new(operands.into()),
         }
     }
     pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
-        let mut operands = self.operands.try_write().unwrap();
+        let mut operands = self.operands.wr();
         if operands.len() == index {
             operands.push(operand);
         } else {
@@ -121,13 +124,13 @@ impl OpOperands {
         }
     }
     pub fn display_with_types(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let operands = self.operands.try_read().unwrap();
+        let operands = self.operands.rd();
         if !operands.is_empty() {
             for (index, operand) in operands.iter().enumerate() {
                 if 0 < index {
                     write!(f, ", ")?;
                 }
-                let operand = operand.try_read().unwrap();
+                let operand = operand.rd();
                 operand.display_with_type(f)?;
             }
         }
@@ -138,7 +141,7 @@ impl OpOperands {
 impl Default for OpOperands {
     fn default() -> Self {
         OpOperands {
-            operands: Arc::new(RwLock::new(vec![])),
+            operands: Shared::new(vec![].into()),
         }
     }
 }
@@ -150,7 +153,7 @@ impl Display for OpOperands {
             .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.try_read().unwrap().to_string())
+            .map(|o| o.rd().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{}", joined)
@@ -183,22 +186,22 @@ impl<T: ParserDispatch> Parser<T> {
                 }
             };
             let operand = OpOperand::new(assignment);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else if next.kind == TokenKind::CaretIdentifier {
             let identifier = self.expect(TokenKind::CaretIdentifier)?;
             let label = BlockLabel::new(identifier.lexeme.clone());
             let label = Value::BlockLabel(label);
-            let label = Arc::new(RwLock::new(label));
+            let label = Shared::new(label.into());
             let operand = OpOperand::new(label);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else if next.kind == TokenKind::String {
             let text = self.parse_string()?;
             let text = Arc::new(text);
             let text = Constant::new(text);
             let text = Value::Constant(text);
-            let text = Arc::new(RwLock::new(text));
+            let text = Shared::new(text.into());
             let operand = OpOperand::new(text);
-            Ok(Arc::new(RwLock::new(operand)))
+            Ok(Shared::new(operand.into()))
         } else {
             let msg = "Expected operand.";
             let msg = self.error(&next, msg);
@@ -245,7 +248,7 @@ impl<T: ParserDispatch> Parser<T> {
             }
         }
         let operands = OpOperands {
-            operands: Arc::new(RwLock::new(arguments)),
+            operands: Shared::new(arguments.into()),
         };
         Ok(operands)
     }

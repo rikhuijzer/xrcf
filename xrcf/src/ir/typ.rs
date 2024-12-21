@@ -3,6 +3,7 @@ use crate::ir::OpOperands;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -42,7 +43,7 @@ pub trait TypeConvert {
     /// This method can be reimplemented to compare types directly instead of
     /// converting to a string first.
     fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
-        let from = from.try_read().unwrap();
+        let from = from.rd();
         let typ = Self::convert_str(&from.to_string())?;
         Ok(typ)
     }
@@ -180,6 +181,14 @@ pub struct Types {
     types: Vec<Arc<RwLock<dyn Type>>>,
 }
 
+impl IntoIterator for Types {
+    type Item = Arc<RwLock<dyn Type>>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.types.into_iter()
+    }
+}
+
 impl Types {
     pub fn from_vec(types: Vec<Arc<RwLock<dyn Type>>>) -> Self {
         Self { types }
@@ -200,8 +209,8 @@ impl Display for Types {
         let joined = self
             .types
             .iter()
-            .map(|t| t.try_read().unwrap().to_string())
-            .collect::<Vec<String>>()
+            .map(|t| t.rd().to_string())
+            .collect::<Vec<_>>()
             .join(", ");
         write!(f, "{}", joined)
     }
@@ -217,11 +226,11 @@ impl<T: ParserDispatch> Parser<T> {
         operand: Arc<RwLock<OpOperand>>,
         typ: Arc<RwLock<dyn Type>>,
     ) -> Result<()> {
-        let operand = operand.try_read().unwrap();
+        let operand = operand.rd();
         let operand_typ = operand.typ()?;
-        let operand_typ = operand_typ.try_read().unwrap();
+        let operand_typ = operand_typ.rd();
         let token = self.previous().clone();
-        let typ = typ.try_read().unwrap();
+        let typ = typ.rd();
         if operand_typ.to_string() != typ.to_string() {
             let msg = format!(
                 "Expected {} due to {}, but got {}",
@@ -269,16 +278,16 @@ impl<T: ParserDispatch> Parser<T> {
     /// ```
     pub fn parse_types_for_op_operands(&mut self, operands: OpOperands) -> Result<()> {
         let types = self.parse_types()?;
-        if types.len() != operands.vec().try_read().unwrap().len() {
+        if types.len() != operands.vec().rd().len() {
             let msg = format!(
                 "Expected {} types but got {}",
-                operands.vec().try_read().unwrap().len(),
+                operands.vec().rd().len(),
                 types.len()
             );
             return Err(anyhow::anyhow!(msg));
         }
         let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
+        let operands = operands.rd();
         for x in operands.iter().zip(types.iter()) {
             let (operand, typ) = x;
             self.verify_type(operand.clone(), typ.clone())?;

@@ -3,6 +3,8 @@ use crate::ir::IntegerType;
 use crate::ir::Type;
 use crate::ir::TypeParse;
 use crate::ir::Types;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -32,7 +34,7 @@ impl ArrayType {
         let (num_elements, element_type) = s.split_once('x').unwrap();
         let num_elements = num_elements.parse::<u32>().unwrap();
         let element_type = IntegerType::from_str(element_type);
-        let element_type = Arc::new(RwLock::new(element_type));
+        let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
             element_type,
@@ -44,7 +46,7 @@ impl ArrayType {
         let text = text.trim_matches('"');
         let num_elements = text.as_bytes().len() as u32;
         let element_type = IntegerType::from_str("i8");
-        let element_type = Arc::new(RwLock::new(element_type));
+        let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
             element_type,
@@ -53,7 +55,7 @@ impl ArrayType {
     pub fn for_bytes(bytes: &Vec<u8>) -> Self {
         let num_elements = bytes.len() as u32;
         let element_type = IntegerType::from_str("i8");
-        let element_type = Arc::new(RwLock::new(element_type));
+        let element_type = Shared::new(element_type.into());
         Self {
             num_elements,
             element_type,
@@ -66,8 +68,12 @@ impl ArrayType {
 
 impl Type for ArrayType {
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let element_type = self.element_type.read().unwrap();
-        write!(f, "!llvm.array<{} x {}>", self.num_elements, element_type)
+        write!(
+            f,
+            "!llvm.array<{} x {}>",
+            self.num_elements,
+            self.element_type.rd()
+        )
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -106,7 +112,7 @@ impl FunctionType {
         let (return_types, arguments) = s.split_once('(').unwrap();
 
         let return_type = IntegerType::from_str(return_types.trim());
-        let return_type = Arc::new(RwLock::new(return_type));
+        let return_type = Shared::new(return_type.into());
         let return_types = Types::from_vec(vec![return_type]);
 
         let arguments_str = arguments.trim_end_matches(")>");
@@ -184,19 +190,19 @@ impl Type for VariadicType {
 impl TypeParse for LLVM {
     fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>> {
         if src.starts_with("!llvm.array") {
-            return Ok(Arc::new(RwLock::new(ArrayType::parse_str(src))));
+            return Ok(Shared::new(ArrayType::parse_str(src).into()));
         }
         if src.starts_with("!llvm.func") {
-            return Ok(Arc::new(RwLock::new(FunctionType::from_str(src))));
+            return Ok(Shared::new(FunctionType::from_str(src).into()));
         }
         if src.starts_with("!llvm.ptr") {
-            return Ok(Arc::new(RwLock::new(PointerType::from_str(src))));
+            return Ok(Shared::new(PointerType::from_str(src).into()));
         }
         if src.starts_with("ptr") {
-            return Ok(Arc::new(RwLock::new(PointerType::from_str(src))));
+            return Ok(Shared::new(PointerType::from_str(src).into()));
         }
         if src == "..." {
-            return Ok(Arc::new(RwLock::new(VariadicType::from_str(src))));
+            return Ok(Shared::new(VariadicType::from_str(src).into()));
         }
         todo!("Not yet implemented for {}", src)
     }

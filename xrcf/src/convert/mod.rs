@@ -7,6 +7,7 @@
 
 use crate::ir::spaces;
 use crate::ir::Op;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -86,7 +87,7 @@ fn apply_rewrites_helper(
     rewrites: &[&dyn Rewrite],
     indent: i32,
 ) -> Result<RewriteResult> {
-    let ops = root.try_read().unwrap().ops();
+    let ops = root.rd().ops();
     for rewrite in rewrites {
         // Determine ops here because `rewrite` may delete an op.
         for nested_op in ops.iter() {
@@ -101,11 +102,11 @@ fn apply_rewrites_helper(
         debug!(
             "{}Matching {} with {}",
             spaces(indent),
-            root.clone().try_read().unwrap().name(),
+            root.clone().rd().name(),
             rewrite.name()
         );
         let root_read = root.clone();
-        let root_read = root_read.try_read().unwrap();
+        let root_read = root_read.rd();
         if rewrite.is_match(&*root_read)? {
             debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;

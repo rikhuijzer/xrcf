@@ -19,6 +19,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -46,7 +48,7 @@ impl Op for AddOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        write!(f, "{}", self.operation().rd())
     }
 }
 
@@ -99,22 +101,18 @@ impl Op for AllocaOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().rd();
         write!(f, "{} = ", operation.results())?;
         write!(f, "{} ", operation.name())?;
         let array_size = self.array_size();
-        let array_size = array_size.try_read().unwrap();
+        let array_size = array_size.rd();
         write!(f, "{}", array_size)?;
         write!(f, " x ")?;
         write!(f, "{}", self.element_type().expect("no element type"))?;
         write!(f, " : ")?;
-        let array_size_type = array_size.typ().unwrap();
-        let array_size_type = array_size_type.try_read().unwrap();
-        write!(f, "({})", array_size_type)?;
+        write!(f, "({})", array_size.typ().unwrap().rd())?;
         write!(f, " -> ")?;
-        let result_type = operation.result_type(0).unwrap();
-        let result_type = result_type.try_read().unwrap();
-        write!(f, "{result_type}")?;
+        write!(f, "{}", operation.result_type(0).unwrap().rd())?;
         Ok(())
     }
 }
@@ -133,8 +131,7 @@ impl Parse for AllocaOp {
         let array_size =
             parser.parse_op_operand_into(parent.unwrap(), TOKEN_KIND, &mut operation)?;
         parser.parse_keyword("x")?;
-        let element_type = T::parse_type(parser)?;
-        let element_type = element_type.try_read().unwrap();
+        let element_type = T::parse_type(parser)?.rd().to_string();
         parser.expect(TokenKind::Colon)?;
         parser.expect(TokenKind::LParen)?;
 
@@ -147,10 +144,10 @@ impl Parse for AllocaOp {
         operation.set_result_type(0, result_type)?;
 
         let op = AllocaOp {
-            operation: Arc::new(RwLock::new(operation)),
-            element_type: Some(element_type.to_string()),
+            operation: Shared::new(operation.into()),
+            element_type: Some(element_type),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -188,19 +185,15 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest();
-        let dest = dest.unwrap();
-        let dest = dest.try_read().unwrap();
-        write!(f, "{}", dest)?;
+        write!(f, "{}", self.dest().expect("no dest").rd())?;
         let operands = self.operation().operands();
         let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
+        let operands = operands.rd();
         let operands = operands.iter().skip(1);
-        if 0 < operands.len() {
+        if operands.len() != 0 {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.try_read().unwrap();
-                operand.display_with_type(f)?;
+                operand.rd().display_with_type(f)?;
             }
             write!(f, ")")?;
         }
@@ -217,14 +210,13 @@ impl Parse for BranchOp {
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
-        let dest = parser.parse_block_dest()?;
-        let dest = Arc::new(RwLock::new(dest));
-        operation.set_operand(0, dest);
+        let operation = Shared::new(operation.into());
+        let operand = Shared::new(parser.parse_block_dest()?.into());
+        operation.set_operand(0, operand);
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
-            let mut operands = operands.try_write().unwrap();
+            let mut operands = operands.wr();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
                 operands.push(operand);
@@ -237,7 +229,7 @@ impl Parse for BranchOp {
             parser.expect(TokenKind::RParen)?;
         }
         let op = BranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -346,9 +338,9 @@ impl Parse for CondBranchOp {
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
         parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CondBranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -386,21 +378,16 @@ impl Op for ConstantOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let results = self.operation().results();
-        let results = results.vec();
-        let results = results.try_read().unwrap();
-        let result = results.get(0).expect("no result");
-        let result = result.try_read().unwrap();
-        write!(f, "{} = {}", result, Self::operation_name())?;
+        write!(
+            f,
+            "{} = ",
+            self.operation().results().into_iter().next().unwrap().rd()
+        )?;
+        write!(f, "{}", Self::operation_name())?;
         write!(f, "(")?;
-        let value = self.value();
-        write!(f, "{}", value)?;
+        write!(f, "{}", self.value())?;
         write!(f, ")")?;
-
-        let typ = self.operation().result_type(0).expect("no result type");
-        let typ = typ.try_read().unwrap();
-        write!(f, " : {typ}")?;
-
+        write!(f, " : {}", self.operation().result_type(0).unwrap().rd())?;
         Ok(())
     }
 }
@@ -438,11 +425,11 @@ impl Parse for ConstantOp {
         let typ = T::parse_type(parser)?;
         operation.set_result_type(0, typ)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ConstantOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
 
         Ok(op)
@@ -468,7 +455,7 @@ impl Op for GlobalOp {
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
         let attributes = self.operation().attributes().map();
-        let attributes = attributes.read().unwrap();
+        let attributes = attributes.rd();
         if let Some(attribute) = attributes.get("linkage") {
             write!(f, "{} ", attribute)?;
         }
@@ -542,9 +529,9 @@ impl Parse for FuncOp {
             let text = text.lexeme.clone();
             if text == "attributes" {
                 parser.advance();
-                let attributes = parser.parse_attributes()?;
-                let op = op.try_read().unwrap();
-                op.operation().set_attributes(attributes);
+                op.rd()
+                    .operation()
+                    .set_attributes(parser.parse_attributes()?);
             }
         }
         Ok(op)
@@ -596,7 +583,7 @@ impl Parse for GlobalOp {
         operation.set_attributes(attributes);
         operation.set_parent(parent);
         let op = GlobalOp::from_operation(operation);
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 
@@ -647,14 +634,10 @@ impl StoreOp {
         self.operation().set_operand(0, value);
     }
     pub fn addr(&self) -> Arc<RwLock<OpOperand>> {
-        let operation = self.operation.try_read().unwrap();
-        let operand = operation.operand(1).expect("no address set");
-        operand
+        self.operation.rd().operand(1).expect("no addr")
     }
     pub fn set_addr(&mut self, addr: Arc<RwLock<OpOperand>>) {
-        let operation = self.operation.try_read().unwrap();
-        let mut operands = operation.operands();
-        operands.set_operand(1, addr);
+        self.operation.rd().operands().set_operand(1, addr);
     }
 }
 
@@ -672,15 +655,11 @@ impl Op for StoreOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
+        let operation = self.operation().rd();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
-        write!(f, " : ")?;
-        let value = self.value();
-        write!(f, "{}", value.typ().unwrap().try_read().unwrap())?;
-        write!(f, ", ")?;
-        let addr = self.addr();
-        write!(f, "{}", addr.typ().unwrap().try_read().unwrap())?;
+        write!(f, " : {}", self.value().typ().unwrap().rd())?;
+        write!(f, ", {}", self.addr().typ().unwrap().rd())?;
         Ok(())
     }
 }
@@ -712,9 +691,9 @@ impl Parse for StoreOp {
         parser.verify_type(addr, addr_type)?;
 
         let op = StoreOp {
-            operation: Arc::new(RwLock::new(operation)),
+            operation: Shared::new(operation.into()),
         };
-        Ok(Arc::new(RwLock::new(op)))
+        Ok(Shared::new(op.into()))
     }
 }
 

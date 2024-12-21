@@ -4,6 +4,8 @@ use crate::ir::Blocks;
 use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
@@ -30,10 +32,10 @@ pub struct Region {
 fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
-        let block = block.try_read().unwrap();
+        let block = block.rd();
         let label_prefix = block.label_prefix();
         let label = block.label();
-        let label_read = label.try_read().unwrap();
+        let label_read = label.rd();
         match &*label_read {
             BlockName::Name(_name) => {
                 drop(label_read);
@@ -69,11 +71,8 @@ impl Region {
     }
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
-        let blocks = self.blocks();
-        for block in blocks.into_iter() {
-            let ops = block.ops();
-            let ops = ops.read().unwrap();
-            for op in ops.iter() {
+        for block in self.blocks().into_iter() {
+            for op in block.ops().rd().iter() {
                 result.push(op.clone());
             }
         }
@@ -90,22 +89,16 @@ impl Region {
     }
     pub fn add_empty_block(&self) -> UnsetBlock {
         let block = Block::default();
-        let block = Arc::new(RwLock::new(block));
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
-        blocks.push(block.clone());
+        let block = Shared::new(block.into());
+        self.blocks().vec().wr().push(block.clone());
         UnsetBlock::new(block)
     }
     pub fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
-        let index = self.index_of(&block.try_read().unwrap()).unwrap();
+        let index = self.index_of(&block.rd()).unwrap();
 
         let new = Block::default();
-        let new = Arc::new(RwLock::new(new));
-        let blocks = self.blocks();
-        let blocks = blocks.vec();
-        let mut blocks = blocks.try_write().unwrap();
-        blocks.insert(index, new.clone());
+        let new = Shared::new(new.into());
+        self.blocks().vec().wr().insert(index, new.clone());
         UnsetBlock::new(new)
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
@@ -115,23 +108,18 @@ impl Region {
         write!(f, " {{\n")?;
         let blocks = self.blocks();
         let blocks = blocks.vec();
-        let blocks = blocks.try_read().unwrap();
+        let blocks = blocks.rd();
         set_fresh_block_labels(&blocks);
         for block in blocks.iter() {
-            let block = block.try_read().unwrap();
-            block.display(f, indent + 1)?;
+            block.rd().display(f, indent + 1)?;
         }
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}}}")
+        write!(f, "{}}}", crate::ir::spaces(indent))
     }
     /// Find a unique name for a block (for example, `bb2`).
     pub fn unique_block_name(&self) -> String {
         let mut new_name: i32 = 0;
         for block in self.blocks().into_iter() {
-            let block = block.try_read().unwrap();
-            let label = block.label();
-            let label = label.try_read().unwrap();
-            match &*label {
+            match &*block.rd().label().rd() {
                 BlockName::Name(name) => {
                     let name = name.trim_start_matches("bb").trim_start_matches("^bb");
                     if let Ok(num) = name.parse::<i32>() {
@@ -158,7 +146,7 @@ impl Display for Region {
 impl Default for Region {
     fn default() -> Self {
         Self {
-            blocks: Blocks::new(Arc::new(RwLock::new(vec![]))),
+            blocks: Blocks::new(Shared::new(vec![].into())),
             parent: None,
         }
     }
@@ -177,27 +165,27 @@ pub trait GuardedRegion {
 
 impl GuardedRegion for Arc<RwLock<Region>> {
     fn add_empty_block(&self) -> UnsetBlock {
-        self.try_read().unwrap().add_empty_block()
+        self.rd().add_empty_block()
     }
     fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
-        self.try_read().unwrap().add_empty_block_before(block)
+        self.rd().add_empty_block_before(block)
     }
     fn blocks(&self) -> Blocks {
-        self.try_read().unwrap().blocks()
+        self.rd().blocks()
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.try_read().unwrap().display(f, indent)
+        self.rd().display(f, indent)
     }
     fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
-        self.try_read().unwrap().ops()
+        self.rd().ops()
     }
     fn set_blocks(&self, blocks: Blocks) {
-        self.try_write().unwrap().set_blocks(blocks);
+        self.wr().set_blocks(blocks);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<dyn Op>>>) {
-        self.try_write().unwrap().set_parent(parent);
+        self.wr().set_parent(parent);
     }
     fn unique_block_name(&self) -> String {
-        self.try_read().unwrap().unique_block_name()
+        self.rd().unique_block_name()
     }
 }

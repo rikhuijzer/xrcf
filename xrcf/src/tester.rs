@@ -6,6 +6,7 @@ use crate::ir::GuardedOperation;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
+use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
@@ -49,8 +50,7 @@ impl Tester {
         let expected = expected.trim();
         let l = max(actual.lines().count(), expected.lines().count());
         for i in 0..l {
-            let actual_line = actual.lines().nth(i);
-            let actual_line = match actual_line {
+            let actual_line = match actual.lines().nth(i) {
                 None => {
                     panic!(
                         "Expected line {i} not found in output: called from {}",
@@ -59,8 +59,7 @@ impl Tester {
                 }
                 Some(actual_line) => actual_line,
             };
-            let expected_line = expected.lines().nth(i);
-            let expected_line = match expected_line {
+            let expected_line = match expected.lines().nth(i) {
                 None => {
                     panic!(
                         "Expected line {i} not found in output: called from {}",
@@ -102,12 +101,9 @@ impl Tester {
         info!("{msg}:\n```\n{src}\n```\n");
     }
     pub fn parse(src: &str) -> (Arc<RwLock<dyn Op>>, String) {
-        let src = src.trim();
-        Self::print_heading("Before parse", src);
+        Self::print_heading("Before parse", src.trim());
         let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
-        let read_module = module.clone();
-        let read_module = read_module.try_read().unwrap();
-        let actual = format!("{}", read_module);
+        let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
@@ -131,13 +127,13 @@ impl Tester {
                 panic!("Expected changes");
             }
         };
-        let actual = format!("{}", new_root_op.try_read().unwrap());
+        let actual = format!("{}", new_root_op.rd());
         let msg = format!("After (transform {arguments:?})");
         Self::print_heading(&msg, &actual);
         (new_root_op, actual)
     }
     fn verify_core(op: Arc<RwLock<dyn Op>>) {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         if !op.name().to_string().contains("module") {
             let parent = op.operation().parent();
             assert!(
@@ -147,13 +143,12 @@ impl Tester {
             );
             let parent = parent.unwrap();
             let operation = op.operation();
-            let operation = operation.try_read().unwrap();
+            let operation = operation.rd();
             assert!(parent.index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
-            let results = op.operation().results();
-            for result in results.vec().try_read().unwrap().iter() {
-                let value = result.try_read().unwrap();
+            for result in operation.results().vec().rd().iter() {
+                let value = result.rd();
                 assert!(value.typ().is_ok(), "type was not set for {value}");
             }
         }

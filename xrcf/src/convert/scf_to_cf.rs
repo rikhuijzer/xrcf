@@ -19,6 +19,8 @@ use crate::ir::Region;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -62,30 +64,30 @@ fn lower_yield_op(
 ) -> Result<Arc<RwLock<dyn Op>>> {
     let operation = op.operation();
     let var = operation.operand(0).unwrap();
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
+    let operand = Shared::new(OpOperand::from_block(after).into());
     operation.set_operand(0, operand);
     operation.set_operand(1, var);
     let new_op = dialect::cf::BranchOp::from_operation_arc(operation.clone());
-    let new_op = Arc::new(RwLock::new(new_op));
+    let new_op = Shared::new(new_op.into());
     Ok(new_op)
 }
 
 fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
     let operation = Operation::default();
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(after)));
+    let operand = Shared::new(OpOperand::from_block(after).into());
     new_op.set_dest(operand);
-    let new_op = Arc::new(RwLock::new(new_op));
+    let new_op = Shared::new(new_op.into());
     new_op
 }
 
 /// Add a `cf.br` to the end of `block` with destination `after`.
 fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
     let ops = block.ops();
-    let mut ops = ops.try_write().unwrap();
+    let mut ops = ops.wr();
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
-    let last_op = last_op.try_read().unwrap();
+    let last_op = last_op.rd();
     let yield_op = last_op.as_any().downcast_ref::<dialect::scf::YieldOp>();
     if let Some(yield_op) = yield_op {
         let new_op = lower_yield_op(&yield_op, after.clone()).unwrap();
@@ -126,16 +128,16 @@ fn move_successors_to_exit_block(
 ) -> Result<()> {
     let if_op_parent = op.operation().parent().expect("Expected parent");
     let if_op_index = if_op_parent
-        .index_of(&op.operation().try_read().unwrap())
+        .index_of(&op.operation().rd())
         .expect("Expected index");
     let ops = if_op_parent.ops();
-    let mut ops = ops.try_write().unwrap();
+    let mut ops = ops.wr();
     let return_ops = ops[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         op.set_parent(exit_block.clone());
     }
-    exit_block.set_ops(Arc::new(RwLock::new(return_ops)));
+    exit_block.set_ops(Shared::new(return_ops.into()));
     ops.drain(if_op_index + 1..);
     Ok(())
 }
@@ -155,10 +157,10 @@ fn add_merge_block(
     operation.set_parent(Some(merge.clone()));
     let mut merge_op = dialect::cf::BranchOp::from_operation(operation);
 
-    let operand = Arc::new(RwLock::new(OpOperand::from_block(exit)));
+    let operand = Shared::new(OpOperand::from_block(exit).into());
     merge_op.set_dest(operand);
 
-    let merge_op = Arc::new(RwLock::new(merge_op));
+    let merge_op = Shared::new(merge_op.into());
     merge.set_ops(Arc::new(RwLock::new(vec![merge_op.clone()])));
     Ok((merge, merge_block_arguments))
 }
@@ -178,32 +180,26 @@ fn add_exit_block(
 ///
 /// Necessary to translate `%result = scf.if` to `^merge:(%result)`.
 fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
-    let results = results.vec();
-    let results = results.try_read().unwrap();
     let mut out = vec![];
-    for result in results.iter() {
-        let result = result.try_read().unwrap();
-        let name = result.name();
-        let typ = result.typ().unwrap();
+    for result in results.into_iter() {
+        let result_rd = result.rd();
+        let name = result_rd.name();
+        let typ = result_rd.typ().unwrap();
         let name = BlockArgumentName::Name(name.unwrap());
-        let name = Arc::new(RwLock::new(name));
+        let name = Shared::new(name.into());
         let mut arg = BlockArgument::new(name, typ);
         arg.set_parent(Some(parent.clone()));
         let arg = Value::BlockArgument(arg);
-        let arg = Arc::new(RwLock::new(arg));
+        let arg = Shared::new(arg.into());
         out.push(arg);
     }
     Ok(Values::from_vec(out))
 }
 
 fn results_users(results: Values) -> Vec<Users> {
-    let results = results.vec();
-    let results = results.try_read().unwrap();
     let mut out = vec![];
-    for result in results.iter() {
-        let result = result.try_read().unwrap();
-        let users = result.users();
-        out.push(users);
+    for result in results.into_iter() {
+        out.push(result.rd().users());
     }
     out
 }
@@ -258,7 +254,7 @@ fn add_blocks(
         let (merge, merge_block_arguments) =
             add_merge_block(parent_region.clone(), results.clone(), exit.clone())?;
         let merge_block_arguments = merge_block_arguments.vec();
-        let merge_block_arguments = merge_block_arguments.try_read().unwrap();
+        let merge_block_arguments = merge_block_arguments.rd();
 
         assert!(results_users.len() == merge_block_arguments.len());
         for i in 0..results_users.len() {
@@ -270,7 +266,7 @@ fn add_blocks(
             println!("users.len: {}", users.len());
             let arg = merge_block_arguments[i].clone();
             for user in users.iter() {
-                let mut user = user.try_write().unwrap();
+                let mut user = user.wr();
                 user.set_value(arg.clone());
             }
         }
@@ -293,7 +289,7 @@ impl Rewrite for IfLowering {
         Ok(op.as_any().is::<dialect::scf::IfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let parent = op.operation().parent().expect("Expected parent");
         let parent_region = parent.parent().expect("Expected parent region");
         let op = op.as_any().downcast_ref::<dialect::scf::IfOp>().unwrap();
@@ -303,16 +299,16 @@ impl Rewrite for IfLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         operation.set_operand(0, op.operation().operand(0).clone().unwrap());
-        let then_operand = Arc::new(RwLock::new(OpOperand::from_block(then)));
+        let then_operand = Shared::new(OpOperand::from_block(then).into());
         operation.set_operand(1, then_operand);
-        let els_operand = Arc::new(RwLock::new(OpOperand::from_block(els)));
+        let els_operand = Shared::new(OpOperand::from_block(els).into());
         operation.set_operand(2, els_operand);
         let new = dialect::cf::CondBranchOp::from_operation(operation);
-        let new: Arc<RwLock<dyn Op>> = Arc::new(RwLock::new(new));
+        let new = Shared::new(new.into());
         op.replace(new.clone());
         // `replace` moves the results of the old op to the new op, but
         // `cf.cond_br` should not have results.
-        new.operation().set_results(Values::default());
+        new.rd().operation().set_results(Values::default());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new)))
     }

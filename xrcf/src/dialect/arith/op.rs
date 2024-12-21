@@ -18,6 +18,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -88,7 +90,7 @@ impl Parse for ConstantOp {
 
         let value = if parser.is_boolean() {
             let typ = IntegerType::new(1);
-            let typ = Arc::new(RwLock::new(typ));
+            let typ = Shared::new(typ.into());
             operation.set_result_type(0, typ)?;
             parser.parse_boolean()?
         } else {
@@ -102,10 +104,10 @@ impl Parse for ConstantOp {
             Arc::new(integer)
         };
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ConstantOp { operation };
         op.set_value(value);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }
@@ -125,29 +127,27 @@ impl AddiOp {
     /// Canonicalize `addi(addi(x, c0), c1) -> addi(x, c0 + c1)`.
     fn addi_add_constant(&self) -> RewriteResult {
         let operands = self.operation.operands();
-        let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
-        assert!(operands.len() == 2);
+        assert!(operands.clone().into_iter().len() == 2);
 
-        let lhs = operands.get(0).unwrap();
+        let lhs = operands.clone().into_iter().next().unwrap();
         let lhs = match lhs.defining_op() {
             Some(lhs) => lhs,
             None => {
                 return RewriteResult::Unchanged;
             }
         };
-        let lhs = lhs.read().unwrap();
+        let lhs = lhs.rd();
         let lhs = match lhs.as_any().downcast_ref::<ConstantOp>() {
             Some(lhs) => lhs,
             None => return RewriteResult::Unchanged,
         };
 
-        let rhs = operands.get(1).unwrap();
+        let rhs = operands.into_iter().nth(1).unwrap();
         let rhs = match rhs.defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
         };
-        let rhs = rhs.read().unwrap();
+        let rhs = rhs.rd();
         let rhs = match rhs.as_any().downcast_ref::<ConstantOp>() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
@@ -170,28 +170,29 @@ impl AddiOp {
         let result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
-        let result = Arc::new(RwLock::new(result));
-        results.vec().try_write().unwrap().push(result.clone());
+        let result = Shared::new(result.into());
+        results.vec().wr().push(result.clone());
         new_operation.set_results(results);
 
         let new_const = ConstantOp::from_operation(new_operation);
-        let new_const = Arc::new(RwLock::new(new_const));
-        let mut result = result.try_write().unwrap();
-        if let Value::OpResult(result) = &mut *result {
+        let new_const = Shared::new(new_const.into());
+        if let Value::OpResult(result) = &mut *result.wr() {
             result.set_defining_op(Some(new_const.clone()));
         }
 
         self.replace(new_const.clone());
 
-        {
-            let new_const = new_const.try_read().unwrap();
-            let new_const = new_const.operation().try_read().unwrap();
-            let results = new_const.results();
-            let results = results.vec();
-            let results = results.try_read().unwrap();
-            assert!(results.len() == 1);
-            results[0].rename("%c3_i64");
-        }
+        new_const
+            .rd()
+            .operation()
+            .rd()
+            .results()
+            .into_iter()
+            .enumerate()
+            .for_each(|(i, result)| {
+                assert!(i == 0, "Expected exactly one result");
+                result.rename("%c3_i64");
+            });
 
         RewriteResult::Changed(ChangedOp::new(new_const))
     }
@@ -233,11 +234,11 @@ impl<T: ParserDispatch> Parser<T> {
         let _colon = parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);
-        let result_type = Arc::new(RwLock::new(result_type));
+        let result_type = Shared::new(result_type.into());
         operation.set_result_type(0, result_type)?;
 
         let op = O::from_operation(operation);
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
         Ok(op)
     }

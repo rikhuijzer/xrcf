@@ -4,6 +4,7 @@ use indoc::indoc;
 use std::panic::Location;
 use xrcf::dialect::func::FuncOp;
 use xrcf::ir::Op;
+use xrcf::shared::SharedExt;
 use xrcf::tester::Tester;
 
 #[test]
@@ -48,25 +49,22 @@ fn parse_addi() {
     let (module, actual) = Tester::parse(src);
     Tester::verify(module.clone());
 
-    let module = module.try_read().unwrap();
-    let module_operation = module.operation().try_read().unwrap();
-    let module_parent = module_operation.parent();
-    assert!(module_parent.is_none());
+    assert!(module.rd().operation().rd().parent().is_none());
 
-    let ops = module.ops();
+    let ops = module.rd().ops();
     assert_eq!(ops.len(), 1);
-    let func_op = ops[0].try_read().unwrap();
-    let func_operation = func_op.operation().try_read().unwrap();
+    let func_op = ops[0].rd();
+    let func_operation = func_op.operation().rd();
     assert_eq!(func_operation.name(), FuncOp::operation_name());
     let func_parent = func_operation.parent();
     assert!(func_parent.is_some());
 
     let func_op = ops[0].clone();
-    let func_op = func_op.try_read().unwrap();
+    let func_op = func_op.rd();
     let func_parent = func_op.parent_op();
     assert!(func_parent.is_some());
     let func_parent = func_parent.unwrap();
-    let func_parent = func_parent.try_read().unwrap();
+    let func_parent = func_parent.rd();
     assert_eq!(func_parent.name().to_string(), "module");
 
     Tester::check_lines_contain(&actual, expected, caller);

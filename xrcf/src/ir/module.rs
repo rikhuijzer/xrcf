@@ -8,6 +8,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -34,43 +36,34 @@ impl Op for ModuleOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let operation = self.operation().read().unwrap();
-        let spaces = crate::ir::spaces(indent);
-        write!(f, "{spaces}")?;
-        operation.display(f, indent)
+        write!(f, "{}", crate::ir::spaces(indent))?;
+        self.operation().rd().display(f, indent)
     }
 }
 
 impl Display for ModuleOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.operation().read().unwrap())
+        write!(f, "{}", self.operation().rd())
     }
 }
 
 impl ModuleOp {
     pub fn get_body_region(&self) -> Result<Option<Arc<RwLock<Region>>>> {
-        Ok(self.operation().read().unwrap().region())
+        Ok(self.operation().rd().region())
     }
     pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
-        let body_region = self.get_body_region()?;
-        let region = match body_region {
+        let region = match self.get_body_region()? {
             Some(region) => region,
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
         };
-        let blocks = region.blocks();
-        let block = match blocks.into_iter().next() {
+        let block = match region.blocks().into_iter().next() {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        let ops = block.read().unwrap().ops();
-        let ops = ops.read().unwrap();
-        let op = ops.first();
-        if op.is_none() {
-            return Err(anyhow::anyhow!("Expected 1 op, got 0"));
-        } else {
-            let op = op.unwrap().clone();
-            Ok(op)
-        }
+        match block.rd().ops().rd().first() {
+            None => return Err(anyhow::anyhow!("Expected 1 op, got 0")),
+            Some(op) => return Ok(op.clone()),
+        };
     }
 }
 
@@ -83,14 +76,14 @@ impl Parse for ModuleOp {
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "module");
         operation.set_name(ModuleOp::operation_name());
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = ModuleOp {
             operation: operation.clone(),
         };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
 
         let region = parser.parse_region(op.clone());
-        let mut operation = operation.try_write().unwrap();
+        let mut operation = operation.wr();
         operation.set_region(Some(region?));
         operation.set_parent(parent.clone());
 

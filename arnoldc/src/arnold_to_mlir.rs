@@ -27,6 +27,8 @@ use xrcf::ir::Operation;
 use xrcf::ir::RenameBareToPercent;
 use xrcf::ir::StringAttr;
 use xrcf::ir::Value;
+use xrcf::shared::Shared;
+use xrcf::shared::SharedExt;
 
 const RENAMER: RenameBareToPercent = RenameBareToPercent;
 
@@ -40,14 +42,14 @@ impl Rewrite for CallLowering {
         Ok(op.as_any().is::<arnold::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::CallOp>().unwrap();
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
         let mut new_op = func::CallOp::from_operation_arc(operation.clone());
         let identifier = format!("@{}", identifier);
         new_op.set_identifier(identifier);
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -74,13 +76,13 @@ impl Rewrite for DeclareIntLowering {
         Ok(op.as_any().is::<arnold::DeclareIntOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
         op.operation().rename_variables(&RENAMER)?;
 
         let successors = op.operation().successors();
         let set_initial_value = successors.first().unwrap();
-        let set_initial_value = set_initial_value.try_read().unwrap();
+        let set_initial_value = set_initial_value.rd();
         let set_initial_value = set_initial_value
             .as_any()
             .downcast_ref::<arnold::SetInitialValueOp>()
@@ -91,7 +93,7 @@ impl Rewrite for DeclareIntLowering {
         new_op.set_parent(op.operation().parent().clone().unwrap());
         new_op.set_value(set_initial_value.value());
         set_initial_value.remove();
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -107,13 +109,13 @@ impl Rewrite for FuncLowering {
         Ok(op.as_any().is::<arnold::BeginMainOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
         let identifier = "@main";
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(identifier.to_string());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -147,14 +149,14 @@ impl Rewrite for IfLowering {
         Ok(op.as_any().is::<arnold::IfOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
         let operation = op.operation();
         let mut new_op = scf::IfOp::from_operation_arc(operation.clone());
         new_op.set_parent(operation.parent().clone().unwrap());
         new_op.set_then(op.then().clone());
         new_op.set_els(op.els().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -170,12 +172,12 @@ impl ModuleLowering {
         let typ = IntegerType::new(32);
         let value = APInt::new(32, 0, true);
         let integer = IntegerAttr::new(typ, value);
-        let name = parent.try_read().unwrap().unique_value_name("%");
-        let result_type = Arc::new(RwLock::new(typ));
+        let name = parent.rd().unique_value_name("%");
+        let result_type = Shared::new(typ.into());
         let result = constant.add_new_op_result(&name, result_type.clone());
         let constant = arith::ConstantOp::from_operation(constant);
         constant.set_value(Arc::new(integer));
-        let constant = Arc::new(RwLock::new(constant));
+        let constant = Shared::new(constant.into());
         result.set_defining_op(Some(constant.clone()));
         constant
     }
@@ -184,24 +186,24 @@ impl ModuleLowering {
         constant: Arc<RwLock<dyn Op>>,
     ) -> Arc<RwLock<dyn Op>> {
         let typ = IntegerType::new(32);
-        let result_type = Arc::new(RwLock::new(typ));
+        let result_type = Shared::new(typ.into());
         let mut ret = Operation::default();
         ret.set_parent(Some(parent.clone()));
         ret.set_name(func::ReturnOp::operation_name());
         ret.set_anonymous_result(result_type).unwrap();
         let value = constant.result(0);
         let operand = OpOperand::new(value);
-        let operand = Arc::new(RwLock::new(operand));
+        let operand = Shared::new(operand.into());
         ret.set_operand(0, operand);
         let ret = func::ReturnOp::from_operation(ret);
-        let ret = Arc::new(RwLock::new(ret));
+        let ret = Shared::new(ret.into());
         ret
     }
     fn return_zero(func: Arc<RwLock<dyn Op>>) {
         let operation = func.operation();
         let typ = IntegerType::new(32);
         operation
-            .set_anonymous_result(Arc::new(RwLock::new(typ)))
+            .set_anonymous_result(Shared::new(typ.into()))
             .unwrap();
 
         let ops = func.ops();
@@ -219,10 +221,10 @@ impl ModuleLowering {
         constant.insert_after(ret.clone());
     }
     fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
-        let func = func.try_read().unwrap();
+        let func = func.rd();
         let func_op = func.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let result = func_op.operation().results();
-        result.vec().try_read().unwrap().len() == 1
+        result.vec().rd().len() == 1
     }
     fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let ops = module.ops();
@@ -258,17 +260,17 @@ impl Rewrite for PrintLowering {
         Ok(op.as_any().is::<arnold::PrintOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
         let mut operation = Operation::default();
         operation.set_name(experimental::PrintfOp::operation_name());
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let mut new_op = experimental::PrintfOp::from_operation_arc(operation.clone());
         new_op.set_parent(op.operation().parent().clone().unwrap());
 
         let operand = op.text();
         let value = operand.value();
-        match &*value.try_read().unwrap() {
+        match &*value.rd() {
             // printf("some text")
             Value::Constant(constant) => {
                 let text = constant.value();
@@ -284,7 +286,7 @@ impl Rewrite for PrintLowering {
             _ => panic!("expected constant or op result"),
         };
 
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }

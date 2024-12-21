@@ -9,6 +9,8 @@ use crate::ir::Type;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::collections::HashMap;
 use std::fmt::Display;
@@ -62,7 +64,7 @@ impl Attribute for BooleanAttr {
         Self { value }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(IntegerType::from_str("i1")))
+        Shared::new(IntegerType::from_str("i1").into())
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -112,7 +114,7 @@ impl Attribute for IntegerAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(self.typ))
+        Shared::new(self.typ.into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
@@ -167,7 +169,7 @@ impl Attribute for StringAttr {
         Self { value }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
         todo!()
@@ -202,7 +204,7 @@ impl Attribute for AnyAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let value = parser.advance();
@@ -229,14 +231,14 @@ pub struct Attributes {
 impl Attributes {
     pub fn new() -> Self {
         Self {
-            map: Arc::new(RwLock::new(HashMap::new())),
+            map: Shared::new(HashMap::new().into()),
         }
     }
     pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
         self.map.clone()
     }
     pub fn is_empty(&self) -> bool {
-        self.map.read().unwrap().is_empty()
+        self.map.rd().is_empty()
     }
     pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
         self.map
@@ -245,30 +247,28 @@ impl Attributes {
             .insert(name.to_string(), attribute);
     }
     pub fn get(&self, name: &str) -> Option<Arc<dyn Attribute>> {
-        self.map.read().unwrap().get(name).cloned()
+        self.map.rd().get(name).cloned()
     }
     pub fn deep_clone(&self) -> Self {
-        let map = self.map.read().unwrap();
         let mut out = HashMap::new();
-        for (name, attribute) in map.iter() {
-            let attribute = attribute.clone();
-            out.insert(name.to_string(), attribute);
+        for (name, attribute) in self.map.rd().iter() {
+            out.insert(name.to_string(), attribute.clone());
         }
-        let map = Arc::new(RwLock::new(out));
+        let map = Shared::new(out.into());
         Self { map }
     }
 }
 
 impl Display for Attributes {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let map = self.map.read().unwrap();
-        if !map.is_empty() {
+        let map = self.map.rd().clone().into_iter();
+        if map.len() != 0 {
             write!(f, "{{")?;
-            for (i, attr) in map.iter().enumerate() {
-                let (name, attribute) = attr;
+            for (i, attr) in map.enumerate() {
                 if 0 < i {
                     write!(f, " ")?;
                 }
+                let (name, attribute) = attr;
                 write!(f, "{name} = {attribute}")?;
             }
             write!(f, "}}")?;

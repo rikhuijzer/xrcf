@@ -3,10 +3,12 @@ use crate::ir::StringType;
 use crate::ir::Type;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
+use crate::shared::Shared;
 use std::fmt::Formatter;
 use std::fmt::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
+
 pub struct LinkageAttr {
     value: String,
 }
@@ -18,7 +20,7 @@ impl Attribute for LinkageAttr {
         }
     }
     fn typ(&self) -> Arc<RwLock<dyn Type>> {
-        Arc::new(RwLock::new(StringType::new()))
+        Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
         let next = parser.peek();

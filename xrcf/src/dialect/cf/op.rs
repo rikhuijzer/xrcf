@@ -8,6 +8,8 @@ use crate::parser::Parse;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -52,18 +54,12 @@ impl Op for BranchOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", self.operation.name())?;
-        let dest = self.dest().expect("Dest not set");
-        let dest = dest.try_read().unwrap();
-        write!(f, "{}", dest)?;
-        let operands = self.operation().operands();
-        let operands = operands.vec();
-        let operands = operands.try_read().unwrap();
-        let operands = operands.iter().skip(1);
+        write!(f, "{}", self.dest().expect("dest not set").rd())?;
+        let operands = self.operation().operands().into_iter().skip(1);
         if 0 < operands.len() {
             write!(f, "(")?;
             for operand in operands {
-                let operand = operand.try_read().unwrap();
-                operand.display_with_type(f)?;
+                operand.rd().display_with_type(f)?;
             }
             write!(f, ")")?;
         }
@@ -80,15 +76,15 @@ impl Parse for BranchOp {
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
         let dest = parser.parse_block_dest()?;
-        let dest = Arc::new(RwLock::new(dest));
+        let dest = Shared::new(dest.into());
         operation.set_operand(0, dest);
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
 
         if parser.check(TokenKind::LParen) {
             parser.expect(TokenKind::LParen)?;
             let operands = operation.operands().vec();
-            let mut operands = operands.try_write().unwrap();
+            let mut operands = operands.wr();
             loop {
                 let operand = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
                 operands.push(operand.clone());
@@ -102,7 +98,7 @@ impl Parse for BranchOp {
         }
 
         let op = BranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }
@@ -146,9 +142,9 @@ impl Parse for CondBranchOp {
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;
         parser.parse_op_operands_into(parent.clone().unwrap(), TOKEN_KIND, &mut operation)?;
 
-        let operation = Arc::new(RwLock::new(operation));
+        let operation = Shared::new(operation.into());
         let op = CondBranchOp { operation };
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
 }

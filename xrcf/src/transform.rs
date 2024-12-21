@@ -7,6 +7,8 @@ use crate::convert::ConvertSCFToCF;
 use crate::convert::Pass;
 use crate::convert::RewriteResult;
 use crate::ir::Op;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use clap::Arg;
 use clap::ArgAction;
@@ -118,14 +120,14 @@ impl TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all,
-            writer: Arc::new(RwLock::new(std::io::stderr())),
+            writer: Shared::new(std::io::stderr().into()),
         }
     }
     pub fn from_passes(passes: Passes) -> TransformOptions {
         TransformOptions {
             passes,
             print_ir_before_all: false,
-            writer: Arc::new(RwLock::new(std::io::stderr())),
+            writer: Shared::new(std::io::stderr().into()),
         }
     }
     pub fn print_ir_before_all(&self) -> bool {
@@ -228,10 +230,10 @@ pub fn transform<T: TransformDispatch>(
     let mut result = RewriteResult::Unchanged;
     for pass in options.passes().vec() {
         if options.print_ir_before_all() {
+            let op = op.rd();
             writeln!(
-                &mut *options.writer.write().unwrap(),
-                "// ----- // IR Dump before {pass} //----- //\n{}\n\n",
-                op.try_read().unwrap()
+                &mut *options.writer.wr(),
+                "// ----- // IR Dump before {pass} //----- //\n{op}\n\n",
             )?;
         }
         let new_result = T::dispatch(op.clone(), pass)?;

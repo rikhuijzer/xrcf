@@ -136,6 +136,7 @@ mod tests {
     use indoc::indoc;
     use std::panic::Location;
     use tracing;
+    use xrcf::shared::SharedExt;
     use xrcf::tester::Tester;
     use xrcf::Passes;
 
@@ -209,7 +210,7 @@ mod tests {
                 panic!("Expected changes");
             }
         };
-        let actual = new_root_op.try_read().unwrap().to_string();
+        let actual = new_root_op.rd().to_string();
         print_heading("After", &actual, &passes);
         (new_root_op, actual)
     }

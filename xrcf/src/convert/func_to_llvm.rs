@@ -10,6 +10,8 @@ use crate::dialect::func::Func;
 use crate::dialect::llvm;
 use crate::ir::GuardedOperation;
 use crate::ir::Op;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::sync::Arc;
 use std::sync::RwLock;
@@ -24,9 +26,9 @@ impl Rewrite for AddLowering {
         Ok(op.as_any().is::<arith::AddiOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let lowered = llvm::AddOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(lowered));
+        let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -43,11 +45,11 @@ impl Rewrite for CallLowering {
         Ok(op.as_any().is::<func::CallOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::CallOp>().unwrap();
         let mut new_op = llvm::CallOp::from_operation_arc(op.operation().clone());
         new_op.set_identifier(op.identifier().unwrap());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -64,9 +66,9 @@ impl Rewrite for ConstantOpLowering {
         Ok(op.as_any().is::<arith::ConstantOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let lowered = llvm::ConstantOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(lowered));
+        let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -83,7 +85,7 @@ impl Rewrite for FuncLowering {
         Ok(op.as_any().is::<func::FuncOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
         let operation = op.operation();
         {
@@ -101,7 +103,7 @@ impl Rewrite for FuncLowering {
         let mut new_op = llvm::FuncOp::from_operation_arc(operation.clone());
         new_op.set_identifier(op.identifier().unwrap());
         new_op.set_sym_visibility(op.sym_visibility().clone());
-        let new_op = Arc::new(RwLock::new(new_op));
+        let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
@@ -118,10 +120,10 @@ impl Rewrite for ReturnLowering {
         Ok(op.as_any().is::<func::ReturnOp>())
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let op = op.try_read().unwrap();
+        let op = op.rd();
         let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
         let lowered = llvm::ReturnOp::from_operation_arc(op.operation().clone());
-        let new_op = Arc::new(RwLock::new(lowered));
+        let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
 
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

@@ -22,6 +22,8 @@ use crate::ir::OpOperand;
 use crate::ir::Operation;
 use crate::ir::StringAttr;
 use crate::ir::Value;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use dialect::experimental::PrintfOp;
 use std::sync::Arc;
@@ -37,14 +39,14 @@ impl PrintLowering {
         let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
-        let name = parent.try_read().unwrap().unique_value_name("%");
+        let name = parent.rd().unique_value_name("%");
         let typ = llvm::ArrayType::for_bytes(&text);
-        let typ = Arc::new(RwLock::new(typ));
+        let typ = Shared::new(typ.into());
         let result = const_operation.add_new_op_result(&name, typ);
 
         let const_op = llvm::ConstantOp::from_operation(const_operation);
         const_op.set_value(Arc::new(StringAttr::new(text)));
-        let const_op = Arc::new(RwLock::new(const_op));
+        let const_op = Shared::new(const_op.into());
         result.set_defining_op(Some(const_op.clone()));
         (const_op, len)
     }
@@ -53,13 +55,13 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
-        let name = parent.try_read().unwrap().unique_value_name("%");
-        let result_type = Arc::new(RwLock::new(typ));
+        let name = parent.rd().unique_value_name("%");
+        let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
         let op = arith::ConstantOp::from_operation(operation);
         let len = APInt::from_str("i16", &len.to_string());
         op.set_value(Arc::new(IntegerAttr::new(typ, len)));
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         result.set_defining_op(Some(op.clone()));
         op
     }
@@ -67,17 +69,17 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
-        let name = parent.try_read().unwrap().unique_value_name("%");
-        let result_type = Arc::new(RwLock::new(typ));
+        let name = parent.rd().unique_value_name("%");
+        let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
         let array_size = len.result(0);
         let array_size = OpOperand::new(array_size);
-        let array_size = Arc::new(RwLock::new(array_size));
+        let array_size = Shared::new(array_size.into());
         operation.set_operand(0, array_size);
 
         let mut op = llvm::AllocaOp::from_operation(operation);
         op.set_element_type("i8".to_string());
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         result.set_defining_op(Some(op.clone()));
         op
     }
@@ -93,12 +95,12 @@ impl PrintLowering {
 
         let value = text.result(0);
         let value = OpOperand::new(value);
-        op.set_value(Arc::new(RwLock::new(value)));
+        op.set_value(Shared::new(value.into()));
 
         let addr = alloca.result(0);
         let addr = OpOperand::new(addr);
-        op.set_addr(Arc::new(RwLock::new(addr)));
-        Arc::new(RwLock::new(op))
+        op.set_addr(Shared::new(addr.into()));
+        Shared::new(op.into())
     }
     fn call_op(
         parent: &Arc<RwLock<Block>>,
@@ -111,7 +113,7 @@ impl PrintLowering {
         {
             let text_addr = alloca.result(0);
             let text_addr = OpOperand::new(text_addr);
-            let text_addr = Arc::new(RwLock::new(text_addr));
+            let text_addr = Shared::new(text_addr.into());
             operation.set_operand(0, text_addr);
         }
         if set_varargs {
@@ -121,7 +123,7 @@ impl PrintLowering {
         }
         let typ = IntegerType::from_str("i32");
         let name = parent.unique_value_name("%");
-        let result_type = Arc::new(RwLock::new(typ));
+        let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
 
         // Going straight to llvm::CallOp instead of func::CallOp because func
@@ -131,10 +133,10 @@ impl PrintLowering {
         if set_varargs {
             let varargs = "!llvm.func<i32 (!llvm.ptr, ...)>";
             let varargs = llvm::FunctionType::from_str(varargs);
-            let varargs = Arc::new(RwLock::new(varargs));
+            let varargs = Shared::new(varargs.into());
             op.set_varargs(Some(varargs));
         }
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         result.set_defining_op(Some(op.clone()));
         op
     }
@@ -156,7 +158,7 @@ impl PrintLowering {
     fn contains_printf(top_level_op: Arc<RwLock<dyn Op>>) -> bool {
         let ops = top_level_op.ops();
         for op in ops {
-            let op = op.try_read().unwrap();
+            let op = op.rd();
             if op.is_func() {
                 let func = match op.as_any().downcast_ref::<llvm::FuncOp>() {
                     Some(func) => func,
@@ -177,7 +179,7 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let result_type = crate::ir::IntegerType::from_str("i32");
-        let result_type = Arc::new(RwLock::new(result_type));
+        let result_type = Shared::new(result_type.into());
         operation.set_anonymous_result(result_type)?;
 
         // Going straight to llvm::FuncOp instead of func::FuncOp because func
@@ -187,22 +189,22 @@ impl PrintLowering {
         op.set_sym_visibility(Some("private".to_string()));
         {
             let arg_type = PointerType::new();
-            let arg_type = Arc::new(RwLock::new(arg_type));
+            let arg_type = Shared::new(arg_type.into());
 
             let name = BlockArgumentName::Anonymous;
-            let name = Arc::new(RwLock::new(name));
+            let name = Shared::new(name.into());
             let argument = crate::ir::BlockArgument::new(name, arg_type);
             let value = Value::BlockArgument(argument);
-            let value = Arc::new(RwLock::new(value));
+            let value = Shared::new(value.into());
             let operation = op.operation();
             operation.set_argument(0, value);
         }
         if set_varargs {
             let value = Value::Variadic;
-            let value = Arc::new(RwLock::new(value));
+            let value = Shared::new(value.into());
             op.operation().set_argument(1, value);
         }
-        let op = Arc::new(RwLock::new(op));
+        let op = Shared::new(op.into());
         Ok(op)
     }
     /// Define the printf function if it is not already defined.
@@ -227,12 +229,8 @@ impl Rewrite for PrintLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         let op_clone = op.clone();
-        let set_varargs = {
-            let operands = op.operation().operands().vec();
-            let operands = operands.try_read().unwrap();
-            1 < operands.len()
-        };
-        let op_rd = op_clone.try_read().unwrap();
+        let set_varargs = 1 < op.operation().operands().vec().rd().len();
+        let op_rd = op_clone.rd();
         let op_rd = op_rd
             .as_any()
             .downcast_ref::<dialect::experimental::PrintfOp>()

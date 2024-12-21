@@ -15,6 +15,8 @@ use crate::ir::VariableRenamer;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
+use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::sync::Arc;
@@ -59,8 +61,7 @@ impl BlockArgument {
         self.parent.clone()
     }
     pub fn set_name(&self, name: BlockArgumentName) {
-        let mut arg_name = self.name.try_write().unwrap();
-        *arg_name = name;
+        *self.name.wr() = name;
     }
     pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
         self.parent = parent;
@@ -75,21 +76,15 @@ impl BlockArgument {
     ///
     /// Used during printing.
     pub fn new_name(&self) -> String {
-        let parent = self.parent();
-        let parent = parent.expect("no parent");
-        let arguments = parent.arguments();
-        let arguments = arguments.vec();
-        let arguments = arguments.try_read().unwrap();
+        let parent = self.parent().expect("no parent");
         let mut used_names = vec![];
-        for argument in arguments.iter() {
-            let argument = argument.try_read().unwrap();
-            if let Value::BlockArgument(argument) = &*argument {
+        for argument in parent.arguments().into_iter() {
+            if let Value::BlockArgument(argument) = &*argument.rd() {
                 if std::ptr::eq(self, argument) {
                     break;
                 }
             };
-            let name = argument.name();
-            if let Some(name) = name {
+            if let Some(name) = argument.name() {
                 used_names.push(name);
             }
         }
@@ -99,9 +94,9 @@ impl BlockArgument {
 
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let typ = self.typ.try_read().unwrap();
+        let typ = self.typ.rd();
         let name = self.name();
-        let name_read = name.try_read().unwrap();
+        let name_read = name.rd();
         match &*name_read {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(_name) => {
@@ -182,7 +177,7 @@ impl BlockPtr {
 
 impl Display for BlockPtr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.block.try_read().unwrap())
+        write!(f, "{}", self.block.rd())
     }
 }
 
@@ -247,7 +242,7 @@ impl AnonymousResult {
 
 impl Display for AnonymousResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.typ.try_read().unwrap())
+        write!(f, "{}", self.typ.rd())
     }
 }
 
@@ -291,8 +286,7 @@ impl OpResult {
         self.defining_op.clone()
     }
     pub fn set_name(&self, name: &str) {
-        let mut name_write = self.name.try_write().unwrap();
-        *name_write = Some(name.to_string());
+        *self.name.wr() = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
         self.typ = Some(typ);
@@ -303,24 +297,20 @@ impl OpResult {
     pub fn new_name(&self) -> String {
         let defining_op = self.defining_op();
         let defining_op = defining_op.expect("defining op not set");
-        let defining_op = defining_op.try_read().unwrap();
+        let defining_op = defining_op.rd();
         let mut used_names = vec![];
 
-        let parent_block = defining_op.operation().parent();
-        let parent_block = parent_block.expect("defining op has no parent");
-        let block_predecessors = parent_block.predecessors();
-        let block_predecessors = block_predecessors.expect("expected predecessors");
-        for predecessor in block_predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
-            let names_in_block = predecessor.used_names_without_predecessors();
-            used_names.extend(names_in_block);
+        let parent = defining_op.operation().parent();
+        let parent = parent.expect("defining op has no parent");
+        let blocks_preds = parent.predecessors();
+        let blocks_preds = blocks_preds.expect("no predecessors");
+        for pred in blocks_preds.iter() {
+            used_names.extend(pred.rd().used_names());
         }
 
         let predecessors = defining_op.operation().predecessors();
         for predecessor in predecessors.iter() {
-            let predecessor = predecessor.try_read().unwrap();
-            let result_names = predecessor.operation().result_names();
-            used_names.extend(result_names);
+            used_names.extend(predecessor.rd().operation().result_names());
         }
         generate_new_name(used_names, "%")
     }
@@ -329,7 +319,7 @@ impl OpResult {
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: Arc::new(RwLock::new(None)),
+            name: Shared::new(None.into()),
             typ: None,
             defining_op: None,
         }
@@ -356,16 +346,16 @@ pub struct UnsetOpResult {
 impl UnsetOpResult {
     pub fn new(result: Arc<RwLock<Value>>) -> Self {
         assert!(
-            matches!(&*result.try_read().unwrap(), Value::OpResult(_)),
+            matches!(&*result.rd(), Value::OpResult(_)),
             "Expected OpResult"
         );
         UnsetOpResult { result }
     }
     pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
-        self.result.try_write().unwrap().set_defining_op(op);
+        self.result.wr().set_defining_op(op);
     }
     pub fn set_typ(&self, typ: Arc<RwLock<dyn Type>>) {
-        self.result.try_write().unwrap().set_type(typ);
+        self.result.wr().set_type(typ);
     }
 }
 
@@ -386,13 +376,10 @@ impl UnsetOpResults {
         values.set_defining_op(op);
     }
     pub fn set_types(&self, types: Vec<Arc<RwLock<dyn Type>>>) {
-        let results = self.values();
-        let results = results.vec();
-        let results = results.try_read().unwrap();
+        let results = self.values().into_iter();
         assert!(types.len() == results.len());
-        for (result, typ) in results.iter().zip(types) {
-            let mut result = result.try_write().unwrap();
-            result.set_type(typ);
+        for (result, typ) in results.zip(types) {
+            result.wr().set_type(typ);
         }
     }
 }
@@ -474,32 +461,20 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => {
-                let name = arg.name();
-                let name = name.try_read().unwrap();
-                match &*name {
-                    BlockArgumentName::Anonymous => None,
-                    BlockArgumentName::Name(name) => Some(name.clone()),
-                    BlockArgumentName::Unset => None,
-                }
-            }
+            Value::BlockArgument(arg) => match &*arg.name().rd() {
+                BlockArgumentName::Anonymous => None,
+                BlockArgumentName::Name(name) => Some(name.clone()),
+                BlockArgumentName::Unset => None,
+            },
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(block_ptr) => {
-                let label = block_ptr.block().label();
-                let label = label.try_read().unwrap();
-                match &*label {
-                    BlockName::Name(name) => Some(name.clone()),
-                    BlockName::Unnamed => None,
-                    BlockName::Unset => None,
-                }
-            }
+            Value::BlockPtr(ptr) => match &*ptr.block().label().rd() {
+                BlockName::Name(name) => Some(name.clone()),
+                BlockName::Unnamed => None,
+                BlockName::Unset => None,
+            },
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => {
-                let name = result.name();
-                let name = name.try_read().unwrap();
-                name.clone()
-            }
+            Value::OpResult(result) => result.name().rd().clone(),
             Value::Variadic => None,
         }
     }
@@ -553,8 +528,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => {
-                let arg_name = BlockArgumentName::Name(name.to_string());
-                arg.set_name(arg_name);
+                arg.set_name(BlockArgumentName::Name(name.to_string()));
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::BlockPtr(_) => todo!(),
@@ -571,16 +545,9 @@ impl Value {
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
-            let operation = op.operation();
-            let operation = operation.try_read().unwrap();
-            let operands = operation.operands().vec();
-            let operands = operands.try_read().unwrap();
-            for operand in operands.iter() {
-                let operand_clone = operand.clone();
-                let operand_clone = operand_clone.try_read().unwrap();
-                let value = operand_clone.value();
-                let value = value.try_read().unwrap();
-                if std::ptr::eq(&*value as *const Value, self as *const Value) {
+            for operand in op.operation().rd().operands().into_iter() {
+                let value = operand.rd().value();
+                if std::ptr::eq(&*value.rd() as *const Value, self as *const Value) {
                     out.push(operand.clone());
                 }
             }
@@ -594,30 +561,20 @@ impl Value {
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };
-        let successors = parent.successors().unwrap();
-        let parent = parent.try_read().unwrap();
-        let ops = parent.ops();
-        let mut ops = ops.try_read().unwrap().clone();
-        for successor in successors.iter() {
-            let current_ops = successor.ops();
-            let current_ops = current_ops.try_read().unwrap().clone();
-            ops.extend(current_ops);
+        let mut ops = parent.rd().ops().rd().clone();
+        for successor in parent.successors().unwrap().iter() {
+            ops.extend(successor.ops().rd().clone());
         }
         self.find_users(&ops)
     }
     fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
         let op = op_res.defining_op();
-        let op = if op.is_some() {
+        let op = if op_res.defining_op().is_some() {
             op.unwrap()
         } else {
             panic!("Defining op not set for OpResult {op_res}");
         };
-        println!("here");
-        let op = op.try_read().unwrap();
-        println!("op: {}", op);
-
-        let ops = op.operation().successors();
-        println!("ops.len: {}", ops.len());
+        let ops = op.rd().operation().successors();
         self.find_users(&ops)
     }
     pub fn users(&self) -> Users {
@@ -656,19 +613,19 @@ pub trait GuardedValue {
 
 impl GuardedValue for Arc<RwLock<Value>> {
     fn name(&self) -> Option<String> {
-        let value = self.try_read().unwrap();
+        let value = self.rd();
         value.name()
     }
     fn rename(&self, new_name: &str) {
-        let mut value = self.try_write().unwrap();
+        let mut value = self.wr();
         value.set_name(new_name);
     }
     fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
-        let mut value = self.try_write().unwrap();
+        let mut value = self.wr();
         value.set_parent(parent);
     }
     fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.try_read().unwrap();
+        let value = self.rd();
         value.typ()
     }
 }
@@ -688,15 +645,14 @@ impl IntoIterator for Values {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let vec = self.values.try_read().unwrap();
-        vec.clone().into_iter()
+        self.values.rd().clone().into_iter()
     }
 }
 
 impl Values {
     pub fn from_vec(values: Vec<Arc<RwLock<Value>>>) -> Self {
         Values {
-            values: Arc::new(RwLock::new(values)),
+            values: Shared::new(values.into()),
         }
     }
     pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Value>>>>> {
@@ -707,7 +663,7 @@ impl Values {
             .try_read()
             .unwrap()
             .iter()
-            .map(|value| value.try_read().unwrap().name().unwrap())
+            .map(|value| value.rd().name().unwrap())
             .collect()
     }
     /// The number of values.
@@ -715,14 +671,13 @@ impl Values {
     /// At some point, this preferably is replaced by some collection trait.
     /// But this seems to not be available yet?
     pub fn len(&self) -> usize {
-        self.values.try_read().unwrap().len()
+        self.values.rd().len()
     }
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
-        let values = self.values.try_read().unwrap();
+        let values = self.values.rd();
         for value in values.iter() {
-            let mut value = value.try_write().unwrap();
             let name = value.name().unwrap();
-            value.set_name(&renamer.rename(&name));
+            value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
     }
@@ -730,15 +685,16 @@ impl Values {
         self.len() == 0
     }
     pub fn types(&self) -> Types {
-        let values = self.values.try_read().unwrap();
-        let types = values
+        let types = self
+            .values
+            .rd()
             .iter()
             .map(|value| value.typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
     pub fn update_types(&mut self, types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
-        let values = self.values.try_read().unwrap();
+        let values = self.values.rd().clone().into_iter();
         if values.len() != types.len() {
             return Err(anyhow::anyhow!(
                 "Expected {} types, but got {}",
@@ -746,9 +702,8 @@ impl Values {
                 types.len()
             ));
         }
-        for (i, value) in values.iter().enumerate() {
-            let mut container = value.try_write().unwrap();
-            container.set_type(types[i].clone());
+        for (i, value) in values.enumerate() {
+            value.wr().set_type(types[i].clone());
         }
         Ok(())
     }
@@ -760,10 +715,8 @@ impl Values {
     /// Calling this on block arguments (like function arguments) will panic since
     /// block arguments do not specify a defining op.
     pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
-        let results = self.values.read().unwrap();
-        for result in results.iter() {
-            let mut mut_result = result.try_write().unwrap();
-            match &mut *mut_result {
+        for result in self.values.rd().iter() {
+            match &mut *result.wr() {
                 Value::BlockArgument(_) => {
                     panic!("Trying to set defining op for block argument")
                 }
@@ -789,12 +742,9 @@ impl Values {
     /// To modify `operation.operand_types()`, call this method on the
     /// `operation`s that define the operands.
     pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
-        let values = self.values.try_read().unwrap();
-        for value in values.iter() {
-            let mut value = value.try_write().unwrap();
+        for value in self.values.rd().iter() {
             let typ = value.typ().unwrap();
-            let typ = T::convert_type(&typ)?;
-            value.set_type(typ);
+            value.wr().set_type(T::convert_type(&typ)?);
         }
         Ok(())
     }
@@ -803,7 +753,7 @@ impl Values {
 impl Default for Values {
     fn default() -> Self {
         Values {
-            values: Arc::new(RwLock::new(vec![])),
+            values: Shared::new(vec![].into()),
         }
     }
 }
@@ -815,7 +765,7 @@ impl Display for Values {
             .try_read()
             .unwrap()
             .iter()
-            .map(|o| o.try_read().unwrap().to_string())
+            .map(|o| o.rd().to_string())
             .collect::<Vec<String>>()
             .join(", ");
         write!(f, "{joined}")
@@ -832,9 +782,9 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
-            let name = Arc::new(RwLock::new(name));
+            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
-            let operand = Arc::new(RwLock::new(arg));
+            let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
                 self.advance();
             }
@@ -843,9 +793,9 @@ impl<T: ParserDispatch> Parser<T> {
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Anonymous;
-            let name = Arc::new(RwLock::new(name));
+            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
-            let operand = Arc::new(RwLock::new(arg));
+            let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
                 self.advance();
             }
@@ -856,7 +806,7 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Dot)?;
             self.expect(TokenKind::Dot)?;
             let variadic = Value::Variadic;
-            return Ok(Arc::new(RwLock::new(variadic)));
+            return Ok(Shared::new(variadic.into()));
         }
         Err(anyhow::anyhow!("Expected function argument"))
     }
@@ -878,7 +828,7 @@ impl<T: ParserDispatch> Parser<T> {
         let op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
-        Ok(UnsetOpResult::new(Arc::new(RwLock::new(result))))
+        Ok(UnsetOpResult::new(Shared::new(result.into())))
     }
     pub fn parse_op_result_into(
         &mut self,
@@ -904,7 +854,7 @@ impl<T: ParserDispatch> Parser<T> {
                 let _comma = self.advance();
             }
         }
-        let results = Arc::new(RwLock::new(results));
+        let results = Shared::new(results.into());
         let values = Values { values: results };
         Ok(UnsetOpResults::new(values))
     }
@@ -919,8 +869,7 @@ impl<T: ParserDispatch> Parser<T> {
         operation: &mut Operation,
     ) -> Result<UnsetOpResults> {
         let results = self.parse_op_results(token_kind)?;
-        let values = results.values();
-        operation.set_results(values.clone());
+        operation.set_results(results.values().clone());
         Ok(results)
     }
     /// Parse `(%arg0 : i64, %arg1 : i64)`, or `(i64, !llvm.ptr)`.
@@ -948,7 +897,7 @@ impl<T: ParserDispatch> Parser<T> {
         let name = self.expect(TokenKind::CaretIdentifier)?;
         let name = name.lexeme.clone();
         let value = Value::BlockLabel(BlockLabel::new(name));
-        let value = Arc::new(RwLock::new(value));
+        let value = Shared::new(value.into());
         Ok(OpOperand::new(value))
     }
 }
