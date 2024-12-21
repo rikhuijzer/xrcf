@@ -134,7 +134,6 @@ mod tests {
     use crate::compile_passes;
     use indoc::indoc;
     use std::panic::Location;
-
     use xrcf::shared::SharedExt;
     use xrcf::tester::Tester;
     use xrcf::Passes;

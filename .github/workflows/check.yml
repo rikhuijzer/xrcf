@@ -45,6 +45,8 @@ jobs:
           # Deny warnings.
           RUSTDOCFLAGS="-D warnings" cargo doc
 
+      - run: cargo clippy
+
   typos:
     runs-on: ubuntu-22.04
     timeout-minutes: 10

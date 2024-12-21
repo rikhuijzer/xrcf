@@ -26,7 +26,6 @@ struct XRCFArgs {
 
 fn cli() -> Command {
     let cli = Command::new("xrcf").args(xrcf::default_arguments());
-
     XRCFArgs::augment_args(cli)
 }
 
