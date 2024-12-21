@@ -153,7 +153,7 @@ pub struct Parser<T: ParserDispatch> {
     src: String,
     tokens: Vec<Token>,
     current: usize,
-    parse_op: std::marker::PhantomData<T>,
+    _marker: std::marker::PhantomData<T>,
 }
 
 #[allow(dead_code)]
@@ -357,7 +357,7 @@ impl<T: ParserDispatch> Parser<T> {
             src: src.to_string(),
             tokens: Scanner::scan(src)?,
             current: 0,
-            parse_op: std::marker::PhantomData,
+            _marker: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
         let op_rd = op.clone();
