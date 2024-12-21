@@ -289,8 +289,7 @@ impl<T: ParserDispatch> Parser<T> {
         let block = Shared::new(block.into());
         replace_block_labels(block.clone());
         for argument in arguments.vec().rd().iter() {
-            let mut argument = argument.wr();
-            if let Value::BlockArgument(arg) = &mut *argument {
+            if let Value::BlockArgument(arg) = &mut *argument.wr() {
                 arg.set_parent(Some(block.clone()));
             } else {
                 panic!("Expected a block argument");
@@ -299,17 +298,14 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            let mut ops = ops.wr();
-            ops.push(op.clone());
+            ops.wr().push(op.clone());
         }
         if ops.rd().is_empty() {
             let token = self.peek();
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        let ops = block.ops();
-        let ops = ops.rd();
-        for op in ops.iter() {
+        for op in block.ops().rd().iter() {
             op.operation().set_parent(Some(block.clone()));
         }
         Ok(block)
@@ -377,9 +373,9 @@ impl<T: ParserDispatch> Parser<T> {
             parse_op: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
-        let opp = op.clone();
-        let opp = opp.rd();
-        let casted = opp.as_any().downcast_ref::<ModuleOp>();
+        let op_rd = op.clone();
+        let op_rd = op_rd.rd();
+        let casted = op_rd.as_any().downcast_ref::<ModuleOp>();
         let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
             op
         } else {
@@ -399,8 +395,7 @@ impl<T: ParserDispatch> Parser<T> {
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Shared::new(block.into());
             {
-                let ops = ops.rd();
-                for child_op in ops.iter() {
+                for child_op in ops.rd().iter() {
                     child_op.operation().set_parent(Some(block.clone()));
                 }
             }
