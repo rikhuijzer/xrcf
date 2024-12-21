@@ -76,21 +76,15 @@ impl BlockArgument {
     ///
     /// Used during printing.
     pub fn new_name(&self) -> String {
-        let parent = self.parent();
-        let parent = parent.expect("no parent");
-        let arguments = parent.arguments();
-        let arguments = arguments.vec();
-        let arguments = arguments.rd();
+        let parent = self.parent().expect("no parent");
         let mut used_names = vec![];
-        for argument in arguments.iter() {
-            let argument = argument.rd();
-            if let Value::BlockArgument(argument) = &*argument {
+        for argument in parent.arguments().into_iter() {
+            if let Value::BlockArgument(argument) = &*argument.rd() {
                 if std::ptr::eq(self, argument) {
                     break;
                 }
             };
-            let name = argument.name();
-            if let Some(name) = name {
+            if let Some(name) = argument.name() {
                 used_names.push(name);
             }
         }
