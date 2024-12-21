@@ -1,7 +1,6 @@
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedValue;
 use crate::ir::IntegerType;
@@ -259,7 +258,7 @@ impl FuncOp {
             let without_parent = region.add_empty_block();
             let region = Shared::new(region.into());
             let block = without_parent.set_parent(Some(region.clone()));
-            block.set_ops(ops);
+            block.wr().set_ops(ops);
             operation.wr().set_region(Some(region));
         } else {
             ops.last().unwrap().insert_after(op.clone());

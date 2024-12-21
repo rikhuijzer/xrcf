@@ -5,7 +5,6 @@ use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOpOperand;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -380,7 +379,7 @@ impl Op for ModuleOp {
         write!(f, "\n\n")?;
         if let Some(region) = self.operation().rd().region() {
             for block in region.rd().blocks().into_iter() {
-                block.display(f, indent)?;
+                block.rd().display(f, indent)?;
             }
         }
         write!(f, "\n!llvm.module.flags = {}", self.module_flags)?;

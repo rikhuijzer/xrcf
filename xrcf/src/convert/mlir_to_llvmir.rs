@@ -12,7 +12,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::Constant;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::GuardedValue;
@@ -148,7 +147,7 @@ impl Rewrite for BlockLowering {
         let region = op.operation().rd().region();
         if let Some(region) = region {
             for block in region.rd().blocks().into_iter() {
-                let label_prefix = block.label_prefix();
+                let label_prefix = block.rd().label_prefix();
                 if label_prefix == "^" {
                     return Ok(true);
                 }
@@ -158,7 +157,7 @@ impl Rewrite for BlockLowering {
     }
     fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
         for block in op.operation().rd().blocks().into_iter() {
-            block.set_label_prefix("".to_string());
+            block.wr().set_label_prefix("".to_string());
         }
         Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }
@@ -357,7 +356,7 @@ struct MergeLowering;
 fn determine_argument_pairs(
     block: &Arc<RwLock<Block>>,
 ) -> Vec<(Arc<RwLock<OpOperand>>, Arc<RwLock<Block>>)> {
-    let callers = block.callers();
+    let callers = block.rd().callers();
     if callers.is_none() {
         return vec![];
     }
@@ -487,7 +486,7 @@ fn insert_phi(block: Arc<RwLock<Block>>) {
 /// ```
 /// on line 3, `%1 : i32` in `llvm.br ^merge(%1 : i32)` will be removed.
 fn remove_caller_operands(block: Arc<RwLock<Block>>) {
-    let callers = block.callers();
+    let callers = block.rd().callers();
     if callers.is_none() {
         return;
     }

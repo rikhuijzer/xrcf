@@ -12,7 +12,6 @@ use crate::dialect::llvm::PointerType;
 use crate::ir::APInt;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::IntegerAttr;
 use crate::ir::IntegerType;
@@ -121,7 +120,7 @@ impl PrintLowering {
             operation.set_operand(1, var);
         }
         let typ = IntegerType::from_str("i32");
-        let name = parent.unique_value_name("%");
+        let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
         let result = operation.add_new_op_result(&name, result_type);
 

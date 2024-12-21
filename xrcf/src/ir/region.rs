@@ -1,7 +1,6 @@
 use crate::ir::block::Block;
 use crate::ir::BlockName;
 use crate::ir::Blocks;
-use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
 use crate::shared::Shared;
@@ -72,7 +71,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let mut result = Vec::new();
         for block in self.blocks().into_iter() {
-            for op in block.ops().rd().iter() {
+            for op in block.rd().ops().rd().iter() {
                 result.push(op.clone());
             }
         }

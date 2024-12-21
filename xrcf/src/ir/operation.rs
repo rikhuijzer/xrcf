@@ -3,7 +3,6 @@ use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::Blocks;
-use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -338,8 +337,8 @@ impl Operation {
     }
     pub fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent().expect("no parent");
-        match parent.index_of(self) {
-            Some(index) => parent.ops().rd()[..index].to_vec(),
+        match parent.clone().rd().index_of(self) {
+            Some(index) => parent.rd().ops().rd()[..index].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
@@ -350,8 +349,8 @@ impl Operation {
     }
     pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
         let parent = self.parent().expect("no parent");
-        match parent.index_of(self) {
-            Some(index) => parent.ops().rd()[index + 1..].to_vec(),
+        match parent.clone().rd().index_of(self) {
+            Some(index) => parent.rd().ops().rd()[index + 1..].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",

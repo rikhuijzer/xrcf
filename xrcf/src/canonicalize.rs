@@ -3,7 +3,6 @@ use crate::convert::ChangedOp;
 use crate::convert::Pass;
 use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
-use crate::ir::GuardedBlock;
 use crate::ir::Op;
 use crate::ir::Users;
 use crate::shared::SharedExt;
@@ -48,7 +47,7 @@ impl Rewrite for DeadCodeElimination {
             Users::OpOperands(users) => {
                 if users.is_empty() {
                     let parent = operation.parent().unwrap();
-                    parent.remove(readonly.operation().clone());
+                    parent.rd().remove(readonly.operation().clone());
                     Ok(RewriteResult::Changed(ChangedOp::new(op.clone())))
                 } else {
                     Ok(RewriteResult::Unchanged)

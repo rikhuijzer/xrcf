@@ -1,6 +1,5 @@
 use crate::convert::RewriteResult;
 use crate::init_subscriber;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
@@ -143,7 +142,7 @@ impl Tester {
             let parent = parent.unwrap();
             let operation = op.operation();
             let operation = operation.rd();
-            assert!(parent.index_of(&operation).is_some(),
+            assert!(parent.rd().index_of(&operation).is_some(),
             "Could not find the following op in parent. Is the parent field pointing to the wrong block?\n{}",
             op);
             for result in operation.results().vec().rd().iter() {

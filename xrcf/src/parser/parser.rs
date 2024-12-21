@@ -11,7 +11,6 @@ use crate::ir::BlockName;
 use crate::ir::BlockPtr;
 use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
@@ -176,12 +175,12 @@ enum Dialects {
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Arc<RwLock<Block>>) {
-    let label = match &*block.label().rd() {
+    let label = match &*block.rd().label().rd() {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
         BlockName::Unset => return,
     };
-    let parent = block.parent().expect("no parent");
+    let parent = block.rd().parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
     for predecessor in parent.rd().blocks().into_iter() {
         for op in predecessor.rd().ops().rd().iter() {
@@ -303,7 +302,7 @@ impl<T: ParserDispatch> Parser<T> {
             let msg = self.error(&token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        for op in block.ops().rd().iter() {
+        for op in block.rd().ops().rd().iter() {
             op.operation().wr().set_parent(Some(block.clone()));
         }
         Ok(block)

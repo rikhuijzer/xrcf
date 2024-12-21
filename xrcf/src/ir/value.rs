@@ -2,7 +2,6 @@ use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
-use crate::ir::GuardedBlock;
 use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -77,7 +76,7 @@ impl BlockArgument {
     pub fn new_name(&self) -> String {
         let parent = self.parent().expect("no parent");
         let mut used_names = vec![];
-        for argument in parent.arguments().into_iter() {
+        for argument in parent.rd().arguments().into_iter() {
             if let Value::BlockArgument(argument) = &*argument.rd() {
                 if std::ptr::eq(self, argument) {
                     break;
@@ -301,7 +300,7 @@ impl OpResult {
 
         let parent = defining_op.operation().rd().parent();
         let parent = parent.expect("defining op has no parent");
-        let blocks_preds = parent.predecessors();
+        let blocks_preds = parent.rd().predecessors();
         let blocks_preds = blocks_preds.expect("no predecessors");
         for pred in blocks_preds.iter() {
             used_names.extend(pred.rd().used_names());
@@ -466,7 +465,7 @@ impl Value {
                 BlockArgumentName::Unset => None,
             },
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(ptr) => match &*ptr.block().label().rd() {
+            Value::BlockPtr(ptr) => match &*ptr.block().rd().label().rd() {
                 BlockName::Name(name) => Some(name.clone()),
                 BlockName::Unnamed => None,
                 BlockName::Unset => None,
@@ -561,8 +560,8 @@ impl Value {
             panic!("BlockArgument {arg} has no parent operation");
         };
         let mut ops = parent.rd().ops().rd().clone();
-        for successor in parent.successors().unwrap().iter() {
-            ops.extend(successor.ops().rd().clone());
+        for successor in parent.rd().successors().unwrap().iter() {
+            ops.extend(successor.rd().ops().rd().clone());
         }
         self.find_users(&ops)
     }

@@ -354,7 +354,7 @@ impl Block {
             None => panic!("could not find op in block"),
         };
     }
-    fn set_arguments(&mut self, arguments: Values) {
+    pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
     pub fn used_names(&self) -> Vec<String> {
@@ -439,84 +439,6 @@ impl UnsetBlock {
     pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
         self.block.wr().set_parent(parent);
         self.block.clone()
-    }
-}
-
-pub trait GuardedBlock {
-    fn arguments(&self) -> Values;
-    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>>;
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result;
-    fn index_of(&self, op: &Operation) -> Option<usize>;
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>);
-    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>);
-    fn label(&self) -> Arc<RwLock<BlockName>>;
-    fn label_prefix(&self) -> String;
-    fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>;
-    fn parent(&self) -> Option<Arc<RwLock<Region>>>;
-    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
-    fn remove(&self, op: Arc<RwLock<Operation>>);
-    fn set_arguments(&self, arguments: Values);
-    fn set_label(&self, label: BlockName);
-    fn set_label_prefix(&self, label_prefix: String);
-    fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>);
-    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>>;
-    fn unique_value_name(&self, prefix: &str) -> String;
-}
-
-impl GuardedBlock for Arc<RwLock<Block>> {
-    fn arguments(&self) -> Values {
-        self.rd().arguments()
-    }
-    fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
-        self.rd().callers()
-    }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        self.rd().display(f, indent)
-    }
-    fn index_of(&self, op: &Operation) -> Option<usize> {
-        self.rd().index_of(op)
-    }
-    fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
-        self.rd().inline_region_before(region);
-    }
-    fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
-        self.wr().insert_after(earlier, later);
-    }
-    fn label(&self) -> Arc<RwLock<BlockName>> {
-        self.rd().label()
-    }
-    fn label_prefix(&self) -> String {
-        self.rd().label_prefix()
-    }
-    fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
-        self.rd().ops()
-    }
-    fn parent(&self) -> Option<Arc<RwLock<Region>>> {
-        self.rd().parent()
-    }
-    fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.rd().predecessors()
-    }
-    fn remove(&self, op: Arc<RwLock<Operation>>) {
-        self.wr().remove(op);
-    }
-    fn set_arguments(&self, arguments: Values) {
-        self.wr().set_arguments(arguments);
-    }
-    fn set_label(&self, label: BlockName) {
-        self.wr().set_label(label);
-    }
-    fn set_label_prefix(&self, label_prefix: String) {
-        self.wr().set_label_prefix(label_prefix);
-    }
-    fn set_ops(&self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
-        self.wr().set_ops(ops);
-    }
-    fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
-        self.rd().successors()
-    }
-    fn unique_value_name(&self, prefix: &str) -> String {
-        self.rd().unique_value_name(prefix)
     }
 }
 
