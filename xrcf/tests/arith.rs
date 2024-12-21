@@ -19,7 +19,7 @@ fn parse_module() {
     }
     "};
     let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, &src, Location::caller());
+    Tester::check_lines_contain(&actual, src, Location::caller());
 }
 
 #[test]

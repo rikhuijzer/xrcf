@@ -114,7 +114,7 @@ fn preprocess(src: &str) -> String {
         } else if line.contains("BULLSHIT") {
             result.push_str(&line.replace("BULLSHIT", "} BULLSHIT {"));
         } else {
-            result.push_str(&line);
+            result.push_str(line);
         }
         result.push('\n');
     }
@@ -134,7 +134,7 @@ mod tests {
     use crate::compile_passes;
     use indoc::indoc;
     use std::panic::Location;
-    use tracing;
+
     use xrcf::shared::SharedExt;
     use xrcf::tester::Tester;
     use xrcf::Passes;

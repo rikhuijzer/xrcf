@@ -48,7 +48,7 @@ fn test_if_else() {
     }
     "#};
     let (module, actual) = Tester::parse(src);
-    Tester::check_lines_exact(&actual, &src, Location::caller());
+    Tester::check_lines_exact(&actual, src, Location::caller());
     Tester::verify(module);
     let (module, actual) = Tester::transform(flags(), src);
     Tester::check_lines_exact(&actual, expected, Location::caller());

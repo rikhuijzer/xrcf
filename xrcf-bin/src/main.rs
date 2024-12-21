@@ -26,8 +26,8 @@ struct XRCFArgs {
 
 fn cli() -> Command {
     let cli = Command::new("xrcf").args(xrcf::default_arguments());
-    let cli = XRCFArgs::augment_args(cli);
-    cli
+
+    XRCFArgs::augment_args(cli)
 }
 
 fn remove_comments(src: &str) -> String {
