@@ -29,13 +29,13 @@ pub trait Op {
     /// This method has to be implemented by all ops and is just used to
     /// create a new [Op]. Do not call this method directly, but rather use
     /// [Self::from_operation].
-    fn new(operation: Arc<RwLock<Operation>>) -> Self
+    fn new(operation: Shared<Operation>) -> Self
     where
         Self: Sized;
     /// Create an [Op] from an [Operation] wrapped in an [Arc].
     ///
     /// See [Self::from_operation] for more information.
-    fn from_operation_arc(operation: Arc<RwLock<Operation>>) -> Self
+    fn from_operation_arc(operation: Shared<Operation>) -> Self
     where
         Self: Sized,
     {
@@ -55,7 +55,7 @@ pub trait Op {
         Self::from_operation_arc(Shared::new(operation.into()))
     }
     fn as_any(&self) -> &dyn std::any::Any;
-    fn operation(&self) -> &Arc<RwLock<Operation>>;
+    fn operation(&self) -> &Shared<Operation>;
     fn name(&self) -> OperationName {
         self.operation().rd().name()
     }

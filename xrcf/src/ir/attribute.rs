@@ -31,7 +31,7 @@ pub trait Attribute {
 
     fn as_any(&self) -> &dyn std::any::Any;
     fn value(&self) -> String;
-    fn typ(&self) -> Arc<RwLock<dyn Type>>;
+    fn typ(&self) -> Shared<dyn Type>;
     fn display(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.value())
     }
@@ -63,7 +63,7 @@ impl Attribute for BooleanAttr {
         };
         Self { value }
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Shared<dyn Type> {
         Shared::new(IntegerType::from_str("i1").into())
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -113,7 +113,7 @@ impl Attribute for IntegerAttr {
             value: APInt::new(64, value.parse::<u64>().unwrap(), true),
         }
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Shared<dyn Type> {
         Shared::new(self.typ.into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
@@ -168,7 +168,7 @@ impl Attribute for StringAttr {
         let value = llvm_string_to_bytes(&text);
         Self { value }
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Shared<dyn Type> {
         Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(_parser: &mut Parser<T>) -> Option<Self> {
@@ -203,7 +203,7 @@ impl Attribute for AnyAttr {
             value: value.to_string(),
         }
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Shared<dyn Type> {
         Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {
@@ -225,7 +225,7 @@ impl Attribute for AnyAttr {
 
 #[derive(Clone)]
 pub struct Attributes {
-    map: Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>>,
+    map: Shared<HashMap<String, Arc<dyn Attribute>>>,
 }
 
 impl Attributes {
@@ -234,7 +234,7 @@ impl Attributes {
             map: Shared::new(HashMap::new().into()),
         }
     }
-    pub fn map(&self) -> Arc<RwLock<HashMap<String, Arc<dyn Attribute>>>> {
+    pub fn map(&self) -> Shared<HashMap<String, Arc<dyn Attribute>>> {
         self.map.clone()
     }
     pub fn is_empty(&self) -> bool {
@@ -242,8 +242,7 @@ impl Attributes {
     }
     pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
         self.map
-            .write()
-            .unwrap()
+            .wr()
             .insert(name.to_string(), attribute);
     }
     pub fn get(&self, name: &str) -> Option<Arc<dyn Attribute>> {

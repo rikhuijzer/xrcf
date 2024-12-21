@@ -29,14 +29,14 @@ pub struct Block {
     ///
     /// The label is only used during parsing to see which operands point to
     /// this block. During printing, a new name is generated.
-    label: Arc<RwLock<BlockName>>,
+    label: Shared<BlockName>,
     /// The prefix for the label (defaults to `^`).
     label_prefix: String,
     arguments: Values,
-    ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
+    ops: Shared<Vec<Shared<dyn Op>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
     /// the `Block` is shared via `Arc<RwLock<..>>`.
-    parent: Option<Arc<RwLock<Region>>>,
+    parent: Option<Shared<Region>>,
 }
 
 fn canonicalize_label(label: &str) -> String {
@@ -54,10 +54,10 @@ impl PartialEq for Block {
 
 impl Block {
     pub fn new(
-        label: Arc<RwLock<BlockName>>,
+        label: Shared<BlockName>,
         arguments: Values,
-        ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>,
-        parent: Option<Arc<RwLock<Region>>>,
+        ops: Shared<Vec<Shared<dyn Op>>>,
+        parent: Option<Shared<Region>>,
     ) -> Self {
         Self {
             label,
@@ -70,19 +70,19 @@ impl Block {
     pub fn arguments(&self) -> Values {
         self.arguments.clone()
     }
-    pub fn ops(&self) -> Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
+    pub fn ops(&self) -> Shared<Vec<Shared<dyn Op>>> {
         self.ops.clone()
     }
-    pub fn set_ops(&mut self, ops: Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>>) {
+    pub fn set_ops(&mut self, ops: Shared<Vec<Shared<dyn Op>>>) {
         self.ops = ops;
     }
-    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Region>>>) {
+    pub fn set_parent(&mut self, parent: Option<Shared<Region>>) {
         self.parent = parent;
     }
-    pub fn ops_mut(&mut self) -> &mut Arc<RwLock<Vec<Arc<RwLock<dyn Op>>>>> {
+    pub fn ops_mut(&mut self) -> &mut Shared<Vec<Shared<dyn Op>>> {
         &mut self.ops
     }
-    pub fn label(&self) -> Arc<RwLock<BlockName>> {
+    pub fn label(&self) -> Shared<BlockName> {
         self.label.clone()
     }
     pub fn label_prefix(&self) -> String {
@@ -94,7 +94,7 @@ impl Block {
     pub fn set_label_prefix(&mut self, label_prefix: String) {
         self.label_prefix = label_prefix;
     }
-    pub fn parent(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn parent(&self) -> Option<Shared<Region>> {
         self.parent.clone()
     }
     /// Return callers of this block (i.e., ops that point to the current block).
@@ -148,7 +148,7 @@ impl Block {
     /// parent region. This is because the current block may currently be in the
     /// process of being parsed (i.e., not yet ready to be added to the
     /// collection of blocks).
-    pub fn predecessors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+    pub fn predecessors(&self) -> Option<Vec<Shared<Block>>> {
         let region = self.parent();
         let region = region.expect("no parent");
         let region = region.rd();
