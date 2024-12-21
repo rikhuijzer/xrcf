@@ -635,7 +635,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
             let converted = arguments
                 .vec()
                 .iter()
-                .map(|argument| Self::convert_type(argument))
+                .map(Self::convert_type)
                 .collect::<Result<Vec<_>>>()?;
             let arguments = Types::from_vec(converted);
             let typ = targ3t::llvmir::FunctionType::new(typ.return_types().clone(), arguments);

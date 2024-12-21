@@ -541,7 +541,7 @@ impl Value {
         let ptr = BlockPtr::new(block);
         Value::BlockPtr(ptr)
     }
-    fn find_users(&self, ops: &Vec<Shared<dyn Op>>) -> Vec<Shared<OpOperand>> {
+    fn find_users(&self, ops: &[Shared<dyn Op>]) -> Vec<Shared<OpOperand>> {
         let mut out = Vec::new();
         for op in ops.iter() {
             for operand in op.rd().operation().rd().operands().into_iter() {
