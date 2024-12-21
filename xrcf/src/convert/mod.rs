@@ -26,11 +26,11 @@ pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
 pub use scf_to_cf::ConvertSCFToCF;
 
 pub struct ChangedOp {
-    pub op: Arc<RwLock<dyn Op>>,
+    pub op: Shared<dyn Op>,
 }
 
 impl ChangedOp {
-    pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
+    pub fn new(op: Shared<dyn Op>) -> Self {
         ChangedOp { op }
     }
 }
@@ -79,11 +79,11 @@ pub trait Rewrite {
     /// Applies the rewrite to the given operation.
     ///
     /// This method is allowed to mutate the IR.
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult>;
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult>;
 }
 
 fn apply_rewrites_helper(
-    root: Arc<RwLock<dyn Op>>,
+    root: Shared<dyn Op>,
     rewrites: &[&dyn Rewrite],
     indent: i32,
 ) -> Result<RewriteResult> {
@@ -119,10 +119,7 @@ fn apply_rewrites_helper(
     Ok(RewriteResult::Unchanged)
 }
 
-pub fn apply_rewrites(
-    root: Arc<RwLock<dyn Op>>,
-    rewrites: &[&dyn Rewrite],
-) -> Result<RewriteResult> {
+pub fn apply_rewrites(root: Shared<dyn Op>, rewrites: &[&dyn Rewrite]) -> Result<RewriteResult> {
     let max_iterations = 1024;
     let mut root = root;
     let mut has_changed = false;
@@ -153,5 +150,5 @@ pub fn apply_rewrites(
 /// external representation. Here, we don't make this distinction.
 pub trait Pass {
     const NAME: &'static str;
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult>;
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult>;
 }

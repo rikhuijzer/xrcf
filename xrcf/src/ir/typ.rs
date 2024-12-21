@@ -3,12 +3,11 @@ use crate::ir::OpOperands;
 use crate::parser::Parser;
 use crate::parser::ParserDispatch;
 use crate::parser::TokenKind;
+use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 pub trait Type {
     /// Display the type.
@@ -29,7 +28,7 @@ impl Display for dyn Type {
 ///
 /// This trait can be implemented by a dialect to parse types from a string.
 pub trait TypeParse {
-    fn parse_type(src: &str) -> Result<Arc<RwLock<dyn Type>>>;
+    fn parse_type(src: &str) -> Result<Shared<dyn Type>>;
 }
 
 /// Interface to convert a type from one dialect to another.
@@ -37,12 +36,12 @@ pub trait TypeParse {
 /// This trait can be implemented by a dialect to lower types to their
 /// corresponding dialect types.
 pub trait TypeConvert {
-    fn convert_str(src: &str) -> Result<Arc<RwLock<dyn Type>>>;
+    fn convert_str(src: &str) -> Result<Shared<dyn Type>>;
     /// Convert a `Type` from one dialect to another.
     ///
     /// This method can be reimplemented to compare types directly instead of
     /// converting to a string first.
-    fn convert_type(from: &Arc<RwLock<dyn Type>>) -> Result<Arc<RwLock<dyn Type>>> {
+    fn convert_type(from: &Shared<dyn Type>) -> Result<Shared<dyn Type>> {
         let from = from.rd();
         let typ = Self::convert_str(&from.to_string())?;
         Ok(typ)
@@ -178,11 +177,11 @@ impl Display for APInt {
 /// Provides some convenience methods around [Type]s.
 #[derive(Clone)]
 pub struct Types {
-    types: Vec<Arc<RwLock<dyn Type>>>,
+    types: Vec<Shared<dyn Type>>,
 }
 
 impl IntoIterator for Types {
-    type Item = Arc<RwLock<dyn Type>>;
+    type Item = Shared<dyn Type>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
     fn into_iter(self) -> Self::IntoIter {
         self.types.into_iter()
@@ -190,10 +189,10 @@ impl IntoIterator for Types {
 }
 
 impl Types {
-    pub fn from_vec(types: Vec<Arc<RwLock<dyn Type>>>) -> Self {
+    pub fn from_vec(types: Vec<Shared<dyn Type>>) -> Self {
         Self { types }
     }
-    pub fn vec(&self) -> Vec<Arc<RwLock<dyn Type>>> {
+    pub fn vec(&self) -> Vec<Shared<dyn Type>> {
         self.types.clone()
     }
 }
@@ -221,11 +220,7 @@ impl<T: ParserDispatch> Parser<T> {
     ///
     /// Useful during the parsing of certain ops where the operand type is
     /// expected to match a given type.
-    pub fn verify_type(
-        &mut self,
-        operand: Arc<RwLock<OpOperand>>,
-        typ: Arc<RwLock<dyn Type>>,
-    ) -> Result<()> {
+    pub fn verify_type(&mut self, operand: Shared<OpOperand>, typ: Shared<dyn Type>) -> Result<()> {
         let operand = operand.rd();
         let operand_typ = operand.typ()?;
         let operand_typ = operand_typ.rd();
@@ -242,7 +237,7 @@ impl<T: ParserDispatch> Parser<T> {
         Ok(())
     }
     /// Parse types until a closing parenthesis.
-    pub fn parse_types(&mut self) -> Result<Vec<Arc<RwLock<dyn Type>>>> {
+    pub fn parse_types(&mut self) -> Result<Vec<Shared<dyn Type>>> {
         let mut types = vec![];
         while !self.check(TokenKind::RParen) {
             let typ = self.parse_type()?;
@@ -262,7 +257,7 @@ impl<T: ParserDispatch> Parser<T> {
     /// %0 = arith.constant 42 : i32
     /// llvm.call @printf(%0) : (i32) -> (i32)
     /// ```
-    pub fn parse_type_for_op_operand(&mut self, operand: Arc<RwLock<OpOperand>>) -> Result<()> {
+    pub fn parse_type_for_op_operand(&mut self, operand: Shared<OpOperand>) -> Result<()> {
         let typ = self.parse_type()?;
         self.verify_type(operand, typ)?;
         Ok(())

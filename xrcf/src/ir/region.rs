@@ -19,7 +19,7 @@ pub struct Region {
     blocks: Blocks,
     // This field does not have to be an `Arc<RwLock<..>>` because the `Region`
     // is shared via `Arc<RwLock<..>>`.
-    parent: Option<Arc<RwLock<dyn Op>>>,
+    parent: Option<Shared<dyn Op>>,
 }
 
 /// Set fresh block labels for all blocks in the region.
@@ -28,7 +28,7 @@ pub struct Region {
 /// will point to blocks that occur later. If we would refresh the name during
 /// printing of the block (like we do with ssa variables), then the operands
 /// would print outdated names.
-fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
+fn set_fresh_block_labels(blocks: &Vec<Shared<Block>>) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
         let block = block.rd();
@@ -56,19 +56,19 @@ fn set_fresh_block_labels(blocks: &Vec<Arc<RwLock<Block>>>) {
 }
 
 impl Region {
-    pub fn new(blocks: Blocks, parent: Option<Arc<RwLock<dyn Op>>>) -> Self {
+    pub fn new(blocks: Blocks, parent: Option<Shared<dyn Op>>) -> Self {
         Self { blocks, parent }
     }
     pub fn blocks(&self) -> Blocks {
         self.blocks.clone()
     }
-    pub fn block(&self, index: usize) -> Arc<RwLock<Block>> {
+    pub fn block(&self, index: usize) -> Shared<Block> {
         self.blocks().into_iter().nth(index).unwrap()
     }
-    pub fn parent(&self) -> Option<Arc<RwLock<dyn Op>>> {
+    pub fn parent(&self) -> Option<Shared<dyn Op>> {
         self.parent.clone()
     }
-    pub fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    pub fn ops(&self) -> Vec<Shared<dyn Op>> {
         let mut result = Vec::new();
         for block in self.blocks().into_iter() {
             for op in block.rd().ops().rd().iter() {
@@ -92,7 +92,7 @@ impl Region {
         self.blocks().vec().wr().push(block.clone());
         UnsetBlock::new(block)
     }
-    pub fn add_empty_block_before(&self, block: Arc<RwLock<Block>>) -> UnsetBlock {
+    pub fn add_empty_block_before(&self, block: Shared<Block>) -> UnsetBlock {
         let index = self.index_of(&block.rd()).unwrap();
 
         let new = Block::default();
@@ -100,7 +100,7 @@ impl Region {
         self.blocks().vec().wr().insert(index, new.clone());
         UnsetBlock::new(new)
     }
-    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<dyn Op>>>) {
+    pub fn set_parent(&mut self, parent: Option<Shared<dyn Op>>) {
         self.parent = parent;
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {

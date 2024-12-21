@@ -30,7 +30,7 @@ struct PrintLowering;
 
 impl PrintLowering {
     /// Return a constant operation containing the [PrintOp]'s text.
-    fn text_constant(parent: &Arc<RwLock<Block>>, op: &PrintfOp) -> (Arc<RwLock<dyn Op>>, usize) {
+    fn text_constant(parent: &Shared<Block>, op: &PrintfOp) -> (Shared<dyn Op>, usize) {
         let mut const_operation = Operation::default();
         const_operation.set_parent(Some(parent.clone()));
         let text = op.text().clone();
@@ -48,7 +48,7 @@ impl PrintLowering {
         (const_op, len)
     }
     /// Return an [Op] which defines the length for the text `alloca`.
-    fn len_specifier(parent: &Arc<RwLock<Block>>, len: usize) -> Arc<RwLock<dyn Op>> {
+    fn len_specifier(parent: &Shared<Block>, len: usize) -> Shared<dyn Op> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16");
@@ -62,7 +62,7 @@ impl PrintLowering {
         result.set_defining_op(Some(op.clone()));
         op
     }
-    fn alloca_op(parent: &Arc<RwLock<Block>>, len: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+    fn alloca_op(parent: &Shared<Block>, len: Shared<dyn Op>) -> Shared<dyn Op> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
@@ -81,10 +81,10 @@ impl PrintLowering {
         op
     }
     fn store_op(
-        parent: &Arc<RwLock<Block>>,
-        text: Arc<RwLock<dyn Op>>,
-        alloca: Arc<RwLock<dyn Op>>,
-    ) -> Arc<RwLock<dyn Op>> {
+        parent: &Shared<Block>,
+        text: Shared<dyn Op>,
+        alloca: Shared<dyn Op>,
+    ) -> Shared<dyn Op> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
 
@@ -100,11 +100,11 @@ impl PrintLowering {
         Shared::new(op.into())
     }
     fn call_op(
-        parent: &Arc<RwLock<Block>>,
+        parent: &Shared<Block>,
         op: &PrintfOp,
-        alloca: Arc<RwLock<dyn Op>>,
+        alloca: Shared<dyn Op>,
         set_varargs: bool,
-    ) -> Arc<RwLock<dyn Op>> {
+    ) -> Shared<dyn Op> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         {
@@ -137,7 +137,7 @@ impl PrintLowering {
         result.set_defining_op(Some(op.clone()));
         op
     }
-    fn top_level_op(op: Arc<RwLock<dyn Op>>) -> Arc<RwLock<dyn Op>> {
+    fn top_level_op(op: Shared<dyn Op>) -> Shared<dyn Op> {
         let mut out = op.clone();
         for i in 0..1000 {
             let parent_op = out.rd().parent_op();
@@ -152,7 +152,7 @@ impl PrintLowering {
         out
     }
     /// Whether the parent operation of `op` contains a `printf` function.
-    fn contains_printf(top_level_op: Arc<RwLock<dyn Op>>) -> bool {
+    fn contains_printf(top_level_op: Shared<dyn Op>) -> bool {
         let ops = top_level_op.rd().ops();
         for op in ops {
             let op = op.rd();
@@ -169,10 +169,7 @@ impl PrintLowering {
         false
     }
     /// Return an [Op] which defines (declares) the `printf` function.
-    fn printf_func_def(
-        parent: Arc<RwLock<Block>>,
-        set_varargs: bool,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+    fn printf_func_def(parent: Shared<Block>, set_varargs: bool) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let result_type = crate::ir::IntegerType::from_str("i32");
@@ -205,7 +202,7 @@ impl PrintLowering {
         Ok(op)
     }
     /// Define the printf function if it is not already defined.
-    fn define_printf(op: Arc<RwLock<dyn Op>>, set_varargs: bool) -> Result<()> {
+    fn define_printf(op: Shared<dyn Op>, set_varargs: bool) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
         if !Self::contains_printf(top_level_op.clone()) {
             let ops = top_level_op.rd().ops();
@@ -225,7 +222,7 @@ impl Rewrite for PrintLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<dialect::experimental::PrintfOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op_clone = op.clone();
         let set_varargs = 1 < op.rd().operation().rd().operands().vec().rd().len();
         let op_rd = op_clone.rd();
@@ -256,7 +253,7 @@ pub struct ConvertExperimentalToMLIR;
 
 impl Pass for ConvertExperimentalToMLIR {
     const NAME: &'static str = "convert-experimental-to-mlir";
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&PrintLowering];
         apply_rewrites(op, &rewrites)
     }

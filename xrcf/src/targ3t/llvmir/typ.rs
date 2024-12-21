@@ -9,7 +9,7 @@ use std::sync::RwLock;
 #[derive(Clone)]
 pub struct ArrayType {
     num_elements: u32,
-    element_type: Arc<RwLock<dyn Type>>,
+    element_type: Shared<dyn Type>,
 }
 
 impl ArrayType {

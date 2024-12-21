@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// A convenience type alias for `Arc<RwLock<T>>`.
 ///

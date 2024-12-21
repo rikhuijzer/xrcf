@@ -1,8 +1,6 @@
 use crate::arnold;
 use crate::arnold_to_mlir::ConvertArnoldToMLIR;
 use anyhow::Result;
-use std::sync::Arc;
-use std::sync::RwLock;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::ir::Block;
@@ -14,6 +12,7 @@ use xrcf::parser::Parse;
 use xrcf::parser::Parser;
 use xrcf::parser::ParserDispatch;
 use xrcf::parser::TokenKind;
+use xrcf::shared::Shared;
 use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
 use xrcf::SinglePass;
@@ -41,8 +40,8 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
 impl ParserDispatch for ArnoldParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         if is_function_call(parser) {
             return <arnold::CallOp as Parse>::op(parser, parent);
         }
@@ -80,7 +79,7 @@ impl ParserDispatch for ArnoldParserDispatch {
             _ => default_dispatch(name, parser, parent),
         }
     }
-    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {
         default_parse_type(parser)
     }
 }
@@ -88,7 +87,7 @@ impl ParserDispatch for ArnoldParserDispatch {
 pub struct ArnoldTransformDispatch;
 
 impl TransformDispatch for ArnoldTransformDispatch {
-    fn dispatch(op: Arc<RwLock<dyn Op>>, pass: &SinglePass) -> Result<RewriteResult> {
+    fn dispatch(op: Shared<dyn Op>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
             ConvertArnoldToMLIR::NAME => ConvertArnoldToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
@@ -197,7 +196,7 @@ mod tests {
         tracing::info!("{msg} ({passes}):\n```\n{src}\n```\n");
     }
 
-    fn test_transform(src: &str, passes: Vec<&str>) -> (Arc<RwLock<dyn Op>>, String) {
+    fn test_transform(src: &str, passes: Vec<&str>) -> (Shared<dyn Op>, String) {
         Tester::init_tracing();
         let src = src.trim();
         let passes = Passes::from_vec(passes);

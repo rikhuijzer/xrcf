@@ -19,7 +19,7 @@ impl Attribute for LinkageAttr {
             value: value.to_string(),
         }
     }
-    fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    fn typ(&self) -> Shared<dyn Type> {
         Shared::new(StringType::new().into())
     }
     fn parse<T: ParserDispatch>(parser: &mut Parser<T>) -> Option<Self> {

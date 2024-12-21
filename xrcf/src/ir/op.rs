@@ -59,7 +59,7 @@ pub trait Op {
     fn name(&self) -> OperationName {
         self.operation().rd().name()
     }
-    fn region(&self) -> Option<Arc<RwLock<Region>>> {
+    fn region(&self) -> Option<Shared<Region>> {
         self.operation().rd().region()
     }
     /// Returns the values which this `Op` assigns to.
@@ -87,7 +87,7 @@ pub trait Op {
         Some(self.operation().rd().attributes().get(key)?)
     }
     /// Insert `earlier` before `self` inside `self`'s parent block.
-    fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>) {
+    fn insert_before(&self, earlier: Shared<dyn Op>) {
         let operation = self.operation();
         let parent = match operation.rd().parent() {
             Some(block) => block,
@@ -97,7 +97,7 @@ pub trait Op {
         parent.rd().insert_before(earlier, later);
     }
     /// Insert `later` after `self` inside `self`'s parent block.
-    fn insert_after(&self, later: Arc<RwLock<dyn Op>>) {
+    fn insert_after(&self, later: Shared<dyn Op>) {
         let operation = self.operation();
         let parent = match operation.rd().parent() {
             Some(block) => block,
@@ -120,7 +120,7 @@ pub trait Op {
     /// Note that this function assumes that `self` will be dropped after this
     /// function call. Therefore, the old op can still have references to
     /// objects that are now part of the new op.
-    fn replace(&self, new: Arc<RwLock<dyn Op>>) {
+    fn replace(&self, new: Shared<dyn Op>) {
         let parent = self.operation().rd().parent();
         let results = self.operation().rd().results();
         for result in results.clone().into_iter() {
@@ -141,24 +141,24 @@ pub trait Op {
     /// Some ops may decide to override this implementation if the children are
     /// not located inside the main region of the op. For example, the `scf.if`
     /// operation contains two regions: the "then" region and the "else" region.
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    fn ops(&self) -> Vec<Shared<dyn Op>> {
         if let Some(region) = self.region() {
             region.rd().ops()
         } else {
             vec![]
         }
     }
-    fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+    fn parent_op(&self) -> Option<Shared<dyn Op>> {
         self.operation().rd().parent_op()
     }
-    fn set_parent(&self, parent: Arc<RwLock<Block>>) {
+    fn set_parent(&self, parent: Shared<Block>) {
         self.operation().wr().set_parent(Some(parent));
     }
     /// Return the result at the given index.
     ///
     /// Convenience function which makes it easier to set an operand to the
     /// result of an operation.
-    fn result(&self, index: usize) -> Arc<RwLock<Value>> {
+    fn result(&self, index: usize) -> Shared<Value> {
         self.operation().rd().result(index).unwrap()
     }
     /// Display the operation with the given indentation.
@@ -179,19 +179,19 @@ impl Display for dyn Op {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    pub fn parse_op(&mut self, parent: Option<Arc<RwLock<Block>>>) -> Result<Arc<RwLock<dyn Op>>> {
+    pub fn parse_op(&mut self, parent: Option<Shared<Block>>) -> Result<Shared<dyn Op>> {
         T::parse_op(self, parent)
     }
 }
 
 #[must_use = "the object inside `UnsetOp` should be further initialized, see the setter methods"]
-pub struct UnsetOp(Arc<RwLock<dyn Op>>);
+pub struct UnsetOp(Shared<dyn Op>);
 
 impl UnsetOp {
-    pub fn new(op: Arc<RwLock<dyn Op>>) -> Self {
+    pub fn new(op: Shared<dyn Op>) -> Self {
         UnsetOp(op)
     }
-    pub fn set_parent(&self, parent: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+    pub fn set_parent(&self, parent: Shared<Block>) -> Shared<dyn Op> {
         self.0.rd().set_parent(parent);
         self.0.clone()
     }

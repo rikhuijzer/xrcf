@@ -23,14 +23,14 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 /// `cf.br` $dest (`(` $destOperands^ `:` type($destOperands) `)`)? attr-dict
 /// ```
 pub struct BranchOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl BranchOp {
-    pub fn dest(&self) -> Option<Arc<RwLock<OpOperand>>> {
+    pub fn dest(&self) -> Option<Shared<OpOperand>> {
         self.operation.rd().operand(0)
     }
-    pub fn set_dest(&mut self, dest: Arc<RwLock<OpOperand>>) {
+    pub fn set_dest(&mut self, dest: Shared<OpOperand>) {
         self.operation.wr().set_operand(0, dest);
     }
 }
@@ -39,7 +39,7 @@ impl Op for BranchOp {
     fn operation_name() -> OperationName {
         OperationName::new("cf.br".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         BranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -48,7 +48,7 @@ impl Op for BranchOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -69,8 +69,8 @@ impl Op for BranchOp {
 impl Parse for BranchOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<BranchOp>(&mut operation)?;
@@ -110,14 +110,14 @@ impl Display for BranchOp {
 
 /// `cf.cond_br`
 pub struct CondBranchOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for CondBranchOp {
     fn operation_name() -> OperationName {
         OperationName::new("cf.cond_br".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         CondBranchOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
@@ -126,7 +126,7 @@ impl Op for CondBranchOp {
     fn is_pure(&self) -> bool {
         true
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
 }
@@ -134,8 +134,8 @@ impl Op for CondBranchOp {
 impl Parse for CondBranchOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<CondBranchOp>(&mut operation)?;

@@ -102,11 +102,11 @@ pub struct Operation {
     attributes: Attributes,
     /// Results are [Value]s, so either [BlockArgument] or [OpResult].
     results: Values,
-    region: Option<Arc<RwLock<Region>>>,
+    region: Option<Shared<Region>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
     /// `ModuleOp` that is created after parsing of the `FuncOp`).
-    parent: Option<Arc<RwLock<Block>>>,
+    parent: Option<Shared<Block>>,
 }
 
 /// Two operations are equal if they point to the same object.
@@ -177,8 +177,8 @@ impl Operation {
         operands: OpOperands,
         attributes: Attributes,
         results: Values,
-        region: Option<Arc<RwLock<Region>>>,
-        parent: Option<Arc<RwLock<Block>>>,
+        region: Option<Shared<Region>>,
+        parent: Option<Shared<Block>>,
     ) -> Self {
         Self {
             name,
@@ -210,7 +210,7 @@ impl Operation {
                 .collect(),
         )
     }
-    pub fn operand(&self, index: usize) -> Option<Arc<RwLock<OpOperand>>> {
+    pub fn operand(&self, index: usize) -> Option<Shared<OpOperand>> {
         self.operands().into_iter().nth(index).clone()
     }
     pub fn operands_mut(&mut self) -> &mut OpOperands {
@@ -222,13 +222,13 @@ impl Operation {
     pub fn results(&self) -> Values {
         self.results.clone()
     }
-    pub fn result(&self, index: usize) -> Option<Arc<RwLock<Value>>> {
+    pub fn result(&self, index: usize) -> Option<Shared<Value>> {
         self.results().into_iter().nth(index).clone()
     }
     /// Get the single result type of the operation.
     ///
     /// Return `None` if `results.len() =! 1`.
-    pub fn result_type(&self, index: usize) -> Option<Arc<RwLock<dyn Type>>> {
+    pub fn result_type(&self, index: usize) -> Option<Shared<dyn Type>> {
         match self.results().into_iter().nth(index) {
             None => None,
             Some(result) => Some(result.rd().typ().unwrap()),
@@ -261,14 +261,14 @@ impl Operation {
         }
         result_names
     }
-    pub fn region(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn region(&self) -> Option<Shared<Region>> {
         self.region.clone()
     }
     /// Return the parent block (this is called `getBlock` in MLIR).
-    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+    pub fn parent(&self) -> Option<Shared<Block>> {
         self.parent.clone()
     }
-    pub fn parent_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+    pub fn parent_op(&self) -> Option<Shared<dyn Op>> {
         let parent = match self.parent() {
             Some(parent) => parent,
             None => return None,
@@ -292,10 +292,10 @@ impl Operation {
     pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn set_argument(&mut self, index: usize, argument: Arc<RwLock<Value>>) {
+    pub fn set_argument(&mut self, index: usize, argument: Shared<Value>) {
         set_or_grow_by_one(&mut self.arguments.vec().wr(), index, argument);
     }
-    pub fn set_operand(&mut self, index: usize, operand: Arc<RwLock<OpOperand>>) {
+    pub fn set_operand(&mut self, index: usize, operand: Shared<OpOperand>) {
         set_or_grow_by_one(&mut self.operands.vec().wr(), index, operand);
     }
     pub fn set_operands(&mut self, operands: OpOperands) {
@@ -308,7 +308,7 @@ impl Operation {
         self.results = results;
     }
     /// Update the result type for the operation.
-    pub fn set_result_type(&self, index: usize, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+    pub fn set_result_type(&self, index: usize, result_type: Shared<dyn Type>) -> Result<()> {
         self.results()
             .into_iter()
             .nth(index)
@@ -320,7 +320,7 @@ impl Operation {
     /// Set the results (and types) of the operation to [AnonymousResult]s.
     ///
     /// Assumes the results are empty.
-    pub fn set_anonymous_results(&self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+    pub fn set_anonymous_results(&self, result_types: Vec<Shared<dyn Type>>) -> Result<()> {
         let results = self.results().vec();
         let mut results = results.wr();
         for result_type in result_types.iter() {
@@ -332,10 +332,10 @@ impl Operation {
         Ok(())
     }
     /// Set the result (and type) of the operation to [AnonymousResult].
-    pub fn set_anonymous_result(&mut self, result_type: Arc<RwLock<dyn Type>>) -> Result<()> {
+    pub fn set_anonymous_result(&mut self, result_type: Shared<dyn Type>) -> Result<()> {
         self.set_anonymous_results(vec![result_type])
     }
-    pub fn predecessors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    pub fn predecessors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");
         match parent.clone().rd().index_of(self) {
             Some(index) => parent.rd().ops().rd()[..index].to_vec(),
@@ -347,7 +347,7 @@ impl Operation {
             }
         }
     }
-    pub fn successors(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    pub fn successors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");
         match parent.clone().rd().index_of(self) {
             Some(index) => parent.rd().ops().rd()[index + 1..].to_vec(),
@@ -359,7 +359,7 @@ impl Operation {
             }
         }
     }
-    pub fn update_result_types(&mut self, result_types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+    pub fn update_result_types(&mut self, result_types: Vec<Shared<dyn Type>>) -> Result<()> {
         let mut results = self.results();
         if results.vec().rd().is_empty() {
             return Err(anyhow::anyhow!("Expected results to have been set"));
@@ -368,7 +368,7 @@ impl Operation {
         Ok(())
     }
     /// Add a new op result with given name.
-    pub fn add_new_op_result(&self, name: &str, typ: Arc<RwLock<dyn Type>>) -> UnsetOpResult {
+    pub fn add_new_op_result(&self, name: &str, typ: Shared<dyn Type>) -> UnsetOpResult {
         let mut result = OpResult::default();
         result.set_name(name);
         result.set_typ(typ);
@@ -377,10 +377,10 @@ impl Operation {
         self.results().vec().wr().push(op_result.clone());
         UnsetOpResult::new(op_result)
     }
-    pub fn set_region(&mut self, region: Option<Arc<RwLock<Region>>>) {
+    pub fn set_region(&mut self, region: Option<Shared<Region>>) {
         self.region = region;
     }
-    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+    pub fn set_parent(&mut self, parent: Option<Shared<Block>>) {
         self.parent = parent;
     }
     pub fn rename(&mut self, name: String) {

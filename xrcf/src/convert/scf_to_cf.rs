@@ -54,10 +54,7 @@ use std::sync::RwLock;
 /// ```
 struct IfLowering;
 
-fn lower_yield_op(
-    op: &dialect::scf::YieldOp,
-    after: Arc<RwLock<Block>>,
-) -> Result<Arc<RwLock<dyn Op>>> {
+fn lower_yield_op(op: &dialect::scf::YieldOp, after: Shared<Block>) -> Result<Shared<dyn Op>> {
     let operation = op.operation();
     let var = operation.rd().operand(0).unwrap();
     let operand = Shared::new(OpOperand::from_block(after).into());
@@ -68,7 +65,7 @@ fn lower_yield_op(
     Ok(new_op)
 }
 
-fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
+fn branch_op(after: Shared<Block>) -> Shared<dyn Op> {
     let operation = Operation::default();
     let mut new_op = dialect::cf::BranchOp::from_operation(operation);
     let operand = Shared::new(OpOperand::from_block(after).into());
@@ -78,7 +75,7 @@ fn branch_op(after: Arc<RwLock<Block>>) -> Arc<RwLock<dyn Op>> {
 }
 
 /// Add a `cf.br` to the end of `block` with destination `after`.
-fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
+fn add_branch_to_after(block: Shared<Block>, after: Shared<Block>) {
     let ops = block.rd().ops();
     let mut ops = ops.wr();
     let ops_clone = ops.clone();
@@ -118,10 +115,7 @@ fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
 /// ^bb3:
 ///   return %result : i32
 /// ```
-fn move_successors_to_exit_block(
-    op: &dialect::scf::IfOp,
-    exit_block: Arc<RwLock<Block>>,
-) -> Result<()> {
+fn move_successors_to_exit_block(op: &dialect::scf::IfOp, exit_block: Shared<Block>) -> Result<()> {
     let if_op_parent = op.operation().rd().parent().expect("Expected parent");
     let if_op_index = if_op_parent
         .rd()
@@ -140,10 +134,10 @@ fn move_successors_to_exit_block(
 }
 
 fn add_merge_block(
-    parent_region: Arc<RwLock<Region>>,
+    parent_region: Shared<Region>,
     results: Values,
-    exit: Arc<RwLock<Block>>,
-) -> Result<(Arc<RwLock<Block>>, Values)> {
+    exit: Shared<Block>,
+) -> Result<(Shared<Block>, Values)> {
     let unset_block = parent_region.rd().add_empty_block_before(exit.clone());
     let merge = unset_block.set_parent(Some(parent_region.clone()));
     let merge_block_arguments = as_block_arguments(results, merge.clone())?;
@@ -164,10 +158,7 @@ fn add_merge_block(
     Ok((merge, merge_block_arguments))
 }
 
-fn add_exit_block(
-    op: &dialect::scf::IfOp,
-    parent_region: Arc<RwLock<Region>>,
-) -> Result<Arc<RwLock<Block>>> {
+fn add_exit_block(op: &dialect::scf::IfOp, parent_region: Shared<Region>) -> Result<Shared<Block>> {
     let unset_block = parent_region.rd().add_empty_block();
     let exit = unset_block.set_parent(Some(parent_region.clone()));
     exit.wr().set_label(BlockName::Unset);
@@ -178,7 +169,7 @@ fn add_exit_block(
 /// Convert [OpResult]s to [BlockArgument]s.
 ///
 /// Necessary to translate `%result = scf.if` to `^merge:(%result)`.
-fn as_block_arguments(results: Values, parent: Arc<RwLock<Block>>) -> Result<Values> {
+fn as_block_arguments(results: Values, parent: Shared<Block>) -> Result<Values> {
     let mut out = vec![];
     for result in results.into_iter() {
         let result_rd = result.rd();
@@ -232,8 +223,8 @@ fn results_users(results: Values) -> Vec<Users> {
 /// ```
 fn add_blocks(
     op: &dialect::scf::IfOp,
-    parent_region: Arc<RwLock<Region>>,
-) -> Result<(Arc<RwLock<Block>>, Arc<RwLock<Block>>)> {
+    parent_region: Shared<Region>,
+) -> Result<(Shared<Block>, Shared<Block>)> {
     let results = op.operation().rd().results();
     let results_users = results_users(results.clone());
     let exit = add_exit_block(op, parent_region.clone())?;
@@ -287,7 +278,7 @@ impl Rewrite for IfLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<dialect::scf::IfOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let parent = op.operation().rd().parent().expect("Expected parent");
         let parent_region = parent.rd().parent().expect("Expected parent region");
@@ -317,7 +308,7 @@ pub struct ConvertSCFToCF;
 
 impl Pass for ConvertSCFToCF {
     const NAME: &'static str = "convert-scf-to-cf";
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&IfLowering];
         apply_rewrites(op, &rewrites)
     }

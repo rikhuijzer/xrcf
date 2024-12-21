@@ -18,20 +18,20 @@ use std::sync::RwLock;
 // See `include/mlir/IR/BuiltinOps.h` and goto definition of
 // `mlir/IR/BuiltinOps.h.inc`.
 pub struct ModuleOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("module".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         Self { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
@@ -47,10 +47,10 @@ impl Display for ModuleOp {
 }
 
 impl ModuleOp {
-    pub fn get_body_region(&self) -> Result<Option<Arc<RwLock<Region>>>> {
+    pub fn get_body_region(&self) -> Result<Option<Shared<Region>>> {
         Ok(self.operation().rd().region())
     }
-    pub fn first_op(&self) -> Result<Arc<RwLock<dyn Op>>> {
+    pub fn first_op(&self) -> Result<Shared<dyn Op>> {
         let region = match self.get_body_region()? {
             Some(region) => region,
             None => return Err(anyhow::anyhow!("Expected 1 region in module, got 0")),
@@ -69,8 +69,8 @@ impl ModuleOp {
 impl Parse for ModuleOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         let operation_name = parser.expect(TokenKind::BareIdentifier)?;
         assert!(operation_name.lexeme == "module");

@@ -34,39 +34,39 @@ pub struct BlockArgument {
     ///
     /// The name is only used during parsing to see which operands point to this
     /// argument. During printing, a new name is generated.
-    name: Arc<RwLock<BlockArgumentName>>,
-    typ: Arc<RwLock<dyn Type>>,
+    name: Shared<BlockArgumentName>,
+    typ: Shared<dyn Type>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
     /// This is used by [value.users] to find the users of this
     /// [BlockArgument].
-    parent: Option<Arc<RwLock<Block>>>,
+    parent: Option<Shared<Block>>,
 }
 
 impl BlockArgument {
-    pub fn new(name: Arc<RwLock<BlockArgumentName>>, typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(name: Shared<BlockArgumentName>, typ: Shared<dyn Type>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Arc<RwLock<BlockArgumentName>> {
+    pub fn name(&self) -> Shared<BlockArgumentName> {
         self.name.clone()
     }
-    pub fn parent(&self) -> Option<Arc<RwLock<Block>>> {
+    pub fn parent(&self) -> Option<Shared<Block>> {
         self.parent.clone()
     }
     pub fn set_name(&self, name: BlockArgumentName) {
         *self.name.wr() = name;
     }
-    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+    pub fn set_parent(&mut self, parent: Option<Shared<Block>>) {
         self.parent = parent;
     }
-    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+    pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
         self.typ = typ;
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Shared<dyn Type> {
         self.typ.clone()
     }
     /// Generate a new name from scratch.
@@ -77,7 +77,7 @@ impl BlockArgument {
         let mut used_names = vec![];
         for argument in parent.rd().arguments().into_iter() {
             if let Value::BlockArgument(argument) = &*argument.rd() {
-                if std::ptr::eq(self, argument) {
+                if std::ptr::eq(self, &argument) {
                     break;
                 }
             };
@@ -160,14 +160,14 @@ impl Display for BlockLabel {
 /// "encoding" in the operands field has the benefit that other code can easily
 /// check if, for example, a variable is being used.
 pub struct BlockPtr {
-    block: Arc<RwLock<Block>>,
+    block: Shared<Block>,
 }
 
 impl BlockPtr {
-    pub fn new(block: Arc<RwLock<Block>>) -> Self {
+    pub fn new(block: Shared<Block>) -> Self {
         BlockPtr { block }
     }
-    pub fn block(&self) -> Arc<RwLock<Block>> {
+    pub fn block(&self) -> Shared<Block> {
         self.block.clone()
     }
 }
@@ -192,7 +192,7 @@ impl Constant {
     pub fn new(value: Arc<dyn Attribute>) -> Self {
         Constant { value }
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Shared<dyn Type> {
         self.value.typ()
     }
     pub fn value(&self) -> Arc<dyn Attribute> {
@@ -222,17 +222,17 @@ impl Display for Constant {
 /// created.  This makes it more error prone than having it included in the
 /// `results` field.
 pub struct AnonymousResult {
-    typ: Arc<RwLock<dyn Type>>,
+    typ: Shared<dyn Type>,
 }
 
 impl AnonymousResult {
-    pub fn new(typ: Arc<RwLock<dyn Type>>) -> Self {
+    pub fn new(typ: Shared<dyn Type>) -> Self {
         AnonymousResult { typ }
     }
-    pub fn typ(&self) -> Arc<RwLock<dyn Type>> {
+    pub fn typ(&self) -> Shared<dyn Type> {
         self.typ.clone()
     }
-    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+    pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
         self.typ = typ;
     }
 }
@@ -256,16 +256,16 @@ pub struct OpResult {
     ///
     /// Does not necessarily have to be set because new names are generated
     /// anyway.
-    name: Arc<RwLock<Option<String>>>,
-    typ: Option<Arc<RwLock<dyn Type>>>,
-    defining_op: Option<Arc<RwLock<dyn Op>>>,
+    name: Shared<Option<String>>,
+    typ: Option<Shared<dyn Type>>,
+    defining_op: Option<Shared<dyn Op>>,
 }
 
 impl OpResult {
     pub fn new(
-        name: Arc<RwLock<Option<String>>>,
-        typ: Option<Arc<RwLock<dyn Type>>>,
-        defining_op: Option<Arc<RwLock<dyn Op>>>,
+        name: Shared<Option<String>>,
+        typ: Option<Shared<dyn Type>>,
+        defining_op: Option<Shared<dyn Op>>,
     ) -> Self {
         OpResult {
             name,
@@ -273,22 +273,22 @@ impl OpResult {
             defining_op,
         }
     }
-    pub fn name(&self) -> Arc<RwLock<Option<String>>> {
+    pub fn name(&self) -> Shared<Option<String>> {
         self.name.clone()
     }
-    pub fn typ(&self) -> Option<Arc<RwLock<dyn Type>>> {
+    pub fn typ(&self) -> Option<Shared<dyn Type>> {
         self.typ.clone()
     }
-    pub fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
+    pub fn defining_op(&self) -> Option<Shared<dyn Op>> {
         self.defining_op.clone()
     }
     pub fn set_name(&self, name: &str) {
         *self.name.wr() = Some(name.to_string());
     }
-    pub fn set_typ(&mut self, typ: Arc<RwLock<dyn Type>>) {
+    pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
         self.typ = Some(typ);
     }
-    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+    pub fn set_defining_op(&mut self, op: Option<Shared<dyn Op>>) {
         self.defining_op = op;
     }
     pub fn new_name(&self) -> String {
@@ -337,21 +337,21 @@ impl Display for OpResult {
 
 #[must_use = "the object should be further initialized, see the setter methods"]
 pub struct UnsetOpResult {
-    result: Arc<RwLock<Value>>,
+    result: Shared<Value>,
 }
 
 impl UnsetOpResult {
-    pub fn new(result: Arc<RwLock<Value>>) -> Self {
+    pub fn new(result: Shared<Value>) -> Self {
         assert!(
             matches!(&*result.rd(), Value::OpResult(_)),
             "Expected OpResult"
         );
         UnsetOpResult { result }
     }
-    pub fn set_defining_op(&self, op: Option<Arc<RwLock<dyn Op>>>) {
+    pub fn set_defining_op(&self, op: Option<Shared<dyn Op>>) {
         self.result.wr().set_defining_op(op);
     }
-    pub fn set_typ(&self, typ: Arc<RwLock<dyn Type>>) {
+    pub fn set_typ(&self, typ: Shared<dyn Type>) {
         self.result.wr().set_type(typ);
     }
 }
@@ -368,11 +368,11 @@ impl UnsetOpResults {
     pub fn values(&self) -> Values {
         self.results.clone()
     }
-    pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
+    pub fn set_defining_op(&self, op: Shared<dyn Op>) {
         let values = self.values();
         values.set_defining_op(op);
     }
-    pub fn set_types(&self, types: Vec<Arc<RwLock<dyn Type>>>) {
+    pub fn set_types(&self, types: Vec<Shared<dyn Type>>) {
         let results = self.values().into_iter();
         assert!(types.len() == results.len());
         for (result, typ) in results.zip(types) {
@@ -385,7 +385,7 @@ pub enum Users {
     /// The operation defines no `OpResult`s.
     HasNoOpResults,
     /// The operation defines `OpResult`s (and can still have zero users).
-    OpOperands(Vec<Arc<RwLock<OpOperand>>>),
+    OpOperands(Vec<Shared<OpOperand>>),
 }
 
 impl Users {
@@ -475,7 +475,7 @@ impl Value {
             Value::Variadic => None,
         }
     }
-    pub fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
+    pub fn typ(&self) -> Result<Shared<dyn Type>> {
         match self {
             Value::BlockArgument(arg) => Ok(arg.typ.clone()),
             Value::BlockLabel(_) => panic!("BlockLabel has no type"),
@@ -489,7 +489,7 @@ impl Value {
             Value::Variadic => panic!("Variadic has no type"),
         }
     }
-    pub fn set_type(&mut self, typ: Arc<RwLock<dyn Type>>) {
+    pub fn set_type(&mut self, typ: Shared<dyn Type>) {
         match self {
             Value::BlockArgument(arg) => arg.set_typ(typ),
             Value::BlockLabel(_) => todo!(),
@@ -500,7 +500,7 @@ impl Value {
             Value::Variadic => todo!(),
         }
     }
-    pub fn set_defining_op(&mut self, op: Option<Arc<RwLock<dyn Op>>>) {
+    pub fn set_defining_op(&mut self, op: Option<Shared<dyn Op>>) {
         match self {
             Value::BlockArgument(_) => panic!("Cannot set defining op for BlockArgument"),
             Value::BlockLabel(_) => todo!("Cannot set defining op for BlockLabel"),
@@ -511,7 +511,7 @@ impl Value {
             Value::Variadic => panic!("Cannot set defining op for Variadic"),
         }
     }
-    pub fn set_parent(&mut self, parent: Option<Arc<RwLock<Block>>>) {
+    pub fn set_parent(&mut self, parent: Option<Shared<Block>>) {
         match self {
             Value::BlockArgument(arg) => arg.set_parent(parent),
             Value::BlockLabel(_) => todo!(),
@@ -535,11 +535,11 @@ impl Value {
             Value::Variadic => panic!("Cannot set name for Variadic"),
         }
     }
-    pub fn from_block(block: Arc<RwLock<Block>>) -> Self {
+    pub fn from_block(block: Shared<Block>) -> Self {
         let ptr = BlockPtr::new(block);
         Value::BlockPtr(ptr)
     }
-    fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
+    fn find_users(&self, ops: &Vec<Shared<dyn Op>>) -> Vec<Shared<OpOperand>> {
         let mut out = Vec::new();
         for op in ops.iter() {
             for operand in op.rd().operation().rd().operands().into_iter() {
@@ -551,7 +551,7 @@ impl Value {
         }
         out
     }
-    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Arc<RwLock<OpOperand>>> {
+    fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Shared<OpOperand>> {
         let parent = arg.parent();
         let parent = if parent.is_some() {
             parent.unwrap()
@@ -564,7 +564,7 @@ impl Value {
         }
         self.find_users(&ops)
     }
-    fn op_result_users(&self, op_res: &OpResult) -> Vec<Arc<RwLock<OpOperand>>> {
+    fn op_result_users(&self, op_res: &OpResult) -> Vec<Shared<OpOperand>> {
         let op = op_res.defining_op();
         let op = if op_res.defining_op().is_some() {
             op.unwrap()
@@ -608,11 +608,11 @@ impl Display for Value {
 /// operation result.
 #[derive(Clone)]
 pub struct Values {
-    values: Arc<RwLock<Vec<Arc<RwLock<Value>>>>>,
+    values: Shared<Vec<Arc<RwLock<Value>>>>,
 }
 
 impl IntoIterator for Values {
-    type Item = Arc<RwLock<Value>>;
+    type Item = Shared<Value>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -621,12 +621,12 @@ impl IntoIterator for Values {
 }
 
 impl Values {
-    pub fn from_vec(values: Vec<Arc<RwLock<Value>>>) -> Self {
+    pub fn from_vec(values: Vec<Shared<Value>>) -> Self {
         Values {
             values: Shared::new(values.into()),
         }
     }
-    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Value>>>>> {
+    pub fn vec(&self) -> Shared<Vec<Arc<RwLock<Value>>>> {
         self.values.clone()
     }
     pub fn names(&self) -> Vec<String> {
@@ -661,10 +661,10 @@ impl Values {
             .rd()
             .iter()
             .map(|value| value.rd().typ().unwrap())
-            .collect::<Vec<Arc<RwLock<dyn Type>>>>();
+            .collect::<Vec<Shared<dyn Type>>>();
         Types::from_vec(types)
     }
-    pub fn update_types(&mut self, types: Vec<Arc<RwLock<dyn Type>>>) -> Result<()> {
+    pub fn update_types(&mut self, types: Vec<Shared<dyn Type>>) -> Result<()> {
         let values = self.values.rd().clone().into_iter();
         if values.len() != types.len() {
             return Err(anyhow::anyhow!(
@@ -685,7 +685,7 @@ impl Values {
     ///
     /// Calling this on block arguments (like function arguments) will panic since
     /// block arguments do not specify a defining op.
-    pub fn set_defining_op(&self, op: Arc<RwLock<dyn Op>>) {
+    pub fn set_defining_op(&self, op: Shared<dyn Op>) {
         for result in self.values.rd().iter() {
             match &mut *result.wr() {
                 Value::BlockArgument(_) => {
@@ -746,7 +746,7 @@ impl Display for Values {
 // Putting these on the parser to allow method discovery via `parser.parse_`.
 impl<T: ParserDispatch> Parser<T> {
     /// Parse `%arg0 : i64,`, `i64,`, or `...`.
-    pub fn parse_function_argument(&mut self) -> Result<Arc<RwLock<Value>>> {
+    pub fn parse_function_argument(&mut self) -> Result<Shared<Value>> {
         if self.check(TokenKind::PercentIdentifier) {
             let identifier = self.expect(TokenKind::PercentIdentifier)?;
             let name = identifier.lexeme.clone();

@@ -241,9 +241,7 @@ impl Attributes {
         self.map.rd().is_empty()
     }
     pub fn insert(&self, name: &str, attribute: Arc<dyn Attribute>) {
-        self.map
-            .wr()
-            .insert(name.to_string(), attribute);
+        self.map.wr().insert(name.to_string(), attribute);
     }
     pub fn get(&self, name: &str) -> Option<Arc<dyn Attribute>> {
         self.map.rd().get(name).cloned()

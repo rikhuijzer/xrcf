@@ -21,7 +21,7 @@ impl Rewrite for BranchLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<cf::BranchOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<cf::BranchOp>().unwrap();
         let new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
@@ -40,7 +40,7 @@ impl Rewrite for CondBranchLowering {
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<cf::CondBranchOp>())
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<cf::CondBranchOp>().unwrap();
         let new_op = llvm::CondBranchOp::from_operation_arc(op.operation().clone());
@@ -54,7 +54,7 @@ pub struct ConvertCFToLLVM;
 
 impl Pass for ConvertCFToLLVM {
     const NAME: &'static str = "convert-cf-to-llvm";
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&BranchLowering, &CondBranchLowering];
         apply_rewrites(op, &rewrites)
     }

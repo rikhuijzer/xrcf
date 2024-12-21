@@ -8,8 +8,6 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
-use std::sync::Arc;
-use std::sync::RwLock;
 
 #[derive(Clone, PartialEq)]
 pub enum BlockName {
@@ -107,7 +105,7 @@ impl Block {
     /// ^merge(%result : i32):
     /// ```
     /// this method will return the operation `llvm.br`.
-    pub fn callers(&self) -> Option<Vec<Arc<RwLock<dyn Op>>>> {
+    pub fn callers(&self) -> Option<Vec<Shared<dyn Op>>> {
         let label = match &*self.label().rd() {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
@@ -163,7 +161,7 @@ impl Block {
     /// Return successors of the current block.
     ///
     /// Panics if the current block cannot be found in the parent region.
-    pub fn successors(&self) -> Option<Vec<Arc<RwLock<Block>>>> {
+    pub fn successors(&self) -> Option<Vec<Shared<Block>>> {
         let region = self.parent();
         let region = region.expect("no parent");
         let region = region.rd();
@@ -180,7 +178,7 @@ impl Block {
     /// Returns a [Value] if the parent operation is a function and contains an
     /// assignment for the given `name`. Return `None` if no assignment is
     /// found.
-    pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+    pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Shared<Value>> {
         let region = self.parent();
         assert!(region.is_some());
         let region = region.unwrap();
@@ -215,7 +213,7 @@ impl Block {
         }
         None
     }
-    pub fn assignment_in_ops(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+    pub fn assignment_in_ops(&self, name: &str) -> Option<Shared<Value>> {
         for op in self.ops().rd().iter() {
             for value in op.rd().assignments().unwrap().into_iter() {
                 match &*value.rd() {
@@ -245,7 +243,7 @@ impl Block {
     ///
     /// Returns a [Value] if the block contains an assignment for the given
     /// `name`. Return `None` if no assignment is found.
-    pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+    pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Shared<Value>> {
         for argument in self.arguments().into_iter() {
             match &*argument.rd() {
                 Value::BlockArgument(arg) => {
@@ -260,7 +258,7 @@ impl Block {
         }
         None
     }
-    pub fn assignment(&self, name: &str) -> Option<Arc<RwLock<Value>>> {
+    pub fn assignment(&self, name: &str) -> Option<Shared<Value>> {
         // Check the current block first because it is most likely to contain
         // the assignment.
         if let Some(value) = self.assignment_in_func_arguments(name) {
@@ -316,17 +314,17 @@ impl Block {
     ///
     /// The caller is in charge of transferring the control flow to the region
     /// and pass it the correct block arguments.
-    pub fn inline_region_before(&self, region: Arc<RwLock<Region>>) {
+    pub fn inline_region_before(&self, region: Shared<Region>) {
         self.parent()
             .expect("no parent")
             .rd()
             .blocks()
             .splice(self, region.rd().blocks());
     }
-    pub fn insert_op(&self, op: Arc<RwLock<dyn Op>>, index: usize) {
+    pub fn insert_op(&self, op: Shared<dyn Op>, index: usize) {
         self.ops.wr().insert(index, op);
     }
-    pub fn insert_after(&self, earlier: Arc<RwLock<Operation>>, later: Arc<RwLock<dyn Op>>) {
+    pub fn insert_after(&self, earlier: Shared<Operation>, later: Shared<dyn Op>) {
         match self.index_of(&*earlier.rd()) {
             Some(index) => self.insert_op(later, index + 1),
             None => {
@@ -334,19 +332,19 @@ impl Block {
             }
         }
     }
-    pub fn insert_before(&self, earlier: Arc<RwLock<dyn Op>>, later: Arc<RwLock<Operation>>) {
+    pub fn insert_before(&self, earlier: Shared<dyn Op>, later: Shared<Operation>) {
         match self.index_of(&*later.rd()) {
             Some(index) => self.insert_op(earlier, index),
             None => panic!("could not find op in block"),
         }
     }
-    pub fn replace(&self, old: Arc<RwLock<Operation>>, new: Arc<RwLock<dyn Op>>) {
+    pub fn replace(&self, old: Shared<Operation>, new: Shared<dyn Op>) {
         match self.index_of(&*old.rd()) {
             Some(index) => self.ops().wr()[index] = new,
             None => panic!("could not find op in block"),
         }
     }
-    pub fn remove(&self, op: Arc<RwLock<Operation>>) {
+    pub fn remove(&self, op: Shared<Operation>) {
         match self.index_of(&*op.rd()) {
             Some(index) => self.ops().wr().remove(index),
             None => panic!("could not find op in block"),
@@ -424,17 +422,17 @@ impl Display for Block {
 
 #[must_use = "the object inside `UnsetBlock` should be further initialized, see the setter methods"]
 pub struct UnsetBlock {
-    block: Arc<RwLock<Block>>,
+    block: Shared<Block>,
 }
 
 impl UnsetBlock {
-    pub fn new(block: Arc<RwLock<Block>>) -> Self {
+    pub fn new(block: Shared<Block>) -> Self {
         Self { block }
     }
-    pub fn block(&self) -> Arc<RwLock<Block>> {
+    pub fn block(&self) -> Shared<Block> {
         self.block.clone()
     }
-    pub fn set_parent(&self, parent: Option<Arc<RwLock<Region>>>) -> Arc<RwLock<Block>> {
+    pub fn set_parent(&self, parent: Option<Shared<Region>>) -> Shared<Block> {
         self.block.wr().set_parent(parent);
         self.block.clone()
     }
@@ -442,11 +440,11 @@ impl UnsetBlock {
 
 #[derive(Clone)]
 pub struct Blocks {
-    vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>,
+    vec: Shared<Vec<Shared<Block>>>,
 }
 
 impl IntoIterator for Blocks {
-    type Item = Arc<RwLock<Block>>;
+    type Item = Shared<Block>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -456,10 +454,10 @@ impl IntoIterator for Blocks {
 }
 
 impl Blocks {
-    pub fn new(vec: Arc<RwLock<Vec<Arc<RwLock<Block>>>>>) -> Self {
+    pub fn new(vec: Shared<Vec<Shared<Block>>>) -> Self {
         Self { vec }
     }
-    pub fn vec(&self) -> Arc<RwLock<Vec<Arc<RwLock<Block>>>>> {
+    pub fn vec(&self) -> Shared<Vec<Shared<Block>>> {
         self.vec.clone()
     }
     /// Return the index of `block` in `self`.

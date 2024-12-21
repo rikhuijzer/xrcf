@@ -109,7 +109,7 @@ mod tests {
     use xrcf::tester::Tester;
 
     fn run_app(
-        out: Option<Arc<RwLock<dyn std::io::Write + Send>>>,
+        out: Option<Shared<dyn std::io::Write + Send>>,
         args: Vec<&str>,
         input_text: &str,
     ) -> Result<RewriteResult> {
@@ -166,7 +166,7 @@ mod tests {
             "--print-ir-before-all",
         ];
         tracing::info!("\nBefore {args:?}:\n{src}");
-        let out: Arc<RwLock<Vec<u8>>> = Shared::new(Vec::new().into());
+        let out: Shared<Vec<u8>> = Shared::new(Vec::new().into());
         let result = run_app(Some(out.clone()), args.clone(), &src);
         assert!(result.is_ok());
         let actual = match result.unwrap() {

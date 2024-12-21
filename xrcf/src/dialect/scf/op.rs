@@ -22,22 +22,22 @@ const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 /// `scf.if` $condition `then` `{` $then `}` `else` `{` $else `}`
 /// ```
 pub struct IfOp {
-    operation: Arc<RwLock<Operation>>,
-    then: Option<Arc<RwLock<Region>>>,
-    els: Option<Arc<RwLock<Region>>>,
+    operation: Shared<Operation>,
+    then: Option<Shared<Region>>,
+    els: Option<Shared<Region>>,
 }
 
 impl IfOp {
-    pub fn els(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn els(&self) -> Option<Shared<Region>> {
         self.els.clone()
     }
-    pub fn then(&self) -> Option<Arc<RwLock<Region>>> {
+    pub fn then(&self) -> Option<Shared<Region>> {
         self.then.clone()
     }
-    pub fn set_els(&mut self, els: Option<Arc<RwLock<Region>>>) {
+    pub fn set_els(&mut self, els: Option<Shared<Region>>) {
         self.els = els;
     }
-    pub fn set_then(&mut self, then: Option<Arc<RwLock<Region>>>) {
+    pub fn set_then(&mut self, then: Option<Shared<Region>>) {
         self.then = then;
     }
 }
@@ -46,7 +46,7 @@ impl Op for IfOp {
     fn operation_name() -> OperationName {
         OperationName::new("scf.if".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         IfOp {
             operation,
             then: None,
@@ -56,10 +56,10 @@ impl Op for IfOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
-    fn ops(&self) -> Vec<Arc<RwLock<dyn Op>>> {
+    fn ops(&self) -> Vec<Shared<dyn Op>> {
         let mut ops = vec![];
         if let Some(then) = self.then() {
             ops.extend(then.rd().ops());
@@ -95,8 +95,8 @@ impl Op for IfOp {
 impl Parse for IfOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
@@ -152,20 +152,20 @@ impl Parse for IfOp {
 /// scf.yield %0 : i32
 /// ```
 pub struct YieldOp {
-    operation: Arc<RwLock<Operation>>,
+    operation: Shared<Operation>,
 }
 
 impl Op for YieldOp {
     fn operation_name() -> OperationName {
         OperationName::new("scf.yield".to_string())
     }
-    fn new(operation: Arc<RwLock<Operation>>) -> Self {
+    fn new(operation: Shared<Operation>) -> Self {
         YieldOp { operation }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn operation(&self) -> &Arc<RwLock<Operation>> {
+    fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
@@ -178,8 +178,8 @@ impl Op for YieldOp {
 impl Parse for YieldOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<YieldOp>(&mut operation)?;

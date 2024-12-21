@@ -19,7 +19,7 @@ impl Rewrite for CanonicalizeOp {
     fn is_match(&self, _op: &dyn Op) -> Result<bool> {
         Ok(true)
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let result = op.rd().canonicalize();
         Ok(result)
     }
@@ -34,7 +34,7 @@ impl Rewrite for DeadCodeElimination {
     fn is_match(&self, _op: &dyn Op) -> Result<bool> {
         Ok(true)
     }
-    fn rewrite(&self, op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let readonly = op.clone();
         let readonly = readonly.rd();
         if !readonly.is_pure() {
@@ -61,7 +61,7 @@ pub struct Canonicalize;
 
 impl Pass for Canonicalize {
     const NAME: &'static str = "canonicalize";
-    fn convert(op: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
+    fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&CanonicalizeOp, &DeadCodeElimination];
         apply_rewrites(op, &rewrites)
     }

@@ -37,14 +37,11 @@ use std::sync::RwLock;
 /// `DefaultParserDispatch` for an example.
 pub trait ParserDispatch {
     /// Parse an operation.
-    fn parse_op(
-        parser: &mut Parser<Self>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>>
+    fn parse_op(parser: &mut Parser<Self>, parent: Option<Shared<Block>>) -> Result<Shared<dyn Op>>
     where
         Self: Sized;
     /// Parse a type.
-    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>>
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>>
     where
         Self: Sized;
     /// Return true if the next token is a boolean.
@@ -74,8 +71,8 @@ pub struct DefaultParserDispatch;
 pub fn default_dispatch<T: ParserDispatch>(
     name: Token,
     parser: &mut Parser<T>,
-    parent: Option<Arc<RwLock<Block>>>,
-) -> Result<Arc<RwLock<dyn Op>>> {
+    parent: Option<Shared<Block>>,
+) -> Result<Shared<dyn Op>> {
     match name.lexeme.clone().as_str() {
         "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
         "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
@@ -105,9 +102,7 @@ pub fn default_dispatch<T: ParserDispatch>(
     }
 }
 
-pub fn default_parse_type<T: ParserDispatch>(
-    parser: &mut Parser<T>,
-) -> Result<Arc<RwLock<dyn Type>>> {
+pub fn default_parse_type<T: ParserDispatch>(parser: &mut Parser<T>) -> Result<Shared<dyn Type>> {
     if parser.check(TokenKind::IntType) {
         let typ = parser.advance();
         let typ = IntegerType::from_str(&typ.lexeme);
@@ -126,8 +121,8 @@ pub fn default_parse_type<T: ParserDispatch>(
 impl ParserDispatch for DefaultParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>> {
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
         let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
             // Ignore result name and '=' (e.g., `%0 = <op name>`).
             parser.peek_n(2).unwrap().clone()
@@ -137,7 +132,7 @@ impl ParserDispatch for DefaultParserDispatch {
         };
         default_dispatch(name, parser, parent)
     }
-    fn parse_type(parser: &mut Parser<Self>) -> Result<Arc<RwLock<dyn Type>>> {
+    fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {
         default_parse_type(parser)
     }
 }
@@ -149,8 +144,8 @@ impl ParserDispatch for DefaultParserDispatch {
 pub trait Parse {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
-        parent: Option<Arc<RwLock<Block>>>,
-    ) -> Result<Arc<RwLock<dyn Op>>>
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>>
     where
         Self: Sized;
 }
@@ -173,7 +168,7 @@ enum Dialects {
 /// More specifically, replaces [Value::BlockLabel] by [Value::BlockPtr].
 ///
 /// Assumes it is only called during the parsing of a block.
-fn replace_block_labels(block: Arc<RwLock<Block>>) {
+fn replace_block_labels(block: Shared<Block>) {
     let label = match &*block.rd().label().rd() {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
@@ -252,10 +247,7 @@ impl<T: ParserDispatch> Parser<T> {
     fn is_region_end(&self) -> bool {
         self.peek().kind == TokenKind::RBrace
     }
-    pub fn parse_block(
-        &mut self,
-        parent: Option<Arc<RwLock<Region>>>,
-    ) -> Result<Arc<RwLock<Block>>> {
+    pub fn parse_block(&mut self, parent: Option<Shared<Region>>) -> Result<Shared<Block>> {
         assert!(
             parent.is_some(),
             "Expected parent region to be passed when parsing a block"
@@ -315,7 +307,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         false
     }
-    pub fn parse_region(&mut self, parent: Arc<RwLock<dyn Op>>) -> Result<Arc<RwLock<Region>>> {
+    pub fn parse_region(&mut self, parent: Shared<dyn Op>) -> Result<Shared<Region>> {
         let mut region = Region::default();
         region.set_parent(Some(parent.clone()));
         let region = Shared::new(region.into());
@@ -361,7 +353,7 @@ impl<T: ParserDispatch> Parser<T> {
             Err(anyhow::anyhow!(msg))
         }
     }
-    pub fn parse(src: &str) -> Result<Arc<RwLock<dyn Op>>> {
+    pub fn parse(src: &str) -> Result<Shared<dyn Op>> {
         let mut parser = Parser::<T> {
             src: src.to_string(),
             tokens: Scanner::scan(src)?,
@@ -372,7 +364,7 @@ impl<T: ParserDispatch> Parser<T> {
         let op_rd = op.clone();
         let op_rd = op_rd.rd();
         let casted = op_rd.as_any().downcast_ref::<ModuleOp>();
-        let op: Arc<RwLock<dyn Op>> = if let Some(_module_op) = casted {
+        let op: Shared<dyn Op> = if let Some(_module_op) = casted {
             op
         } else {
             let module_region = Region::default();
@@ -417,7 +409,7 @@ impl<T: ParserDispatch> Parser<T> {
         };
         Ok(op)
     }
-    pub fn parse_type(&mut self) -> Result<Arc<RwLock<dyn Type>>> {
+    pub fn parse_type(&mut self) -> Result<Shared<dyn Type>> {
         T::parse_type(self)
     }
     pub fn is_boolean(&mut self) -> bool {
