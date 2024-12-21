@@ -6,7 +6,6 @@ use crate::ir::AnyAttr;
 use crate::ir::Attribute;
 use crate::ir::Attributes;
 use crate::ir::Block;
-use crate::ir::GuardedOpOperand;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -673,8 +672,8 @@ impl Op for StoreOp {
         let operation = self.operation().rd();
         write!(f, "{}", operation.name())?;
         write!(f, " {}", operation.operands())?;
-        write!(f, " : {}", self.value().typ().unwrap().rd())?;
-        write!(f, ", {}", self.addr().typ().unwrap().rd())?;
+        write!(f, " : {}", self.value().rd().typ().unwrap().rd())?;
+        write!(f, ", {}", self.addr().rd().typ().unwrap().rd())?;
         Ok(())
     }
 }

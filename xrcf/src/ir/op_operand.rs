@@ -70,29 +70,6 @@ impl Display for OpOperand {
     }
 }
 
-pub trait GuardedOpOperand {
-    fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>>;
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
-    fn value(&self) -> Arc<RwLock<Value>>;
-    fn set_value(&mut self, value: Arc<RwLock<Value>>);
-}
-
-impl GuardedOpOperand for Arc<RwLock<OpOperand>> {
-    fn defining_op(&self) -> Option<Arc<RwLock<dyn Op>>> {
-        let op = self.rd();
-        op.defining_op()
-    }
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        self.rd().typ()
-    }
-    fn value(&self) -> Arc<RwLock<Value>> {
-        self.rd().value()
-    }
-    fn set_value(&mut self, value: Arc<RwLock<Value>>) {
-        self.wr().set_value(value);
-    }
-}
-
 #[derive(Clone)]
 pub struct OpOperands {
     operands: Arc<RwLock<Vec<Arc<RwLock<OpOperand>>>>>,

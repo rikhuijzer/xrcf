@@ -26,7 +26,6 @@ pub use block::UnsetBlock;
 pub use module::ModuleOp;
 pub use op::Op;
 pub use op::UnsetOp;
-pub use op_operand::GuardedOpOperand;
 pub use op_operand::OpOperand;
 pub use op_operand::OpOperands;
 pub use operation::display_region_inside_func;

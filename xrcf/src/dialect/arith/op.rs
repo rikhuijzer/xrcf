@@ -3,7 +3,6 @@ use crate::convert::RewriteResult;
 use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
-use crate::ir::GuardedOpOperand;
 use crate::ir::IntegerAttr;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -128,7 +127,7 @@ impl AddiOp {
         assert!(operands.clone().into_iter().len() == 2);
 
         let lhs = operands.clone().into_iter().next().unwrap();
-        let lhs = match lhs.defining_op() {
+        let lhs = match lhs.rd().defining_op() {
             Some(lhs) => lhs,
             None => {
                 return RewriteResult::Unchanged;
@@ -141,7 +140,7 @@ impl AddiOp {
         };
 
         let rhs = operands.into_iter().nth(1).unwrap();
-        let rhs = match rhs.defining_op() {
+        let rhs = match rhs.rd().defining_op() {
             Some(rhs) => rhs,
             None => return RewriteResult::Unchanged,
         };

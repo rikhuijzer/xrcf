@@ -5,7 +5,6 @@ use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::GuardedOpOperand;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::OpOperands;
@@ -21,9 +20,7 @@ use std::sync::RwLock;
 
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> std::fmt::Result {
-    let value = operand.value();
-    let value = value.rd();
-    match &*operand.value().rd() {
+    match &*operand.rd().value().rd() {
         Value::BlockArgument(block_arg) => {
             let name = block_arg.name();
             let name = name.rd();
@@ -57,7 +54,10 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Arc<RwLock<OpOperand>>) -> s
             op_result.set_name(&name);
             write!(f, "{} {name}", op_result.typ().expect("no type").rd())
         }
-        _ => panic!("Unexpected operand value type for {value}"),
+        _ => panic!(
+            "Unexpected operand value type for {}",
+            operand.rd().value().rd()
+        ),
     }
 }
 

@@ -16,19 +16,7 @@ For example, in my experience, declarative code is a beautiful idea, but in prac
 This project uses `Arc<RwLock<T>>` for pretty much everything.
 The reason is that the intermediate representation (IR) is essentially a tree with nodes.
 This tree is traversed in multiple directions (up, down, and sideways), so we need to store pointers all over the place.
-Also, this project uses `Arc` instead of `Rc` because at some point the compiler will be multi-threaded.
-
-To simplify the usage, there are some helpers functions available via `GuardedOp`, `GuardedBlock`, etc.
-
-In some cases, this can simplify code such as
-```rust
-let x = x.read().unwrap();
-let parent = x.parent();
-```
-to
-```rust
-let x = x.parent();
-```
+Also, this project uses `Arc` instead of `Rc` because at some point the compiler will be multithreaded.
 
 ## LLVM's codebase
 

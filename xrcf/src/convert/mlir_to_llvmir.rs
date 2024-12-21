@@ -12,7 +12,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::Constant;
-use crate::ir::GuardedOpOperand;
 use crate::ir::IntegerType;
 use crate::ir::Op;
 use crate::ir::OpOperand;
@@ -37,7 +36,7 @@ struct AddLowering;
 ///
 /// Otherwise, return `None`.
 fn constant_op_operand(operand: Arc<RwLock<OpOperand>>) -> Option<Arc<RwLock<OpOperand>>> {
-    let op = operand.defining_op();
+    let op = operand.rd().defining_op();
     if let Some(op) = op {
         if op.rd().is_const() {
             let op = op.rd();
@@ -595,7 +594,7 @@ impl Rewrite for StoreLowering {
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         {
             let op_operand = op.value();
-            let value = op_operand.value();
+            let value = op_operand.rd().value();
             let value_typ = value.rd().typ().unwrap();
             let value_typ = value_typ.rd();
             let value_typ = value_typ

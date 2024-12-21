@@ -16,7 +16,6 @@ use xrcf::dialect::scf;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
-use xrcf::ir::GuardedOpOperand;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
@@ -267,7 +266,7 @@ impl Rewrite for PrintLowering {
         new_op.set_parent(op.operation().rd().parent().clone().unwrap());
 
         let operand = op.text();
-        let value = operand.value();
+        let value = operand.rd().value();
         match &*value.rd() {
             // printf("some text")
             Value::Constant(constant) => {
