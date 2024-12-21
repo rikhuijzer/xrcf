@@ -1,5 +1,4 @@
 use crate::ir::BlockArgumentName;
-use crate::ir::GuardedOp;
 use crate::ir::GuardedOpOperand;
 use crate::ir::Op;
 use crate::ir::Operation;
@@ -120,7 +119,7 @@ impl Block {
         let mut callers = vec![];
         for p in self.predecessors().expect("no predecessors") {
             for op in p.rd().ops().rd().iter() {
-                for operand in op.operation().rd().operands().into_iter() {
+                for operand in op.rd().operation().rd().operands().into_iter() {
                     match &*operand.value().rd() {
                         Value::BlockPtr(block_ptr) => {
                             let current = block_ptr.block();

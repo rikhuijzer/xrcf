@@ -16,7 +16,6 @@ use xrcf::dialect::scf;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
-use xrcf::ir::GuardedOp;
 use xrcf::ir::GuardedOpOperand;
 use xrcf::ir::IntegerAttr;
 use xrcf::ir::IntegerType;
@@ -189,7 +188,7 @@ impl ModuleLowering {
         ret.set_parent(Some(parent.clone()));
         ret.set_name(func::ReturnOp::operation_name());
         ret.set_anonymous_result(result_type).unwrap();
-        let value = constant.result(0);
+        let value = constant.rd().result(0);
         let operand = OpOperand::new(value);
         let operand = Shared::new(operand.into());
         ret.set_operand(0, operand);
@@ -198,26 +197,26 @@ impl ModuleLowering {
         ret
     }
     fn return_zero(func: Arc<RwLock<dyn Op>>) {
-        let operation = func.operation();
         let typ = IntegerType::new(32);
-        operation
+        func.rd()
+            .operation()
             .wr()
             .set_anonymous_result(Shared::new(typ.into()))
             .unwrap();
 
-        let ops = func.ops();
+        let ops = func.rd().ops();
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
         let last = ops.last().unwrap();
-        let block = last.operation().rd().parent();
+        let block = last.rd().operation().rd().parent();
         let block = block.expect("no parent for operation");
 
         let constant = Self::constant_op(&block);
-        last.insert_after(constant.clone());
+        last.rd().insert_after(constant.clone());
 
         let ret = Self::return_op(&block, constant.clone());
-        constant.insert_after(ret.clone());
+        constant.rd().insert_after(ret.clone());
     }
     fn returns_something(func: Arc<RwLock<dyn Op>>) -> bool {
         let func = func.rd();
@@ -226,7 +225,7 @@ impl ModuleLowering {
         result.vec().rd().len() == 1
     }
     fn ensure_main_returns_zero(module: Arc<RwLock<dyn Op>>) -> Result<RewriteResult> {
-        let ops = module.ops();
+        let ops = module.rd().ops();
         let last = ops.last().unwrap();
         if !Self::returns_something(last.clone()) {
             Self::return_zero(last.clone());

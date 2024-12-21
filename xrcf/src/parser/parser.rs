@@ -11,7 +11,6 @@ use crate::ir::BlockName;
 use crate::ir::BlockPtr;
 use crate::ir::Blocks;
 use crate::ir::BooleanAttr;
-use crate::ir::GuardedOp;
 use crate::ir::IntegerType;
 use crate::ir::ModuleOp;
 use crate::ir::Op;
@@ -303,7 +302,7 @@ impl<T: ParserDispatch> Parser<T> {
             return Err(anyhow::anyhow!(msg));
         }
         for op in block.rd().ops().rd().iter() {
-            op.operation().wr().set_parent(Some(block.clone()));
+            op.rd().operation().wr().set_parent(Some(block.clone()));
         }
         Ok(block)
     }
@@ -393,7 +392,11 @@ impl<T: ParserDispatch> Parser<T> {
             let block = Shared::new(block.into());
             {
                 for child_op in ops.rd().iter() {
-                    child_op.operation().wr().set_parent(Some(block.clone()));
+                    child_op
+                        .rd()
+                        .operation()
+                        .wr()
+                        .set_parent(Some(block.clone()));
                 }
             }
             module_region

@@ -1,6 +1,5 @@
 use crate::convert::RewriteResult;
 use crate::init_subscriber;
-use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::parser::DefaultParserDispatch;
 use crate::parser::Parser;
@@ -165,7 +164,7 @@ impl Tester {
     /// whether the op has also a pointer to the parent is not visible.
     pub fn verify(op: Arc<RwLock<dyn Op>>) {
         Self::verify_core(op.clone());
-        let ops = op.ops();
+        let ops = op.rd().ops();
         for op in ops {
             Self::verify(op);
         }

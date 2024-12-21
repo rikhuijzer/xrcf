@@ -8,7 +8,6 @@ use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
 use crate::ir::BlockName;
-use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -92,7 +91,7 @@ fn add_branch_to_after(block: Arc<RwLock<Block>>, after: Arc<RwLock<Block>>) {
         ops.push(new_op.clone());
     } else {
         let new_op = branch_op(after.clone());
-        new_op.set_parent(block.clone());
+        new_op.rd().set_parent(block.clone());
         ops.push(new_op.clone());
     };
 }

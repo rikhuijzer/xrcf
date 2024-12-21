@@ -2,7 +2,6 @@ use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
-use crate::ir::GuardedOp;
 use crate::ir::Op;
 use crate::ir::OpOperand;
 use crate::ir::Operation;
@@ -82,7 +81,7 @@ impl BlockArgument {
                     break;
                 }
             };
-            if let Some(name) = argument.name() {
+            if let Some(name) = argument.rd().name() {
                 used_names.push(name);
             }
         }
@@ -543,7 +542,7 @@ impl Value {
     fn find_users(&self, ops: &Vec<Arc<RwLock<dyn Op>>>) -> Vec<Arc<RwLock<OpOperand>>> {
         let mut out = Vec::new();
         for op in ops.iter() {
-            for operand in op.operation().rd().operands().into_iter() {
+            for operand in op.rd().operation().rd().operands().into_iter() {
                 let value = operand.rd().value();
                 if std::ptr::eq(&*value.rd() as *const Value, self as *const Value) {
                     out.push(operand.clone());
@@ -602,32 +601,6 @@ impl Display for Value {
     }
 }
 
-pub trait GuardedValue {
-    fn name(&self) -> Option<String>;
-    fn rename(&self, new_name: &str);
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>);
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>>;
-}
-
-impl GuardedValue for Arc<RwLock<Value>> {
-    fn name(&self) -> Option<String> {
-        let value = self.rd();
-        value.name()
-    }
-    fn rename(&self, new_name: &str) {
-        let mut value = self.wr();
-        value.set_name(new_name);
-    }
-    fn set_parent(&self, parent: Option<Arc<RwLock<Block>>>) {
-        let mut value = self.wr();
-        value.set_parent(parent);
-    }
-    fn typ(&self) -> Result<Arc<RwLock<dyn Type>>> {
-        let value = self.rd();
-        value.typ()
-    }
-}
-
 /// Vector of values.
 ///
 /// Used to store operation results and function arguments. This naming is
@@ -674,7 +647,7 @@ impl Values {
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
         let values = self.values.rd();
         for value in values.iter() {
-            let name = value.name().unwrap();
+            let name = value.rd().name().unwrap();
             value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
@@ -687,7 +660,7 @@ impl Values {
             .values
             .rd()
             .iter()
-            .map(|value| value.typ().unwrap())
+            .map(|value| value.rd().typ().unwrap())
             .collect::<Vec<Arc<RwLock<dyn Type>>>>();
         Types::from_vec(types)
     }
@@ -741,7 +714,7 @@ impl Values {
     /// `operation`s that define the operands.
     pub fn convert_types<T: TypeConvert>(&self) -> Result<()> {
         for value in self.values.rd().iter() {
-            let typ = value.typ().unwrap();
+            let typ = value.rd().typ().unwrap();
             value.wr().set_type(T::convert_type(&typ)?);
         }
         Ok(())

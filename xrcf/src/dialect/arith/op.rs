@@ -4,7 +4,6 @@ use crate::ir::AnyType;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::GuardedOpOperand;
-use crate::ir::GuardedValue;
 use crate::ir::IntegerAttr;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -190,7 +189,7 @@ impl AddiOp {
             .enumerate()
             .for_each(|(i, result)| {
                 assert!(i == 0, "Expected exactly one result");
-                result.rename("%c3_i64");
+                result.wr().set_name("%c3_i64");
             });
 
         RewriteResult::Changed(ChangedOp::new(new_const))
