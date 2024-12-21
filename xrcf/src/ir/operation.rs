@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
@@ -14,9 +17,6 @@ use crate::ir::UnsetOpResult;
 use crate::ir::Users;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;

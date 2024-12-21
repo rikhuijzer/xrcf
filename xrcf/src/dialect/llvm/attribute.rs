@@ -1,8 +1,8 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
 use crate::ir::Attribute;
 use crate::ir::StringType;
 use crate::ir::Type;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
 use crate::shared::Shared;
 use std::fmt::Formatter;
 use std::fmt::Result;

@@ -1,6 +1,6 @@
-use crate::parser::token::Location;
-use crate::parser::token::Token;
-use crate::parser::token::TokenKind;
+use crate::frontend::token::Location;
+use crate::frontend::token::Token;
+use crate::frontend::token::TokenKind;
 use anyhow::Result;
 
 pub struct Scanner {

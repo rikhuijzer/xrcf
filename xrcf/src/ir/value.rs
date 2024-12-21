@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
@@ -9,9 +12,6 @@ use crate::ir::Type;
 use crate::ir::TypeConvert;
 use crate::ir::Types;
 use crate::ir::VariableRenamer;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -394,6 +394,9 @@ impl Users {
             Users::OpOperands(users) => users.len(),
         }
     }
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub struct Variadic;
@@ -552,8 +555,8 @@ impl Value {
     }
     fn block_arg_users(&self, arg: &BlockArgument) -> Vec<Shared<OpOperand>> {
         let parent = arg.parent();
-        let parent = if parent.is_some() {
-            parent.unwrap()
+        let parent = if let Some(parent) = parent {
+            parent
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };

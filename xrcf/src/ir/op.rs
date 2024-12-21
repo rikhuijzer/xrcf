@@ -1,4 +1,6 @@
 use crate::convert::RewriteResult;
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::Operation;
@@ -6,8 +8,6 @@ use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;

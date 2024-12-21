@@ -5,6 +5,9 @@ use crate::dialect::func;
 use crate::dialect::llvm;
 use crate::dialect::llvm::LLVM;
 use crate::dialect::scf;
+use crate::frontend::scanner::Scanner;
+use crate::frontend::token::Token;
+use crate::frontend::token::TokenKind;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
@@ -20,9 +23,6 @@ use crate::ir::Type;
 use crate::ir::TypeParse;
 use crate::ir::Value;
 use crate::ir::Values;
-use crate::parser::scanner::Scanner;
-use crate::parser::token::Token;
-use crate::parser::token::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
@@ -159,6 +159,7 @@ pub struct Parser<T: ParserDispatch> {
 #[allow(dead_code)]
 enum Dialects {
     Builtin,
+    #[allow(clippy::upper_case_acronyms)]
     LLVM,
 }
 
@@ -289,7 +290,7 @@ impl<T: ParserDispatch> Parser<T> {
         }
         if ops.rd().is_empty() {
             let token = self.peek();
-            let msg = self.error(&token, "Could not find operations in block");
+            let msg = self.error(token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
         for op in block.rd().ops().rd().iter() {

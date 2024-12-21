@@ -1,6 +1,10 @@
 use anyhow::Result;
 use std::fmt::Formatter;
 use std::sync::Arc;
+use xrcf::frontend::Parse;
+use xrcf::frontend::Parser;
+use xrcf::frontend::ParserDispatch;
+use xrcf::frontend::TokenKind;
 use xrcf::ir::APInt;
 use xrcf::ir::Attribute;
 use xrcf::ir::Block;
@@ -11,10 +15,6 @@ use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
 use xrcf::ir::Region;
-use xrcf::parser::Parse;
-use xrcf::parser::Parser;
-use xrcf::parser::ParserDispatch;
-use xrcf::parser::TokenKind;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
 

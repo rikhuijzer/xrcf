@@ -1,3 +1,6 @@
+use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
+use crate::frontend::TokenKind;
 use crate::ir::bytes_to_llvm_string;
 use crate::ir::escape;
 use crate::ir::llvm_string_to_bytes;
@@ -6,9 +9,6 @@ use crate::ir::APInt;
 use crate::ir::IntegerType;
 use crate::ir::StringType;
 use crate::ir::Type;
-use crate::parser::Parser;
-use crate::parser::ParserDispatch;
-use crate::parser::TokenKind;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
