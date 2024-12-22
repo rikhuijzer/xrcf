@@ -10,6 +10,7 @@ use crate::ir::Op;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
+use rayon::prelude::*;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -92,12 +93,12 @@ fn apply_rewrites_core(
         let changed = root
             .rd()
             .ops()
-            .iter()
+            .par_iter()
             .map(|op| {
                 let indent = indent + 1;
                 apply_rewrites_core(op.clone(), rewrites, indent).expect("TODO BUBBLE UP")
             })
-            .find(|result| result.is_changed().is_some());
+            .find_first(|result| result.is_changed().is_some());
         if let Some(_op) = changed {
             let root_passthrough = ChangedOp::new(root.clone());
             let root_passthrough = RewriteResult::Changed(root_passthrough);
