@@ -84,16 +84,15 @@ pub trait Rewrite: Send + Sync {
 }
 
 fn apply_rewrites_core(
-    root: Shared<dyn Op + Send + Sync>,
+    root: Shared<dyn Op>,
     rewrites: &[&dyn Rewrite],
     indent: i32,
 ) -> Result<RewriteResult> {
-    let ops = root.rd().ops();
     for rewrite in rewrites {
         // Determine ops here because `rewrite` may delete an op.
-        for nested_op in ops.iter() {
+        for op in root.rd().ops().iter() {
             let indent = indent + 1;
-            let result = apply_rewrites_core(nested_op.clone(), rewrites, indent)?;
+            let result = apply_rewrites_core(op.clone(), rewrites, indent)?;
             if result.is_changed().is_some() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
@@ -103,12 +102,10 @@ fn apply_rewrites_core(
         debug!(
             "{}Matching {} with {}",
             spaces(indent),
-            root.clone().rd().name(),
+            root.rd().name(),
             rewrite.name()
         );
-        let root_read = root.clone();
-        let root_read = root_read.rd();
-        if rewrite.is_match(&*root_read)? {
+        if rewrite.is_match(&*root.rd())? {
             debug!("{}--> Success", spaces(indent));
             let root_rewrite = rewrite.rewrite(root.clone())?;
             if root_rewrite.is_changed().is_some() {
