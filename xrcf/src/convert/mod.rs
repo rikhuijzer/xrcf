@@ -89,15 +89,22 @@ fn apply_rewrites_core(
     indent: i32,
 ) -> Result<RewriteResult> {
     for rewrite in rewrites {
-        // Determine ops here because `rewrite` may delete an op.
-        for op in root.rd().ops().iter() {
-            let indent = indent + 1;
-            let result = apply_rewrites_core(op.clone(), rewrites, indent)?;
-            if result.is_changed().is_some() {
-                let root_passthrough = ChangedOp::new(root.clone());
-                let root_passthrough = RewriteResult::Changed(root_passthrough);
-                return Ok(root_passthrough);
-            }
+        // Don't move `ops` out of this loop because `rewrite` may add or delete an op.
+        let changed = root
+            .rd()
+            .ops()
+            .iter()
+            .map(|op| {
+                let indent = indent + 1;
+                apply_rewrites_core(op.clone(), rewrites, indent).expect("TODO BUBBLE UP")
+            })
+            .skip_while(|result| result.is_changed().is_none())
+            .take(1)
+            .next();
+        if let Some(_op) = changed {
+            let root_passthrough = ChangedOp::new(root.clone());
+            let root_passthrough = RewriteResult::Changed(root_passthrough);
+            return Ok(root_passthrough);
         }
         debug!(
             "{}Matching {} with {}",
