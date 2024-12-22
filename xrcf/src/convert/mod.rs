@@ -98,9 +98,7 @@ fn apply_rewrites_core(
                 let indent = indent + 1;
                 apply_rewrites_core(op.clone(), rewrites, indent).expect("TODO BUBBLE UP")
             })
-            .skip_while(|result| result.is_changed().is_none())
-            .take(1)
-            .next();
+            .find(|result| result.is_changed().is_some());
         if let Some(_op) = changed {
             let root_passthrough = ChangedOp::new(root.clone());
             let root_passthrough = RewriteResult::Changed(root_passthrough);
