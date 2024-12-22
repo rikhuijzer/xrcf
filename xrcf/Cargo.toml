@@ -9,6 +9,7 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 homepage.workspace = true
+readme = "../README.md"
 
 [dependencies]
 anyhow = "1.0.86"
