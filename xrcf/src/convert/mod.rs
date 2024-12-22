@@ -10,7 +10,6 @@ use crate::ir::Op;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
-use rayon::prelude::*;
 use std::sync::Arc;
 use tracing::debug;
 
