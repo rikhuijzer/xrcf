@@ -19,7 +19,12 @@ use std::sync::Arc;
 ///
 /// See [Operation] for more information about the relationship between
 /// [Operation] and [Op].
-pub trait Op {
+///
+/// ```
+/// fn is_sharable<T: Send + Sync>() {}
+///
+/// ```
+pub trait Op: Send + Sync {
     fn operation_name() -> OperationName
     where
         Self: Sized;

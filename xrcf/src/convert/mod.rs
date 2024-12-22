@@ -10,6 +10,7 @@ use crate::ir::Op;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
+use rayon::prelude::*;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -61,7 +62,7 @@ impl RewriteResult {
     }
 }
 
-pub trait Rewrite {
+pub trait Rewrite: Send + Sync {
     /// The name of the rewrite; is used for logging.
     fn name(&self) -> &'static str;
     /// Returns true if the rewrite can be applied to the given operation.
@@ -82,8 +83,8 @@ pub trait Rewrite {
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult>;
 }
 
-fn apply_rewrites_helper(
-    root: Shared<dyn Op>,
+fn apply_rewrites_core(
+    root: Shared<dyn Op + Send + Sync>,
     rewrites: &[&dyn Rewrite],
     indent: i32,
 ) -> Result<RewriteResult> {
@@ -92,7 +93,7 @@ fn apply_rewrites_helper(
         // Determine ops here because `rewrite` may delete an op.
         for nested_op in ops.iter() {
             let indent = indent + 1;
-            let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
+            let result = apply_rewrites_core(nested_op.clone(), rewrites, indent)?;
             if result.is_changed().is_some() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
@@ -124,7 +125,7 @@ pub fn apply_rewrites(root: Shared<dyn Op>, rewrites: &[&dyn Rewrite]) -> Result
     let mut root = root;
     let mut has_changed = false;
     for _ in 0..max_iterations {
-        let result = apply_rewrites_helper(root.clone(), rewrites, 0)?;
+        let result = apply_rewrites_core(root.clone(), rewrites, 0)?;
         match result {
             RewriteResult::Changed(changed) => {
                 has_changed = true;
