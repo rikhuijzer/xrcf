@@ -28,8 +28,12 @@ fn test_constant() {
     "#};
 
     let (mut store, instance) = Tester::load_wat(expected).unwrap();
-    let plus = instance.get_func(&mut store, "plus").expect("func not found");
-    let plus = plus.typed::<(i32, i32), i32>(&store).expect("no typed func");
+    let plus = instance
+        .get_func(&mut store, "plus")
+        .expect("func not found");
+    let plus = plus
+        .typed::<(i32, i32), i32>(&store)
+        .expect("no typed func");
     let result = plus.call(&mut store, (1, 2)).expect("call failed");
     assert_eq!(result, 3);
 
