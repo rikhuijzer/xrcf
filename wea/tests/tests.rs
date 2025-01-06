@@ -1,23 +1,33 @@
-extern crate xrcf;
+extern crate wea;
 
 use indoc::indoc;
 use std::panic::Location;
+use wea::transform::WeaParserDispatch;
 use xrcf::ir::ModuleOp;
 use xrcf::shared::SharedExt;
 use xrcf::tester::Tester;
+
+type WeaTester = Tester<WeaParserDispatch>;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-wea-to-wat"]
 }
 
 #[test]
-fn test_constant() {
+fn test_plus() {
     Tester::init_tracing();
     let src = indoc! {r#"
     module:
         pub fn plus(a: i32, b: i32) -> i32:
             a + b
     "#};
+    let preprocessed = indoc! {r#"
+    module:
+        pub fn plus(a: i32, b: i32) -> i32:
+            a + b
+    "#};
+    WeaTester::preprocess(src);
+    WeaTester::check_lines_exact(src, preprocessed, Location::caller());
 
     let expected = indoc! {r#"
     (module
@@ -37,11 +47,11 @@ fn test_constant() {
     let result = plus.call(&mut store, (1, 2)).expect("call failed");
     assert_eq!(result, 3);
 
-    let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, src, Location::caller());
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module.clone());
+    let (_module, actual) = WeaTester::parse(src);
+    WeaTester::check_lines_contain(&actual, src, Location::caller());
+    let (module, actual) = WeaTester::transform(flags(), src);
+    WeaTester::verify(module.clone());
     let module = module.rd();
     assert!(module.as_any().is::<ModuleOp>());
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    WeaTester::check_lines_contain(&actual, expected, Location::caller());
 }

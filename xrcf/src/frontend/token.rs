@@ -57,6 +57,8 @@ pub enum TokenKind {
     Greater,
     /// <
     Less,
+    /// +
+    Plus,
 
     // Keywords
     KwF16,

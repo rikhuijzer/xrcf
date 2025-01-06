@@ -36,6 +36,15 @@ use std::sync::Arc;
 /// support custom operations, implement this trait with custom logic, see
 /// `DefaultParserDispatch` for an example.
 pub trait ParserDispatch {
+    /// Optional preprocessing logic.
+    ///
+    /// This can be used to, for example, replace Python-like indentation by
+    /// curly braces in order to make it easier to parse. This could have been
+    /// done in the xrcf parser, but it's moved here to keep the logic separated
+    /// (i.e., to make it easier to understand the code).
+    fn preprocess(src: &str) -> String {
+        src.to_string()
+    }
     /// Parse an operation.
     fn parse_op(parser: &mut Parser<Self>, parent: Option<Shared<Block>>) -> Result<Shared<dyn Op>>
     where

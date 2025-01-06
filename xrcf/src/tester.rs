@@ -1,6 +1,7 @@
 use crate::convert::RewriteResult;
 use crate::frontend::DefaultParserDispatch;
 use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
 use crate::init_subscriber;
 use crate::ir::Op;
 use crate::shared::Shared;
@@ -11,6 +12,7 @@ use crate::Passes;
 use crate::TransformOptions;
 use anyhow::Result;
 use std::cmp::max;
+use std::marker::PhantomData;
 use std::panic::Location;
 use tracing::info;
 use wasmtime::Engine;
@@ -18,9 +20,13 @@ use wasmtime::Instance;
 use wasmtime::Module;
 use wasmtime::Store;
 
-pub struct Tester;
+pub struct Tester<T: ParserDispatch> {
+    _marker: PhantomData<T>,
+}
 
-impl Tester {
+pub type DefaultTester = Tester<DefaultParserDispatch>;
+
+impl<T: ParserDispatch> Tester<T> {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.
@@ -101,9 +107,15 @@ impl Tester {
     fn print_heading(msg: &str, src: &str) {
         info!("{msg}:\n```\n{src}\n```\n");
     }
+    pub fn preprocess(src: &str) -> String {
+        Self::print_heading("Before parse", src.trim());
+        let actual = T::preprocess(src);
+        Self::print_heading("After parse", &actual);
+        actual
+    }
     pub fn parse(src: &str) -> (Shared<dyn Op>, String) {
         Self::print_heading("Before parse", src.trim());
-        let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
+        let module = Parser::<T>::parse(&src).unwrap();
         let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)

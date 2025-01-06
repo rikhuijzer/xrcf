@@ -2,7 +2,7 @@ extern crate xrcf;
 
 use indoc::indoc;
 use std::panic::Location;
-use xrcf::tester::Tester;
+use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-scf-to-cf"]
@@ -10,7 +10,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_if_with_yield() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
       func.func @main() -> i32 {
@@ -44,17 +44,17 @@ fn test_if_with_yield() {
       }
     }
     "#};
-    let (module, actual) = Tester::parse(src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, src, Location::caller());
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_exact(&actual, expected, Location::caller());
+    let (module, actual) = DefaultTester::parse(src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, src, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
 }
 
 #[test]
 fn test_if_without_yield() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {r#"
     func.func @main() -> i64 {
       %0 = arith.constant false
@@ -82,10 +82,10 @@ fn test_if_without_yield() {
       return %3 : i64
     }
     "#};
-    let (module, actual) = Tester::parse(src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, src, Location::caller());
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    let (module, actual) = DefaultTester::parse(src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, src, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }

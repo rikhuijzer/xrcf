@@ -2,7 +2,7 @@ extern crate xrcf;
 
 use indoc::indoc;
 use std::panic::Location;
-use xrcf::tester::Tester;
+use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-func-to-llvm"]
@@ -10,7 +10,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_constant() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {"
       func.func @main() -> i64 {
         %0 = arith.constant 42 : i64
@@ -25,14 +25,14 @@ fn test_constant() {
       }
     }
     "};
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }
 
 #[test]
 fn test_add_one() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {"
     func.func @add_one(%arg0 : i32) -> i32 {
       %0 = arith.constant 1 : i32
@@ -47,14 +47,14 @@ fn test_add_one() {
       llvm.return %1 : i32
     }
     "};
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }
 
 #[test]
 fn test_hello_world() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {r#"
     func.func private @printf(!llvm.ptr) -> i32
     func.func @something() -> i32
@@ -63,11 +63,11 @@ fn test_hello_world() {
     llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
     llvm.func @something() -> i32
     "#};
-    let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, src, Location::caller());
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    let (_module, actual) = DefaultTester::parse(src);
+    DefaultTester::check_lines_contain(&actual, src, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 
     let src = indoc! {r#"
     func.func private @printf(!llvm.ptr) -> i32
@@ -101,16 +101,16 @@ fn test_hello_world() {
       llvm.return %4 : i32
     }
     "#};
-    let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, src, Location::caller());
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_contain(&actual, expected, Location::caller());
+    let (_module, actual) = DefaultTester::parse(src);
+    DefaultTester::check_lines_contain(&actual, src, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }
 
 #[test]
 fn test_empty_return() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {r#"
     func.func @main() {
       return
@@ -123,7 +123,7 @@ fn test_empty_return() {
       }
     }
     "#};
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module);
-    Tester::check_lines_exact(&actual, expected, Location::caller());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module);
+    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
 }

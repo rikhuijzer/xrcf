@@ -8,7 +8,7 @@ use xrcf::frontend::Parser;
 use xrcf::ir;
 use xrcf::ir::Op;
 use xrcf::shared::SharedExt;
-use xrcf::tester::Tester;
+use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--canonicalize"]
@@ -16,6 +16,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn determine_users() {
+    DefaultTester::init_tracing();
     let src = indoc! {"
     func.func @test_determine_users(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
@@ -25,7 +26,7 @@ fn determine_users() {
     "};
 
     let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
-    Tester::verify(module.clone());
+    DefaultTester::verify(module.clone());
     let module = module.rd();
 
     let ops = module.ops();
@@ -45,6 +46,7 @@ fn determine_users() {
 
 #[test]
 fn canonicalize_addi() {
+    DefaultTester::init_tracing();
     let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
@@ -63,10 +65,9 @@ fn canonicalize_addi() {
       }
     }
     "};
-    Tester::init_tracing();
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::verify(module.clone());
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module.clone());
     let module = module.rd();
-    Tester::check_lines_exact(&actual, expected, Location::caller());
+    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
     assert!(module.as_any().is::<ir::ModuleOp>());
 }

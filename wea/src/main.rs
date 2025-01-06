@@ -9,13 +9,15 @@ use clap::Args;
 use clap::Command;
 use std::env::ArgsOs;
 use std::io::Read;
+use transform::WeaParserDispatch;
+use transform::WeaTransformDispatch;
 use xrcf::convert::RewriteResult;
+use xrcf::frontend::Parser;
 use xrcf::init_subscriber;
 use xrcf::shared::SharedExt;
+use xrcf::transform;
 use xrcf::Passes;
 use xrcf::TransformOptions;
-
-use crate::transform::parse_and_transform;
 
 /// A compiler for the ArnoldC language.
 #[derive(Args, Debug)]
@@ -81,7 +83,7 @@ fn main() {
 
     let input = matches.get_one::<String>("input").unwrap();
 
-    let input_text = if input == "-" {
+    let src = if input == "-" {
         let mut buffer = String::new();
         std::io::stdin().read_to_string(&mut buffer).unwrap();
         buffer
@@ -89,10 +91,11 @@ fn main() {
         std::fs::read_to_string(input).unwrap()
     };
 
-    let result = parse_and_transform(&input_text, &options).unwrap();
+    let module = Parser::<WeaParserDispatch>::parse(&src).unwrap();
+    let result = transform::<WeaTransformDispatch>(module, &options).unwrap();
     let result = match result {
         RewriteResult::Changed(op) => op.op.rd().to_string(),
-        RewriteResult::Unchanged => input_text.to_string(),
+        RewriteResult::Unchanged => src.to_string(),
     };
     println!("{result}");
 }

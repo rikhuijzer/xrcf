@@ -2,7 +2,7 @@ extern crate xrcf;
 
 use indoc::indoc;
 use std::panic::Location;
-use xrcf::tester::Tester;
+use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-cf-to-llvm"]
@@ -10,7 +10,7 @@ fn flags() -> Vec<&'static str> {
 
 #[test]
 fn test_if_else() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
       func.func @main() -> i32 {
@@ -47,10 +47,10 @@ fn test_if_else() {
       }
     }
     "#};
-    let (module, actual) = Tester::parse(src);
-    Tester::check_lines_exact(&actual, src, Location::caller());
-    Tester::verify(module);
-    let (module, actual) = Tester::transform(flags(), src);
-    Tester::check_lines_exact(&actual, expected, Location::caller());
-    Tester::verify(module);
+    let (module, actual) = DefaultTester::parse(src);
+    DefaultTester::check_lines_exact(&actual, src, Location::caller());
+    DefaultTester::verify(module);
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
+    DefaultTester::verify(module);
 }

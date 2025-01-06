@@ -130,7 +130,7 @@ mod tests {
     use indoc::indoc;
     use std::panic::Location;
     use xrcf::shared::SharedExt;
-    use xrcf::tester::Tester;
+    use xrcf::tester::DefaultTester as Tester;
     use xrcf::Passes;
 
     fn flags() -> Vec<&'static str> {
