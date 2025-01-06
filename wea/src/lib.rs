@@ -34,14 +34,44 @@ fn is_function_call<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     syntax_matches && !known_keyword
 }
 
+fn indentation_to_braces(src: &str) -> String {
+    let mut result = String::new();
+    let mut indent_level = 0;
+
+    for line in src.lines() {
+        let trimmed = line.trim();
+
+        result.push_str(&xrcf::ir::spaces(indent_level));
+
+        if trimmed.ends_with(':') {
+            let trimmed = &trimmed[..trimmed.len() - 1];
+            result.push_str(trimmed);
+            result.push_str(" {");
+            indent_level += 2;
+        } else {
+            result.push_str(trimmed);
+        }
+
+        result.push('\n');
+    }
+
+    while indent_level > 0 {
+        indent_level -= 2;
+        result.push_str(&xrcf::ir::spaces(indent_level));
+        result.push_str("}\n");
+    }
+
+    result
+}
+
 impl ParserDispatch for WeaParserDispatch {
     /// Preprocess Wea source code to make it easier to parse.
     ///
     /// This mostly adds braces to make the structure of the code more clear. This
     /// could have been done in the xrcf parser, but it's moved here to keep the
     /// logic separated (i.e., to make it easier to understand the code).
-    fn preprocess(_src: &str) -> String {
-        todo!("preprocess")
+    fn preprocess(src: &str) -> String {
+        indentation_to_braces(src)
     }
     fn parse_op(
         parser: &mut Parser<Self>,
