@@ -1,6 +1,8 @@
-use crate::arnold;
-use crate::arnold_to_mlir::ConvertArnoldToMLIR;
+mod arnold;
+mod arnold_to_mlir;
+
 use anyhow::Result;
+use arnold_to_mlir::ConvertArnoldToMLIR;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::frontend::default_dispatch;
@@ -13,11 +15,9 @@ use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Type;
 use xrcf::shared::Shared;
-use xrcf::transform;
 use xrcf::DefaultTransformDispatch;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
-use xrcf::TransformOptions;
 
 pub struct WeaParserDispatch;
 
@@ -41,7 +41,7 @@ impl ParserDispatch for WeaParserDispatch {
     /// could have been done in the xrcf parser, but it's moved here to keep the
     /// logic separated (i.e., to make it easier to understand the code).
     fn preprocess(_src: &str) -> String {
-        todo!()
+        todo!("preprocess")
     }
     fn parse_op(
         parser: &mut Parser<Self>,

@@ -1,7 +1,6 @@
 #![allow(clippy::arc_with_non_send_sync)]
 mod arnold;
 mod arnold_to_mlir;
-mod transform;
 
 use clap::arg;
 use clap::ArgMatches;
@@ -9,8 +8,8 @@ use clap::Args;
 use clap::Command;
 use std::env::ArgsOs;
 use std::io::Read;
-use transform::WeaParserDispatch;
-use transform::WeaTransformDispatch;
+use wea::WeaParserDispatch;
+use wea::WeaTransformDispatch;
 use xrcf::convert::RewriteResult;
 use xrcf::frontend::Parser;
 use xrcf::init_subscriber;

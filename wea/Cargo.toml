@@ -9,6 +9,14 @@ repository.workspace = true
 homepage.workspace = true
 publish = false
 
+[lib]
+name = "wea"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wea"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5", features = ["derive"] }

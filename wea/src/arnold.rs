@@ -35,14 +35,6 @@ fn arnold_attribute(value: u64, num_bits: u64) -> IntegerAttr {
     IntegerAttr::new(typ, value)
 }
 
-/// Arnold-specific parsing methods.
-///
-/// This makes the methods available on the `parser` object.
-///
-/// Example:
-/// ```rust
-/// parser.parse_arnold_op_operand(parent)
-/// ```
 trait ArnoldParse {
     fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
     fn parse_arnold_operation_name_into(
