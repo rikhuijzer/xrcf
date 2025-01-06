@@ -1,17 +1,22 @@
-use crate::convert::RewriteResult;
-use crate::frontend::DefaultParserDispatch;
-use crate::frontend::Parser;
-use crate::init_subscriber;
-use crate::ir::Op;
-use crate::shared::Shared;
-use crate::shared::SharedExt;
-use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
 use crate::TransformOptions;
+use crate::shared::SharedExt;
+use crate::convert::RewriteResult;
+use crate::frontend::DefaultParserDispatch;
+use crate::frontend::Parser;
+use anyhow::Result;
+use crate::init_subscriber;
+use crate::ir::Op;
+use crate::shared::Shared;
+use crate::transform;
 use std::cmp::max;
 use std::panic::Location;
 use tracing::info;
+use wasmtime::Engine;
+use wasmtime::Instance;
+use wasmtime::Module;
+use wasmtime::Store;
 
 pub struct Tester;
 
@@ -167,5 +172,12 @@ impl Tester {
         for op in ops {
             Self::verify(op);
         }
+    }
+    pub fn load_wat(wat: &str) -> Result<(Store<()>, Instance)> {
+        let engine = Engine::default();
+        let module = Module::new(&engine, wat).unwrap();
+        let mut store = Store::new(&engine, ());
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
+        Ok((store, instance))
     }
 }

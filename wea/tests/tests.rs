@@ -16,21 +16,28 @@ fn test_constant() {
     let src = indoc! {r#"
     module:
         pub fn plus(a: i32, b: i32) -> i32:
-            return a + b
+            a + b
     "#};
 
     let expected = indoc! {r#"
     (module
-    (type (func (param i32 i32) (result i32)))
-    (func (export "plus") (type 0) (param $a i32) (param $b i32) (result i32)
-        local.get $a
-        local.get $b
-        i32.add))
+        (func (export "plus") (param $a i32) (param $b i32) (result i32)
+            local.get $a
+            local.get $b
+            i32.add))
     "#};
-    let caller = Location::caller();
+
+    let (mut store, instance) = Tester::load_wat(expected).unwrap();
+    let plus = instance.get_func(&mut store, "plus").expect("func not found");
+    let plus = plus.typed::<(i32, i32), i32>(&store).expect("no typed func");
+    let result = plus.call(&mut store, (1, 2)).expect("call failed");
+    assert_eq!(result, 3);
+
+    let (_module, actual) = Tester::parse(src);
+    Tester::check_lines_contain(&actual, src, Location::caller());
     let (module, actual) = Tester::transform(flags(), src);
     Tester::verify(module.clone());
     let module = module.rd();
     assert!(module.as_any().is::<ModuleOp>());
-    Tester::check_lines_contain(&actual, expected, caller);
+    Tester::check_lines_contain(&actual, expected, Location::caller());
 }
