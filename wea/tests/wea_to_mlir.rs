@@ -10,7 +10,7 @@ use xrcf::tester::Tester;
 type WeaTester = Tester<WeaParserDispatch>;
 
 fn flags() -> Vec<&'static str> {
-    vec!["--convert-wea-to-wat"]
+    vec!["--convert-wea-to-mlir"]
 }
 
 #[test]
@@ -30,21 +30,12 @@ fn test_plus() {
     WeaTester::check_lines_exact(src, preprocessed, Location::caller());
 
     let expected = indoc! {r#"
-    (module
-        (func (export "plus") (param $a i32) (param $b i32) (result i32)
-            local.get $a
-            local.get $b
-            i32.add))
+    module {
+        fn plus(%arg0: i32, %arg1: i32) -> i32 {
+            %arg0 + %arg1
+        }
+    }
     "#};
-    let (mut store, instance) = WeaTester::load_wat(expected).unwrap();
-    let plus = instance
-        .get_func(&mut store, "plus")
-        .expect("func not found");
-    let plus = plus
-        .typed::<(i32, i32), i32>(&store)
-        .expect("no typed func");
-    let result = plus.call(&mut store, (1, 2)).expect("call failed");
-    assert_eq!(result, 3);
 
     let (_module, actual) = WeaTester::parse(src);
     WeaTester::check_lines_contain(&actual, src, Location::caller());

@@ -17,12 +17,14 @@ mod cf_to_llvm;
 mod experimental_to_mlir;
 mod func_to_llvm;
 mod mlir_to_llvmir;
+mod mlir_to_wat;
 mod scf_to_cf;
 
 pub use cf_to_llvm::ConvertCFToLLVM;
 pub use experimental_to_mlir::ConvertExperimentalToMLIR;
 pub use func_to_llvm::ConvertFuncToLLVM;
 pub use mlir_to_llvmir::ConvertMLIRToLLVMIR;
+pub use mlir_to_wat::ConvertMLIRToWat;
 pub use scf_to_cf::ConvertSCFToCF;
 
 pub struct ChangedOp {
