@@ -5,6 +5,7 @@ use crate::convert::Rewrite;
 use crate::convert::RewriteResult;
 use crate::dialect;
 use crate::dialect::func::Func;
+use crate::ir::canonicalize_identifier;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::shared::Shared;
@@ -55,7 +56,9 @@ impl Rewrite for FuncLowering {
         let mut sig = Signature::new(CallConv::SystemV);
         sig.returns.push(AbiParam::new(I32));
         // let mut fn_builder_ctx = FunctionBuilderContext::new();
-        let func = Function::with_name_signature(UserFuncName::user(0, 0), sig);
+        let identifier = canonicalize_identifier(&op.identifier().unwrap());
+        let name = UserFuncName::testcase(identifier);
+        let func = Function::with_name_signature(name, sig);
         // let mut builder = FunctionBuilder::new(&mut func, &mut fn_builder_ctx);
         new_op.set_func(func);
 

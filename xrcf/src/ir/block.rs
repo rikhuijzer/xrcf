@@ -37,6 +37,7 @@ pub struct Block {
     parent: Option<Shared<Region>>,
 }
 
+/// Canonicalize a block label by removing IR-specific prefixes.
 fn canonicalize_label(label: &str) -> String {
     label.trim_start_matches('^').to_string()
 }

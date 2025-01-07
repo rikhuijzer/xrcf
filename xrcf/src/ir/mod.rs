@@ -55,6 +55,11 @@ pub use value::Users;
 pub use value::Value;
 pub use value::Values;
 
+/// Canonicalize an identifier by removing IR-specific prefixes.
+pub fn canonicalize_identifier(identifier: &str) -> String {
+    identifier.trim_start_matches('@').to_string()
+}
+
 pub fn spaces(indent: i32) -> String {
     "  ".repeat(indent as usize)
 }

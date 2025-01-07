@@ -1,7 +1,7 @@
 use indoc::indoc;
 use std::panic::Location;
-use xrcf::ir::ModuleOp;
 use xrcf::shared::SharedExt;
+use xrcf::targ3t::clir::ModuleOp;
 use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
