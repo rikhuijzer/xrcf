@@ -5,7 +5,7 @@ use xrcf::shared::SharedExt;
 use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
-    vec!["--convert-mlir-to-wat"]
+    vec!["--convert-mlir-to-clir"]
 }
 
 #[test]
@@ -13,8 +13,9 @@ fn test_plus() {
     DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
-        fn plus(%arg0: i32, %arg1: i32) -> i32 {
-            %arg0 + %arg1
+        func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
+            %0 = arith.addi %arg0, %arg1 : i32
+            return %0 : i32
         }
     }
     "#};
