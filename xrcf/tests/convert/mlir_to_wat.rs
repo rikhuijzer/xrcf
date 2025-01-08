@@ -1,7 +1,7 @@
 use indoc::indoc;
 use std::panic::Location;
-use xrcf::ir::ModuleOp;
 use xrcf::shared::SharedExt;
+use xrcf::targ3t::wat::ModuleOp;
 use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
@@ -13,15 +13,16 @@ fn test_plus() {
     DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
-        fn plus(%arg0: i32, %arg1: i32) -> i32 {
-            %arg0 + %arg1
+        func.func @i32_plus(%arg0: i32, %arg1: i32) -> i32 {
+            %0 = arith.addi %arg0, %arg1 : i32
+            return %0 : i32
         }
     }
     "#};
 
     let expected = indoc! {r#"
     (module
-        (func (export "plus") (param $a i32) (param $b i32) (result i32)
+        (func (export "i32_plus") (param $a i32) (param $b i32) (result i32)
             local.get $a
             local.get $b
             i32.add))
@@ -29,7 +30,7 @@ fn test_plus() {
 
     let (mut store, instance) = DefaultTester::load_wat(expected).unwrap();
     let plus = instance
-        .get_func(&mut store, "plus")
+        .get_func(&mut store, "i32_plus")
         .expect("func not found");
     let plus = plus
         .typed::<(i32, i32), i32>(&store)

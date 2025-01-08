@@ -6,3 +6,4 @@
 //! watch`.
 
 pub mod llvmir;
+pub mod wat;
