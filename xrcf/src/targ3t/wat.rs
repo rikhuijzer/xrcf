@@ -7,6 +7,8 @@ use crate::ir::BlockArgumentName;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Type;
+use crate::ir::Types;
 use crate::ir::Value;
 use crate::ir::Values;
 use crate::shared::Shared;
@@ -67,6 +69,19 @@ fn display_arguments(values: &Values) -> String {
     result.join(" ")
 }
 
+fn display_return_type(typ: Shared<dyn Type>) -> String {
+    format!("(result {})", typ.rd())
+}
+
+fn display_return_types(types: &Types) -> String {
+    let result = types
+        .vec()
+        .iter()
+        .map(|typ| display_return_type(typ.clone()))
+        .collect::<Vec<String>>();
+    result.join(" ")
+}
+
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
         OperationName::new("func".to_string())
@@ -93,7 +108,15 @@ impl Op for FuncOp {
             write!(f, "(export \"{identifier}\") ")?;
         }
         write!(f, "{}", display_arguments(&self.arguments()))?;
-        // TODO: display body
+        let return_types = self.operation.rd().results().types();
+        if !return_types.vec().is_empty() {
+            writeln!(f, " {}", display_return_types(&return_types))?;
+        } else {
+            writeln!(f)?;
+        };
+        for block in self.operation.rd().blocks().vec().rd().iter() {
+            block.rd().display(f, indent + 1)?;
+        }
         writeln!(f, ")")?;
         Ok(())
     }
