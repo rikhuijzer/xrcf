@@ -5,5 +5,4 @@
 //! This module is called `targ3t` because `target` created issues with `cargo
 //! watch`.
 
-pub mod clif;
 pub mod llvmir;

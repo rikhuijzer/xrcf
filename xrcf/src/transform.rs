@@ -2,7 +2,6 @@ use crate::canonicalize::Canonicalize;
 use crate::convert::ConvertCFToLLVM;
 use crate::convert::ConvertExperimentalToMLIR;
 use crate::convert::ConvertFuncToLLVM;
-use crate::convert::ConvertMLIRToCLIR;
 use crate::convert::ConvertMLIRToLLVMIR;
 use crate::convert::ConvertSCFToCF;
 use crate::convert::Pass;
@@ -170,7 +169,6 @@ impl TransformDispatch for DefaultTransformDispatch {
             ConvertFuncToLLVM::NAME => ConvertFuncToLLVM::convert(op.clone()),
             ConvertMLIRToLLVMIR::NAME => ConvertMLIRToLLVMIR::convert(op.clone()),
             ConvertSCFToCF::NAME => ConvertSCFToCF::convert(op.clone()),
-            ConvertMLIRToCLIR::NAME => ConvertMLIRToCLIR::convert(op.clone()),
             _ => Err(anyhow::anyhow!("Unknown pass: {}", pass)),
         }
     }

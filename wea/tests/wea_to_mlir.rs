@@ -13,7 +13,7 @@ fn flags() -> Vec<&'static str> {
     vec!["--convert-wea-to-mlir"]
 }
 
-// #[test]
+#[test]
 fn test_plus() {
     WeaTester::init_tracing();
     let src = indoc! {r#"

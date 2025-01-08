@@ -220,3 +220,11 @@ conflicts with the conditions of the GPLv2, you may retroactively and
 prospectively choose to deem waived or otherwise exclude such Section(s) of
 the License, but only in their entirety and only with respect to the Combined
 Software.
+
+==============================================================================
+Software from third parties included in the project:
+==============================================================================
+
+- Much of the code is inspired by LLVM and MLIR.
+- The lexer and parser are inspired by the "Crafting Interpreters" book
+  (The code falls under the MIT license).
