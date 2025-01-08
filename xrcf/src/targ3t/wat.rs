@@ -10,8 +10,24 @@ use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+#[derive(Clone, PartialEq)]
+pub enum SymVisibility {
+    Public,
+    Private,
+}
+
 pub struct FuncOp {
     operation: Shared<Operation>,
+    sym_visibility: Option<SymVisibility>,
+}
+
+impl FuncOp {
+    pub fn sym_visibility(&self) -> Option<SymVisibility> {
+        self.sym_visibility.clone()
+    }
+    pub fn set_sym_visibility(&mut self, visibility: Option<SymVisibility>) {
+        self.sym_visibility = visibility;
+    }
 }
 
 impl Op for FuncOp {
@@ -19,7 +35,10 @@ impl Op for FuncOp {
         OperationName::new("func".to_string())
     }
     fn new(operation: Shared<Operation>) -> Self {
-        Self { operation }
+        Self {
+            operation,
+            sym_visibility: None,
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -29,7 +48,11 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(indent);
-        writeln!(f, "{spaces}({}", self.operation.rd().name())?;
+        write!(f, "{spaces}({} ", self.operation.rd().name())?;
+        let identifier = "foo";
+        if self.sym_visibility() == Some(SymVisibility::Public) {
+            write!(f, "(export \"{identifier}\")")?;
+        }
         writeln!(f, ")")?;
         Ok(())
     }
