@@ -22,9 +22,9 @@ fn test_plus() {
 
     let expected = indoc! {r#"
     (module
-        (func (export "i32_plus") (param $a i32) (param $b i32) (result i32)
-            local.get $a
-            local.get $b
+        (func (export "i32_plus") (param $arg0 i32) (param $arg1 i32) (result i32)
+            local.get $arg0
+            local.get $arg1
             i32.add))
     "#};
 

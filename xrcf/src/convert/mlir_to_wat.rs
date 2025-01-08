@@ -30,6 +30,9 @@ impl Rewrite for FuncLowering {
         if op.sym_visibility().is_none() {
             new_op.set_sym_visibility(Some(SymVisibility::Public));
         }
+        if let Some(identifier) = op.identifier() {
+            new_op.set_identifier(Some(identifier));
+        }
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
