@@ -25,7 +25,7 @@ impl FuncOp {
 
 impl Op for FuncOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::clir::func".to_string())
+        OperationName::new("target::clif::func".to_string())
     }
     fn new(operation: Shared<Operation>) -> Self {
         let func = Function::new();
@@ -54,7 +54,7 @@ pub struct ModuleOp {
 
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
-        OperationName::new("target::clir::module".to_string())
+        OperationName::new("target::clif::module".to_string())
     }
     fn new(operation: Shared<Operation>) -> Self {
         ModuleOp { operation }

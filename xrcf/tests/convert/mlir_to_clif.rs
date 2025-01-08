@@ -1,11 +1,11 @@
 use indoc::indoc;
 use std::panic::Location;
 use xrcf::shared::SharedExt;
-use xrcf::targ3t::clir::ModuleOp;
+use xrcf::targ3t::clif::ModuleOp;
 use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
-    vec!["--convert-mlir-to-clir"]
+    vec!["--convert-mlir-to-clif"]
 }
 
 #[test]
@@ -40,6 +40,6 @@ fn test_plus() {
 
     let (module, actual) = DefaultTester::transform(flags(), src);
     DefaultTester::verify(module.clone());
-    assert!(module.rd().as_any().is::<ModuleOp>());
     DefaultTester::check_lines_exact(&actual, expected, Location::caller());
+    let module = module.rd().as_any().downcast_ref::<ModuleOp>().unwrap();
 }

@@ -48,7 +48,7 @@ impl Rewrite for FuncLowering {
         let mut new_operation = Operation::default();
         new_operation.set_parent(old_operation.rd().parent());
         let operation = Shared::new(new_operation.into());
-        let mut new_op = targ3t::clir::FuncOp::from_operation_arc(operation);
+        let mut new_op = targ3t::clif::FuncOp::from_operation_arc(operation);
 
         let return_type = op.return_type().expect("expected one return type");
         let return_type = return_type.rd();
@@ -78,7 +78,7 @@ impl Rewrite for ModuleLowering {
         Ok(op.as_any().is::<crate::ir::ModuleOp>())
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        let new_op = targ3t::clir::ModuleOp::new(op.rd().operation().clone());
+        let new_op = targ3t::clif::ModuleOp::new(op.rd().operation().clone());
         let new_op = Shared::new(new_op.into());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
@@ -87,7 +87,7 @@ impl Rewrite for ModuleLowering {
 pub struct ConvertMLIRToCLIR;
 
 impl Pass for ConvertMLIRToCLIR {
-    const NAME: &'static str = "convert-mlir-to-clir";
+    const NAME: &'static str = "convert-mlir-to-clif";
     fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![&FuncLowering, &ModuleLowering];
         apply_rewrites(op, &rewrites)
