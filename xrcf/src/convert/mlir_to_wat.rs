@@ -28,7 +28,7 @@ impl Rewrite for FuncLowering {
         let operation = op.operation().clone();
         let mut new_op = targ3t::wat::FuncOp::from_operation_arc(operation);
         if op.sym_visibility().is_none() {
-            new_op.set_sym_visibility(Some(SymVisibility::Public));
+            new_op.sym_visibility = Some(SymVisibility::Public);
         }
         if let Some(identifier) = op.identifier() {
             new_op.set_identifier(Some(identifier));

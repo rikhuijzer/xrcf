@@ -25,7 +25,7 @@ pub enum SymVisibility {
 pub struct FuncOp {
     operation: Shared<Operation>,
     identifier: Option<String>,
-    sym_visibility: Option<SymVisibility>,
+    pub sym_visibility: Option<SymVisibility>,
 }
 
 impl FuncOp {
@@ -34,12 +34,6 @@ impl FuncOp {
     }
     pub fn set_identifier(&mut self, identifier: Option<String>) {
         self.identifier = identifier;
-    }
-    pub fn sym_visibility(&self) -> Option<SymVisibility> {
-        self.sym_visibility.clone()
-    }
-    pub fn set_sym_visibility(&mut self, visibility: Option<SymVisibility>) {
-        self.sym_visibility = visibility;
     }
     pub fn arguments(&self) -> Values {
         self.operation.rd().arguments()
@@ -104,7 +98,7 @@ impl Op for FuncOp {
         write!(f, "{spaces}({} ", self.operation.rd().name())?;
         let identifier = self.identifier().expect("identifier not set");
         let identifier = canonicalize_identifier(&identifier);
-        if self.sym_visibility() == Some(SymVisibility::Public) {
+        if self.sym_visibility == Some(SymVisibility::Public) {
             write!(f, "(export \"{identifier}\") ")?;
         }
         write!(f, "{}", display_arguments(&self.arguments()))?;
