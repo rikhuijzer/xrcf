@@ -12,12 +12,12 @@ use crate::shared::Shared;
 use crate::shared::SharedExt;
 use crate::targ3t;
 use anyhow::Result;
-use cranelift_codegen::ir::types::I32;
-use cranelift_codegen::ir::AbiParam;
-use cranelift_codegen::ir::Function;
-use cranelift_codegen::ir::Signature;
-use cranelift_codegen::ir::UserFuncName;
-use cranelift_codegen::isa::CallConv;
+use cranelift::codegen::ir::types::I32;
+use cranelift::codegen::ir::AbiParam;
+use cranelift::codegen::ir::Function;
+use cranelift::codegen::ir::Signature;
+use cranelift::codegen::ir::UserFuncName;
+use cranelift::codegen::isa::CallConv;
 
 /// Lower a MLIR `func` to a CLIR `func`.
 ///
@@ -68,6 +68,18 @@ impl Rewrite for FuncLowering {
     }
 }
 
+/// Lower a MLIR module to a CLIR module.
+///
+/// This differs a bit from how other lowerings occur in xrcf. Unlike other
+/// lowerings, this rewrite personally takes the operations from below the
+/// function and manages the conversion for them too. This is necessary because
+/// the cranelift `Module` and `Function` does not satisfy all the same
+/// behaviors as a [xrcf::ir::Operation], such as for example that each
+/// `Operation` contains a region.
+///
+/// In the end, it shouldn't matter so much here. We can just convert to the
+/// Cranelift representation since we will not be doing any further lowerings on
+/// the object.
 struct ModuleLowering;
 
 impl Rewrite for ModuleLowering {
@@ -78,7 +90,22 @@ impl Rewrite for ModuleLowering {
         Ok(op.as_any().is::<crate::ir::ModuleOp>())
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        let new_op = targ3t::clif::ModuleOp::new(op.rd().operation().clone());
+        let op = op.rd();
+        let op = op.as_any().downcast_ref::<crate::ir::ModuleOp>().unwrap();
+        let old_operation = op.operation();
+        // A sort of placeholder operation so that code that later assumptions
+        // about the `Op` (such as each `Op` has a parent) are not violated.
+        let mut new_operation = Operation::default();
+        new_operation.set_parent(old_operation.rd().parent());
+
+        // TODO: Lower functions in parallel.
+        // Do not use the default xrcf logic since we need to pass Cranelift `Context` around.
+        // (Maybe later this can be integrated into some xrcf interface.)
+
+        // TODO: Take the functions and declare and define them in the Cranelift `Module`.
+
+        let operation = Shared::new(new_operation.into());
+        let new_op = targ3t::clif::ModuleOp::new(operation);
         let new_op = Shared::new(new_op.into());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }

@@ -185,9 +185,10 @@ impl<T: ParserDispatch> Tester<T> {
             Self::verify(op);
         }
     }
-    pub fn load_wat(wat: &str) -> Result<(Store<()>, Instance)> {
+    /// Load a WebAssembly binary or text (wat) into a module.
+    pub fn load_wasm(bytes: impl AsRef<[u8]>) -> Result<(Store<()>, Instance)> {
         let engine = Engine::default();
-        let module = Module::new(&engine, wat).unwrap();
+        let module = Module::new(&engine, bytes).unwrap();
         let mut store = Store::new(&engine, ());
         let instance = Instance::new(&mut store, &module, &[]).unwrap();
         Ok((store, instance))

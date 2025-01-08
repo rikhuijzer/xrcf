@@ -1,5 +1,4 @@
 use indoc::indoc;
-use std::panic::Location;
 use xrcf::shared::SharedExt;
 use xrcf::targ3t::clif::ModuleOp;
 use xrcf::tester::DefaultTester;
@@ -13,33 +12,26 @@ fn test_plus() {
     DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
-        func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
+        func.func @i32_plus(%arg0: i32, %arg1: i32) -> i32 {
             %0 = arith.addi %arg0, %arg1 : i32
             return %0 : i32
         }
     }
     "#};
 
-    let expected = indoc! {r#"
-    (module
-        (func (export "plus") (param $a i32) (param $b i32) (result i32)
-            local.get $a
-            local.get $b
-            i32.add))
-    "#};
-
-    let (mut store, instance) = DefaultTester::load_wat(expected).unwrap();
-    let plus = instance
-        .get_func(&mut store, "plus")
-        .expect("func not found");
-    let plus = plus
-        .typed::<(i32, i32), i32>(&store)
-        .expect("no typed func");
-    let result = plus.call(&mut store, (1, 2)).expect("call failed");
-    assert_eq!(result, 3);
-
-    let (module, actual) = DefaultTester::transform(flags(), src);
+    let (module, _actual) = DefaultTester::transform(flags(), src);
     DefaultTester::verify(module.clone());
-    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
-    let module = module.rd().as_any().downcast_ref::<ModuleOp>().unwrap();
+    let bytes = module
+        .rd()
+        .as_any()
+        .downcast_ref::<ModuleOp>()
+        .unwrap()
+        .machine_code()
+        .unwrap();
+    let bytes = unsafe { std::slice::from_raw_parts(bytes, 1024) };
+    let (mut store, instance) = DefaultTester::load_wasm(bytes).unwrap();
+    let plus = instance.get_func(&mut store, "i32_plus").unwrap();
+    let plus = plus.typed::<(i32, i32), i32>(&store).unwrap();
+    let result = plus.call(&mut store, (1, 2)).unwrap();
+    assert_eq!(result, 3);
 }
