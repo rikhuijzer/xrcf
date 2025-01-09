@@ -7,6 +7,7 @@ use crate::ir::BlockArgumentName;
 use crate::ir::Op;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Prefixes;
 use crate::ir::Type;
 use crate::ir::Types;
 use crate::ir::Value;
@@ -16,10 +17,41 @@ use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+const PREFIXES: Prefixes = Prefixes {
+    argument: "$arg",
+    block: "bb",
+    ssa: "$",
+};
+
 #[derive(Clone, PartialEq)]
 pub enum SymVisibility {
     Public,
     Private,
+}
+
+pub struct AddOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for AddOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("add".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        AddOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "foo {}", self.operation.rd().name())
+    }
 }
 
 pub struct FuncOp {
@@ -93,6 +125,9 @@ impl Op for FuncOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let spaces = crate::ir::spaces(2 * indent);
         write!(f, "{spaces}({} ", self.operation.rd().name())?;
@@ -138,6 +173,9 @@ impl Op for ModuleOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         writeln!(f, "({}", self.operation.rd().name())?;

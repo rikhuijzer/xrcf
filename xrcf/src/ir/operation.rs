@@ -127,7 +127,9 @@ pub fn display_region_inside_func(
         if region.blocks().into_iter().next().is_none() {
             writeln!(f)
         } else {
-            region.display(f, indent)
+            writeln!(f, " {{")?;
+            region.display(f, indent)?;
+            write!(f, "{}}}", crate::ir::spaces(indent))
         }
     } else {
         Ok(())

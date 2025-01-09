@@ -138,8 +138,7 @@ impl Region {
     pub fn set_parent(&mut self, parent: Option<Shared<dyn Op>>) {
         self.parent = parent;
     }
-    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        writeln!(f, " {{")?;
+    pub fn refresh_names(&self) {
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.rd();
@@ -158,10 +157,13 @@ impl Region {
         set_fresh_block_argument_names(prefixes.argument, &blocks);
         set_fresh_block_labels(prefixes.block, &blocks);
         set_fresh_ssa_names(prefixes.ssa, &blocks);
-        for block in blocks.iter() {
+    }
+    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        self.refresh_names();
+        for block in self.blocks().vec().rd().iter() {
             block.rd().display(f, indent + 1)?;
         }
-        write!(f, "{}}}", crate::ir::spaces(indent))
+        Ok(())
     }
 }
 

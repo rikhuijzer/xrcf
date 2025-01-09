@@ -299,17 +299,16 @@ impl FuncOp {
         write!(f, "{}", op.operation().rd().arguments())?;
         write!(f, ")")?;
         let operation = op.operation();
-        let result_types = operation.rd().results().types();
+        let operation = operation.rd();
+        let result_types = operation.results().types();
         if !result_types.vec().is_empty() {
             write!(f, " -> {}", result_types)?;
         }
-        let attributes = operation.rd().attributes();
+        let attributes = operation.attributes();
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        if let Some(region) = op.operation().rd().region() {
-            region.rd().display(f, indent)?;
-        }
+        crate::ir::display_region_inside_func(f, &operation, indent)?;
         Ok(())
     }
     fn try_parse_func_visibility<T: ParserDispatch>(
