@@ -53,7 +53,7 @@ fn set_fresh_block_labels(prefix: &str, blocks: &[Shared<Block>]) {
         match &*label_read {
             BlockName::Name(_name) => {
                 drop(label_read);
-                let new = format!("{prefix}bb{label_index}");
+                let new = format!("{prefix}{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
@@ -61,7 +61,7 @@ fn set_fresh_block_labels(prefix: &str, blocks: &[Shared<Block>]) {
             BlockName::Unnamed => {}
             BlockName::Unset => {
                 drop(label_read);
-                let new = format!("{prefix}bb{label_index}");
+                let new = format!("{prefix}{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
