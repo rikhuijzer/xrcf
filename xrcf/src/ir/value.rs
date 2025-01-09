@@ -149,7 +149,10 @@ impl BlockPtr {
 
 impl Display for BlockPtr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.block.rd())
+        // By default, block pointers are prefixed with `^`. Ops which want
+        // different printing can do that themselves (it is known which operands
+        // are pointers so this is hopefully not too much of a problem).
+        write!(f, "^{}", self.block.rd())
     }
 }
 

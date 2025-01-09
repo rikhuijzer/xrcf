@@ -28,8 +28,6 @@ pub struct Block {
     /// The label is only used during parsing to see which operands point to
     /// this block. During printing, a new name is generated.
     label: Shared<BlockName>,
-    /// The prefix for the label (defaults to `^`).
-    label_prefix: String,
     arguments: Values,
     ops: Shared<Vec<Shared<dyn Op>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
@@ -59,7 +57,6 @@ impl Block {
     ) -> Self {
         Self {
             label,
-            label_prefix: "^".to_string(),
             arguments,
             ops,
             parent,
@@ -83,14 +80,8 @@ impl Block {
     pub fn label(&self) -> Shared<BlockName> {
         self.label.clone()
     }
-    pub fn label_prefix(&self) -> String {
-        self.label_prefix.clone()
-    }
     pub fn set_label(&self, label: BlockName) {
         *self.label.wr() = label;
-    }
-    pub fn set_label_prefix(&mut self, label_prefix: String) {
-        self.label_prefix = label_prefix;
     }
     pub fn parent(&self) -> Option<Shared<Region>> {
         self.parent.clone()

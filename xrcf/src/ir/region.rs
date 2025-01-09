@@ -2,6 +2,7 @@ use crate::ir::block::Block;
 use crate::ir::BlockName;
 use crate::ir::Blocks;
 use crate::ir::Op;
+use crate::ir::Prefixes;
 use crate::ir::UnsetBlock;
 use crate::ir::Value;
 use crate::shared::Shared;
@@ -146,9 +147,21 @@ impl Region {
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.rd();
-        set_fresh_block_argument_names("%arg", &blocks);
-        set_fresh_block_labels("^bb", &blocks);
-        set_fresh_ssa_names("%", &blocks);
+        // The parent could be a module which is not always rewritten. Ops below
+        // the module have to be rewritten for the output to be correct so will
+        // know the right prefixes.
+        let prefixes = self
+            .block(0)
+            .rd()
+            .ops()
+            .rd()
+            .first()
+            .unwrap()
+            .rd()
+            .prefixes();
+        set_fresh_block_argument_names(&prefixes.argument_prefix, &blocks);
+        set_fresh_block_labels(&prefixes.block_prefix, &blocks);
+        set_fresh_ssa_names(&prefixes.ssa_prefix, &blocks);
         for block in blocks.iter() {
             block.rd().display(f, indent + 1)?;
         }

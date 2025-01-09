@@ -114,51 +114,6 @@ impl Rewrite for AllocaLowering {
     }
 }
 
-/// Lower blocks by removing `^` from the label and removing arguments.
-///
-/// ```mlir
-/// func.func @some_name() {
-///   ...
-/// ^merge(%result : i32):
-///   br label %exit
-/// }
-/// ```
-/// becomes
-/// ```mlir
-/// func.func @some_name() {
-///   ...
-/// merge:
-///   br label %exit
-/// }
-struct BlockLowering;
-
-impl Rewrite for BlockLowering {
-    fn name(&self) -> &'static str {
-        "mlir_to_llvmir::BlockLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        if !op.is_func() {
-            return Ok(false);
-        }
-        let region = op.operation().rd().region();
-        if let Some(region) = region {
-            for block in region.rd().blocks().into_iter() {
-                let label_prefix = block.rd().label_prefix();
-                if label_prefix == "^" {
-                    return Ok(true);
-                }
-            }
-        }
-        Ok(false)
-    }
-    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        for block in op.rd().operation().rd().blocks().into_iter() {
-            block.wr().set_label_prefix("".to_string());
-        }
-        Ok(RewriteResult::Changed(ChangedOp::new(op)))
-    }
-}
-
 /// Replace `llvm.br` by `br`.
 ///
 /// This is only executed once the `phi` node has been inserted by
@@ -652,7 +607,6 @@ impl Pass for ConvertMLIRToLLVMIR {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &AddLowering,
             &AllocaLowering,
-            &BlockLowering,
             &BranchLowering,
             &CallLowering,
             &CondBranchLowering,

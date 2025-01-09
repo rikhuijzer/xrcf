@@ -15,6 +15,14 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
+pub struct Prefixes {
+    pub argument_prefix: &'static str,
+    /// LLVM IR uses `%bb1` for calls and `^bb1` for definitions.
+    pub block_prefix: &'static str,
+    /// SSA names have the same prefix for calls and definitions.
+    pub ssa_prefix: &'static str,
+}
+
 /// A specific operation.
 ///
 /// See [Operation] for more information about the relationship between
@@ -57,6 +65,13 @@ pub trait Op {
     fn operation(&self) -> &Shared<Operation>;
     fn name(&self) -> OperationName {
         self.operation().rd().name()
+    }
+    fn prefixes(&self) -> Prefixes {
+        Prefixes {
+            argument_prefix: "%arg",
+            block_prefix: "bb",
+            ssa_prefix: "%",
+        }
     }
     fn region(&self) -> Option<Shared<Region>> {
         self.operation().rd().region()

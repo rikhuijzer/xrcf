@@ -25,6 +25,7 @@ pub use block::Blocks;
 pub use block::UnsetBlock;
 pub use module::ModuleOp;
 pub use op::Op;
+pub use op::Prefixes;
 pub use op::UnsetOp;
 pub use op_operand::OpOperand;
 pub use op_operand::OpOperands;
