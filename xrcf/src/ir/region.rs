@@ -159,9 +159,9 @@ impl Region {
             .unwrap()
             .rd()
             .prefixes();
-        set_fresh_block_argument_names(&prefixes.argument_prefix, &blocks);
-        set_fresh_block_labels(&prefixes.block_prefix, &blocks);
-        set_fresh_ssa_names(&prefixes.ssa_prefix, &blocks);
+        set_fresh_block_argument_names(&prefixes.argument, &blocks);
+        set_fresh_block_labels(&prefixes.block, &blocks);
+        set_fresh_ssa_names(&prefixes.ssa, &blocks);
         for block in blocks.iter() {
             block.rd().display(f, indent + 1)?;
         }

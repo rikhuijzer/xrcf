@@ -47,7 +47,8 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::f
                 BlockName::Unnamed => panic!("Expected a named block"),
                 BlockName::Unset => panic!("Expected a named block"),
             };
-            write!(f, "label %{label}")
+            let label = label.replace("^", "%");
+            write!(f, "label {label}")
         }
         Value::OpResult(op_result) => {
             let name = op_result.name().rd().clone().unwrap();

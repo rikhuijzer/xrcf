@@ -26,9 +26,9 @@ use xrcf::shared::SharedExt;
 const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
 
 const PREFIXES: Prefixes = Prefixes {
-    argument_prefix: "%arg",
-    block_prefix: "bb",
-    ssa_prefix: "%",
+    argument: "%arg",
+    block: "bb",
+    ssa: "%",
 };
 
 /// Variables are always 16-bit signed integers in ArnoldC.

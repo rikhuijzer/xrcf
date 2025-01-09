@@ -16,11 +16,17 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 
 pub struct Prefixes {
-    pub argument_prefix: &'static str,
-    /// LLVM IR uses `%bb1` for calls and `^bb1` for definitions.
-    pub block_prefix: &'static str,
-    /// SSA names have the same prefix for calls and definitions.
-    pub ssa_prefix: &'static str,
+    /// Argument names have the same prefix for calls and definitions. By
+    /// default, the prefix is `%arg`.
+    pub argument: &'static str,
+    /// LLVM IR uses `%bb1` for calls and `^bb1` for definitions. We set the
+    /// name to `^bb1` and then during the call the `^` is replaced. Setting the
+    /// name to `^bb1` saves us from having to look up the prefix during
+    /// printing the block.
+    pub block: &'static str,
+    /// SSA names have the same prefix for calls and definitions. By default,
+    /// the prefix is `%`.
+    pub ssa: &'static str,
 }
 
 /// A specific operation.
@@ -68,9 +74,9 @@ pub trait Op {
     }
     fn prefixes(&self) -> Prefixes {
         Prefixes {
-            argument_prefix: "%arg",
-            block_prefix: "bb",
-            ssa_prefix: "%",
+            argument: "%arg",
+            block: "^bb",
+            ssa: "%",
         }
     }
     fn region(&self) -> Option<Shared<Region>> {
