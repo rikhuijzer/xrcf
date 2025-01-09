@@ -72,6 +72,14 @@ pub trait Op {
     fn name(&self) -> OperationName {
         self.operation().rd().name()
     }
+    // These prefixes are now at the op level so that the region can reach them
+    // by calling the first op inside the region. This unfortunately means that
+    // dialects have to specify the prefix for any op in their dialect. It would
+    // be nicer if we only had to do this for the parent of the region, but
+    // that's the module which is not always rewritten (especially not for front
+    // ends since there the default module is created during parsing). So it's
+    // currently not a great solution but it works for now. Adding one small
+    // method to each op in a dialect shouldn't be too bad.
     fn prefixes(&self) -> Prefixes {
         Prefixes {
             argument: "%arg",
