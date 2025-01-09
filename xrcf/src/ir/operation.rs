@@ -363,10 +363,9 @@ impl Operation {
         results.update_types(result_types)?;
         Ok(())
     }
-    /// Add a new op result with given name.
-    pub fn add_new_op_result(&self, name: &str, typ: Shared<dyn Type>) -> UnsetOpResult {
+    /// Add a new op result.
+    pub fn add_new_op_result(&self, typ: Shared<dyn Type>) -> UnsetOpResult {
         let mut result = OpResult::default();
-        result.set_name(name);
         result.set_typ(typ);
         let op_result = Value::OpResult(result);
         let op_result = Shared::new(op_result.into());
