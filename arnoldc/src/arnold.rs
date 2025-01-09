@@ -14,6 +14,7 @@ use xrcf::ir::Op;
 use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::Prefixes;
 use xrcf::ir::Region;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
@@ -23,6 +24,12 @@ use xrcf::shared::SharedExt;
 /// In ArnoldC variables are always bare identifiers meaning `x` is a valid
 /// variable. For example, percent identifiers like `%x` are not valid.
 const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
+
+const PREFIXES: Prefixes = Prefixes {
+    argument: "%arg",
+    block: "bb",
+    ssa: "%",
+};
 
 /// Variables are always 16-bit signed integers in ArnoldC.
 fn arnold_integer(value: u64) -> APInt {
@@ -149,6 +156,9 @@ impl Op for BeginMainOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let operation = self.operation.rd();
         write!(f, "{} ", operation.name())?;
@@ -209,6 +219,9 @@ impl Op for CallOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}()", self.identifier().unwrap())
     }
@@ -250,6 +263,9 @@ impl Op for DeclareIntOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{}", Self::operation_name())?;
@@ -320,6 +336,9 @@ impl Op for IfOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
 }
 
@@ -397,6 +416,9 @@ impl Op for PrintOp {
         write!(f, " {}", self.text().rd())?;
         Ok(())
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
 }
 
 impl Parse for PrintOp {
@@ -440,6 +462,9 @@ impl Op for SetInitialValueOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
 }
 

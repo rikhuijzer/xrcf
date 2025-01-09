@@ -167,9 +167,8 @@ impl ModuleLowering {
         let typ = IntegerType::new(32);
         let value = APInt::new(32, 0, true);
         let integer = IntegerAttr::new(typ, value);
-        let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
-        let result = constant.add_new_op_result(&name, result_type.clone());
+        let result = constant.add_new_op_result(result_type.clone());
         let constant = arith::ConstantOp::from_operation(constant);
         constant.set_value(Arc::new(integer));
         let constant = Shared::new(constant.into());
