@@ -10,6 +10,7 @@ use crate::ir::OpOperand;
 use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::OperationName;
+use crate::ir::Prefixes;
 use crate::ir::Type;
 use crate::ir::Value;
 use crate::shared::Shared;
@@ -17,6 +18,12 @@ use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
+
+const PREFIXES: Prefixes = Prefixes {
+    argument: "%arg",
+    block: "bb",
+    ssa: "%",
+};
 
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::fmt::Result {
@@ -47,8 +54,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::f
                 BlockName::Unnamed => panic!("Expected a named block"),
                 BlockName::Unset => panic!("Expected a named block"),
             };
-            let label = label.replace("^", "%");
-            write!(f, "label {label}")
+            write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
             let name = op_result.name().rd().clone().unwrap();
@@ -88,6 +94,9 @@ impl Op for AddOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().rd();
@@ -136,6 +145,9 @@ impl Op for AllocaOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} = ", self.operation().rd().results())?;
@@ -195,6 +207,9 @@ impl Op for CallOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation().rd();
         let results = operation.results();
@@ -245,6 +260,9 @@ impl Op for BranchOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "br ")?;
         display_operands(f, &self.operation().rd().operands())?;
@@ -287,6 +305,9 @@ impl Op for FuncOp {
     }
     fn is_func(&self) -> bool {
         true
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let return_types = self.return_types();
@@ -373,6 +394,9 @@ impl Op for ModuleOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         writeln!(f, "; ModuleID = '{}'", self.module_id)?;
         write!(f, r#"source_filename = "{}""#, self.source_filename)?;
@@ -415,6 +439,9 @@ impl Op for PhiOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} = ", self.operation.rd().results())?;
@@ -481,6 +508,9 @@ impl Op for ReturnOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operands = self.operation().rd().operands();
         let name = Self::operation_name();
@@ -538,6 +568,9 @@ impl Op for StoreOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "store ")?;

@@ -11,7 +11,6 @@ use crate::ir;
 use crate::ir::Block;
 use crate::ir::BlockArgument;
 use crate::ir::BlockArgumentName;
-use crate::ir::BlockName;
 use crate::ir::Constant;
 use crate::ir::IntegerType;
 use crate::ir::Op;
@@ -112,60 +111,6 @@ impl Rewrite for AllocaLowering {
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
-    }
-}
-
-/// Lower blocks by removing `^` from the label.
-///
-/// ```mlir
-/// func.func @some_name() {
-///   ...
-/// ^merge(%result : i32):
-///   br label %exit
-/// }
-/// ```
-/// becomes
-/// ```mlir
-/// func.func @some_name() {
-///   ...
-/// merge:
-///   br label %exit
-/// }
-struct BlockLowering;
-
-impl Rewrite for BlockLowering {
-    fn name(&self) -> &'static str {
-        "mlir_to_llvmir::BlockLowering"
-    }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        if op.is_func() {
-            let region = op.operation().rd().region();
-            if let Some(region) = region {
-                for block in region.rd().blocks().into_iter() {
-                    if let BlockName::Name(label) = &*block.rd().label().rd() {
-                        if label.starts_with("^") {
-                            return Ok(true);
-                        }
-                    }
-                }
-            }
-        }
-        Ok(false)
-    }
-    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        println!("op: {}", op.rd().operation().rd().name());
-        for block in op.rd().operation().rd().blocks().into_iter() {
-            let label = match &*block.rd().label().rd() {
-                BlockName::Name(label) => label.to_string(),
-                BlockName::Unnamed => continue,
-                BlockName::Unset => continue,
-            };
-            println!("label: {}", label);
-            let label = label.replace("^", "");
-            let label = BlockName::Name(label);
-            block.wr().set_label(label);
-        }
-        Ok(RewriteResult::Changed(ChangedOp::new(op)))
     }
 }
 
@@ -662,7 +607,6 @@ impl Pass for ConvertMLIRToLLVMIR {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &AddLowering,
             &AllocaLowering,
-            &BlockLowering,
             &BranchLowering,
             &CallLowering,
             &CondBranchLowering,
