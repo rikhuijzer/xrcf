@@ -354,38 +354,6 @@ impl Block {
     pub fn set_arguments(&mut self, arguments: Values) {
         self.arguments = arguments;
     }
-    pub fn used_names(&self) -> Vec<String> {
-        let ops = self.ops();
-        let ops = ops.rd();
-        let mut used_names = vec![];
-        for op in ops.iter() {
-            used_names.extend(op.rd().operation().rd().result_names());
-        }
-        used_names
-    }
-    fn used_names_with_predecessors(&self) -> Vec<String> {
-        let mut used_names = self.used_names();
-        if let Some(predecessors) = self.predecessors() {
-            for p in predecessors.iter() {
-                used_names.extend(p.rd().used_names());
-            }
-        }
-        used_names
-    }
-    /// Find a unique name for a value (for example, `%4 = ...`).
-    pub fn unique_value_name(&self, prefix: &str) -> String {
-        let mut new_name: i32 = -1;
-        for name in self.used_names_with_predecessors().iter() {
-            let name = name.trim_start_matches(prefix);
-            if let Ok(num) = name.parse::<i32>() {
-                // Ensure new_name is greater than any used name.
-                // This is required by LLVM.
-                new_name = new_name.max(num);
-            }
-        }
-        new_name += 1;
-        format!("{prefix}{new_name}")
-    }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if let BlockName::Name(name) = &*self.label.rd() {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };

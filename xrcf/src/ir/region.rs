@@ -3,6 +3,7 @@ use crate::ir::BlockName;
 use crate::ir::Blocks;
 use crate::ir::Op;
 use crate::ir::UnsetBlock;
+use crate::ir::Value;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use std::fmt::Display;
@@ -20,22 +21,39 @@ pub struct Region {
     parent: Option<Shared<dyn Op>>,
 }
 
+/// Set fresh block arguments for all blocks in the region.
+///
+/// This happens during printing because the names are not used during the
+/// rewrite phase.
+fn set_fresh_block_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
+    // Each block argument in a region needs an unique name because
+    // arguments stay in scope until the end of the region.
+    let mut name_index: usize = 0;
+    for block in blocks.iter() {
+        let block = block.rd();
+        for argument in block.arguments() {
+            let name = format!("{prefix}{name_index}");
+            argument.wr().set_name(&name);
+            name_index += 1;
+        }
+    }
+}
+
 /// Set fresh block labels for all blocks in the region.
 ///
 /// This happens before the individual blocks are printed since some operands
 /// will point to blocks that are defined later. If we would refresh the name
 /// during printing of the block, then the operands would print outdated names.
-fn set_fresh_block_labels(blocks: &[Shared<Block>]) {
+fn set_fresh_block_labels(prefix: &str, blocks: &[Shared<Block>]) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
         let block = block.rd();
-        let label_prefix = block.label_prefix();
         let label = block.label();
         let label_read = label.rd();
         match &*label_read {
             BlockName::Name(_name) => {
                 drop(label_read);
-                let new = format!("{label_prefix}bb{label_index}");
+                let new = format!("{prefix}bb{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
@@ -43,10 +61,33 @@ fn set_fresh_block_labels(blocks: &[Shared<Block>]) {
             BlockName::Unnamed => {}
             BlockName::Unset => {
                 drop(label_read);
-                let new = format!("{label_prefix}bb{label_index}");
+                let new = format!("{prefix}bb{label_index}");
                 let new = BlockName::Name(new);
                 block.set_label(new);
                 label_index += 1;
+            }
+        }
+    }
+}
+
+/// Set fresh SSA names for all blocks in the region.
+///
+/// This happens during printing because the names are not used during the
+/// rewrite phase.
+fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
+    // SSA names stay in scope until the end of the region I think.
+    let mut name_index: usize = 0;
+    for block in blocks.iter() {
+        for op in block.rd().ops().rd().iter() {
+            for result in op.rd().operation().rd().results() {
+                match &*result.rd() {
+                    Value::OpResult(op_result) => {
+                        let name = format!("{prefix}{name_index}");
+                        op_result.set_name(&name);
+                        name_index += 1;
+                    }
+                    _ => {}
+                }
             }
         }
     }
@@ -80,23 +121,6 @@ impl Region {
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         self.blocks().index_of(block)
     }
-    /// Set fresh block arguments for all blocks in the region.
-    ///
-    /// This happens during printing because during the rewrite phase, the names
-    /// are not used.
-    fn set_fresh_block_argument_names(&self) {
-        // Each block argument in a region needs an unique name because
-        // arguments stay in scope until the end of the region.
-        let mut name_index: usize = 0;
-        for block in self.blocks().into_iter() {
-            let block = block.rd();
-            for argument in block.arguments() {
-                let name = format!("%arg{name_index}");
-                argument.wr().set_name(&name);
-                name_index += 1;
-            }
-        }
-    }
     pub fn set_blocks(&mut self, blocks: Blocks) {
         self.blocks = blocks;
     }
@@ -122,8 +146,9 @@ impl Region {
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.rd();
-        set_fresh_block_labels(&blocks);
-        self.set_fresh_block_argument_names();
+        set_fresh_block_argument_names("%arg", &blocks);
+        set_fresh_block_labels("^bb", &blocks);
+        set_fresh_ssa_names("%", &blocks);
         for block in blocks.iter() {
             block.rd().display(f, indent + 1)?;
         }

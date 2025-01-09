@@ -50,8 +50,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::f
             write!(f, "label %{label}")
         }
         Value::OpResult(op_result) => {
-            let name = op_result.new_name();
-            op_result.set_name(&name);
+            let name = op_result.name().rd().clone().unwrap();
             write!(f, "{} {name}", op_result.typ().expect("no type").rd())
         }
         _ => panic!(

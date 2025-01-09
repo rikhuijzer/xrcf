@@ -36,10 +36,9 @@ impl PrintLowering {
         let text = op.text().clone();
         let text = text.c_string();
         let len = text.len();
-        let name = parent.rd().unique_value_name("%");
         let typ = llvm::ArrayType::for_bytes(&text);
         let typ = Shared::new(typ.into());
-        let result = const_operation.add_new_op_result(&name, typ);
+        let result = const_operation.add_new_op_result(typ);
 
         let const_op = llvm::ConstantOp::from_operation(const_operation);
         const_op.set_value(Arc::new(StringAttr::new(text)));
@@ -52,9 +51,8 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = IntegerType::from_str("i16").unwrap();
-        let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
-        let result = operation.add_new_op_result(&name, result_type);
+        let result = operation.add_new_op_result(result_type);
         let op = arith::ConstantOp::from_operation(operation);
         let len = APInt::from_str("i16", &len.to_string());
         op.set_value(Arc::new(IntegerAttr::new(typ, len)));
@@ -66,9 +64,8 @@ impl PrintLowering {
         let mut operation = Operation::default();
         operation.set_parent(Some(parent.clone()));
         let typ = llvm::PointerType::new();
-        let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
-        let result = operation.add_new_op_result(&name, result_type);
+        let result = operation.add_new_op_result(result_type);
         let array_size = len.rd().result(0);
         let array_size = OpOperand::new(array_size);
         let array_size = Shared::new(array_size.into());
@@ -119,9 +116,8 @@ impl PrintLowering {
             operation.set_operand(1, var);
         }
         let typ = IntegerType::from_str("i32").unwrap();
-        let name = parent.rd().unique_value_name("%");
         let result_type = Shared::new(typ.into());
-        let result = operation.add_new_op_result(&name, result_type);
+        let result = operation.add_new_op_result(result_type);
 
         // Going straight to llvm::CallOp instead of func::CallOp because func
         // does not support varargs.

@@ -1,7 +1,6 @@
 use crate::frontend::Parser;
 use crate::frontend::ParserDispatch;
 use crate::frontend::TokenKind;
-use crate::ir::generate_new_name;
 use crate::ir::Attribute;
 use crate::ir::Block;
 use crate::ir::BlockName;
@@ -81,6 +80,7 @@ impl Display for BlockArgument {
                 write!(f, "{name} : {typ}")
             }
             BlockArgumentName::Unset => {
+                // Name should normally be set during region printing.
                 write!(f, "<UNSET NAME> : {typ}")
             }
         }
@@ -266,26 +266,6 @@ impl OpResult {
     pub fn set_defining_op(&mut self, op: Option<Shared<dyn Op>>) {
         self.defining_op = op;
     }
-    pub fn new_name(&self) -> String {
-        let defining_op = self.defining_op();
-        let defining_op = defining_op.expect("defining op not set");
-        let defining_op = defining_op.rd();
-        let mut used_names = vec![];
-
-        let parent = defining_op.operation().rd().parent();
-        let parent = parent.expect("defining op has no parent");
-        let blocks_preds = parent.rd().predecessors();
-        let blocks_preds = blocks_preds.expect("no predecessors");
-        for pred in blocks_preds.iter() {
-            used_names.extend(pred.rd().used_names());
-        }
-
-        let predecessors = defining_op.operation().rd().predecessors();
-        for predecessor in predecessors.iter() {
-            used_names.extend(predecessor.rd().operation().rd().result_names());
-        }
-        generate_new_name(used_names, "%")
-    }
 }
 
 impl Default for OpResult {
@@ -300,13 +280,7 @@ impl Default for OpResult {
 
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // The definition of the OpResult is always called before usage, so we
-        // can generate a new name here. Note also that this saves us from
-        // generating a new name during each IR transformation since we only
-        // generate during printing.
-        let new_name = self.new_name();
-        self.set_name(&new_name);
-        write!(f, "{new_name}")
+        write!(f, "{}", self.name.rd().clone().unwrap())
     }
 }
 
