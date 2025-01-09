@@ -129,8 +129,7 @@ impl Op for FuncOp {
         PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let spaces = crate::ir::spaces(2 * indent);
-        write!(f, "{spaces}({} ", self.operation.rd().name())?;
+        write!(f, "({} ", self.operation.rd().name())?;
         let identifier = self.identifier().expect("identifier not set");
         let identifier = canonicalize_identifier(&identifier);
         if self.sym_visibility == Some(SymVisibility::Public) {
@@ -155,12 +154,6 @@ pub struct ModuleOp {
     operation: Shared<Operation>,
 }
 
-impl ModuleOp {
-    pub fn functions(&self) -> Vec<Shared<dyn Op>> {
-        self.ops()
-    }
-}
-
 impl Op for ModuleOp {
     fn operation_name() -> OperationName {
         OperationName::new("module".to_string())
@@ -179,10 +172,9 @@ impl Op for ModuleOp {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         writeln!(f, "({}", self.operation.rd().name())?;
-        let functions = self.functions();
-        for function in functions {
-            write!(f, "{}", crate::ir::spaces(indent))?;
-            function.rd().display(f, indent + 1)?;
+        if let Some(region) = self.operation().rd().region() {
+            region.rd().refresh_names();
+            region.rd().display(f, indent + 1)?;
         }
         writeln!(f, ")")?;
         Ok(())

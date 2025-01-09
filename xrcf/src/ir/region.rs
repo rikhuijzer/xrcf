@@ -144,7 +144,8 @@ impl Region {
         let blocks = blocks.rd();
         // The parent could be a module which is not always rewritten. Ops below
         // the module have to be rewritten for the output to be correct so will
-        // know the right prefixes.
+        // know the right prefixes, see also the [Op::prefixes] docstring for
+        // more information.
         let prefixes = self
             .block(0)
             .rd()
