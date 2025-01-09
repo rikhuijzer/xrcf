@@ -187,7 +187,7 @@ impl Block {
             for argument in operation.rd().arguments().into_iter() {
                 match &*argument.rd() {
                     #[allow(clippy::single_match)]
-                    Value::BlockArgument(arg) => match &*arg.name().rd() {
+                    Value::BlockArgument(arg) => match &arg.name {
                         BlockArgumentName::Name(curr) => {
                             if curr == name {
                                 return Some(argument.clone());
@@ -240,7 +240,7 @@ impl Block {
         for argument in self.arguments().into_iter() {
             match &*argument.rd() {
                 Value::BlockArgument(arg) => {
-                    if let BlockArgumentName::Name(curr) = &*arg.name().rd() {
+                    if let BlockArgumentName::Name(curr) = &arg.name {
                         if curr == name {
                             return Some(argument.clone());
                         }

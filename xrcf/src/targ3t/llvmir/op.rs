@@ -29,9 +29,7 @@ const PREFIXES: Prefixes = Prefixes {
 fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::fmt::Result {
     match &*operand.rd().value().rd() {
         Value::BlockArgument(block_arg) => {
-            let name = block_arg.name();
-            let name = name.rd();
-            let name = match &*name {
+            let name = match &block_arg.name {
                 BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
                 BlockArgumentName::Name(name) => name.to_string(),
                 BlockArgumentName::Unset => panic!("Block argument has no name"),
@@ -335,7 +333,7 @@ impl Op for FuncOp {
                 Value::BlockArgument(arg) => {
                     let typ = arg.typ();
                     let typ = typ.rd();
-                    match &*arg.name().rd() {
+                    match &arg.name {
                         BlockArgumentName::Name(name) => write!(f, "{typ} {name}"),
                         BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
                         BlockArgumentName::Unset => write!(f, "{}", typ),

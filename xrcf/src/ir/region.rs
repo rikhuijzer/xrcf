@@ -9,6 +9,8 @@ use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+use super::BlockArgumentName;
+
 /// A list of blocks.
 pub struct Region {
     /// Blocks in the region.
@@ -21,19 +23,49 @@ pub struct Region {
     parent: Option<Shared<dyn Op>>,
 }
 
-/// Set fresh block arguments for all blocks in the region.
+/// Set fresh arguments names for all blocks in the region.
 ///
 /// This happens during printing because the names are not used during the
 /// rewrite phase.
-fn set_fresh_block_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
+fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
     // Each block argument in a region needs an unique name because
     // arguments stay in scope until the end of the region.
     let mut name_index: usize = 0;
+
+    // The variables available in the region can also be the arguments of the
+    // parent op (only if the parent op is a function). I think MLIR models this
+    // by putting the arguments of the function is the first block. xrcf should
+    // probably do the same.
+    let parent_region = blocks.first().unwrap().rd().parent();
+    let parent_region = parent_region.expect("parent not set");
+    for op in parent_region.rd().ops().iter() {
+        if op.rd().is_func() {
+            for arg in op.rd().operation().rd().arguments().into_iter() {
+                let mut arg = arg.wr();
+                match &mut *arg {
+                    Value::BlockArgument(block_arg) => match &mut block_arg.name {
+                        BlockArgumentName::Name(_name) => {
+                            let name = format!("{prefix}{name_index}");
+                            block_arg.name = BlockArgumentName::Name(name);
+                            name_index += 1;
+                        }
+                        BlockArgumentName::Unset => {
+                            let name = format!("{prefix}{name_index}");
+                            block_arg.name = BlockArgumentName::Name(name);
+                            name_index += 1;
+                        }
+                        BlockArgumentName::Anonymous => {}
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
+
     for block in blocks.iter() {
         let block = block.rd();
-        for argument in block.arguments() {
-            let name = format!("{prefix}{name_index}");
-            argument.wr().set_name(&name);
+        for arg in block.arguments() {
+            arg.wr().set_name(&format!("{prefix}{name_index}"));
             name_index += 1;
         }
     }
@@ -155,7 +187,7 @@ impl Region {
             .unwrap()
             .rd()
             .prefixes();
-        set_fresh_block_argument_names(prefixes.argument, &blocks);
+        set_fresh_argument_names(prefixes.argument, &blocks);
         set_fresh_block_labels(prefixes.block, &blocks);
         set_fresh_ssa_names(prefixes.ssa, &blocks);
     }

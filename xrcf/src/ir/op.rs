@@ -15,6 +15,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct Prefixes {
     /// Argument names have the same prefix for calls and definitions. By
     /// default, the prefix is `%arg`.

@@ -78,13 +78,38 @@ impl Rewrite for ModuleLowering {
     }
 }
 
+struct ReturnLowering;
+
+impl Rewrite for ReturnLowering {
+    fn name(&self) -> &'static str {
+        "convert_mlir_to_wat::ReturnLowering"
+    }
+    fn is_match(&self, op: &dyn Op) -> Result<bool> {
+        Ok(op.as_any().is::<func::ReturnOp>())
+    }
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
+        let op = op.rd();
+        let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
+        let operation = op.operation().clone();
+        let new_op = wat::ReturnOp::from_operation_arc(operation);
+        let new_op = Shared::new(new_op.into());
+        op.replace(new_op.clone());
+        Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+    }
+}
+
 /// Convert MLIR to WebAssembly Text format (`.wat`).
 pub struct ConvertMLIRToWat;
 
 impl Pass for ConvertMLIRToWat {
     const NAME: &'static str = "convert-mlir-to-wat";
     fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
-        let rewrites: Vec<&dyn Rewrite> = vec![&AddiLowering, &FuncLowering, &ModuleLowering];
+        let rewrites: Vec<&dyn Rewrite> = vec![
+            &AddiLowering,
+            &FuncLowering,
+            &ModuleLowering,
+            &ReturnLowering,
+        ];
         apply_rewrites(op, &rewrites)
     }
 }

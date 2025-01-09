@@ -182,7 +182,6 @@ impl PrintLowering {
             let arg_type = Shared::new(arg_type.into());
 
             let name = BlockArgumentName::Anonymous;
-            let name = Shared::new(name.into());
             let argument = crate::ir::BlockArgument::new(name, arg_type);
             let value = Value::BlockArgument(argument);
             let value = Shared::new(value.into());

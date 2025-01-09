@@ -32,7 +32,7 @@ pub struct BlockArgument {
     ///
     /// The name is only used during parsing to see which operands point to this
     /// argument. During printing, a new name is generated.
-    name: Shared<BlockArgumentName>,
+    pub name: BlockArgumentName,
     typ: Shared<dyn Type>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -42,21 +42,15 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: Shared<BlockArgumentName>, typ: Shared<dyn Type>) -> Self {
+    pub fn new(name: BlockArgumentName, typ: Shared<dyn Type>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Shared<BlockArgumentName> {
-        self.name.clone()
-    }
     pub fn parent(&self) -> Option<Shared<Block>> {
         self.parent.clone()
-    }
-    pub fn set_name(&self, name: BlockArgumentName) {
-        *self.name.wr() = name;
     }
     pub fn set_parent(&mut self, parent: Option<Shared<Block>>) {
         self.parent = parent;
@@ -72,9 +66,7 @@ impl BlockArgument {
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.rd();
-        let name = self.name();
-        let name_read = name.rd();
-        match &*name_read {
+        match &self.name {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(name) => {
                 write!(f, "{name} : {typ}")
@@ -413,7 +405,7 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => match &*arg.name().rd() {
+            Value::BlockArgument(arg) => match &arg.name {
                 BlockArgumentName::Anonymous => None,
                 BlockArgumentName::Name(name) => Some(name.clone()),
                 BlockArgumentName::Unset => None,
@@ -480,7 +472,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => {
-                arg.set_name(BlockArgumentName::Name(name.to_string()));
+                arg.name = BlockArgumentName::Name(name.to_string());
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::BlockPtr(_) => todo!(),
@@ -708,7 +700,6 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
-            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
@@ -719,7 +710,6 @@ impl<T: ParserDispatch> Parser<T> {
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Anonymous;
-            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {

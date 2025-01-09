@@ -236,15 +236,11 @@ impl Operation {
         let mut result_names = vec![];
         for result in self.results().into_iter() {
             let name = match &*result.rd() {
-                Value::BlockArgument(arg) => {
-                    let name = arg.name();
-                    let name = name.rd();
-                    match &*name {
-                        BlockArgumentName::Anonymous => continue,
-                        BlockArgumentName::Name(name) => name.to_string(),
-                        BlockArgumentName::Unset => continue,
-                    }
-                }
+                Value::BlockArgument(arg) => match &arg.name {
+                    BlockArgumentName::Anonymous => continue,
+                    BlockArgumentName::Name(name) => name.to_string(),
+                    BlockArgumentName::Unset => continue,
+                },
                 Value::BlockLabel(label) => label.name(),
                 Value::BlockPtr(_) => continue,
                 Value::Constant(_) => continue,

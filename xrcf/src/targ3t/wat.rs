@@ -49,8 +49,12 @@ impl Op for AddOp {
     fn prefixes(&self) -> Prefixes {
         PREFIXES
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "foo {}", self.operation.rd().name())
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        let spaces = crate::ir::spaces(indent);
+        for operand in self.operation.rd().operands().vec().rd().iter() {
+            write!(f, "local.get {}\n{}", operand.rd(), spaces)?;
+        }
+        write!(f, "i32.add")
     }
 }
 
@@ -75,7 +79,7 @@ impl FuncOp {
 fn display_argument(value: &Value) -> String {
     match value {
         Value::BlockArgument(arg) => {
-            if let BlockArgumentName::Name(name) = &*arg.name().rd() {
+            if let BlockArgumentName::Name(name) = &arg.name {
                 format!("(param {} {})", name, arg.typ().rd())
             } else {
                 panic!("invalid argument: {value}")
@@ -125,6 +129,9 @@ impl Op for FuncOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn is_func(&self) -> bool {
+        true
+    }
     fn prefixes(&self) -> Prefixes {
         PREFIXES
     }
@@ -145,7 +152,7 @@ impl Op for FuncOp {
         for block in self.operation.rd().blocks().vec().rd().iter() {
             block.rd().display(f, indent + 1)?;
         }
-        writeln!(f, ")")?;
+        write!(f, "{})", crate::ir::spaces(indent))?;
         Ok(())
     }
 }
@@ -174,14 +181,45 @@ impl Op for ModuleOp {
         writeln!(f, "({}", self.operation.rd().name())?;
         if let Some(region) = self.operation().rd().region() {
             region.rd().refresh_names();
-            region.rd().display(f, indent + 1)?;
+            region.rd().display(f, indent)?;
         }
-        writeln!(f, ")")?;
+        write!(f, "{})", crate::ir::spaces(indent))?;
         Ok(())
     }
 }
 
 impl Display for ModuleOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+pub struct ReturnOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for ReturnOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("return".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        ReturnOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{}", self.operation.rd().name())
+    }
+}
+
+impl Display for ReturnOp {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         self.display(f, 0)
     }
