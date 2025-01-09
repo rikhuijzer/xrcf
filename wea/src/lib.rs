@@ -1,8 +1,8 @@
-mod arnold_to_mlir;
 mod op;
+mod wea_to_mlir;
 
 use anyhow::Result;
-use arnold_to_mlir::ConvertWeaToMLIR;
+use wea_to_mlir::ConvertWeaToMLIR;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::frontend::default_dispatch;

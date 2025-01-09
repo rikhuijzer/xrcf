@@ -1,6 +1,6 @@
 #![allow(clippy::arc_with_non_send_sync)]
-mod arnold_to_mlir;
 mod op;
+mod wea_to_mlir;
 
 use clap::arg;
 use clap::ArgMatches;
@@ -26,7 +26,7 @@ struct ArnoldcArgs {
     #[arg(default_value = "-")]
     input: String,
     /// Convert ArnoldC operations to MLIR
-    #[arg(long, name = "convert-arnold-to-mlir")]
+    #[arg(long, name = "convert-wea-to-mlir")]
     convert_arnold_to_mlir: bool,
     /// Compile the code
     #[arg(long, name = "compile")]
@@ -37,19 +37,16 @@ struct ArnoldcArgs {
 }
 
 fn cli() -> Command {
-    let cli = Command::new("arnoldc").args(xrcf::default_arguments());
+    let cli = Command::new("wea").args(xrcf::default_arguments());
 
     ArnoldcArgs::augment_args(cli)
 }
 
 fn compile_passes() -> Vec<&'static str> {
     vec![
-        "--convert-arnold-to-mlir",
+        "--convert-wea-to-mlir",
         "--convert-experimental-to-mlir",
-        "--convert-scf-to-cf",
-        "--convert-cf-to-llvm",
-        "--convert-func-to-llvm",
-        "--convert-mlir-to-llvmir",
+        "--convert-mlir-to-wat",
     ]
 }
 
