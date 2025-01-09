@@ -68,24 +68,6 @@ impl BlockArgument {
     pub fn typ(&self) -> Shared<dyn Type> {
         self.typ.clone()
     }
-    /// Generate a new name from scratch.
-    ///
-    /// Used during printing.
-    pub fn new_name(&self) -> String {
-        let parent = self.parent().expect("no parent");
-        let mut used_names = vec![];
-        for argument in parent.rd().arguments().into_iter() {
-            if let Value::BlockArgument(argument) = &*argument.rd() {
-                if std::ptr::eq(self, argument) {
-                    break;
-                }
-            };
-            if let Some(name) = argument.rd().name() {
-                used_names.push(name);
-            }
-        }
-        generate_new_name(used_names, "%arg")
-    }
 }
 
 impl Display for BlockArgument {
@@ -95,17 +77,11 @@ impl Display for BlockArgument {
         let name_read = name.rd();
         match &*name_read {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
-            BlockArgumentName::Name(_name) => {
-                drop(name_read);
-                let new_name = self.new_name();
-                self.set_name(BlockArgumentName::Name(new_name.clone()));
-                write!(f, "{new_name} : {typ}")
+            BlockArgumentName::Name(name) => {
+                write!(f, "{name} : {typ}")
             }
             BlockArgumentName::Unset => {
-                drop(name_read);
-                let new_name = self.new_name();
-                self.set_name(BlockArgumentName::Name(new_name.clone()));
-                write!(f, "{new_name} : {typ}")
+                write!(f, "<UNSET NAME> : {typ}")
             }
         }
     }

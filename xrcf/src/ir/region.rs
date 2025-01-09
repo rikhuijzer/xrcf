@@ -23,9 +23,8 @@ pub struct Region {
 /// Set fresh block labels for all blocks in the region.
 ///
 /// This happens before the individual blocks are printed since some operands
-/// will point to blocks that occur later. If we would refresh the name during
-/// printing of the block (like we do with ssa variables), then the operands
-/// would print outdated names.
+/// will point to blocks that are defined later. If we would refresh the name
+/// during printing of the block, then the operands would print outdated names.
 fn set_fresh_block_labels(blocks: &[Shared<Block>]) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
@@ -81,6 +80,23 @@ impl Region {
     pub fn index_of(&self, block: &Block) -> Option<usize> {
         self.blocks().index_of(block)
     }
+    /// Set fresh block arguments for all blocks in the region.
+    ///
+    /// This happens during printing because during the rewrite phase, the names
+    /// are not used.
+    fn set_fresh_block_argument_names(&self) {
+        // Each block argument in a region needs an unique name because
+        // arguments stay in scope until the end of the region.
+        let mut name_index: usize = 0;
+        for block in self.blocks().into_iter() {
+            let block = block.rd();
+            for argument in block.arguments() {
+                let name = format!("%arg{name_index}");
+                argument.wr().set_name(&name);
+                name_index += 1;
+            }
+        }
+    }
     pub fn set_blocks(&mut self, blocks: Blocks) {
         self.blocks = blocks;
     }
@@ -107,30 +123,11 @@ impl Region {
         let blocks = blocks.vec();
         let blocks = blocks.rd();
         set_fresh_block_labels(&blocks);
+        self.set_fresh_block_argument_names();
         for block in blocks.iter() {
             block.rd().display(f, indent + 1)?;
         }
         write!(f, "{}}}", crate::ir::spaces(indent))
-    }
-    /// Find a unique name for a block (for example, `bb2`).
-    pub fn unique_block_name(&self) -> String {
-        let mut new_name: i32 = 0;
-        for block in self.blocks().into_iter() {
-            match &*block.rd().label().rd() {
-                BlockName::Name(name) => {
-                    let name = name.trim_start_matches("bb").trim_start_matches("^bb");
-                    if let Ok(num) = name.parse::<i32>() {
-                        // Ensure the new name is greater than any existing name.
-                        // This makes the output a bit clearer.
-                        new_name = new_name.max(num);
-                    }
-                }
-                BlockName::Unset => {}
-                BlockName::Unnamed => {}
-            }
-        }
-        new_name += 1;
-        format!("^bb{new_name}")
     }
 }
 
