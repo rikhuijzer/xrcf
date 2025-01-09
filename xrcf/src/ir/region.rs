@@ -2,7 +2,6 @@ use crate::ir::block::Block;
 use crate::ir::BlockName;
 use crate::ir::Blocks;
 use crate::ir::Op;
-use crate::ir::Prefixes;
 use crate::ir::UnsetBlock;
 use crate::ir::Value;
 use crate::shared::Shared;
@@ -81,13 +80,10 @@ fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
     for block in blocks.iter() {
         for op in block.rd().ops().rd().iter() {
             for result in op.rd().operation().rd().results() {
-                match &*result.rd() {
-                    Value::OpResult(op_result) => {
-                        let name = format!("{prefix}{name_index}");
-                        op_result.set_name(&name);
-                        name_index += 1;
-                    }
-                    _ => {}
+                if let Value::OpResult(op_result) = &*result.rd() {
+                    let name = format!("{prefix}{name_index}");
+                    op_result.set_name(&name);
+                    name_index += 1;
                 }
             }
         }
@@ -159,9 +155,9 @@ impl Region {
             .unwrap()
             .rd()
             .prefixes();
-        set_fresh_block_argument_names(&prefixes.argument, &blocks);
-        set_fresh_block_labels(&prefixes.block, &blocks);
-        set_fresh_ssa_names(&prefixes.ssa, &blocks);
+        set_fresh_block_argument_names(prefixes.argument, &blocks);
+        set_fresh_block_labels(prefixes.block, &blocks);
+        set_fresh_ssa_names(prefixes.ssa, &blocks);
         for block in blocks.iter() {
             block.rd().display(f, indent + 1)?;
         }
