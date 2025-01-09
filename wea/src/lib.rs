@@ -1,8 +1,8 @@
-mod arnold;
 mod arnold_to_mlir;
+mod op;
 
 use anyhow::Result;
-use arnold_to_mlir::ConvertArnoldToMLIR;
+use arnold_to_mlir::ConvertWeaToMLIR;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::frontend::default_dispatch;
@@ -43,9 +43,8 @@ fn indentation_to_braces(src: &str) -> String {
 
         result.push_str(&xrcf::ir::spaces(indent_level));
 
-        if trimmed.ends_with(':') {
-            let trimmed = &trimmed[..trimmed.len() - 1];
-            result.push_str(trimmed);
+        if let Some(stripped) = trimmed.strip_suffix(':') {
+            result.push_str(stripped);
             result.push_str(" {");
             indent_level += 2;
         } else {
@@ -78,20 +77,17 @@ impl ParserDispatch for WeaParserDispatch {
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
         if is_function_call(parser) {
-            return <arnold::CallOp as Parse>::op(parser, parent);
+            return <op::CallOp as Parse>::op(parser, parent);
         }
         let first = parser.peek();
         let second = parser.peek_n(1).unwrap();
         let first_two = format!("{} {}", first.lexeme, second.lexeme);
         let op = match first_two.as_str() {
-            "BECAUSE I" => Some(<arnold::IfOp as Parse>::op(parser, parent.clone())),
-            "HEY CHRISTMAS" => Some(<arnold::DeclareIntOp as Parse>::op(parser, parent.clone())),
-            "IT '" => Some(<arnold::BeginMainOp as Parse>::op(parser, parent.clone())),
-            "TALK TO" => Some(<arnold::PrintOp as Parse>::op(parser, parent.clone())),
-            "YOU SET" => Some(<arnold::SetInitialValueOp as Parse>::op(
-                parser,
-                parent.clone(),
-            )),
+            "BECAUSE I" => Some(<op::IfOp as Parse>::op(parser, parent.clone())),
+            "HEY CHRISTMAS" => Some(<op::DeclareIntOp as Parse>::op(parser, parent.clone())),
+            "IT '" => Some(<op::BeginMainOp as Parse>::op(parser, parent.clone())),
+            "TALK TO" => Some(<op::PrintOp as Parse>::op(parser, parent.clone())),
+            "YOU SET" => Some(<op::SetInitialValueOp as Parse>::op(parser, parent.clone())),
             _ => None,
         };
         if let Some(op) = op {
@@ -122,7 +118,7 @@ pub struct WeaTransformDispatch;
 impl TransformDispatch for WeaTransformDispatch {
     fn dispatch(op: Shared<dyn Op>, pass: &SinglePass) -> Result<RewriteResult> {
         match pass.to_string().as_str() {
-            ConvertArnoldToMLIR::NAME => ConvertArnoldToMLIR::convert(op),
+            ConvertWeaToMLIR::NAME => ConvertWeaToMLIR::convert(op),
             _ => DefaultTransformDispatch::dispatch(op, pass),
         }
     }

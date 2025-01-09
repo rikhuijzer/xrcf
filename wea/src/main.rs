@@ -1,6 +1,6 @@
 #![allow(clippy::arc_with_non_send_sync)]
-mod arnold;
 mod arnold_to_mlir;
+mod op;
 
 use clap::arg;
 use clap::ArgMatches;

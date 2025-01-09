@@ -364,9 +364,10 @@ impl<T: ParserDispatch> Parser<T> {
         }
     }
     pub fn parse(src: &str) -> Result<Shared<dyn Op>> {
+        let src = T::preprocess(src);
         let mut parser = Parser::<T> {
             src: src.to_string(),
-            tokens: Scanner::scan(src)?,
+            tokens: Scanner::scan(&src)?,
             current: 0,
             _marker: std::marker::PhantomData,
         };

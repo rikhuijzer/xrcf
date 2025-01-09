@@ -124,7 +124,7 @@ impl<T: ParserDispatch> Tester<T> {
         let src = src.trim();
         let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
         let msg = format!("Before (transform {arguments:?})");
-        Self::print_heading(&msg, src);
+        Self::print_heading(&msg, &src);
 
         for arg in arguments.clone() {
             if arg.starts_with("convert-") {

@@ -35,7 +35,7 @@ fn arnold_attribute(value: u64, num_bits: u64) -> IntegerAttr {
     IntegerAttr::new(typ, value)
 }
 
-trait ArnoldParse {
+trait WeaParse {
     fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
     fn parse_arnold_operation_name_into(
         &mut self,
@@ -50,7 +50,7 @@ fn tokenize_arnoldc_name(name: &str) -> Vec<String> {
     name.split_whitespace().map(|s| s.to_string()).collect()
 }
 
-impl<T: ParserDispatch> ArnoldParse for Parser<T> {
+impl<T: ParserDispatch> WeaParse for Parser<T> {
     /// Parse a constant like `@NO PROBLEMO` into the [Operation].
     fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
         let next = self.expect(TokenKind::AtIdentifier)?;
