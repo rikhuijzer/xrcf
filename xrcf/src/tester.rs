@@ -108,9 +108,9 @@ impl<T: ParserDispatch> Tester<T> {
         info!("{msg}:\n```\n{src}\n```\n");
     }
     pub fn preprocess(src: &str) -> String {
-        Self::print_heading("Before parse", src.trim());
+        Self::print_heading("Before preprocessing", src.trim());
         let actual = T::preprocess(src);
-        Self::print_heading("After parse", &actual);
+        Self::print_heading("After preprocessing", &actual);
         actual
     }
     pub fn parse(src: &str) -> (Shared<dyn Op>, String) {

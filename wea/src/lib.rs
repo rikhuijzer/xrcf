@@ -117,7 +117,6 @@ impl ParserDispatch for WeaParserDispatch {
     /// could have been done in the xrcf parser, but it's moved here to keep the
     /// logic separated (i.e., to make it easier to understand the code).
     fn preprocess(src: &str) -> String {
-        println!("called");
         indentation_to_braces(src)
     }
     fn parse_op(

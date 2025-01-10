@@ -14,10 +14,26 @@ fn flags() -> Vec<&'static str> {
 }
 
 #[test]
+fn preprocess() {
+    WeaTester::init_tracing();
+    let src = indoc! {r#"
+    pub fn plus(a: i32, b: i32) -> i32:
+        a + b
+    "#};
+    let expected = indoc! {r#"
+    pub fn plus(a: i32, b: i32) -> i32 {
+        a + b
+    }
+    "#};
+    let actual = WeaTester::preprocess(src);
+    WeaTester::check_lines_exact(&actual, expected, Location::caller());
+}
+
+#[test]
 fn test_plus() {
     WeaTester::init_tracing();
     let src = indoc! {r#"
-    pub fn plus(a: i32, b: i32) -> i32
+    pub fn plus(a: i32, b: i32) -> i32:
         a + b
     "#};
     let preprocessed = indoc! {r#"
