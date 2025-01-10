@@ -24,24 +24,8 @@ use xrcf::shared::SharedExt;
 /// variable. For example, percent identifiers like `%x` are not valid.
 const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
 
-/// Variables are always 16-bit signed integers in ArnoldC.
-fn arnold_integer(value: u64) -> APInt {
-    APInt::new(16, value, true)
-}
-
-fn arnold_attribute(value: u64, num_bits: u64) -> IntegerAttr {
-    let typ = IntegerType::new(num_bits);
-    let value = arnold_integer(value);
-    IntegerAttr::new(typ, value)
-}
-
 trait WeaParse {
-    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()>;
-    fn parse_arnold_operation_name_into(
-        &mut self,
-        name: OperationName,
-        operation: &mut Operation,
-    ) -> Result<()>;
+    fn parse_typed_params_into(&mut self, operation: &mut Operation) -> Result<()>;
 }
 
 /// Tokenize an ArnoldC operation name.
@@ -51,59 +35,21 @@ fn tokenize_arnoldc_name(name: &str) -> Vec<String> {
 }
 
 impl<T: ParserDispatch> WeaParse for Parser<T> {
-    /// Parse a constant like `@NO PROBLEMO` into the [Operation].
-    fn parse_arnold_constant_into(&mut self, operation: &mut Operation) -> Result<()> {
-        let next = self.expect(TokenKind::AtIdentifier)?;
-        assert!(next.lexeme.starts_with('@'));
-        let next_next = self.advance();
-        let constant = format!("{} {}", next.lexeme, next_next.lexeme);
-        let constant = if constant == "@NO PROBLEMO" {
-            arnold_attribute(1, 1)
-        } else if constant == "@I LIED" {
-            arnold_attribute(0, 1)
-        } else {
-            return Err(anyhow::anyhow!("Unknown constant: {}", constant));
-        };
-        let constant: Arc<dyn Attribute> = Arc::new(constant);
-        operation.attributes().insert("value", constant);
-        Ok(())
-    }
-    /// Parse an operation name like `TALK TO THE HAND` into the [Operation].
-    fn parse_arnold_operation_name_into(
-        &mut self,
-        name: OperationName,
-        operation: &mut Operation,
-    ) -> Result<()> {
-        let parts = tokenize_arnoldc_name(&name.to_string());
-        for part in parts {
-            let next = self.peek();
-            if next.kind == TokenKind::SingleQuote {
-                self.advance();
-                continue;
-            }
-            if next.kind != TokenKind::BareIdentifier {
-                return Err(anyhow::anyhow!(
-                    "Expected part {} but got {:?}",
-                    part,
-                    next.kind
-                ));
-            }
-            if next.lexeme != part {
-                return Err(anyhow::anyhow!(
-                    "Expected part {} but got {}",
-                    part,
-                    next.lexeme
-                ));
-            }
-            self.advance();
-        }
-        operation.set_name(name);
+    /// Parse typed parameters like `a: i32` into operation.
+    fn parse_typed_params_into(&mut self, operation: &mut Operation) -> Result<()> {
         Ok(())
     }
 }
 
+pub enum Visibility {
+    Public,
+    Private,
+}
+
 pub struct FuncOp {
     operation: Shared<Operation>,
+    pub visibility: Option<Visibility>,
+    pub identifier: Option<String>,
 }
 
 impl Op for FuncOp {
@@ -111,7 +57,11 @@ impl Op for FuncOp {
         OperationName::new("fn".to_string())
     }
     fn new(operation: Shared<Operation>) -> Self {
-        FuncOp { operation }
+        FuncOp {
+            operation,
+            visibility: None,
+            identifier: None,
+        }
     }
     fn as_any(&self) -> &dyn std::any::Any {
         self
@@ -132,11 +82,26 @@ impl Parse for FuncOp {
     ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let name = FuncOp::operation_name();
-        parser.parse_arnold_operation_name_into(name, &mut operation)?;
+        let next = parser.peek();
+        let visibility = if next.kind == TokenKind::BareIdentifier && next.lexeme == "pub" {
+            parser.advance();
+            Visibility::Public
+        } else {
+            Visibility::Private
+        };
+        parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
+        let identifier = parser.expect(TokenKind::BareIdentifier)?;
+        parser.expect(TokenKind::LParen)?;
+        if parser.peek().kind != TokenKind::RParen {
+            parser.parse_typed_params_into(&mut operation)?;
+        }
+        parser.expect(TokenKind::RParen)?;
         let operation = Shared::new(operation.into());
-        let op = FuncOp::new(operation.clone());
-        Ok(Shared::new(op.into()))
+        let mut op = FuncOp::new(operation.clone());
+        op.visibility = Some(visibility);
+        op.identifier = Some(identifier.lexeme);
+        let op = Shared::new(op.into());
+        Ok(op)
     }
 }
 
@@ -171,13 +136,12 @@ impl Parse for PlusOp {
     ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let name = PlusOp::operation_name();
-        parser.parse_arnold_operation_name_into(name, &mut operation)?;
+        parser.parse_operation_name_into::<PlusOp>(&mut operation)?;
         let operation = Shared::new(operation.into());
-        let text = parser.parse_op_operand(parent.clone().unwrap(), TOKEN_KIND)?;
-        let mut op = PlusOp {
+        let op = PlusOp {
             operation: operation.clone(),
         };
-        Ok(Shared::new(op.into()))
+        let op = Shared::new(op.into());
+        Ok(op)
     }
 }
