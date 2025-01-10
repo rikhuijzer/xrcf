@@ -176,43 +176,6 @@ impl Display for Constant {
     }
 }
 
-/// An unnamed result of an operation, such as a function.
-///
-/// This result does not specify a name since, for example, the following is
-/// invalid:
-///
-/// ```mlir
-/// %0 = func.func @foo() -> %0 : i64
-/// ```
-///
-/// The reason that this is a [Value] is that it provides a way to set a type
-/// for a function result. The alternative would be to move the [Type]s to a
-/// separate [Operation] `return_types` field, but that is more error prone
-/// since the field then has to be set manually each time an operation is
-/// created.  This makes it more error prone than having it included in the
-/// `results` field.
-pub struct AnonymousResult {
-    typ: Shared<dyn Type>,
-}
-
-impl AnonymousResult {
-    pub fn new(typ: Shared<dyn Type>) -> Self {
-        AnonymousResult { typ }
-    }
-    pub fn typ(&self) -> Shared<dyn Type> {
-        self.typ.clone()
-    }
-    pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
-        self.typ = typ;
-    }
-}
-
-impl Display for AnonymousResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.typ.rd())
-    }
-}
-
 /// A named result of an operation.
 ///
 /// For example, in the following code:
@@ -383,7 +346,7 @@ pub enum Value {
     BlockPtr(BlockPtr),
     /// A constant value (e.g., `arith.constant 1 : i64`).
     Constant(Constant),
-    FuncResult(AnonymousResult),
+    FuncResult(Shared<dyn Type>),
     /// A result of an operation (e.g., `%0 = ...`).
     OpResult(OpResult),
     /// A variadic value.
@@ -428,7 +391,7 @@ impl Value {
             Value::BlockLabel(_) => panic!("BlockLabel has no type"),
             Value::BlockPtr(_) => panic!("BlockPtr has no type"),
             Value::Constant(constant) => Ok(constant.typ()),
-            Value::FuncResult(result) => Ok(result.typ.clone()),
+            Value::FuncResult(result) => Ok(result.clone()),
             Value::OpResult(result) => match result.typ() {
                 Some(typ) => Ok(typ),
                 None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
@@ -442,7 +405,7 @@ impl Value {
             Value::BlockLabel(_) => todo!(),
             Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
-            Value::FuncResult(result) => result.set_typ(typ),
+            Value::FuncResult(result) => *result = typ,
             Value::OpResult(result) => result.set_typ(typ),
             Value::Variadic => todo!(),
         }
@@ -541,7 +504,7 @@ impl Display for Value {
             Value::BlockLabel(label) => write!(f, "{label}"),
             Value::BlockPtr(ptr) => write!(f, "{ptr}"),
             Value::Constant(constant) => write!(f, "{constant}"),
-            Value::FuncResult(result) => write!(f, "{result}"),
+            Value::FuncResult(result) => write!(f, "{}", result.rd()),
             Value::OpResult(result) => write!(f, "{result}"),
             Value::Variadic => write!(f, "..."),
         }

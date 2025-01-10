@@ -70,6 +70,10 @@ impl Op for FuncOp {
             self.identifier.clone().expect("identifier not set")
         )?;
         display_function_arguments(f, &self.operation.rd().arguments())?;
+        let result_type = self.operation.rd().result_type(0);
+        if result_type.is_some() {
+            write!(f, " -> {}", result_type.unwrap().rd().to_string())?;
+        }
         Ok(())
     }
 }
@@ -91,6 +95,11 @@ impl Parse for FuncOp {
         parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
         parser.parse_wea_function_arguments_into(&mut operation)?;
+        if parser.peek().kind == TokenKind::Arrow {
+            parser.advance();
+            operation.set_anonymous_result(T::parse_type(parser)?)?;
+        }
+
         let operation = Shared::new(operation.into());
         let mut op = FuncOp::new(operation.clone());
         op.visibility = Some(visibility);
@@ -132,6 +141,7 @@ impl Parse for PlusOp {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
         parser.parse_operation_name_into::<PlusOp>(&mut operation)?;
+
         let operation = Shared::new(operation.into());
         let op = PlusOp {
             operation: operation.clone(),

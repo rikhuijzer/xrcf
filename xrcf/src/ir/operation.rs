@@ -1,7 +1,6 @@
 use crate::frontend::Parser;
 use crate::frontend::ParserDispatch;
 use crate::frontend::TokenKind;
-use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
@@ -99,7 +98,7 @@ pub struct Operation {
     operands: OpOperands,
     attributes: Attributes,
     /// Results are [Value]s, so either [BlockArgument] or [OpResult].
-    results: Values,
+    pub results: Values,
     region: Option<Shared<Region>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
@@ -318,8 +317,7 @@ impl Operation {
         let results = self.results().vec();
         let mut results = results.wr();
         for result_type in result_types.iter() {
-            let func_result = AnonymousResult::new(result_type.clone());
-            let value = Value::FuncResult(func_result);
+            let value = Value::FuncResult(result_type.clone());
             let value = Shared::new(value.into());
             results.push(value);
         }

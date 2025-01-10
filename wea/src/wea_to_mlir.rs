@@ -1,28 +1,11 @@
-use crate::op;
 use anyhow::Result;
-use std::sync::Arc;
 use xrcf::convert::apply_rewrites;
 use xrcf::convert::ChangedOp;
 use xrcf::convert::Pass;
 use xrcf::convert::Rewrite;
 use xrcf::convert::RewriteResult;
-use xrcf::dialect::arith;
-use xrcf::dialect::experimental;
 use xrcf::dialect::func;
-use xrcf::dialect::func::Call;
-use xrcf::dialect::func::Func;
-use xrcf::dialect::scf;
-use xrcf::ir::APInt;
-use xrcf::ir::Attribute;
-use xrcf::ir::Block;
-use xrcf::ir::IntegerAttr;
-use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
-use xrcf::ir::OpOperand;
-use xrcf::ir::Operation;
-use xrcf::ir::RenameBareToPercent;
-use xrcf::ir::StringAttr;
-use xrcf::ir::Value;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
 
@@ -46,6 +29,7 @@ impl Rewrite for FuncLowering {
     }
 }
 
+#[allow(dead_code)]
 pub struct ConvertWeaToMLIR;
 
 impl Pass for ConvertWeaToMLIR {
