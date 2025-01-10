@@ -59,18 +59,7 @@ impl ParserDispatch for ArnoldParserDispatch {
             return op;
         }
 
-        // If the syntax doesn't look like ArnoldC, fallback to the default
-        // parser that can parse MLIR syntax.
-        let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
-            // Ignore result name and '=' (e.g., `x = <op name>`).
-            match parser.peek_n(2) {
-                Some(name) => name.clone(),
-                None => panic!("Couldn't peek 2 tokens at {}", parser.peek()),
-            }
-        } else {
-            // Ignore nothing (e.g., `<op name> x, y`).
-            parser.peek().clone()
-        };
+        let name = default_parse_name(parser);
         default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {

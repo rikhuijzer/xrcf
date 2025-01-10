@@ -31,10 +31,10 @@ use std::sync::Arc;
 
 /// Interface to add custom operations to the parser.
 ///
-/// Clients can implement this trait to support custom parsing. The default
-/// implementation can only know about operations defined in this crate.  To
-/// support custom operations, implement this trait with custom logic, see
-/// `DefaultParserDispatch` for an example.
+/// Clients can implement this trait to support custom recursive descent
+/// parsing. The default implementation can only know about operations defined
+/// in this crate. To support custom operations, implement this trait with
+/// custom logic, see [DefaultParserDispatch] for an example.
 pub trait ParserDispatch {
     /// Optional preprocessing logic.
     ///
@@ -67,6 +67,38 @@ pub trait ParserDispatch {
         let token = parser.expect(TokenKind::BareIdentifier)?;
         let value = BooleanAttr::from_str(&token.lexeme);
         Ok(Arc::new(value))
+    }
+}
+
+/// Default parser for determining the name of an operation.
+///
+/// This parser can be used with MLIR operations.
+///
+/// # Examples
+///
+/// ```mlir
+/// %2 = arith.addi %0, %1 : i32
+/// ```
+///
+/// The name of the operation is `arith.addi`.
+///
+/// ```mlir
+/// return %0 : i32
+/// ```
+///
+/// The name of the operation is `return`.
+pub fn default_parse_name<T: ParserDispatch>(parser: &Parser<T>) -> Token {
+    // If the syntax doesn't look like ArnoldC, fallback to the default
+    // parser that can parse MLIR operations.
+    if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
+        // Ignore result name and '=' (e.g., `x = <op name>`).
+        match parser.peek_n(2) {
+            Some(name) => name.clone(),
+            None => panic!("Couldn't peek 2 tokens at {}", parser.peek()),
+        }
+    } else {
+        // Ignore nothing (e.g., `<op name> x, y`).
+        parser.peek().clone()
     }
 }
 
