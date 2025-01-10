@@ -41,9 +41,10 @@ pub trait WeaParse {
 
 impl<T: ParserDispatch> WeaParse for Parser<T> {
     fn is_wea_function_argument(&mut self) -> bool {
-        // For example, `plus(a : i32)`.
+        // For example, `a` in `fn plus(a: i32)`.
         self.check(TokenKind::BareIdentifier)
     }
+    /// Parse typed parameter like `a: i32`.
     fn parse_wea_function_argument(&mut self) -> Result<Shared<Value>> {
         let identifier = self.expect(TokenKind::BareIdentifier)?;
         let name = identifier.lexeme.clone();
@@ -116,6 +117,7 @@ impl ParserDispatch for WeaParserDispatch {
     /// could have been done in the xrcf parser, but it's moved here to keep the
     /// logic separated (i.e., to make it easier to understand the code).
     fn preprocess(src: &str) -> String {
+        println!("called");
         indentation_to_braces(src)
     }
     fn parse_op(
@@ -125,10 +127,19 @@ impl ParserDispatch for WeaParserDispatch {
         if is_function_definition(parser) {
             return <op::FuncOp as Parse>::op(parser, parent);
         }
-        let first = parser.peek();
+        if parent.is_none() {
+            panic!("only modules and functions can have no parent");
+        }
         let second = parser.peek_n(1).unwrap();
-        let first_two = format!("{} {}", first.lexeme, second.lexeme);
-        let op = match first_two.as_str() {
+        let op = match second.lexeme.as_str() {
+            // Plus/arith should probably become a tree-like structure. During
+            // conversion to MLIR, this can be flattened to the MLIR ssa
+            // representation.
+            //
+            // So probably need to find the last operation that is executed and
+            // then during the parsing of that, descend into the arith. Is
+            // similar to func func where the parser also descends into the
+            // body.
             "+" => Some(<op::PlusOp as Parse>::op(parser, parent.clone())),
             _ => None,
         };
@@ -144,6 +155,7 @@ impl ParserDispatch for WeaParserDispatch {
     }
 }
 
+#[allow(dead_code)]
 pub struct WeaTransformDispatch;
 
 impl TransformDispatch for WeaTransformDispatch {

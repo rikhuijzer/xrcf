@@ -95,7 +95,7 @@ pub struct Operation {
     name: OperationName,
     /// Used by the `Func` trait implementers to store arguments.
     arguments: Values,
-    operands: OpOperands,
+    pub operands: OpOperands,
     attributes: Attributes,
     /// Results are [Value]s, so either [BlockArgument] or [OpResult].
     pub results: Values,

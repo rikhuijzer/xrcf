@@ -371,10 +371,22 @@ impl<T: ParserDispatch> Parser<T> {
         }
         Ok(result_types)
     }
+    pub fn parse_func_body(parser: &mut Parser<T>, op: Shared<dyn Op>) -> Result<()> {
+        let region = parser.parse_region(op.clone())?;
+        let op_rd = op.rd();
+        op_rd.operation().wr().set_region(Some(region.clone()));
+        region.wr().set_parent(Some(op.clone()));
+
+        let block = region.rd().blocks().into_iter().next().unwrap();
+        for argument in op.rd().operation().rd().arguments().into_iter() {
+            argument.wr().set_parent(Some(block.clone()));
+        }
+        Ok(())
+    }
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
-    ) -> Result<Shared<F>> {
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         parser.parse_operation_name_into::<F>(&mut operation)?;
@@ -391,17 +403,8 @@ impl<T: ParserDispatch> Parser<T> {
         let op = Shared::new(op.into());
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
-            let region = parser.parse_region(op.clone())?;
-            let op_rd = op.rd();
-            op_rd.operation().wr().set_region(Some(region.clone()));
-            region.wr().set_parent(Some(op.clone()));
-
-            let block = region.rd().blocks().into_iter().next().unwrap();
-            for argument in arguments.into_iter() {
-                argument.wr().set_parent(Some(block.clone()));
-            }
+            Self::parse_func_body(parser, op.clone())?;
         }
-
         Ok(op)
     }
 }

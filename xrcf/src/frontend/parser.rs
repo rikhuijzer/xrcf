@@ -397,19 +397,19 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn parse(src: &str) -> Result<Shared<dyn Op>> {
         let src = T::preprocess(src);
+        println!("src:\n{}", src);
         let mut parser = Parser::<T> {
-            src: src.to_string(),
+            src: src.clone(),
             tokens: Scanner::scan(&src)?,
             current: 0,
             _marker: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
-        let op_rd = op.clone();
-        let op_rd = op_rd.rd();
-        let casted = op_rd.as_any().downcast_ref::<ModuleOp>();
-        let op: Shared<dyn Op> = if let Some(_module_op) = casted {
+        let op: Shared<dyn Op> = if op.rd().as_any().downcast_ref::<ModuleOp>().is_some() {
+            // The top-level operation is a module, so we don't need wrap it.
             op
         } else {
+            // The top-level operation is not a module, so add one.
             let module_region = Region::default();
             let module_region = Shared::new(module_region.into());
             let mut ops = vec![op.clone()];

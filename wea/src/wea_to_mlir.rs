@@ -13,7 +13,7 @@ struct FuncLowering;
 
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
-        "func-lowering"
+        "convert_wea_to_mlir::FuncLowering"
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<func::FuncOp>())

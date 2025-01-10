@@ -13,6 +13,9 @@ use xrcf::ir::Values;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
 
+/// Tokens in wea have no prefix unlike MLIR which uses `%` (PercentIdentifier).
+const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
+
 /// Display function arguments wea style (e.g., `a: i32`)
 fn display_function_arguments(f: &mut Formatter<'_>, arguments: &Values) -> std::fmt::Result {
     write!(f, "(")?;
@@ -99,12 +102,12 @@ impl Parse for FuncOp {
             parser.advance();
             operation.set_anonymous_result(T::parse_type(parser)?)?;
         }
-
         let operation = Shared::new(operation.into());
         let mut op = FuncOp::new(operation.clone());
         op.visibility = Some(visibility);
         op.identifier = Some(identifier.lexeme);
         let op = Shared::new(op.into());
+        Parser::parse_func_body(parser, op.clone())?;
         Ok(op)
     }
 }
@@ -128,7 +131,17 @@ impl Op for PlusOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", Self::operation_name())?;
+        write!(
+            f,
+            "{} ",
+            self.operation.rd().operand(0).unwrap().rd().to_string()
+        )?;
+        write!(f, "{} ", Self::operation_name())?;
+        write!(
+            f,
+            "{}",
+            self.operation.rd().operand(1).unwrap().rd().to_string()
+        )?;
         Ok(())
     }
 }
@@ -140,7 +153,12 @@ impl Parse for PlusOp {
     ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
+        let parent = parent.expect("no parent");
+        let lhs = parser.parse_op_operand(parent.clone(), TOKEN_KIND)?;
+        operation.operands.vec().wr().push(lhs);
         parser.parse_operation_name_into::<PlusOp>(&mut operation)?;
+        let rhs = parser.parse_op_operand(parent, TOKEN_KIND)?;
+        operation.operands.vec().wr().push(rhs);
 
         let operation = Shared::new(operation.into());
         let op = PlusOp {
