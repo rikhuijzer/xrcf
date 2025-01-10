@@ -5,6 +5,7 @@ use xrcf::frontend::Parse;
 use xrcf::frontend::Parser;
 use xrcf::frontend::ParserDispatch;
 use xrcf::frontend::TokenKind;
+use xrcf::ir::display_region_inside_func;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
@@ -75,7 +76,7 @@ impl Op for FuncOp {
     fn prefixes(&self) -> Prefixes {
         PREFIXES
     }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         if self.visibility.clone().expect("visibility not set") == Visibility::Public {
             write!(f, "pub ")?;
         }
@@ -90,6 +91,7 @@ impl Op for FuncOp {
         if result_type.is_some() {
             write!(f, " -> {}", result_type.unwrap().rd().to_string())?;
         }
+        display_region_inside_func(f, &self.operation.rd(), indent)?;
         Ok(())
     }
 }
@@ -147,17 +149,14 @@ impl Op for PlusOp {
         PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        let operation = self.operation.clone();
         write!(
             f,
             "{} ",
-            self.operation.rd().operand(0).unwrap().rd().to_string()
+            operation.rd().operand(0).unwrap().rd().to_string()
         )?;
         write!(f, "{} ", Self::operation_name())?;
-        write!(
-            f,
-            "{}",
-            self.operation.rd().operand(1).unwrap().rd().to_string()
-        )?;
+        write!(f, "{}", operation.rd().operand(1).unwrap().rd().to_string())?;
         Ok(())
     }
 }
