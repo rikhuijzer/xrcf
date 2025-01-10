@@ -359,9 +359,7 @@ impl<T: ParserDispatch> Parser<T> {
         let blocks = vec![];
         let blocks = Shared::new(blocks.into());
         region.wr().set_blocks(Blocks::new(blocks.clone()));
-        println!("here");
         while !self.is_region_end() {
-            println!("here 2");
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.wr();
             blocks.push(block);

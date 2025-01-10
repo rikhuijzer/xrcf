@@ -36,20 +36,22 @@ fn test_plus() {
     pub fn plus(a: i32, b: i32) -> i32:
         a + b
     "#};
-    let preprocessed = indoc! {r#"
-    pub fn plus(a: i32, b: i32) -> i32 {
-        a + b
+    let parsed = indoc! {r#"
+    module {
+      pub fn plus(arg0: i32, arg1: i32) -> i32 {
+        arg0 + arg1
+      }
     }
     "#};
     let (_module, actual) = WeaTester::parse(src);
-    WeaTester::check_lines_exact(&actual, preprocessed, Location::caller());
+    WeaTester::check_lines_exact(&actual, parsed, Location::caller());
 
     let expected = indoc! {r#"
     module {
-        func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
-            arith.addi %arg0, %arg1 : i32
-            return %0 : i32
-        }
+      func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
+          arith.addi %arg0, %arg1 : i32
+          return %0 : i32
+      }
     }
     "#};
     let (module, actual) = WeaTester::transform(flags(), src);

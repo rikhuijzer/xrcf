@@ -9,9 +9,16 @@ use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::Prefixes;
 use xrcf::ir::Values;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
+
+const PREFIXES: Prefixes = Prefixes {
+    argument: "arg",
+    block: "bb",
+    ssa: "",
+};
 
 /// Tokens in wea have no prefix unlike MLIR which uses `%` (PercentIdentifier).
 const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
@@ -61,6 +68,12 @@ impl Op for FuncOp {
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
+    }
+    fn is_func(&self) -> bool {
+        true
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         if self.visibility.clone().expect("visibility not set") == Visibility::Public {
@@ -130,6 +143,9 @@ impl Op for PlusOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(
             f,
@@ -156,7 +172,7 @@ impl Parse for PlusOp {
         let parent = parent.expect("no parent");
         let lhs = parser.parse_op_operand(parent.clone(), TOKEN_KIND)?;
         operation.operands.vec().wr().push(lhs);
-        parser.parse_operation_name_into::<PlusOp>(&mut operation)?;
+        parser.expect(TokenKind::Plus)?;
         let rhs = parser.parse_op_operand(parent, TOKEN_KIND)?;
         operation.operands.vec().wr().push(rhs);
 
