@@ -9,14 +9,28 @@ use xrcf::ir::Block;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
+use xrcf::ir::Values;
 use xrcf::shared::Shared;
+use xrcf::shared::SharedExt;
 
-/// The token kind used for variables in ArnoldC.
-///
-/// In ArnoldC variables are always bare identifiers meaning `x` is a valid
-/// variable. For example, percent identifiers like `%x` are not valid.
-const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
+/// Display function arguments wea style (e.g., `a: i32`)
+fn display_function_arguments(f: &mut Formatter<'_>, arguments: &Values) -> std::fmt::Result {
+    write!(f, "(")?;
+    let arguments = arguments
+        .clone()
+        .into_iter()
+        .map(|argument| {
+            let name = argument.rd().name().unwrap();
+            let typ = argument.rd().typ().unwrap().rd().to_string();
+            format!("{name}: {typ}")
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    write!(f, "{}", arguments)?;
+    write!(f, ")")
+}
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Visibility {
     Public,
     Private,
@@ -46,7 +60,16 @@ impl Op for FuncOp {
         &self.operation
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{}", Self::operation_name())?;
+        if self.visibility.clone().expect("visibility not set") == Visibility::Public {
+            write!(f, "pub ")?;
+        }
+        write!(f, "{} ", Self::operation_name())?;
+        write!(
+            f,
+            "{}",
+            self.identifier.clone().expect("identifier not set")
+        )?;
+        display_function_arguments(f, &self.operation.rd().arguments())?;
         Ok(())
     }
 }
@@ -67,11 +90,7 @@ impl Parse for FuncOp {
         };
         parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
-        parser.expect(TokenKind::LParen)?;
-        if parser.peek().kind != TokenKind::RParen {
-            parser.parse_wea_function_arguments_into(&mut operation)?;
-        }
-        parser.expect(TokenKind::RParen)?;
+        parser.parse_wea_function_arguments_into(&mut operation)?;
         let operation = Shared::new(operation.into());
         let mut op = FuncOp::new(operation.clone());
         op.visibility = Some(visibility);

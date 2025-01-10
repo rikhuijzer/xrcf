@@ -1,3 +1,10 @@
+//! Library for the Wea compiler.
+//!
+//! This library is called from the cli inside `main.rs` and also from the tests
+//! inside the tests directory.
+//!
+//! To import some `X` from inside this library, it may sometimes be necessary
+//! to add a `pub use::X` to `main.rs`.
 mod op;
 mod wea_to_mlir;
 
@@ -14,6 +21,8 @@ use xrcf::frontend::ParserDispatch;
 use xrcf::frontend::Token;
 use xrcf::frontend::TokenKind;
 use xrcf::ir::Block;
+use xrcf::ir::BlockArgument;
+use xrcf::ir::BlockArgumentName;
 use xrcf::ir::Op;
 use xrcf::ir::Operation;
 use xrcf::ir::Type;
@@ -38,7 +47,7 @@ impl<T: ParserDispatch> WeaParse for Parser<T> {
     fn parse_wea_function_argument(&mut self) -> Result<Shared<Value>> {
         let identifier = self.expect(TokenKind::BareIdentifier)?;
         let name = identifier.lexeme.clone();
-        let _colon = self.expect(TokenKind::Colon)?;
+        self.expect(TokenKind::Colon)?;
         let typ = T::parse_type(self)?;
         let name = BlockArgumentName::Name(name);
         let arg = Value::BlockArgument(BlockArgument::new(name, typ));

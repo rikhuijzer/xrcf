@@ -1,3 +1,4 @@
+//! Command line interface for the Wea compiler.
 #![allow(clippy::arc_with_non_send_sync)]
 mod op;
 mod wea_to_mlir;
@@ -8,6 +9,7 @@ use clap::Args;
 use clap::Command;
 use std::env::ArgsOs;
 use std::io::Read;
+pub use wea::WeaParse;
 use wea::WeaParserDispatch;
 use wea::WeaTransformDispatch;
 use xrcf::convert::RewriteResult;
