@@ -15,11 +15,52 @@ use xrcf::frontend::Token;
 use xrcf::frontend::TokenKind;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
+use xrcf::ir::Operation;
 use xrcf::ir::Type;
+use xrcf::ir::Value;
+use xrcf::ir::Values;
 use xrcf::shared::Shared;
 use xrcf::DefaultTransformDispatch;
 use xrcf::SinglePass;
 use xrcf::TransformDispatch;
+
+pub trait WeaParse {
+    fn is_wea_function_argument(&mut self) -> bool;
+    fn parse_wea_function_argument(&mut self) -> Result<Shared<Value>>;
+    fn parse_wea_function_arguments_into(&mut self, operation: &mut Operation) -> Result<()>;
+}
+
+impl<T: ParserDispatch> WeaParse for Parser<T> {
+    fn is_wea_function_argument(&mut self) -> bool {
+        // For example, `plus(a : i32)`.
+        self.check(TokenKind::BareIdentifier)
+    }
+    fn parse_wea_function_argument(&mut self) -> Result<Shared<Value>> {
+        let identifier = self.expect(TokenKind::BareIdentifier)?;
+        let name = identifier.lexeme.clone();
+        let _colon = self.expect(TokenKind::Colon)?;
+        let typ = T::parse_type(self)?;
+        let name = BlockArgumentName::Name(name);
+        let arg = Value::BlockArgument(BlockArgument::new(name, typ));
+        let operand = Shared::new(arg.into());
+        if self.check(TokenKind::Comma) {
+            self.advance();
+        }
+        return Ok(operand);
+    }
+    /// Parse typed parameters like `a: i32` into operation.
+    fn parse_wea_function_arguments_into(&mut self, operation: &mut Operation) -> Result<()> {
+        self.expect(TokenKind::LParen)?;
+        let mut operands = vec![];
+        while self.is_wea_function_argument() {
+            operands.push(self.parse_wea_function_argument()?);
+        }
+        self.expect(TokenKind::RParen)?;
+        let values = Values::from_vec(operands);
+        operation.set_arguments(values.clone());
+        Ok(())
+    }
+}
 
 pub struct WeaParserDispatch;
 

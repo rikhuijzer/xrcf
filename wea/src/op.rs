@@ -1,45 +1,21 @@
+use crate::WeaParse;
 use anyhow::Result;
 use std::fmt::Formatter;
-use std::sync::Arc;
 use xrcf::frontend::Parse;
 use xrcf::frontend::Parser;
 use xrcf::frontend::ParserDispatch;
 use xrcf::frontend::TokenKind;
-use xrcf::ir::APInt;
-use xrcf::ir::Attribute;
 use xrcf::ir::Block;
-use xrcf::ir::IntegerAttr;
-use xrcf::ir::IntegerType;
 use xrcf::ir::Op;
-use xrcf::ir::OpOperand;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
-use xrcf::ir::Region;
 use xrcf::shared::Shared;
-use xrcf::shared::SharedExt;
 
 /// The token kind used for variables in ArnoldC.
 ///
 /// In ArnoldC variables are always bare identifiers meaning `x` is a valid
 /// variable. For example, percent identifiers like `%x` are not valid.
 const TOKEN_KIND: TokenKind = TokenKind::BareIdentifier;
-
-trait WeaParse {
-    fn parse_typed_params_into(&mut self, operation: &mut Operation) -> Result<()>;
-}
-
-/// Tokenize an ArnoldC operation name.
-fn tokenize_arnoldc_name(name: &str) -> Vec<String> {
-    let name = name.replace('\'', " \' ");
-    name.split_whitespace().map(|s| s.to_string()).collect()
-}
-
-impl<T: ParserDispatch> WeaParse for Parser<T> {
-    /// Parse typed parameters like `a: i32` into operation.
-    fn parse_typed_params_into(&mut self, operation: &mut Operation) -> Result<()> {
-        Ok(())
-    }
-}
 
 pub enum Visibility {
     Public,
@@ -93,7 +69,7 @@ impl Parse for FuncOp {
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
         parser.expect(TokenKind::LParen)?;
         if parser.peek().kind != TokenKind::RParen {
-            parser.parse_typed_params_into(&mut operation)?;
+            parser.parse_wea_function_arguments_into(&mut operation)?;
         }
         parser.expect(TokenKind::RParen)?;
         let operation = Shared::new(operation.into());
