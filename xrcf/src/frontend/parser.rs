@@ -308,6 +308,7 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Colon)?;
             (label, arguments)
         } else {
+            // First block in a region (known as bb0 in MLIR).
             let label = BlockName::Unnamed;
             let values = Values::default();
             (label, values)
@@ -358,7 +359,9 @@ impl<T: ParserDispatch> Parser<T> {
         let blocks = vec![];
         let blocks = Shared::new(blocks.into());
         region.wr().set_blocks(Blocks::new(blocks.clone()));
+        println!("here");
         while !self.is_region_end() {
+            println!("here 2");
             let block = self.parse_block(Some(region.clone()))?;
             let mut blocks = blocks.wr();
             blocks.push(block);
@@ -398,7 +401,6 @@ impl<T: ParserDispatch> Parser<T> {
     }
     pub fn parse(src: &str) -> Result<Shared<dyn Op>> {
         let src = T::preprocess(src);
-        println!("src:\n{}", src);
         let mut parser = Parser::<T> {
             src: src.clone(),
             tokens: Scanner::scan(&src)?,

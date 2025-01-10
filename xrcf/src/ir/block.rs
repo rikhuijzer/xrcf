@@ -428,7 +428,7 @@ impl Blocks {
         let vec = self.vec();
         let vec = vec.rd();
         if vec.is_empty() {
-            panic!("Trying to find block in empty set of blocks");
+            return None;
         }
         vec.iter().position(|b| {
             let b = &*b.rd();
