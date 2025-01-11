@@ -122,7 +122,7 @@ impl<T: ParserDispatch> Tester<T> {
     }
     pub fn transform(arguments: Vec<&str>, src: &str) -> (Shared<dyn Op>, String) {
         let src = src.trim();
-        let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
+        let module = Parser::<T>::parse(src).unwrap();
         let msg = format!("Before (transform {arguments:?})");
         Self::print_heading(&msg, &src);
 
