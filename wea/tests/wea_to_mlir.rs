@@ -3,11 +3,12 @@ extern crate wea;
 use indoc::indoc;
 use std::panic::Location;
 use wea::WeaParserDispatch;
+use wea::WeaTransformDispatch;
 use xrcf::ir::ModuleOp;
 use xrcf::shared::SharedExt;
 use xrcf::tester::Tester;
 
-type WeaTester = Tester<WeaParserDispatch>;
+type WeaTester = Tester<WeaParserDispatch, WeaTransformDispatch>;
 
 fn flags() -> Vec<&'static str> {
     vec!["--convert-wea-to-mlir"]

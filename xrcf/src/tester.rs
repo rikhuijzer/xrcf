@@ -9,6 +9,7 @@ use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
+use crate::TransformDispatch;
 use crate::TransformOptions;
 use anyhow::Result;
 use std::cmp::max;
@@ -20,13 +21,14 @@ use wasmtime::Instance;
 use wasmtime::Module;
 use wasmtime::Store;
 
-pub struct Tester<T: ParserDispatch> {
-    _marker: PhantomData<T>,
+pub struct Tester<P: ParserDispatch, T: TransformDispatch> {
+    _marker: PhantomData<P>,
+    _marker2: PhantomData<T>,
 }
 
-pub type DefaultTester = Tester<DefaultParserDispatch>;
+pub type DefaultTester = Tester<DefaultParserDispatch, DefaultTransformDispatch>;
 
-impl<T: ParserDispatch> Tester<T> {
+impl<P: ParserDispatch, T: TransformDispatch> Tester<P, T> {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.
@@ -109,20 +111,20 @@ impl<T: ParserDispatch> Tester<T> {
     }
     pub fn preprocess(src: &str) -> String {
         Self::print_heading("Before preprocessing", src.trim());
-        let actual = T::preprocess(src);
+        let actual = P::preprocess(src);
         Self::print_heading("After preprocessing", &actual);
         actual
     }
     pub fn parse(src: &str) -> (Shared<dyn Op>, String) {
         Self::print_heading("Before parse", src.trim());
-        let module = Parser::<T>::parse(&src).unwrap();
+        let module = Parser::<P>::parse(&src).unwrap();
         let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
     pub fn transform(arguments: Vec<&str>, src: &str) -> (Shared<dyn Op>, String) {
         let src = src.trim();
-        let module = Parser::<T>::parse(src).unwrap();
+        let module = Parser::<P>::parse(src).unwrap();
         let msg = format!("Before (transform {arguments:?})");
         Self::print_heading(&msg, &src);
 
@@ -133,7 +135,7 @@ impl<T: ParserDispatch> Tester<T> {
         }
         let passes = Passes::from_convert_vec(arguments.clone());
         let options = TransformOptions::from_passes(passes);
-        let result = transform::<DefaultTransformDispatch>(module.clone(), &options).unwrap();
+        let result = transform::<T>(module.clone(), &options).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
