@@ -11,6 +11,7 @@ use xrcf::ir::Op;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
 use xrcf::ir::Prefixes;
+use xrcf::ir::UnsetOpResults;
 use xrcf::ir::Values;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
@@ -156,6 +157,10 @@ impl Op for PlusOp {
     }
 }
 
+fn add_implicit_result_into(operation: &mut Operation) -> Result<UnsetOpResults> {
+    todo!()
+}
+
 impl Parse for PlusOp {
     fn op<T: ParserDispatch>(
         parser: &mut Parser<T>,
@@ -163,6 +168,11 @@ impl Parse for PlusOp {
     ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
+        let results = if parser.is_implicit_result() {
+            add_implicit_result_into(&mut operation)?
+        } else {
+            parser.parse_op_results_into(TOKEN_KIND, &mut operation)?
+        };
         let parent = parent.expect("no parent");
         let lhs = parser.parse_op_operand(parent.clone(), TOKEN_KIND)?;
         operation.operands.vec().wr().push(lhs);
@@ -175,6 +185,7 @@ impl Parse for PlusOp {
             operation: operation.clone(),
         };
         let op = Shared::new(op.into());
+        results.set_defining_op(op.clone());
         Ok(op)
     }
 }
