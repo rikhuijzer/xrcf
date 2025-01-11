@@ -43,7 +43,7 @@ impl ArrayType {
     pub fn for_str(s: &str) -> Self {
         let text = s.to_string();
         let text = text.trim_matches('"');
-        let num_elements = text.as_bytes().len() as u32;
+        let num_elements = text.len() as u32;
         let element_type = IntegerType::from_str("i8").unwrap();
         let element_type = Shared::new(element_type.into());
         Self {

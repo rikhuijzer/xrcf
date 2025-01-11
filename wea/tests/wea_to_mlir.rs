@@ -50,7 +50,7 @@ fn test_plus() {
     let expected = indoc! {r#"
     module {
       func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
-          arith.addi %arg0, %arg1 : i32
+          %0 = arith.addi %arg0, %arg1 : i32
           return %0 : i32
       }
     }

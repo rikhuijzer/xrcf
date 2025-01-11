@@ -89,7 +89,7 @@ impl Op for FuncOp {
         display_function_arguments(f, &self.operation.rd().arguments())?;
         let result_type = self.operation.rd().result_type(0);
         if result_type.is_some() {
-            write!(f, " -> {}", result_type.unwrap().rd().to_string())?;
+            write!(f, " -> {}", result_type.unwrap().rd())?;
         }
         display_region_inside_func(f, &self.operation.rd(), indent)?;
         Ok(())
@@ -149,13 +149,9 @@ impl Op for PlusOp {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         let operation = self.operation.clone();
-        write!(
-            f,
-            "{} ",
-            operation.rd().operand(0).unwrap().rd().to_string()
-        )?;
+        write!(f, "{} ", operation.rd().operand(0).unwrap().rd())?;
         write!(f, "{} ", Self::operation_name())?;
-        write!(f, "{}", operation.rd().operand(1).unwrap().rd().to_string())?;
+        write!(f, "{}", operation.rd().operand(1).unwrap().rd())?;
         Ok(())
     }
 }

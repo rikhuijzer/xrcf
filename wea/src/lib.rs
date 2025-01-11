@@ -5,6 +5,9 @@
 //!
 //! To import some `X` from inside this library, it may sometimes be necessary
 //! to add a `pub use::X` to `main.rs`.
+#![allow(clippy::new_without_default)]
+#![allow(clippy::arc_with_non_send_sync)]
+
 mod op;
 mod wea_to_mlir;
 
@@ -56,7 +59,7 @@ impl<T: ParserDispatch> WeaParse for Parser<T> {
         if self.check(TokenKind::Comma) {
             self.advance();
         }
-        return Ok(operand);
+        Ok(operand)
     }
     /// Parse typed parameters like `a: i32` into operation.
     fn parse_wea_function_arguments_into(&mut self, operation: &mut Operation) -> Result<()> {

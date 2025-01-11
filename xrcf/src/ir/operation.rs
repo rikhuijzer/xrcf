@@ -262,18 +262,9 @@ impl Operation {
         self.parent.clone()
     }
     pub fn parent_op(&self) -> Option<Shared<dyn Op>> {
-        let parent = match self.parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
-        let parent = match parent.rd().parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
-        let parent = match parent.rd().parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
+        let parent = self.parent()?;
+        let parent = parent.rd().parent()?;
+        let parent = parent.rd().parent()?;
         Some(parent)
     }
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {

@@ -42,6 +42,7 @@ fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
         if op.rd().is_func() {
             for arg in op.rd().operation().rd().arguments().into_iter() {
                 let mut arg = arg.wr();
+                #[allow(clippy::single_match)]
                 match &mut *arg {
                     Value::BlockArgument(block_arg) => match &mut block_arg.name {
                         BlockArgumentName::Name(_name) => {
