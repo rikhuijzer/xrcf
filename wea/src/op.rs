@@ -106,7 +106,6 @@ impl Parse for FuncOp {
         let next = parser.peek();
         let visibility = if next.kind == TokenKind::BareIdentifier && next.lexeme == "pub" {
             parser.advance();
-            println!("parsed pub");
             Visibility::Public
         } else {
             Visibility::Private
@@ -128,7 +127,6 @@ impl Parse for FuncOp {
     }
 }
 
-/// `+`
 pub struct PlusOp {
     operation: Shared<Operation>,
 }

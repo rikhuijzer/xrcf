@@ -231,7 +231,7 @@ pub trait Func: Op {
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
-    identifier: Option<String>,
+    pub identifier: Option<String>,
     sym_visibility: Option<String>,
     operation: Shared<Operation>,
 }
@@ -351,7 +351,8 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let identifier = self.identifier.clone();
-        FuncOp::display_func(self, identifier.unwrap(), f, indent)
+        let identifier = identifier.expect("identifier not set");
+        FuncOp::display_func(self, identifier, f, indent)
     }
 }
 

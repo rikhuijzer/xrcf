@@ -105,10 +105,7 @@ fn indentation_to_braces(src: &str) -> String {
 
 fn is_function_definition<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     fn is_func(token: &Token) -> bool {
-        println!("token: {:?}", token);
-        let out = token.kind == TokenKind::BareIdentifier && token.lexeme == "fn";
-        println!("out: {}", out);
-        out
+        token.kind == TokenKind::BareIdentifier && token.lexeme == "fn"
     }
     is_func(parser.peek()) || is_func(parser.peek_n(1).unwrap())
 }
@@ -126,8 +123,6 @@ impl ParserDispatch for WeaParserDispatch {
         parser: &mut Parser<Self>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
-        println!("peek: {}", parser.peek().lexeme);
-        println!("peek: {:?}", parser.peek().kind);
         if is_function_definition(parser) {
             return <op::FuncOp as Parse>::op(parser, parent);
         }
@@ -159,7 +154,6 @@ impl ParserDispatch for WeaParserDispatch {
     }
 }
 
-#[allow(dead_code)]
 pub struct WeaTransformDispatch;
 
 impl TransformDispatch for WeaTransformDispatch {
