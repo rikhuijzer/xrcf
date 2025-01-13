@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2025-01-13
+
+### Added
+
+- A compiler for an experimental language called wea ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+- `default_parse_name` to parse MLIR-style operations ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+- A `preprocess` trait that integrates with the testing infrastructure ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+
+### Changed
+
+- Introduced a `Prefixes` stuct and unified the logic for variable and argument, and block renaming/refreshing ([#43](https://github.com/rikhuijzer/xrcf/pull/43)).
+- Improved the testing infrastructure ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+- Switched to 4 spaces for indentation ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+- Removed some trivial getters and setters by moving to `pub` struct fields ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
+
 ## [0.6.0] - 2024-12-21
 
 ### Added
