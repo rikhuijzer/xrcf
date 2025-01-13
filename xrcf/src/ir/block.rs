@@ -220,7 +220,7 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        if let Some(curr) = &*op_result.name().rd() {
+                        if let Some(curr) = &op_result.name() {
                             if curr == name {
                                 return Some(value.clone());
                             }

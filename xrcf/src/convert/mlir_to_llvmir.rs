@@ -377,8 +377,7 @@ fn set_phi_result(phi: Shared<dyn Op>, argument: &Shared<Value>) {
             BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
             BlockArgumentName::Unset => panic!("Block argument has no name"),
         };
-        let name = Shared::new(Some(name).into());
-        let res = OpResult::new(name, typ, defining_op);
+        let res = OpResult::new(Some(name), typ, defining_op);
         let new = Value::OpResult(res);
         let new = Shared::new(new.into());
         phi.rd()

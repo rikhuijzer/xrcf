@@ -8,10 +8,13 @@ use xrcf::frontend::TokenKind;
 use xrcf::ir::display_region_inside_func;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
+use xrcf::ir::OpOperand;
+use xrcf::ir::OpResult;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;
 use xrcf::ir::Prefixes;
 use xrcf::ir::UnsetOpResults;
+use xrcf::ir::Value;
 use xrcf::ir::Values;
 use xrcf::shared::Shared;
 use xrcf::shared::SharedExt;
@@ -90,7 +93,7 @@ impl Op for FuncOp {
         display_function_arguments(f, &self.operation.rd().arguments())?;
         let result_type = self.operation.rd().result_type(0);
         if result_type.is_some() {
-            write!(f, " -> {}", result_type.unwrap().rd())?;
+            write!(f, " {}", result_type.unwrap().rd())?;
         }
         display_region_inside_func(f, &self.operation.rd(), indent)?;
         Ok(())
@@ -114,10 +117,7 @@ impl Parse for FuncOp {
         parser.parse_operation_name_into::<FuncOp>(&mut operation)?;
         let identifier = parser.expect(TokenKind::BareIdentifier)?;
         parser.parse_wea_function_arguments_into(&mut operation)?;
-        if parser.peek().kind == TokenKind::Arrow {
-            parser.advance();
-            operation.set_anonymous_result(T::parse_type(parser)?)?;
-        }
+        operation.set_anonymous_result(T::parse_type(parser)?)?;
         let operation = Shared::new(operation.into());
         let mut op = FuncOp::new(operation.clone());
         op.visibility = Some(visibility);
@@ -157,8 +157,13 @@ impl Op for PlusOp {
     }
 }
 
+/// Add a result to the operation when no result was defined.
 fn add_implicit_result_into(operation: &mut Operation) -> Result<UnsetOpResults> {
-    todo!()
+    let op_result = Value::OpResult(OpResult::default());
+    let value = Shared::new(op_result.into());
+    let results = Values::from_vec(vec![value.clone()]);
+    operation.set_results(results.clone());
+    Ok(UnsetOpResults::new(results))
 }
 
 impl Parse for PlusOp {
@@ -168,13 +173,14 @@ impl Parse for PlusOp {
     ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent.clone());
-        let results = if parser.is_implicit_result() {
-            add_implicit_result_into(&mut operation)?
-        } else {
+        let results = if parser.defines_result() {
             parser.parse_op_results_into(TOKEN_KIND, &mut operation)?
+        } else {
+            add_implicit_result_into(&mut operation)?
         };
         let parent = parent.expect("no parent");
         let lhs = parser.parse_op_operand(parent.clone(), TOKEN_KIND)?;
+        let typ = lhs.rd().typ().expect("no type");
         operation.operands.vec().wr().push(lhs);
         parser.expect(TokenKind::Plus)?;
         let rhs = parser.parse_op_operand(parent, TOKEN_KIND)?;
@@ -186,6 +192,7 @@ impl Parse for PlusOp {
         };
         let op = Shared::new(op.into());
         results.set_defining_op(op.clone());
+        results.set_types(vec![typ]);
         Ok(op)
     }
 }

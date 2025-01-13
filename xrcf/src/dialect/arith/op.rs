@@ -163,7 +163,7 @@ impl AddiOp {
         new_operation.set_attributes(attributes);
 
         let results = Values::default();
-        let result = OpResult::default();
+        let mut result = OpResult::default();
         result.set_name("%c3_i64");
         let result = Value::OpResult(result);
         let result = Shared::new(result.into());

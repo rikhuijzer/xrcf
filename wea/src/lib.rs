@@ -40,7 +40,7 @@ pub trait WeaParse {
     fn is_wea_function_argument(&mut self) -> bool;
     fn parse_wea_function_argument(&mut self) -> Result<Shared<Value>>;
     fn parse_wea_function_arguments_into(&mut self, operation: &mut Operation) -> Result<()>;
-    fn is_implicit_result(&mut self) -> bool;
+    fn defines_result(&mut self) -> bool;
 }
 
 impl<T: ParserDispatch> WeaParse for Parser<T> {
@@ -74,9 +74,12 @@ impl<T: ParserDispatch> WeaParse for Parser<T> {
         operation.set_arguments(values.clone());
         Ok(())
     }
-    /// Check whether the op doesn't specify a result (due to being returned).
-    fn is_implicit_result(&mut self) -> bool {
-        self.peek_n(1).unwrap().kind != TokenKind::Equal
+    /// Returns whether the op defines a result.
+    ///
+    /// This method is used on ops that are expected to define a result. If they
+    /// don't then that is assumed to mean that the op is used as a return.
+    fn defines_result(&mut self) -> bool {
+        self.peek_n(1).unwrap().kind == TokenKind::Equal
     }
 }
 

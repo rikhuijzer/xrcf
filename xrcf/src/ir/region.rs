@@ -113,7 +113,7 @@ fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
     for block in blocks.iter() {
         for op in block.rd().ops().rd().iter() {
             for result in op.rd().operation().rd().results() {
-                if let Value::OpResult(op_result) = &*result.rd() {
+                if let Value::OpResult(op_result) = &mut *result.wr() {
                     let name = format!("{prefix}{name_index}");
                     op_result.set_name(&name);
                     name_index += 1;

@@ -18,11 +18,11 @@ fn flags() -> Vec<&'static str> {
 fn preprocess() {
     WeaTester::init_tracing();
     let src = indoc! {r#"
-    pub fn plus(a: i32, b: i32) -> i32:
+    pub fn plus(a: i32, b: i32) i32:
         a + b
     "#};
     let expected = indoc! {r#"
-    pub fn plus(a: i32, b: i32) -> i32 {
+    pub fn plus(a: i32, b: i32) i32 {
         a + b
     }
     "#};
@@ -34,12 +34,12 @@ fn preprocess() {
 fn test_plus() {
     WeaTester::init_tracing();
     let src = indoc! {r#"
-    pub fn plus(a: i32, b: i32) -> i32:
+    pub fn plus(a: i32, b: i32) i32:
         a + b
     "#};
     let parsed = indoc! {r#"
     module {
-      pub fn plus(arg0: i32, arg1: i32) -> i32 {
+      pub fn plus(arg0: i32, arg1: i32) i32 {
         arg0 + arg1
       }
     }
@@ -49,7 +49,7 @@ fn test_plus() {
 
     let expected = indoc! {r#"
     module {
-      func.func @plus(%arg0: i32, %arg1: i32) -> i32 {
+      func.func @plus(%arg0 : i32, %arg1 : i32) -> i32 {
           %0 = arith.addi %arg0, %arg1 : i32
           return %0 : i32
       }
@@ -59,5 +59,5 @@ fn test_plus() {
     WeaTester::verify(module.clone());
     let module = module.rd();
     assert!(module.as_any().is::<ModuleOp>());
-    WeaTester::check_lines_contain(&actual, expected, Location::caller());
+    WeaTester::check_lines_exact(&actual, expected, Location::caller());
 }

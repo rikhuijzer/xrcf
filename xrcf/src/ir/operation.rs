@@ -244,7 +244,7 @@ impl Operation {
                 Value::BlockPtr(_) => continue,
                 Value::Constant(_) => continue,
                 Value::FuncResult(_) => continue,
-                Value::OpResult(res) => match &*res.name().rd() {
+                Value::OpResult(res) => match &res.name() {
                     None => continue,
                     Some(name) => name.to_string(),
                 },

@@ -189,14 +189,14 @@ pub struct OpResult {
     ///
     /// Does not necessarily have to be set because new names are generated
     /// anyway.
-    name: Shared<Option<String>>,
+    name: Option<String>,
     typ: Option<Shared<dyn Type>>,
     defining_op: Option<Shared<dyn Op>>,
 }
 
 impl OpResult {
     pub fn new(
-        name: Shared<Option<String>>,
+        name: Option<String>,
         typ: Option<Shared<dyn Type>>,
         defining_op: Option<Shared<dyn Op>>,
     ) -> Self {
@@ -206,7 +206,7 @@ impl OpResult {
             defining_op,
         }
     }
-    pub fn name(&self) -> Shared<Option<String>> {
+    pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
     pub fn typ(&self) -> Option<Shared<dyn Type>> {
@@ -215,8 +215,8 @@ impl OpResult {
     pub fn defining_op(&self) -> Option<Shared<dyn Op>> {
         self.defining_op.clone()
     }
-    pub fn set_name(&self, name: &str) {
-        *self.name.wr() = Some(name.to_string());
+    pub fn set_name(&mut self, name: &str) {
+        self.name = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
         self.typ = Some(typ);
@@ -229,7 +229,7 @@ impl OpResult {
 impl Default for OpResult {
     fn default() -> Self {
         Self {
-            name: Shared::new(None.into()),
+            name: None,
             typ: None,
             defining_op: None,
         }
@@ -238,7 +238,7 @@ impl Default for OpResult {
 
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name.rd().clone().unwrap())
+        write!(f, "{}", self.name.clone().unwrap())
     }
 }
 
@@ -381,7 +381,7 @@ impl Value {
             },
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => result.name().rd().clone(),
+            Value::OpResult(result) => result.name().clone(),
             Value::Variadic => None,
         }
     }
@@ -704,7 +704,7 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
-        let op_result = OpResult::default();
+        let mut op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
         Ok(UnsetOpResult::new(Shared::new(result.into())))
