@@ -104,9 +104,12 @@ mod tests {
     use indoc::indoc;
     use std::panic::Location;
 
+    use transform::ArnoldParserDispatch;
+    use transform::ArnoldTransformDispatch;
     use xrcf::convert::RewriteResult;
     use xrcf::shared::Shared;
     use xrcf::tester::Tester;
+    type ArnoldTester = Tester<ArnoldParserDispatch, ArnoldTransformDispatch>;
 
     fn run_app(
         out: Option<Shared<dyn std::io::Write + Send>>,
@@ -151,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_pass_order() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 1 : i32
@@ -185,6 +188,6 @@ mod tests {
         // ----- // IR Dump before convert-func-to-llvm //----- //
         // ----- // IR Dump before convert-mlir-to-llvmir //----- //
         "#};
-        Tester::check_lines_contain(&printed, expected, Location::caller());
+        ArnoldTester::check_lines_contain(&printed, expected, Location::caller());
     }
 }
