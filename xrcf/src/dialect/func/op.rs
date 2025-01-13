@@ -217,7 +217,7 @@ pub trait Func: Op {
         Ok(self.operation().rd().arguments().clone())
     }
     fn return_types(&self) -> Vec<Shared<dyn Type>> {
-        self.operation().rd().results().types().vec()
+        self.operation().rd().results().types().types
     }
     fn return_type(&self) -> Result<Shared<dyn Type>> {
         let return_types = self.return_types();
@@ -302,7 +302,7 @@ impl FuncOp {
         let operation = op.operation();
         let operation = operation.rd();
         let result_types = operation.results().types();
-        if !result_types.vec().is_empty() {
+        if !result_types.types.is_empty() {
             write!(f, " -> {}", result_types)?;
         }
         let attributes = operation.attributes();
@@ -359,7 +359,7 @@ impl Op for FuncOp {
 
 impl<T: ParserDispatch> Parser<T> {
     fn result_types(&mut self) -> Result<Types> {
-        let result_types: Types = Types::default();
+        let mut result_types: Types = Types::default();
         if !self.check(TokenKind::Arrow) {
             return Ok(result_types);
         } else {
@@ -368,7 +368,7 @@ impl<T: ParserDispatch> Parser<T> {
                 let typ = self.advance();
                 let typ = AnyType::new(&typ.lexeme);
                 let typ = Shared::new(typ.into());
-                result_types.vec().push(typ);
+                result_types.types.push(typ);
             }
         }
         Ok(result_types)

@@ -181,7 +181,7 @@ impl Display for APInt {
 /// Provides some convenience methods around [Type]s.
 #[derive(Clone, Default)]
 pub struct Types {
-    types: Vec<Shared<dyn Type>>,
+    pub types: Vec<Shared<dyn Type>>,
 }
 
 impl IntoIterator for Types {
@@ -195,9 +195,6 @@ impl IntoIterator for Types {
 impl Types {
     pub fn from_vec(types: Vec<Shared<dyn Type>>) -> Self {
         Self { types }
-    }
-    pub fn vec(&self) -> Vec<Shared<dyn Type>> {
-        self.types.clone()
     }
 }
 

@@ -105,7 +105,7 @@ fn display_return_type(typ: Shared<dyn Type>) -> String {
 
 fn display_return_types(types: &Types) -> String {
     let result = types
-        .vec()
+        .types
         .iter()
         .map(|typ| display_return_type(typ.clone()))
         .collect::<Vec<String>>();
@@ -144,7 +144,7 @@ impl Op for FuncOp {
         }
         write!(f, "{}", display_arguments(&self.arguments()))?;
         let return_types = self.operation.rd().results().types();
-        if !return_types.vec().is_empty() {
+        if !return_types.types.is_empty() {
             writeln!(f, " {}", display_return_types(&return_types))?;
         } else {
             writeln!(f)?;

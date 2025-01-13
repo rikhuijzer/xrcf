@@ -584,7 +584,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
         {
             let arguments = typ.arguments().clone();
             let converted = arguments
-                .vec()
+                .types
                 .iter()
                 .map(Self::convert_type)
                 .collect::<Result<Vec<_>>>()?;
