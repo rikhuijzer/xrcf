@@ -185,6 +185,7 @@ impl Display for Constant {
 /// ```
 /// `%0` is the result of the operation and has the name `%0`. The `defining_op`
 /// is `arith.addi` and the `typ` is `i32`.
+#[derive(Default)]
 pub struct OpResult {
     /// The name of the result.
     ///
@@ -224,16 +225,6 @@ impl OpResult {
     }
     pub fn set_defining_op(&mut self, op: Option<Shared<dyn Op>>) {
         self.defining_op = op;
-    }
-}
-
-impl Default for OpResult {
-    fn default() -> Self {
-        Self {
-            name: None,
-            typ: None,
-            defining_op: None,
-        }
     }
 }
 
