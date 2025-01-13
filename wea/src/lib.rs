@@ -85,35 +85,6 @@ impl<T: ParserDispatch> WeaParse for Parser<T> {
 
 pub struct WeaParserDispatch;
 
-fn indentation_to_braces(src: &str) -> String {
-    let mut result = String::new();
-    let mut indent_level = 0;
-
-    for line in src.lines() {
-        let trimmed = line.trim();
-
-        result.push_str(&xrcf::ir::spaces(indent_level));
-
-        if let Some(stripped) = trimmed.strip_suffix(':') {
-            result.push_str(stripped);
-            result.push_str(" {");
-            indent_level += 1;
-        } else {
-            result.push_str(trimmed);
-        }
-
-        result.push('\n');
-    }
-
-    while indent_level > 0 {
-        indent_level -= 1;
-        result.push_str(&xrcf::ir::spaces(indent_level));
-        result.push_str("}\n");
-    }
-
-    result
-}
-
 fn is_function_definition<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     fn is_func(token: &Token) -> bool {
         token.kind == TokenKind::BareIdentifier && token.lexeme == "fn"
@@ -122,14 +93,6 @@ fn is_function_definition<T: ParserDispatch>(parser: &Parser<T>) -> bool {
 }
 
 impl ParserDispatch for WeaParserDispatch {
-    /// Preprocess Wea source code to make it easier to parse.
-    ///
-    /// This mostly adds braces to make the structure of the code more clear. This
-    /// could have been done in the xrcf parser, but it's moved here to keep the
-    /// logic separated (i.e., to make it easier to understand the code).
-    fn preprocess(src: &str) -> String {
-        indentation_to_braces(src)
-    }
     fn parse_op(
         parser: &mut Parser<Self>,
         parent: Option<Shared<Block>>,
