@@ -97,7 +97,7 @@ fn indentation_to_braces(src: &str) -> String {
         if let Some(stripped) = trimmed.strip_suffix(':') {
             result.push_str(stripped);
             result.push_str(" {");
-            indent_level += 2;
+            indent_level += 1;
         } else {
             result.push_str(trimmed);
         }
@@ -106,7 +106,7 @@ fn indentation_to_braces(src: &str) -> String {
     }
 
     while indent_level > 0 {
-        indent_level -= 2;
+        indent_level -= 1;
         result.push_str(&xrcf::ir::spaces(indent_level));
         result.push_str("}\n");
     }

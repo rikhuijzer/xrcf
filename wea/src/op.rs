@@ -8,7 +8,6 @@ use xrcf::frontend::TokenKind;
 use xrcf::ir::display_region_inside_func;
 use xrcf::ir::Block;
 use xrcf::ir::Op;
-use xrcf::ir::OpOperand;
 use xrcf::ir::OpResult;
 use xrcf::ir::Operation;
 use xrcf::ir::OperationName;

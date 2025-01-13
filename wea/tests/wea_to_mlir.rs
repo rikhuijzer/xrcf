@@ -39,9 +39,9 @@ fn test_plus() {
     "#};
     let parsed = indoc! {r#"
     module {
-      pub fn plus(arg0: i32, arg1: i32) i32 {
-        arg0 + arg1
-      }
+        pub fn plus(arg0: i32, arg1: i32) i32 {
+            arg0 + arg1
+        }
     }
     "#};
     let (_module, actual) = WeaTester::parse(src);
@@ -49,10 +49,10 @@ fn test_plus() {
 
     let expected = indoc! {r#"
     module {
-      func.func @plus(%arg0 : i32, %arg1 : i32) -> i32 {
-          %0 = arith.addi %arg0, %arg1 : i32
-          return %0 : i32
-      }
+        func.func @plus(%arg0 : i32, %arg1 : i32) -> i32 {
+            %0 = arith.addi %arg0, %arg1 : i32
+            return %0 : i32
+        }
     }
     "#};
     let (module, actual) = WeaTester::transform(flags(), src);

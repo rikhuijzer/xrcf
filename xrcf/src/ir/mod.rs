@@ -61,7 +61,7 @@ pub fn canonicalize_identifier(identifier: &str) -> String {
 }
 
 pub fn spaces(indent: i32) -> String {
-    "  ".repeat(indent as usize)
+    "    ".repeat(indent as usize)
 }
 
 /// Convert a string to a vector of bytes while handling LLVM escape sequences.
