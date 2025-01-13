@@ -26,7 +26,9 @@ impl Rewrite for FuncLowering {
         let op = op.as_any().downcast_ref::<op::FuncOp>().unwrap();
         let operation = op.operation().clone();
         let mut new_op = func::FuncOp::from_operation_arc(operation);
-        new_op.set_identifier(op.identifier.clone().expect("identifier not set"));
+        let mut identifier = op.identifier.clone().expect("identifier not set");
+        identifier.insert(0, '@');
+        new_op.set_identifier(identifier);
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
