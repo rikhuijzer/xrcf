@@ -31,6 +31,7 @@ fn add_return_if_missing(op: Shared<func::FuncOp>) -> Result<()> {
     if has_result {
         let results = last.rd().operation().rd().results();
         let operands = results.as_operands();
+        operation.set_anonymous_results(results.types())?;
         operation.set_operands(operands);
     };
     let ret = ReturnOp::from_operation(operation);

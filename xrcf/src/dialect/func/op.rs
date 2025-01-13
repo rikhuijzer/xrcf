@@ -12,6 +12,7 @@ use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
+use crate::ir::Types;
 use crate::ir::UnsetOp;
 use crate::ir::Values;
 use crate::shared::Shared;
@@ -357,8 +358,8 @@ impl Op for FuncOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    fn result_types(&mut self) -> Result<Vec<Shared<dyn Type>>> {
-        let mut result_types: Vec<Shared<dyn Type>> = vec![];
+    fn result_types(&mut self) -> Result<Types> {
+        let result_types: Types = Types::default();
         if !self.check(TokenKind::Arrow) {
             return Ok(result_types);
         } else {
@@ -367,7 +368,7 @@ impl<T: ParserDispatch> Parser<T> {
                 let typ = self.advance();
                 let typ = AnyType::new(&typ.lexeme);
                 let typ = Shared::new(typ.into());
-                result_types.push(typ);
+                result_types.vec().push(typ);
             }
         }
         Ok(result_types)

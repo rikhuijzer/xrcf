@@ -304,10 +304,10 @@ impl Operation {
     /// Set the results (and types) of the operation to [AnonymousResult]s.
     ///
     /// Assumes the results are empty.
-    pub fn set_anonymous_results(&self, result_types: Vec<Shared<dyn Type>>) -> Result<()> {
+    pub fn set_anonymous_results(&self, result_types: Types) -> Result<()> {
         let results = self.results().vec();
         let mut results = results.wr();
-        for result_type in result_types.iter() {
+        for result_type in result_types.into_iter() {
             let value = Value::FuncResult(result_type.clone());
             let value = Shared::new(value.into());
             results.push(value);
@@ -316,7 +316,7 @@ impl Operation {
     }
     /// Set the result (and type) of the operation to [AnonymousResult].
     pub fn set_anonymous_result(&mut self, result_type: Shared<dyn Type>) -> Result<()> {
-        self.set_anonymous_results(vec![result_type])
+        self.set_anonymous_results(Types::from_vec(vec![result_type]))
     }
     pub fn predecessors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");
