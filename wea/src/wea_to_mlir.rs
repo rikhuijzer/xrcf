@@ -24,10 +24,7 @@ fn add_return_if_missing(op: Shared<func::FuncOp>) -> Result<()> {
     };
     // TODO: Check whether the return op is missing or not.
     let has_result = !last.rd().operation().rd().results().is_empty();
-    let parent = op.rd().operation().rd().parent();
-    let parent = parent.expect("parent not set");
     let mut operation = xrcf::ir::Operation::default();
-    operation.set_parent(Some(parent));
     if has_result {
         let results = last.rd().operation().rd().results();
         let operands = results.as_operands();

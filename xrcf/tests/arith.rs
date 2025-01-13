@@ -12,10 +12,10 @@ fn parse_module() {
     DefaultTester::init_tracing();
     let src = indoc! {"
     module {
-      func.func @main() -> i64 {
-        %0 = arith.constant 2 : i64
-        return %0 : i64
-      }
+        func.func @main() -> i64 {
+            %0 = arith.constant 2 : i64
+            return %0 : i64
+        }
     }
     "};
     let (_module, actual) = DefaultTester::parse(src);
@@ -27,25 +27,24 @@ fn parse_addi() {
     DefaultTester::init_tracing();
     let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
-      %0 = arith.constant 1 : i64
-      %1 = arith.constant 2 : i64
-      %2 = arith.addi %0, %1 : i64
-      %3 = arith.addi %arg0, %2 : i64
-      return %3 : i64
-    }
-    "};
-    let expected = indoc! {"
-    module {
-      func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
         %1 = arith.constant 2 : i64
         %2 = arith.addi %0, %1 : i64
         %3 = arith.addi %arg0, %2 : i64
         return %3 : i64
-      }
     }
     "};
-    let caller = Location::caller();
+    let expected = indoc! {"
+    module {
+        func.func @test_addi(%arg0 : i64) -> i64 {
+            %0 = arith.constant 1 : i64
+            %1 = arith.constant 2 : i64
+            %2 = arith.addi %0, %1 : i64
+            %3 = arith.addi %arg0, %2 : i64
+            return %3 : i64
+        }
+    }
+    "};
     let (module, actual) = DefaultTester::parse(src);
     DefaultTester::verify(module.clone());
 
@@ -67,5 +66,5 @@ fn parse_addi() {
     let func_parent = func_parent.rd();
     assert_eq!(func_parent.name().to_string(), "module");
 
-    DefaultTester::check_lines_contain(&actual, expected, caller);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }
