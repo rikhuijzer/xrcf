@@ -224,11 +224,11 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @main() -> i32 {
-            experimental.printf("Hello, World!\0A")
-            %0 = arith.constant 0 : i32
-            return %0 : i32
-          }
+            func.func @main() -> i32 {
+                experimental.printf("Hello, World!\0A")
+                %0 = arith.constant 0 : i32
+                return %0 : i32
+            }
         }
         "#}
         .trim();
@@ -260,13 +260,13 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @main() -> i32 {
-            %0 = arith.constant 1 : i1
-            experimental.printf("x: ")
-            experimental.printf("%d", %0)
-            %1 = arith.constant 0 : i32
-            return %1 : i32
-          }
+            func.func @main() -> i32 {
+                %0 = arith.constant 1 : i1
+                experimental.printf("x: ")
+                experimental.printf("%d", %0)
+                %1 = arith.constant 0 : i32
+                return %1 : i32
+            }
         }
         "#}
         .trim();
@@ -295,14 +295,14 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         func.func @main() -> i32 {
-          %0 = arith.constant 0 : i1
-          scf.if %0 {
-            experimental.printf("x was true")
-          } else {
-            experimental.printf("x was false")
-          }
-          %1 = arith.constant 0 : i32
-          return %1 : i32
+            %0 = arith.constant 0 : i1
+            scf.if %0 {
+                experimental.printf("x was true")
+            } else {
+                experimental.printf("x was false")
+            }
+            %1 = arith.constant 0 : i32
+            return %1 : i32
         }
         "#}
         .trim();
