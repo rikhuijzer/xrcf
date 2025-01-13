@@ -146,9 +146,11 @@ pub trait Op {
     /// `result.defining_op` to the new op. In effect, this makes all the uses
     /// of the old op refer to the new op instead.
     ///
-    /// Note that this function assumes that `self` will be dropped after this
+    /// Note that this method assumes that `self` will be dropped after this
     /// function call. Therefore, the old op can still have references to
     /// objects that are now part of the new op.
+    ///
+    /// This method also sets the parent for `new` if `self` has a parent.
     fn replace(&self, new: Shared<dyn Op>) {
         let parent = self.operation().rd().parent();
         let results = self.operation().rd().results();

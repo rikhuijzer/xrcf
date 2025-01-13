@@ -6,6 +6,7 @@ use crate::ir::Block;
 use crate::ir::BlockName;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -561,6 +562,23 @@ impl Values {
             value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
+    }
+    /// Return operands that point to the values in `self`.
+    ///
+    /// Panics if the `self` contains anything other than [OpResult]s.
+    pub fn as_operands(&self) -> OpOperands {
+        let values = self.values.rd().clone().into_iter();
+        let values = values
+            .map(|value| {
+                if let Value::OpResult(_res) = &*value.rd() {
+                    let operand = OpOperand::new(value.clone());
+                    Shared::new(operand.into())
+                } else {
+                    panic!("Expected `Value::OpResult`");
+                }
+            })
+            .collect::<Vec<_>>();
+        OpOperands::from_vec(values)
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0

@@ -61,6 +61,8 @@ pub fn canonicalize_identifier(identifier: &str) -> String {
 }
 
 pub fn spaces(indent: i32) -> String {
+    // Using 4 spaces since the editor is using 4 spaces too in Rust. Any other
+    // setting causes writing tests to be very fiddly.
     "    ".repeat(indent as usize)
 }
 
