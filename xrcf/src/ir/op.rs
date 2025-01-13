@@ -158,21 +158,6 @@ pub trait Op {
     /// objects that are now part of the new op.
     ///
     /// This method also sets the parent for `new` if `self` has a parent.
-    ///
-    /// # Example
-    ///
-    /// Given the following IR:
-    /// ```
-    /// ├── function: add_one(x)
-    ///    ├── constant: y = 1
-    ///    └── return: x + y
-    /// ```
-    /// Replacing `constant` with another `constant` will result in the following IR:
-    /// ```
-    /// ├── function: add_one(x)
-    ///    ├── constant: y = 2
-    ///    └── return: x + y
-    /// ```
     fn replace(&self, new: Shared<dyn Op>) {
         let results = self.operation().rd().results();
         new.rd().operation().wr().set_results(results.clone());

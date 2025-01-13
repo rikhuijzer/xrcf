@@ -16,9 +16,9 @@ fn test_constant() {
     // Note that `\n` is escaped to `\\n` by `indoc!`.
     let src = indoc! {r#"
     func.func @main() -> i32 {
-      %0 = arith.constant 0 : i32
-      experimental.printf("hello, world\n")
-      return %0 : i32
+        %0 = arith.constant 0 : i32
+        experimental.printf("hello, world\n")
+        return %0 : i32
     }
     "#};
 
@@ -26,13 +26,13 @@ fn test_constant() {
     llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
 
     func.func @main() -> i32 {
-      %0 = arith.constant 0 : i32
-      %1 = llvm.mlir.constant("hello, world\0A\00") : !llvm.array<14 x i8>
-      %2 = arith.constant 14 : i16
-      %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
-      llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr
-      %4 = llvm.call @printf(%3) : (!llvm.ptr) -> i32
-      return %0 : i32
+        %0 = arith.constant 0 : i32
+        %1 = llvm.mlir.constant("hello, world\0A\00") : !llvm.array<14 x i8>
+        %2 = arith.constant 14 : i16
+        %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
+        llvm.store %1, %3 : !llvm.array<14 x i8>, !llvm.ptr
+        %4 = llvm.call @printf(%3) : (!llvm.ptr) -> i32
+        return %0 : i32
     }
     "#};
     let caller = Location::caller();
@@ -49,10 +49,10 @@ fn test_two_constants() {
     // Note that `\n` is escaped to `\\n` by `indoc!`.
     let src = indoc! {r#"
     func.func @main() -> i32 {
-      %0 = arith.constant 0 : i32
-      experimental.printf("hello, world\n")
-      experimental.printf("hello 2\n")
-      return %0 : i32
+        %0 = arith.constant 0 : i32
+        experimental.printf("hello, world\n")
+        experimental.printf("hello 2\n")
+        return %0 : i32
     }
     "#};
     let (module, actual) = DefaultTester::transform(flags(), src);
@@ -65,34 +65,34 @@ fn test_hello_world() {
     DefaultTester::init_tracing();
     let src = indoc! {r#"
     module {
-      func.func @hello() {
-        experimental.printf("Hello, World!")
-        return
-      }
-      func.func @main() -> i32 {
-        %0 = arith.constant 0 : i32
-        func.call @hello() : () -> ()
-        return %0 : i32
-      }
+        func.func @hello() {
+            experimental.printf("Hello, World!")
+            return
+        }
+        func.func @main() -> i32 {
+            %0 = arith.constant 0 : i32
+            func.call @hello() : () -> ()
+            return %0 : i32
+        }
     }
     "#}
     .trim();
     let expected = indoc! {r#"
     module {
-      llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
-      func.func @hello() {
-        %0 = llvm.mlir.constant("Hello, World!\00") : !llvm.array<14 x i8>
-        %1 = arith.constant 14 : i16
-        %2 = llvm.alloca %1 x i8 : (i16) -> !llvm.ptr
-        llvm.store %0, %2 : !llvm.array<14 x i8>, !llvm.ptr
-        %3 = llvm.call @printf(%2) : (!llvm.ptr) -> i32
-        return
-      }
-      func.func @main() -> i32 {
-        %0 = arith.constant 0 : i32
-        func.call @hello() : () -> ()
-        return %0 : i32
-      }
+        llvm.func @printf(!llvm.ptr) -> i32 attributes {sym_visibility = "private"}
+        func.func @hello() {
+            %0 = llvm.mlir.constant("Hello, World!\00") : !llvm.array<14 x i8>
+            %1 = arith.constant 14 : i16
+            %2 = llvm.alloca %1 x i8 : (i16) -> !llvm.ptr
+            llvm.store %0, %2 : !llvm.array<14 x i8>, !llvm.ptr
+            %3 = llvm.call @printf(%2) : (!llvm.ptr) -> i32
+            return
+        }
+        func.func @main() -> i32 {
+            %0 = arith.constant 0 : i32
+            func.call @hello() : () -> ()
+            return %0 : i32
+        }
     }
     "#};
     let (module, actual) = DefaultTester::transform(flags(), src);
@@ -101,8 +101,8 @@ fn test_hello_world() {
 
     let src = indoc! {r#"
     func.func @hello() {
-      experimental.printf("Hello, World!\n")
-      return
+        experimental.printf("Hello, World!\n")
+        return
     }
     "#};
     let expected = indoc! {r#"
@@ -117,26 +117,26 @@ fn test_hello_world_with_arg() {
     DefaultTester::init_tracing();
     let src = indoc! {r#"
     func.func @main() -> i32 {
-      %0 = arith.constant 42 : i32
-      experimental.printf("hello, %d\n", %0)
-      %1 = arith.constant 0 : i32
-      return %1 : i32
+        %0 = arith.constant 42 : i32
+        experimental.printf("hello, %d\n", %0)
+        %1 = arith.constant 0 : i32
+        return %1 : i32
     }
     "#}
     .trim();
     let expected = indoc! {r#"
     module {
-      llvm.func @printf(!llvm.ptr, ...) -> i32 attributes {sym_visibility = "private"}
-      func.func @main() -> i32 {
-        %0 = arith.constant 42 : i32
-        %1 = llvm.mlir.constant("hello, %d\0A\00") : !llvm.array<11 x i8>
-        %2 = arith.constant 11 : i16
-        %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
-        llvm.store %1, %3 : !llvm.array<11 x i8>, !llvm.ptr
-        %4 = llvm.call @printf(%3, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
-        %5 = arith.constant 0 : i32
-        return %5 : i32
-      }
+        llvm.func @printf(!llvm.ptr, ...) -> i32 attributes {sym_visibility = "private"}
+        func.func @main() -> i32 {
+            %0 = arith.constant 42 : i32
+            %1 = llvm.mlir.constant("hello, %d\0A\00") : !llvm.array<11 x i8>
+            %2 = arith.constant 11 : i16
+            %3 = llvm.alloca %2 x i8 : (i16) -> !llvm.ptr
+            llvm.store %1, %3 : !llvm.array<11 x i8>, !llvm.ptr
+            %4 = llvm.call @printf(%3, %0) vararg(!llvm.func<i32 (!llvm.ptr, ...)>) : (!llvm.ptr, i32) -> i32
+            %5 = arith.constant 0 : i32
+            return %5 : i32
+        }
     }
     "#};
     let (module, actual) = DefaultTester::transform(flags(), src);
