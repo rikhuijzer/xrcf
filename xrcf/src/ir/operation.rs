@@ -97,7 +97,8 @@ pub struct Operation {
     arguments: Values,
     pub operands: OpOperands,
     attributes: Attributes,
-    /// Results are [Value]s, so either [BlockArgument] or [OpResult].
+    /// Results are [Value]s, so either [crate::ir::BlockArgument] or
+    /// [OpResult].
     pub results: Values,
     region: Option<Shared<Region>>,
     /// This is set after parsing because not all parents are known during
@@ -301,7 +302,7 @@ impl Operation {
             .set_type(result_type);
         Ok(())
     }
-    /// Set the results (and types) of the operation to [AnonymousResult]s.
+    /// Set the results (and types) of the operation for functions.
     ///
     /// Assumes the results are empty.
     pub fn set_anonymous_results(&self, result_types: Types) -> Result<()> {
@@ -314,7 +315,7 @@ impl Operation {
         }
         Ok(())
     }
-    /// Set the result (and type) of the operation to [AnonymousResult].
+    /// Set the result (and type) of the operation for functions.
     pub fn set_anonymous_result(&mut self, result_type: Shared<dyn Type>) -> Result<()> {
         self.set_anonymous_results(Types::from_vec(vec![result_type]))
     }
