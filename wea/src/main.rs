@@ -27,9 +27,9 @@ struct ArnoldcArgs {
     /// The input file (- is interpreted as stdin)
     #[arg(default_value = "-")]
     input: String,
-    /// Convert ArnoldC operations to MLIR
+    /// Convert wea operations to MLIR
     #[arg(long, name = "convert-wea-to-mlir")]
-    convert_arnold_to_mlir: bool,
+    convert_wea_to_mlir: bool,
     /// Compile the code
     #[arg(long, name = "compile")]
     compile: bool,
