@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Introduced a `Prefixes` stuct and unified the logic for variable and argument, and block renaming/refreshing ([#43](https://github.com/rikhuijzer/xrcf/pull/43)).
+- Introduced a `Prefixes` struct and unified the logic for variable and argument, and block renaming/refreshing ([#43](https://github.com/rikhuijzer/xrcf/pull/43)).
 - Improved the testing infrastructure ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
 - Switched to 4 spaces for indentation ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
 - Removed some trivial getters and setters by moving to `pub` struct fields ([#42](https://github.com/rikhuijzer/xrcf/pull/42)).
