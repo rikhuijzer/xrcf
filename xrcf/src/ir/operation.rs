@@ -1,7 +1,6 @@
 use crate::frontend::Parser;
 use crate::frontend::ParserDispatch;
 use crate::frontend::TokenKind;
-use crate::ir::AnonymousResult;
 use crate::ir::Attributes;
 use crate::ir::Block;
 use crate::ir::BlockArgumentName;
@@ -96,10 +95,11 @@ pub struct Operation {
     name: OperationName,
     /// Used by the `Func` trait implementers to store arguments.
     arguments: Values,
-    operands: OpOperands,
+    pub operands: OpOperands,
     attributes: Attributes,
-    /// Results are [Value]s, so either [BlockArgument] or [OpResult].
-    results: Values,
+    /// Results are [Value]s, so either [crate::ir::BlockArgument] or
+    /// [OpResult].
+    pub results: Values,
     region: Option<Shared<Region>>,
     /// This is set after parsing because not all parents are known during
     /// parsing (for example, the parent of a top-level function will be a
@@ -127,7 +127,9 @@ pub fn display_region_inside_func(
         if region.blocks().into_iter().next().is_none() {
             writeln!(f)
         } else {
-            region.display(f, indent)
+            writeln!(f, " {{")?;
+            region.display(f, indent)?;
+            write!(f, "{}}}", crate::ir::spaces(indent))
         }
     } else {
         Ok(())
@@ -234,20 +236,16 @@ impl Operation {
         let mut result_names = vec![];
         for result in self.results().into_iter() {
             let name = match &*result.rd() {
-                Value::BlockArgument(arg) => {
-                    let name = arg.name();
-                    let name = name.rd();
-                    match &*name {
-                        BlockArgumentName::Anonymous => continue,
-                        BlockArgumentName::Name(name) => name.to_string(),
-                        BlockArgumentName::Unset => continue,
-                    }
-                }
+                Value::BlockArgument(arg) => match &arg.name {
+                    BlockArgumentName::Anonymous => continue,
+                    BlockArgumentName::Name(name) => name.to_string(),
+                    BlockArgumentName::Unset => continue,
+                },
                 Value::BlockLabel(label) => label.name(),
                 Value::BlockPtr(_) => continue,
                 Value::Constant(_) => continue,
                 Value::FuncResult(_) => continue,
-                Value::OpResult(res) => match &*res.name().rd() {
+                Value::OpResult(res) => match &res.name() {
                     None => continue,
                     Some(name) => name.to_string(),
                 },
@@ -265,18 +263,9 @@ impl Operation {
         self.parent.clone()
     }
     pub fn parent_op(&self) -> Option<Shared<dyn Op>> {
-        let parent = match self.parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
-        let parent = match parent.rd().parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
-        let parent = match parent.rd().parent() {
-            Some(parent) => parent,
-            None => return None,
-        };
+        let parent = self.parent()?;
+        let parent = parent.rd().parent()?;
+        let parent = parent.rd().parent()?;
         Some(parent)
     }
     pub fn rename_variables(&self, renamer: &dyn VariableRenamer) -> Result<()> {
@@ -313,23 +302,22 @@ impl Operation {
             .set_type(result_type);
         Ok(())
     }
-    /// Set the results (and types) of the operation to [AnonymousResult]s.
+    /// Set the results (and types) of the operation for functions.
     ///
     /// Assumes the results are empty.
-    pub fn set_anonymous_results(&self, result_types: Vec<Shared<dyn Type>>) -> Result<()> {
+    pub fn set_anonymous_results(&self, result_types: Types) -> Result<()> {
         let results = self.results().vec();
         let mut results = results.wr();
-        for result_type in result_types.iter() {
-            let func_result = AnonymousResult::new(result_type.clone());
-            let value = Value::FuncResult(func_result);
+        for result_type in result_types.into_iter() {
+            let value = Value::FuncResult(result_type.clone());
             let value = Shared::new(value.into());
             results.push(value);
         }
         Ok(())
     }
-    /// Set the result (and type) of the operation to [AnonymousResult].
+    /// Set the result (and type) of the operation for functions.
     pub fn set_anonymous_result(&mut self, result_type: Shared<dyn Type>) -> Result<()> {
-        self.set_anonymous_results(vec![result_type])
+        self.set_anonymous_results(Types::from_vec(vec![result_type]))
     }
     pub fn predecessors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");

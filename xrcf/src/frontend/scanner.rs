@@ -193,6 +193,7 @@ impl Scanner {
             ',' => self.add_token(TokenKind::Comma),
             '.' => self.add_token(TokenKind::Dot),
             '=' => self.add_token(TokenKind::Equal),
+            '+' => self.add_token(TokenKind::Plus),
             '!' => self.add_token(TokenKind::Exclamation),
             '>' => self.add_token(TokenKind::Greater),
             '<' => self.add_token(TokenKind::Less),

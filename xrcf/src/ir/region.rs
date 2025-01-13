@@ -9,6 +9,8 @@ use crate::shared::SharedExt;
 use std::fmt::Display;
 use std::fmt::Formatter;
 
+use super::BlockArgumentName;
+
 /// A list of blocks.
 pub struct Region {
     /// Blocks in the region.
@@ -21,19 +23,50 @@ pub struct Region {
     parent: Option<Shared<dyn Op>>,
 }
 
-/// Set fresh block arguments for all blocks in the region.
+/// Set fresh arguments names for all blocks in the region.
 ///
 /// This happens during printing because the names are not used during the
 /// rewrite phase.
-fn set_fresh_block_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
+fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
     // Each block argument in a region needs an unique name because
     // arguments stay in scope until the end of the region.
     let mut name_index: usize = 0;
+
+    // The variables available in the region can also be the arguments of the
+    // parent op (only if the parent op is a function). I think MLIR models this
+    // by putting the arguments of the function is the first block. xrcf should
+    // probably do the same.
+    let parent_region = blocks.first().unwrap().rd().parent();
+    let parent_region = parent_region.expect("parent not set");
+    for op in parent_region.rd().ops().iter() {
+        if op.rd().is_func() {
+            for arg in op.rd().operation().rd().arguments().into_iter() {
+                let mut arg = arg.wr();
+                #[allow(clippy::single_match)]
+                match &mut *arg {
+                    Value::BlockArgument(block_arg) => match &mut block_arg.name {
+                        BlockArgumentName::Name(_name) => {
+                            let name = format!("{prefix}{name_index}");
+                            block_arg.name = BlockArgumentName::Name(name);
+                            name_index += 1;
+                        }
+                        BlockArgumentName::Unset => {
+                            let name = format!("{prefix}{name_index}");
+                            block_arg.name = BlockArgumentName::Name(name);
+                            name_index += 1;
+                        }
+                        BlockArgumentName::Anonymous => {}
+                    },
+                    _ => {}
+                }
+            }
+        }
+    }
+
     for block in blocks.iter() {
         let block = block.rd();
-        for argument in block.arguments() {
-            let name = format!("{prefix}{name_index}");
-            argument.wr().set_name(&name);
+        for arg in block.arguments() {
+            arg.wr().set_name(&format!("{prefix}{name_index}"));
             name_index += 1;
         }
     }
@@ -80,7 +113,7 @@ fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
     for block in blocks.iter() {
         for op in block.rd().ops().rd().iter() {
             for result in op.rd().operation().rd().results() {
-                if let Value::OpResult(op_result) = &*result.rd() {
+                if let Value::OpResult(op_result) = &mut *result.wr() {
                     let name = format!("{prefix}{name_index}");
                     op_result.set_name(&name);
                     name_index += 1;
@@ -138,14 +171,14 @@ impl Region {
     pub fn set_parent(&mut self, parent: Option<Shared<dyn Op>>) {
         self.parent = parent;
     }
-    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        writeln!(f, " {{")?;
+    pub fn refresh_names(&self) {
         let blocks = self.blocks();
         let blocks = blocks.vec();
         let blocks = blocks.rd();
         // The parent could be a module which is not always rewritten. Ops below
         // the module have to be rewritten for the output to be correct so will
-        // know the right prefixes.
+        // know the right prefixes, see also the [Op::prefixes] docstring for
+        // more information.
         let prefixes = self
             .block(0)
             .rd()
@@ -155,13 +188,16 @@ impl Region {
             .unwrap()
             .rd()
             .prefixes();
-        set_fresh_block_argument_names(prefixes.argument, &blocks);
+        set_fresh_argument_names(prefixes.argument, &blocks);
         set_fresh_block_labels(prefixes.block, &blocks);
         set_fresh_ssa_names(prefixes.ssa, &blocks);
-        for block in blocks.iter() {
+    }
+    pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
+        self.refresh_names();
+        for block in self.blocks().vec().rd().iter() {
             block.rd().display(f, indent + 1)?;
         }
-        write!(f, "{}}}", crate::ir::spaces(indent))
+        Ok(())
     }
 }
 

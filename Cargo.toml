@@ -2,8 +2,9 @@
 resolver = "2"
 members = [
     "arnoldc",
-    "xrcf-bin",
+    "wea",
     "xrcf",
+    "xrcf-bin",
 ]
 
 [workspace.package]

@@ -5,49 +5,48 @@ use std::panic::Location;
 use xrcf::dialect::func::FuncOp;
 use xrcf::ir::Op;
 use xrcf::shared::SharedExt;
-use xrcf::tester::Tester;
+use xrcf::tester::DefaultTester;
 
 #[test]
 fn parse_module() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {"
     module {
-      func.func @main() -> i64 {
-        %0 = arith.constant 2 : i64
-        return %0 : i64
-      }
+        func.func @main() -> i64 {
+            %0 = arith.constant 2 : i64
+            return %0 : i64
+        }
     }
     "};
-    let (_module, actual) = Tester::parse(src);
-    Tester::check_lines_contain(&actual, src, Location::caller());
+    let (_module, actual) = DefaultTester::parse(src);
+    DefaultTester::check_lines_contain(&actual, src, Location::caller());
 }
 
 #[test]
 fn parse_addi() {
-    Tester::init_tracing();
+    DefaultTester::init_tracing();
     let src = indoc! {"
     func.func @test_addi(%arg0 : i64) -> i64 {
-      %0 = arith.constant 1 : i64
-      %1 = arith.constant 2 : i64
-      %2 = arith.addi %0, %1 : i64
-      %3 = arith.addi %arg0, %2 : i64
-      return %3 : i64
-    }
-    "};
-    let expected = indoc! {"
-    module {
-      func.func @test_addi(%arg0 : i64) -> i64 {
         %0 = arith.constant 1 : i64
         %1 = arith.constant 2 : i64
         %2 = arith.addi %0, %1 : i64
         %3 = arith.addi %arg0, %2 : i64
         return %3 : i64
-      }
     }
     "};
-    let caller = Location::caller();
-    let (module, actual) = Tester::parse(src);
-    Tester::verify(module.clone());
+    let expected = indoc! {"
+    module {
+        func.func @test_addi(%arg0 : i64) -> i64 {
+            %0 = arith.constant 1 : i64
+            %1 = arith.constant 2 : i64
+            %2 = arith.addi %0, %1 : i64
+            %3 = arith.addi %arg0, %2 : i64
+            return %3 : i64
+        }
+    }
+    "};
+    let (module, actual) = DefaultTester::parse(src);
+    DefaultTester::verify(module.clone());
 
     assert!(module.rd().operation().rd().parent().is_none());
 
@@ -67,5 +66,5 @@ fn parse_addi() {
     let func_parent = func_parent.rd();
     assert_eq!(func_parent.name().to_string(), "module");
 
-    Tester::check_lines_contain(&actual, expected, caller);
+    DefaultTester::check_lines_contain(&actual, expected, Location::caller());
 }

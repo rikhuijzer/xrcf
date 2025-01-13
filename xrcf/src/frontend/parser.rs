@@ -31,11 +31,21 @@ use std::sync::Arc;
 
 /// Interface to add custom operations to the parser.
 ///
-/// Clients can implement this trait to support custom parsing. The default
-/// implementation can only know about operations defined in this crate.  To
-/// support custom operations, implement this trait with custom logic, see
-/// `DefaultParserDispatch` for an example.
+/// Clients can implement this trait to support custom recursive descent
+/// parsing. The default implementation can only know about operations defined
+/// in this crate. To support custom operations, implement this trait with
+/// custom logic, see [DefaultParserDispatch] for an example.
 pub trait ParserDispatch {
+    /// Preprocess the source before parsing.
+    ///
+    /// Clients can implement this trait to support custom preprocessing. This
+    /// can be used to, for example, replace Python-like indentation by curly
+    /// braces in order to make it easier to parse. This could have been done in
+    /// the xrcf parser, but it's moved here to keep the logic separated (i.e.,
+    /// to make it easier to understand the code).
+    fn preprocess(src: &str) -> String {
+        src.to_string()
+    }
     /// Parse an operation.
     fn parse_op(parser: &mut Parser<Self>, parent: Option<Shared<Block>>) -> Result<Shared<dyn Op>>
     where
@@ -58,6 +68,38 @@ pub trait ParserDispatch {
         let token = parser.expect(TokenKind::BareIdentifier)?;
         let value = BooleanAttr::from_str(&token.lexeme);
         Ok(Arc::new(value))
+    }
+}
+
+/// Default parser for determining the name of an operation.
+///
+/// This parser can be used with MLIR operations.
+///
+/// # Examples
+///
+/// ```mlir
+/// %2 = arith.addi %0, %1 : i32
+/// ```
+///
+/// The name of the operation is `arith.addi`.
+///
+/// ```mlir
+/// return %0 : i32
+/// ```
+///
+/// The name of the operation is `return`.
+pub fn default_parse_name<T: ParserDispatch>(parser: &Parser<T>) -> Token {
+    // If the syntax doesn't look like ArnoldC, fallback to the default
+    // parser that can parse MLIR operations.
+    if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
+        // Ignore result name and '=' (e.g., `x = <op name>`).
+        match parser.peek_n(2) {
+            Some(name) => name.clone(),
+            None => panic!("Couldn't peek 2 tokens at {}", parser.peek()),
+        }
+    } else {
+        // Ignore nothing (e.g., `<op name> x, y`).
+        parser.peek().clone()
     }
 }
 
@@ -266,6 +308,7 @@ impl<T: ParserDispatch> Parser<T> {
             self.expect(TokenKind::Colon)?;
             (label, arguments)
         } else {
+            // First block in a region (known as bb0 in MLIR).
             let label = BlockName::Unnamed;
             let values = Values::default();
             (label, values)
@@ -355,19 +398,19 @@ impl<T: ParserDispatch> Parser<T> {
         }
     }
     pub fn parse(src: &str) -> Result<Shared<dyn Op>> {
+        let src = T::preprocess(src);
         let mut parser = Parser::<T> {
-            src: src.to_string(),
-            tokens: Scanner::scan(src)?,
+            src: src.clone(),
+            tokens: Scanner::scan(&src)?,
             current: 0,
             _marker: std::marker::PhantomData,
         };
         let op = T::parse_op(&mut parser, None)?;
-        let op_rd = op.clone();
-        let op_rd = op_rd.rd();
-        let casted = op_rd.as_any().downcast_ref::<ModuleOp>();
-        let op: Shared<dyn Op> = if let Some(_module_op) = casted {
+        let op: Shared<dyn Op> = if op.rd().as_any().downcast_ref::<ModuleOp>().is_some() {
+            // The top-level operation is a module, so we don't need wrap it.
             op
         } else {
+            // The top-level operation is not a module, so add one.
             let module_region = Region::default();
             let module_region = Shared::new(module_region.into());
             let mut ops = vec![op.clone()];

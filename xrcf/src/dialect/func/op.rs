@@ -12,6 +12,7 @@ use crate::ir::OperationName;
 use crate::ir::Region;
 use crate::ir::StringAttr;
 use crate::ir::Type;
+use crate::ir::Types;
 use crate::ir::UnsetOp;
 use crate::ir::Values;
 use crate::shared::Shared;
@@ -216,7 +217,7 @@ pub trait Func: Op {
         Ok(self.operation().rd().arguments().clone())
     }
     fn return_types(&self) -> Vec<Shared<dyn Type>> {
-        self.operation().rd().results().types().vec()
+        self.operation().rd().results().types().types
     }
     fn return_type(&self) -> Result<Shared<dyn Type>> {
         let return_types = self.return_types();
@@ -231,7 +232,7 @@ pub trait Func: Op {
 /// Note that the operands of the function are internally
 /// represented by `BlockArgument`s, but the textual form is inline.
 pub struct FuncOp {
-    identifier: Option<String>,
+    pub identifier: Option<String>,
     sym_visibility: Option<String>,
     operation: Shared<Operation>,
 }
@@ -299,17 +300,16 @@ impl FuncOp {
         write!(f, "{}", op.operation().rd().arguments())?;
         write!(f, ")")?;
         let operation = op.operation();
-        let result_types = operation.rd().results().types();
-        if !result_types.vec().is_empty() {
+        let operation = operation.rd();
+        let result_types = operation.results().types();
+        if !result_types.types.is_empty() {
             write!(f, " -> {}", result_types)?;
         }
-        let attributes = operation.rd().attributes();
+        let attributes = operation.attributes();
         if !attributes.is_empty() {
             write!(f, " attributes {attributes}")?;
         }
-        if let Some(region) = op.operation().rd().region() {
-            region.rd().display(f, indent)?;
-        }
+        crate::ir::display_region_inside_func(f, &operation, indent)?;
         Ok(())
     }
     fn try_parse_func_visibility<T: ParserDispatch>(
@@ -352,13 +352,14 @@ impl Op for FuncOp {
     }
     fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
         let identifier = self.identifier.clone();
-        FuncOp::display_func(self, identifier.unwrap(), f, indent)
+        let identifier = identifier.expect("identifier not set");
+        FuncOp::display_func(self, identifier, f, indent)
     }
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    fn result_types(&mut self) -> Result<Vec<Shared<dyn Type>>> {
-        let mut result_types: Vec<Shared<dyn Type>> = vec![];
+    fn result_types(&mut self) -> Result<Types> {
+        let mut result_types: Types = Types::default();
         if !self.check(TokenKind::Arrow) {
             return Ok(result_types);
         } else {
@@ -367,15 +368,27 @@ impl<T: ParserDispatch> Parser<T> {
                 let typ = self.advance();
                 let typ = AnyType::new(&typ.lexeme);
                 let typ = Shared::new(typ.into());
-                result_types.push(typ);
+                result_types.types.push(typ);
             }
         }
         Ok(result_types)
     }
+    pub fn parse_func_body(parser: &mut Parser<T>, op: Shared<dyn Op>) -> Result<()> {
+        let region = parser.parse_region(op.clone())?;
+        let op_rd = op.rd();
+        op_rd.operation().wr().set_region(Some(region.clone()));
+        region.wr().set_parent(Some(op.clone()));
+
+        let block = region.rd().blocks().into_iter().next().unwrap();
+        for argument in op.rd().operation().rd().arguments().into_iter() {
+            argument.wr().set_parent(Some(block.clone()));
+        }
+        Ok(())
+    }
     pub fn parse_func<F: Func + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
-    ) -> Result<Shared<F>> {
+    ) -> Result<Shared<dyn Op>> {
         let mut operation = Operation::default();
         operation.set_parent(parent);
         parser.parse_operation_name_into::<F>(&mut operation)?;
@@ -392,17 +405,8 @@ impl<T: ParserDispatch> Parser<T> {
         let op = Shared::new(op.into());
         let has_implementation = parser.check(TokenKind::LBrace);
         if has_implementation {
-            let region = parser.parse_region(op.clone())?;
-            let op_rd = op.rd();
-            op_rd.operation().wr().set_region(Some(region.clone()));
-            region.wr().set_parent(Some(op.clone()));
-
-            let block = region.rd().blocks().into_iter().next().unwrap();
-            for argument in arguments.into_iter() {
-                argument.wr().set_parent(Some(block.clone()));
-            }
+            Self::parse_func_body(parser, op.clone())?;
         }
-
         Ok(op)
     }
 }

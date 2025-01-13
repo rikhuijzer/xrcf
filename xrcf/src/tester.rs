@@ -1,6 +1,7 @@
 use crate::convert::RewriteResult;
 use crate::frontend::DefaultParserDispatch;
 use crate::frontend::Parser;
+use crate::frontend::ParserDispatch;
 use crate::init_subscriber;
 use crate::ir::Op;
 use crate::shared::Shared;
@@ -8,14 +9,26 @@ use crate::shared::SharedExt;
 use crate::transform;
 use crate::DefaultTransformDispatch;
 use crate::Passes;
+use crate::TransformDispatch;
 use crate::TransformOptions;
+use anyhow::Result;
 use std::cmp::max;
+use std::marker::PhantomData;
 use std::panic::Location;
 use tracing::info;
+use wasmtime::Engine;
+use wasmtime::Instance;
+use wasmtime::Module;
+use wasmtime::Store;
 
-pub struct Tester;
+pub struct Tester<P: ParserDispatch, T: TransformDispatch> {
+    _marker: PhantomData<P>,
+    _marker2: PhantomData<T>,
+}
 
-impl Tester {
+pub type DefaultTester = Tester<DefaultParserDispatch, DefaultTransformDispatch>;
+
+impl<P: ParserDispatch, T: TransformDispatch> Tester<P, T> {
     /// Initialize the subscriber for the tests.
     ///
     /// Cannot pass options, since the tests run concurrently.
@@ -96,18 +109,24 @@ impl Tester {
     fn print_heading(msg: &str, src: &str) {
         info!("{msg}:\n```\n{src}\n```\n");
     }
+    pub fn preprocess(src: &str) -> String {
+        Self::print_heading("Before preprocessing", src.trim());
+        let actual = P::preprocess(src);
+        Self::print_heading("After preprocessing", &actual);
+        actual
+    }
     pub fn parse(src: &str) -> (Shared<dyn Op>, String) {
         Self::print_heading("Before parse", src.trim());
-        let module = Parser::<DefaultParserDispatch>::parse(&src).unwrap();
+        let module = Parser::<P>::parse(&src).unwrap();
         let actual = format!("{}", module.rd());
         Self::print_heading("After parse", &actual);
         (module, actual)
     }
     pub fn transform(arguments: Vec<&str>, src: &str) -> (Shared<dyn Op>, String) {
         let src = src.trim();
-        let module = Parser::<DefaultParserDispatch>::parse(src).unwrap();
+        let module = Parser::<P>::parse(src).unwrap();
         let msg = format!("Before (transform {arguments:?})");
-        Self::print_heading(&msg, src);
+        Self::print_heading(&msg, &src);
 
         for arg in arguments.clone() {
             if arg.starts_with("convert-") {
@@ -116,7 +135,7 @@ impl Tester {
         }
         let passes = Passes::from_convert_vec(arguments.clone());
         let options = TransformOptions::from_passes(passes);
-        let result = transform::<DefaultTransformDispatch>(module.clone(), &options).unwrap();
+        let result = transform::<T>(module.clone(), &options).unwrap();
         let new_root_op = match result {
             RewriteResult::Changed(changed_op) => changed_op.op,
             RewriteResult::Unchanged => {
@@ -167,5 +186,12 @@ impl Tester {
         for op in ops {
             Self::verify(op);
         }
+    }
+    pub fn load_wat(wat: &str) -> Result<(Store<()>, Instance)> {
+        let engine = Engine::default();
+        let module = Module::new(&engine, wat).unwrap();
+        let mut store = Store::new(&engine, ());
+        let instance = Instance::new(&mut store, &module, &[]).unwrap();
+        Ok((store, instance))
     }
 }

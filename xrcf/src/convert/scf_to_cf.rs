@@ -173,7 +173,6 @@ fn as_block_arguments(results: Values, parent: Shared<Block>) -> Result<Values> 
         let name = result_rd.name();
         let typ = result_rd.typ().unwrap();
         let name = BlockArgumentName::Name(name.unwrap());
-        let name = Shared::new(name.into());
         let mut arg = BlockArgument::new(name, typ);
         arg.set_parent(Some(parent.clone()));
         let arg = Value::BlockArgument(arg);

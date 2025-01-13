@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
 
 env:
+  # Minimal version of Rust that xrcf supports.
+  # The release is built with a newer version.
   RUST_TOOLCHAIN: '1.81'
 
 jobs:

@@ -15,6 +15,7 @@ use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub struct Prefixes {
     /// Argument names have the same prefix for calls and definitions. By
     /// default, the prefix is `%arg`.
@@ -115,6 +116,8 @@ pub trait Op {
         self.operation().rd().attributes().get(key)
     }
     /// Insert `earlier` before `self` inside `self`'s parent block.
+    ///
+    /// Also sets the parent for the inserted op.
     fn insert_before(&self, earlier: Shared<dyn Op>) {
         let operation = self.operation();
         let parent = match operation.rd().parent() {
@@ -122,9 +125,12 @@ pub trait Op {
             None => panic!("no parent for {}", self.name()),
         };
         let later = operation.clone();
+        earlier.rd().set_parent(parent.clone());
         parent.rd().insert_before(earlier, later);
     }
     /// Insert `later` after `self` inside `self`'s parent block.
+    ///
+    /// Also sets the parent for the inserted op.
     fn insert_after(&self, later: Shared<dyn Op>) {
         let operation = self.operation();
         let parent = match operation.rd().parent() {
@@ -132,6 +138,7 @@ pub trait Op {
             None => panic!("no parent for {}", self.name()),
         };
         let earlier = operation.clone();
+        later.rd().set_parent(parent.clone());
         parent.rd().insert_after(earlier, later);
     }
     /// Remove the operation from its parent block.
@@ -140,26 +147,28 @@ pub trait Op {
         let parent = operation.rd().parent().expect("no parent");
         parent.rd().remove(operation.clone());
     }
-    /// Replace self with `new` by moving the results of the old operation to
-    /// the results of the specified new op, and pointing the
-    /// `result.defining_op` to the new op. In effect, this makes all the uses
-    /// of the old op refer to the new op instead.
+    /// Replace self with `new`.
     ///
-    /// Note that this function assumes that `self` will be dropped after this
+    /// This moves the results of the old operation to the results of the new
+    /// op, and pointing the `result.defining_op` to the new op. In effect,
+    /// this makes all the uses of the old op refer to the new op instead.
+    ///
+    /// Note that this method assumes that `self` will be dropped after this
     /// function call. Therefore, the old op can still have references to
     /// objects that are now part of the new op.
+    ///
+    /// This method also sets the parent for `new` if `self` has a parent.
     fn replace(&self, new: Shared<dyn Op>) {
-        let parent = self.operation().rd().parent();
         let results = self.operation().rd().results();
-        for result in results.clone().into_iter() {
+        new.rd().operation().wr().set_results(results.clone());
+        for result in results.into_iter() {
             if let Value::OpResult(res) = &mut *result.wr() {
                 res.set_defining_op(Some(new.clone()));
             }
         }
-        new.rd().operation().wr().set_results(results);
         // Root ops do not have a parent, so in that case we don't need to
         // update the parent.
-        if let Some(parent) = parent {
+        if let Some(parent) = self.operation().rd().parent() {
             parent.rd().replace(self.operation().clone(), new.clone())
         }
     }

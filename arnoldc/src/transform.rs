@@ -4,6 +4,7 @@ use anyhow::Result;
 use xrcf::convert::Pass;
 use xrcf::convert::RewriteResult;
 use xrcf::frontend::default_dispatch;
+use xrcf::frontend::default_parse_name;
 use xrcf::frontend::default_parse_type;
 use xrcf::frontend::Parse;
 use xrcf::frontend::Parser;
@@ -59,18 +60,7 @@ impl ParserDispatch for ArnoldParserDispatch {
             return op;
         }
 
-        // If the syntax doesn't look like ArnoldC, fallback to the default
-        // parser that can parse MLIR syntax.
-        let name = if parser.peek_n(1).unwrap().kind == TokenKind::Equal {
-            // Ignore result name and '=' (e.g., `x = <op name>`).
-            match parser.peek_n(2) {
-                Some(name) => name.clone(),
-                None => panic!("Couldn't peek 2 tokens at {}", parser.peek()),
-            }
-        } else {
-            // Ignore nothing (e.g., `<op name> x, y`).
-            parser.peek().clone()
-        };
+        let name = default_parse_name(parser);
         default_dispatch(name, parser, parent)
     }
     fn parse_type(parser: &mut Parser<Self>) -> Result<Shared<dyn Type>> {
@@ -132,6 +122,7 @@ mod tests {
     use xrcf::shared::SharedExt;
     use xrcf::tester::Tester;
     use xrcf::Passes;
+    type ArnoldTester = Tester<ArnoldParserDispatch, ArnoldTransformDispatch>;
 
     fn flags() -> Vec<&'static str> {
         vec!["--convert-arnold-to-mlir"]
@@ -139,7 +130,7 @@ mod tests {
 
     #[test]
     fn test_preprocess() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
         TALK TO THE HAND "Hello, World!\n"
@@ -183,7 +174,7 @@ mod tests {
         let result = preprocess(src);
         tracing::info!("Before preprocess:\n{src}\n");
         tracing::info!("After preprocess:\n{result}\n");
-        Tester::check_lines_exact(expected, result.trim(), Location::caller());
+        ArnoldTester::check_lines_exact(expected, result.trim(), Location::caller());
     }
 
     fn print_heading(msg: &str, src: &str, passes: &Passes) {
@@ -191,7 +182,7 @@ mod tests {
     }
 
     fn test_transform(src: &str, passes: Vec<&str>) -> (Shared<dyn Op>, String) {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = src.trim();
         let passes = Passes::from_vec(passes);
         print_heading("Before", src, &passes);
@@ -210,7 +201,7 @@ mod tests {
 
     #[test]
     fn test_default_dispatch() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         func.func @main() -> i32 {
             %0 = arith.constant 0 : i32
@@ -224,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
         TALK TO THE HAND "Hello, World!\n"
@@ -233,28 +224,28 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @main() -> i32 {
-            experimental.printf("Hello, World!\0A")
-            %0 = arith.constant 0 : i32
-            return %0 : i32
-          }
+            func.func @main() -> i32 {
+                experimental.printf("Hello, World!\0A")
+                %0 = arith.constant 0 : i32
+                return %0 : i32
+            }
         }
         "#}
         .trim();
         let (module, actual) = test_transform(src, flags());
-        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
-        Tester::verify(module);
+        ArnoldTester::check_lines_exact(expected, actual.trim(), Location::caller());
+        ArnoldTester::verify(module);
 
         let passes = compile_passes();
         let (module, actual) = test_transform(src, passes);
-        Tester::verify(module);
+        ArnoldTester::verify(module);
         assert!(actual.contains("declare i32 @printf(ptr)"));
         assert!(actual.contains("define i32 @main()"));
     }
 
     #[test]
     fn test_print_digit() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
 
@@ -269,24 +260,24 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         module {
-          func.func @main() -> i32 {
-            %0 = arith.constant 1 : i1
-            experimental.printf("x: ")
-            experimental.printf("%d", %0)
-            %1 = arith.constant 0 : i32
-            return %1 : i32
-          }
+            func.func @main() -> i32 {
+                %0 = arith.constant 1 : i1
+                experimental.printf("x: ")
+                experimental.printf("%d", %0)
+                %1 = arith.constant 0 : i32
+                return %1 : i32
+            }
         }
         "#}
         .trim();
         let (module, actual) = test_transform(src, flags());
-        Tester::check_lines_exact(expected, actual.trim(), Location::caller());
-        Tester::verify(module);
+        ArnoldTester::check_lines_exact(expected, actual.trim(), Location::caller());
+        ArnoldTester::verify(module);
     }
 
     #[test]
     fn test_if_else() {
-        Tester::init_tracing();
+        ArnoldTester::init_tracing();
         let src = indoc! {r#"
         IT'S SHOWTIME
 
@@ -304,20 +295,20 @@ mod tests {
         .trim();
         let expected = indoc! {r#"
         func.func @main() -> i32 {
-          %0 = arith.constant 0 : i1
-          scf.if %0 {
-            experimental.printf("x was true")
-          } else {
-            experimental.printf("x was false")
-          }
-          %1 = arith.constant 0 : i32
-          return %1 : i32
+            %0 = arith.constant 0 : i1
+            scf.if %0 {
+                experimental.printf("x was true")
+            } else {
+                experimental.printf("x was false")
+            }
+            %1 = arith.constant 0 : i32
+            return %1 : i32
         }
         "#}
         .trim();
         let (module, actual) = test_transform(src, flags());
-        Tester::verify(module);
-        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
+        ArnoldTester::verify(module);
+        ArnoldTester::check_lines_contain(actual.trim(), expected, Location::caller());
 
         let expected = indoc! {r#"
         define i32 @main() {
@@ -329,7 +320,7 @@ mod tests {
         .trim();
         let passes = compile_passes();
         let (module, actual) = test_transform(src, passes);
-        Tester::verify(module);
-        Tester::check_lines_contain(actual.trim(), expected, Location::caller());
+        ArnoldTester::verify(module);
+        ArnoldTester::check_lines_contain(actual.trim(), expected, Location::caller());
     }
 }

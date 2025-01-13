@@ -35,6 +35,7 @@ pub struct Block {
     parent: Option<Shared<Region>>,
 }
 
+/// Canonicalize a block label.
 fn canonicalize_label(label: &str) -> String {
     label.trim_start_matches('^').to_string()
 }
@@ -186,7 +187,7 @@ impl Block {
             for argument in operation.rd().arguments().into_iter() {
                 match &*argument.rd() {
                     #[allow(clippy::single_match)]
-                    Value::BlockArgument(arg) => match &*arg.name().rd() {
+                    Value::BlockArgument(arg) => match &arg.name {
                         BlockArgumentName::Name(curr) => {
                             if curr == name {
                                 return Some(argument.clone());
@@ -219,7 +220,7 @@ impl Block {
                     Value::Constant(_) => continue,
                     Value::FuncResult(_) => return None,
                     Value::OpResult(op_result) => {
-                        if let Some(curr) = &*op_result.name().rd() {
+                        if let Some(curr) = &op_result.name() {
                             if curr == name {
                                 return Some(value.clone());
                             }
@@ -239,7 +240,7 @@ impl Block {
         for argument in self.arguments().into_iter() {
             match &*argument.rd() {
                 Value::BlockArgument(arg) => {
-                    if let BlockArgumentName::Name(curr) = &*arg.name().rd() {
+                    if let BlockArgumentName::Name(curr) = &arg.name {
                         if curr == name {
                             return Some(argument.clone());
                         }
@@ -427,7 +428,7 @@ impl Blocks {
         let vec = self.vec();
         let vec = vec.rd();
         if vec.is_empty() {
-            panic!("Trying to find block in empty set of blocks");
+            return None;
         }
         vec.iter().position(|b| {
             let b = &*b.rd();

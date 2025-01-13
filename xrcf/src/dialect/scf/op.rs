@@ -77,15 +77,11 @@ impl Op for IfOp {
         if has_results {
             write!(f, " -> ({})", self.operation.rd().results().types())?;
         }
-        self.then()
-            .expect("no `then` region")
-            .rd()
-            .display(f, indent)?;
-        write!(f, " else")?;
-        self.els()
-            .expect("no `else` region")
-            .rd()
-            .display(f, indent)?;
+        writeln!(f, " {{")?;
+        self.then().expect("no region").rd().display(f, indent)?;
+        writeln!(f, "}} else {{")?;
+        self.els().expect("no region").rd().display(f, indent)?;
+        writeln!(f, "}}")?;
         Ok(())
     }
 }

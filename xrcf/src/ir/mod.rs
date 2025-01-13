@@ -43,7 +43,6 @@ pub use typ::Type;
 pub use typ::TypeConvert;
 pub use typ::TypeParse;
 pub use typ::Types;
-pub use value::AnonymousResult;
 pub use value::BlockArgument;
 pub use value::BlockArgumentName;
 pub use value::BlockLabel;
@@ -56,8 +55,15 @@ pub use value::Users;
 pub use value::Value;
 pub use value::Values;
 
+/// Canonicalize an identifier.
+pub fn canonicalize_identifier(identifier: &str) -> String {
+    identifier.trim_start_matches('@').to_string()
+}
+
 pub fn spaces(indent: i32) -> String {
-    "  ".repeat(indent as usize)
+    // Using 4 spaces since the editor is using 4 spaces too in Rust. Any other
+    // setting causes writing tests to be very fiddly.
+    "    ".repeat(indent as usize)
 }
 
 /// Convert a string to a vector of bytes while handling LLVM escape sequences.

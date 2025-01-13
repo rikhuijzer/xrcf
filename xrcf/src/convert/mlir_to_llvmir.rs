@@ -224,7 +224,6 @@ fn lower_block_argument_types(operation: &mut Operation) {
                     let typ = targ3t::llvmir::PointerType::from_str("ptr").unwrap();
                     let typ = Shared::new(typ.into());
                     let name = BlockArgumentName::Unset;
-                    let name = Shared::new(name.into());
                     let arg = Value::BlockArgument(BlockArgument::new(name, typ));
                     new_arguments.push(Shared::new(arg.into()));
                 } else {
@@ -373,15 +372,12 @@ fn set_phi_result(phi: Shared<dyn Op>, argument: &Shared<Value>) {
     if let Value::BlockArgument(arg) = &*argument {
         let typ = Some(arg.typ());
         let defining_op = Some(phi.clone());
-        let name = arg.name();
-        let name = name.rd();
-        let name = match &*name {
+        let name = match &arg.name {
             BlockArgumentName::Name(name) => name.to_string(),
             BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
             BlockArgumentName::Unset => panic!("Block argument has no name"),
         };
-        let name = Shared::new(Some(name).into());
-        let res = OpResult::new(name, typ, defining_op);
+        let res = OpResult::new(Some(name), typ, defining_op);
         let new = Value::OpResult(res);
         let new = Shared::new(new.into());
         phi.rd()
@@ -588,7 +584,7 @@ impl TypeConvert for ConvertMLIRToLLVMIR {
         {
             let arguments = typ.arguments().clone();
             let converted = arguments
-                .vec()
+                .types
                 .iter()
                 .map(Self::convert_type)
                 .collect::<Result<Vec<_>>>()?;

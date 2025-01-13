@@ -6,6 +6,7 @@ use crate::ir::Block;
 use crate::ir::BlockName;
 use crate::ir::Op;
 use crate::ir::OpOperand;
+use crate::ir::OpOperands;
 use crate::ir::Operation;
 use crate::ir::Type;
 use crate::ir::TypeConvert;
@@ -32,7 +33,7 @@ pub struct BlockArgument {
     ///
     /// The name is only used during parsing to see which operands point to this
     /// argument. During printing, a new name is generated.
-    name: Shared<BlockArgumentName>,
+    pub name: BlockArgumentName,
     typ: Shared<dyn Type>,
     /// The operation for which this [BlockArgument] is an argument.
     ///
@@ -42,21 +43,15 @@ pub struct BlockArgument {
 }
 
 impl BlockArgument {
-    pub fn new(name: Shared<BlockArgumentName>, typ: Shared<dyn Type>) -> Self {
+    pub fn new(name: BlockArgumentName, typ: Shared<dyn Type>) -> Self {
         BlockArgument {
             name,
             typ,
             parent: None,
         }
     }
-    pub fn name(&self) -> Shared<BlockArgumentName> {
-        self.name.clone()
-    }
     pub fn parent(&self) -> Option<Shared<Block>> {
         self.parent.clone()
-    }
-    pub fn set_name(&self, name: BlockArgumentName) {
-        *self.name.wr() = name;
     }
     pub fn set_parent(&mut self, parent: Option<Shared<Block>>) {
         self.parent = parent;
@@ -72,9 +67,7 @@ impl BlockArgument {
 impl Display for BlockArgument {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let typ = self.typ.rd();
-        let name = self.name();
-        let name_read = name.rd();
-        match &*name_read {
+        match &self.name {
             BlockArgumentName::Anonymous => write!(f, "{typ}"),
             BlockArgumentName::Name(name) => {
                 write!(f, "{name} : {typ}")
@@ -184,43 +177,6 @@ impl Display for Constant {
     }
 }
 
-/// An unnamed result of an operation, such as a function.
-///
-/// This result does not specify a name since, for example, the following is
-/// invalid:
-///
-/// ```mlir
-/// %0 = func.func @foo() -> %0 : i64
-/// ```
-///
-/// The reason that this is a [Value] is that it provides a way to set a type
-/// for a function result. The alternative would be to move the [Type]s to a
-/// separate [Operation] `return_types` field, but that is more error prone
-/// since the field then has to be set manually each time an operation is
-/// created.  This makes it more error prone than having it included in the
-/// `results` field.
-pub struct AnonymousResult {
-    typ: Shared<dyn Type>,
-}
-
-impl AnonymousResult {
-    pub fn new(typ: Shared<dyn Type>) -> Self {
-        AnonymousResult { typ }
-    }
-    pub fn typ(&self) -> Shared<dyn Type> {
-        self.typ.clone()
-    }
-    pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
-        self.typ = typ;
-    }
-}
-
-impl Display for AnonymousResult {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.typ.rd())
-    }
-}
-
 /// A named result of an operation.
 ///
 /// For example, in the following code:
@@ -229,19 +185,20 @@ impl Display for AnonymousResult {
 /// ```
 /// `%0` is the result of the operation and has the name `%0`. The `defining_op`
 /// is `arith.addi` and the `typ` is `i32`.
+#[derive(Default)]
 pub struct OpResult {
     /// The name of the result.
     ///
     /// Does not necessarily have to be set because new names are generated
     /// anyway.
-    name: Shared<Option<String>>,
+    name: Option<String>,
     typ: Option<Shared<dyn Type>>,
     defining_op: Option<Shared<dyn Op>>,
 }
 
 impl OpResult {
     pub fn new(
-        name: Shared<Option<String>>,
+        name: Option<String>,
         typ: Option<Shared<dyn Type>>,
         defining_op: Option<Shared<dyn Op>>,
     ) -> Self {
@@ -251,7 +208,7 @@ impl OpResult {
             defining_op,
         }
     }
-    pub fn name(&self) -> Shared<Option<String>> {
+    pub fn name(&self) -> Option<String> {
         self.name.clone()
     }
     pub fn typ(&self) -> Option<Shared<dyn Type>> {
@@ -260,8 +217,8 @@ impl OpResult {
     pub fn defining_op(&self) -> Option<Shared<dyn Op>> {
         self.defining_op.clone()
     }
-    pub fn set_name(&self, name: &str) {
-        *self.name.wr() = Some(name.to_string());
+    pub fn set_name(&mut self, name: &str) {
+        self.name = Some(name.to_string());
     }
     pub fn set_typ(&mut self, typ: Shared<dyn Type>) {
         self.typ = Some(typ);
@@ -271,19 +228,9 @@ impl OpResult {
     }
 }
 
-impl Default for OpResult {
-    fn default() -> Self {
-        Self {
-            name: Shared::new(None.into()),
-            typ: None,
-            defining_op: None,
-        }
-    }
-}
-
 impl Display for OpResult {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name.rd().clone().unwrap())
+        write!(f, "{}", self.name.clone().unwrap())
     }
 }
 
@@ -391,7 +338,7 @@ pub enum Value {
     BlockPtr(BlockPtr),
     /// A constant value (e.g., `arith.constant 1 : i64`).
     Constant(Constant),
-    FuncResult(AnonymousResult),
+    FuncResult(Shared<dyn Type>),
     /// A result of an operation (e.g., `%0 = ...`).
     OpResult(OpResult),
     /// A variadic value.
@@ -413,7 +360,7 @@ impl Value {
     /// new names in the end, that is, during printing.
     pub fn name(&self) -> Option<String> {
         match self {
-            Value::BlockArgument(arg) => match &*arg.name().rd() {
+            Value::BlockArgument(arg) => match &arg.name {
                 BlockArgumentName::Anonymous => None,
                 BlockArgumentName::Name(name) => Some(name.clone()),
                 BlockArgumentName::Unset => None,
@@ -426,7 +373,7 @@ impl Value {
             },
             Value::Constant(_) => None,
             Value::FuncResult(_) => None,
-            Value::OpResult(result) => result.name().rd().clone(),
+            Value::OpResult(result) => result.name().clone(),
             Value::Variadic => None,
         }
     }
@@ -436,7 +383,7 @@ impl Value {
             Value::BlockLabel(_) => panic!("BlockLabel has no type"),
             Value::BlockPtr(_) => panic!("BlockPtr has no type"),
             Value::Constant(constant) => Ok(constant.typ()),
-            Value::FuncResult(result) => Ok(result.typ.clone()),
+            Value::FuncResult(result) => Ok(result.clone()),
             Value::OpResult(result) => match result.typ() {
                 Some(typ) => Ok(typ),
                 None => Err(anyhow::anyhow!("Type was not set for OpResult {}", self)),
@@ -450,7 +397,7 @@ impl Value {
             Value::BlockLabel(_) => todo!(),
             Value::BlockPtr(_) => todo!(),
             Value::Constant(_) => todo!(),
-            Value::FuncResult(result) => result.set_typ(typ),
+            Value::FuncResult(result) => *result = typ,
             Value::OpResult(result) => result.set_typ(typ),
             Value::Variadic => todo!(),
         }
@@ -480,7 +427,7 @@ impl Value {
     pub fn set_name(&mut self, name: &str) {
         match self {
             Value::BlockArgument(arg) => {
-                arg.set_name(BlockArgumentName::Name(name.to_string()));
+                arg.name = BlockArgumentName::Name(name.to_string());
             }
             Value::BlockLabel(label) => label.set_name(name.to_string()),
             Value::BlockPtr(_) => todo!(),
@@ -549,7 +496,7 @@ impl Display for Value {
             Value::BlockLabel(label) => write!(f, "{label}"),
             Value::BlockPtr(ptr) => write!(f, "{ptr}"),
             Value::Constant(constant) => write!(f, "{constant}"),
-            Value::FuncResult(result) => write!(f, "{result}"),
+            Value::FuncResult(result) => write!(f, "{}", result.rd()),
             Value::OpResult(result) => write!(f, "{result}"),
             Value::Variadic => write!(f, "..."),
         }
@@ -606,6 +553,23 @@ impl Values {
             value.wr().set_name(&renamer.rename(&name));
         }
         Ok(())
+    }
+    /// Return operands that point to the values in `self`.
+    ///
+    /// Panics if the `self` contains anything other than [OpResult]s.
+    pub fn as_operands(&self) -> OpOperands {
+        let values = self.values.rd().clone().into_iter();
+        let values = values
+            .map(|value| {
+                if let Value::OpResult(_res) = &*value.rd() {
+                    let operand = OpOperand::new(value.clone());
+                    Shared::new(operand.into())
+                } else {
+                    panic!("Expected `Value::OpResult`");
+                }
+            })
+            .collect::<Vec<_>>();
+        OpOperands::from_vec(values)
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
@@ -708,7 +672,6 @@ impl<T: ParserDispatch> Parser<T> {
             let _colon = self.expect(TokenKind::Colon)?;
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Name(name);
-            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
@@ -719,7 +682,6 @@ impl<T: ParserDispatch> Parser<T> {
         if self.check(TokenKind::IntType) || self.check(TokenKind::Exclamation) {
             let typ = T::parse_type(self)?;
             let name = BlockArgumentName::Anonymous;
-            let name = Shared::new(name.into());
             let arg = Value::BlockArgument(BlockArgument::new(name, typ));
             let operand = Shared::new(arg.into());
             if self.check(TokenKind::Comma) {
@@ -751,7 +713,7 @@ impl<T: ParserDispatch> Parser<T> {
     pub fn parse_op_result(&mut self, token_kind: TokenKind) -> Result<UnsetOpResult> {
         let identifier = self.expect(token_kind)?;
         let name = identifier.lexeme.clone();
-        let op_result = OpResult::default();
+        let mut op_result = OpResult::default();
         op_result.set_name(&name);
         let result = Value::OpResult(op_result);
         Ok(UnsetOpResult::new(Shared::new(result.into())))
