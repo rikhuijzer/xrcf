@@ -49,12 +49,12 @@ impl Op for AddOp {
     fn prefixes(&self) -> Prefixes {
         PREFIXES
     }
-    fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        let spaces = crate::ir::spaces(indent);
-        for operand in self.operation.rd().operands().vec().rd().iter() {
-            write!(f, "local.get {}\n{}", operand.rd(), spaces)?;
-        }
-        write!(f, "i32.add")
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "(i32.add ")?;
+        let operands = self.operation.rd().operands().vec();
+        write!(f, "(local.get {}) ", operands.rd().first().unwrap().rd())?;
+        write!(f, "(local.get {}))", operands.rd().get(1).unwrap().rd())?;
+        Ok(())
     }
 }
 
