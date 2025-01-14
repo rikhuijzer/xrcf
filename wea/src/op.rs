@@ -52,8 +52,8 @@ pub enum Visibility {
 
 pub struct BinaryExpression {
     operation: Shared<Operation>,
-    lhs: Option<Shared<dyn Op>>,
-    rhs: Option<Shared<dyn Op>>,
+    left: Option<Shared<dyn Op>>,
+    right: Option<Shared<dyn Op>>,
 }
 
 impl Op for BinaryExpression {
@@ -61,7 +61,11 @@ impl Op for BinaryExpression {
         OperationName::new("binary".to_string())
     }
     fn new(operation: Shared<Operation>) -> Self {
-        BinaryExpression { operation, lhs: None, rhs: None }
+        BinaryExpression {
+            operation,
+            left: None,
+            right: None,
+        }
     }
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
@@ -74,10 +78,47 @@ impl Op for BinaryExpression {
     }
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         write!(f, "{} ", Self::operation_name().name())?;
-        write!(f, "{}", self.lhs.as_ref().unwrap().rd())?;
-        write!(f, "{}", self.rhs.as_ref().unwrap().rd())?;
+        write!(f, "{}", self.left.as_ref().unwrap().rd())?;
+        write!(f, "{}", self.right.as_ref().unwrap().rd())?;
         Ok(())
     }
+}
+
+enum Expr {
+    Leaf(String),
+    Unary(String),
+}
+
+fn parse_expr_inner<T: ParserDispatch>(
+    parser: &mut Parser<T>,
+    parent: Option<Shared<Block>>,
+) -> Result<Expr> {
+    let next = parser.peek();
+    match next.kind {
+        TokenKind::BareIdentifier => {
+            return Ok(Expr::Leaf(next.lexeme.clone()));
+        }
+        TokenKind::LParen => {
+            let expr = parse_expr_outer(parser, None)?;
+            parser.expect(TokenKind::RParen)?;
+            Ok(expr)
+        }
+        _ => {
+            return Err(anyhow::anyhow!("expected identifier or lparen"));
+        }
+    }
+}
+
+/// Parse an expression.
+///
+/// Based on https://www.scattered-thoughts.net/writing/better-operator-precedence/.
+fn parse_expr_outer<T: ParserDispatch>(
+    parser: &mut Parser<T>,
+    parent: Option<Shared<Block>>,
+) -> Result<Expr> {
+    let left = parse_expr_inner(parser, parent)?;
+
+    todo!()
 }
 
 impl Parse for BinaryExpression {
@@ -85,6 +126,7 @@ impl Parse for BinaryExpression {
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
+        let expr = parse_expr_outer(parser, None);
         todo!()
     }
 }

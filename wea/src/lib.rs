@@ -92,6 +92,10 @@ fn is_function_definition<T: ParserDispatch>(parser: &Parser<T>) -> bool {
     is_func(parser.peek()) || is_func(parser.peek_n(1).unwrap())
 }
 
+fn is_expression<T: ParserDispatch>(parser: &Parser<T>) -> bool {
+    parser.peek_n(1).unwrap().kind == TokenKind::Plus
+}
+
 impl ParserDispatch for WeaParserDispatch {
     fn parse_op(
         parser: &mut Parser<Self>,
@@ -99,6 +103,9 @@ impl ParserDispatch for WeaParserDispatch {
     ) -> Result<Shared<dyn Op>> {
         if is_function_definition(parser) {
             return <op::FuncOp as Parse>::op(parser, parent);
+        }
+        if is_expression(parser) {
+            return <op::BinaryExpression as Parse>::op(parser, parent);
         }
         if parent.is_none() {
             panic!("only modules and functions can have no parent");

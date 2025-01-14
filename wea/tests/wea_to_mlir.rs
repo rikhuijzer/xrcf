@@ -67,5 +67,4 @@ fn test_plusmin() {
     let (module, actual) = WeaTester::transform(flags(), src);
     WeaTester::verify(module.clone());
     WeaTester::check_lines_exact(&actual, expected, Location::caller());
-
 }
