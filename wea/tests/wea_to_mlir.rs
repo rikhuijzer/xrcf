@@ -46,3 +46,26 @@ fn test_plus() {
     assert!(module.as_any().is::<ModuleOp>());
     WeaTester::check_lines_exact(&actual, expected, Location::caller());
 }
+
+#[test]
+fn test_plusmin() {
+    WeaTester::init_tracing();
+    let src = indoc! {r#"
+    pub fn plusmin(arg0: i32, arg1: i32) i32 {
+        arg0 + arg1 - arg0
+    }
+    "#};
+    let expected = indoc! {r#"
+    module {
+        func.func @plusmin(%arg0 : i32, %arg1 : i32) -> i32 {
+            %0 = arith.addi %arg0, %arg1 : i32
+            %1 = arith.subi %0, %arg0 : i32
+            return %1 : i32
+        }
+    }
+    "#};
+    let (module, actual) = WeaTester::transform(flags(), src);
+    WeaTester::verify(module.clone());
+    WeaTester::check_lines_exact(&actual, expected, Location::caller());
+
+}
