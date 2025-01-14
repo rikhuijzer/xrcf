@@ -4,6 +4,9 @@ This directory contains an example compiler built using xrcf that can compile an
 
 ## Design
 
+wea is meant to create kernels (core logic) that compile directly to WebAssembly.
+Like C, it's meant to have a lot of control over the underlying assembly.
+
 ```wea
 fn plus(a: i32, b: i32) i32 {
     a + b
