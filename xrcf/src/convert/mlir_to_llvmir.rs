@@ -72,7 +72,10 @@ impl Rewrite for AddLowering {
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<dialect::llvm::AddOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::AddOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);

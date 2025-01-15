@@ -273,12 +273,12 @@ impl Rewrite for IfLowering {
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let parent = op.operation().rd().parent().expect("Expected parent");
-        let parent_region = parent.rd().parent().expect("Expected parent region");
         let op = match op.as_any().downcast_ref::<dialect::scf::IfOp>() {
             Some(op) => op,
             None => return Ok(RewriteResult::Unchanged),
         };
+        let parent = op.operation().rd().parent().expect("Expected parent");
+        let parent_region = parent.rd().parent().expect("Expected parent region");
 
         let (then, els) = add_blocks(op, parent_region.clone())?;
 
