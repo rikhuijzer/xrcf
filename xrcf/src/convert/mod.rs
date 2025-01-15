@@ -84,40 +84,48 @@ pub trait Rewrite: Send + Sync {
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult>;
 }
 
+fn apply_rewrite(
+    root: Shared<dyn Op>,
+    rewrite: &dyn Rewrite,
+    indent: i32,
+) -> Result<RewriteResult> {
+    debug!(
+        "{}Matching {} with {}",
+        spaces(indent),
+        root.clone().rd().name(),
+        rewrite.name()
+    );
+    if rewrite.is_match(&*root.rd())? {
+        debug!("{}--> Success", spaces(indent));
+        let root_rewrite = rewrite.rewrite(root.clone())?;
+        if root_rewrite.is_changed().is_some() {
+            debug!("{}----> Changed", spaces(indent));
+            return Ok(root_rewrite);
+        }
+    }
+
+    let ops = root.rd().ops();
+    for nested_op in ops.iter() {
+        let indent = indent + 1;
+        let result = apply_rewrite(nested_op.clone(), rewrite, indent)?;
+        if result.is_changed().is_some() {
+            let root_passthrough = ChangedOp::new(root.clone());
+            let root_passthrough = RewriteResult::Changed(root_passthrough);
+            return Ok(root_passthrough);
+        }
+    }
+    Ok(RewriteResult::Unchanged)
+}
+
 fn apply_rewrites_helper(
     root: Shared<dyn Op>,
     rewrites: &[&dyn Rewrite],
     indent: i32,
 ) -> Result<RewriteResult> {
-    let ops = root.rd().ops();
     for rewrite in rewrites {
-        for nested_op in ops.iter() {
-            let indent = indent + 1;
-            let rewrites = vec![*rewrite];
-            let result = apply_rewrites_helper(nested_op.clone(), &rewrites, indent)?;
-            if result.is_changed().is_some() {
-                let root_passthrough = ChangedOp::new(root.clone());
-                let root_passthrough = RewriteResult::Changed(root_passthrough);
-                return Ok(root_passthrough);
-            }
-        }
-        // Run the rewrite last to avoid changing `ops` before going through the
-        // nested ops.
-        debug!(
-            "{}Matching {} with {}",
-            spaces(indent),
-            root.clone().rd().name(),
-            rewrite.name()
-        );
-        let root_read = root.clone();
-        let root_read = root_read.rd();
-        if rewrite.is_match(&*root_read)? {
-            debug!("{}--> Success", spaces(indent));
-            let root_rewrite = rewrite.rewrite(root.clone())?;
-            if root_rewrite.is_changed().is_some() {
-                debug!("{}----> Changed", spaces(indent));
-                return Ok(root_rewrite);
-            }
+        let result = apply_rewrite(root.clone(), *rewrite, indent)?;
+        if result.is_changed().is_some() {
+            return Ok(result);
         }
     }
     Ok(RewriteResult::Unchanged)
