@@ -19,6 +19,9 @@ impl Rewrite for AddLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::AddOpLowering"
     }
+    fn parallizable(&self) -> bool {
+        true
+    }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arith::AddiOp>())
     }
@@ -37,6 +40,9 @@ struct CallLowering;
 impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::CallLowering"
+    }
+    fn parallizable(&self) -> bool {
+        true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<func::CallOp>())
@@ -59,6 +65,9 @@ impl Rewrite for ConstantOpLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ConstantOpLowering"
     }
+    fn parallizable(&self) -> bool {
+        true
+    }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<arith::ConstantOp>())
     }
@@ -77,6 +86,9 @@ struct FuncLowering;
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::FuncLowering"
+    }
+    fn parallizable(&self) -> bool {
+        true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<func::FuncOp>())
@@ -112,6 +124,9 @@ struct ReturnLowering;
 impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ReturnLowering"
+    }
+    fn parallizable(&self) -> bool {
+        true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
         Ok(op.as_any().is::<func::ReturnOp>())
