@@ -214,17 +214,17 @@ impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
         "experimental_to_mlir::PrintLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::experimental::PrintfOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        let op_clone = op.clone();
-        let set_varargs = 1 < op.rd().operation().rd().operands().vec().rd().len();
-        let op_rd = op_clone.rd();
-        let op_rd = op_rd
+        let op_rd = op.clone();
+        let op_rd = op_rd.rd();
+        let op_rd = match op_rd
             .as_any()
             .downcast_ref::<dialect::experimental::PrintfOp>()
-            .unwrap();
+        {
+            Some(op_rd) => op_rd,
+            None => return Ok(RewriteResult::Unchanged),
+        };
+        let set_varargs = 1 < op.rd().operation().rd().operands().vec().rd().len();
         let parent = op_rd.operation().rd().parent();
         let parent = parent.expect("no parent");
         let (text, len) = PrintLowering::text_constant(&parent, op_rd);

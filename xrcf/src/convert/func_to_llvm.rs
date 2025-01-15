@@ -22,11 +22,12 @@ impl Rewrite for AddLowering {
     fn parallelizable(&self) -> bool {
         true
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arith::AddiOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
+        let op = match op.as_any().downcast_ref::<arith::AddiOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let lowered = llvm::AddOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
@@ -44,12 +45,12 @@ impl Rewrite for CallLowering {
     fn parallelizable(&self) -> bool {
         true
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::CallOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<func::CallOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<func::CallOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let mut new_op = llvm::CallOp::from_operation_arc(op.operation().clone());
         new_op.set_identifier(op.identifier().unwrap());
         let new_op = Shared::new(new_op.into());
@@ -68,11 +69,12 @@ impl Rewrite for ConstantOpLowering {
     fn parallelizable(&self) -> bool {
         true
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arith::ConstantOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
+        let op = match op.as_any().downcast_ref::<arith::ConstantOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let lowered = llvm::ConstantOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());
@@ -90,12 +92,12 @@ impl Rewrite for FuncLowering {
     fn parallelizable(&self) -> bool {
         true
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::FuncOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<func::FuncOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         {
             let name = operation.rd().name();
@@ -128,12 +130,12 @@ impl Rewrite for ReturnLowering {
     fn parallelizable(&self) -> bool {
         true
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::ReturnOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<func::ReturnOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let lowered = llvm::ReturnOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(lowered.into());
         op.replace(new_op.clone());

@@ -70,12 +70,12 @@ impl Rewrite for AddLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::AddLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::AddOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<dialect::llvm::AddOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::AddOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let new_op = targ3t::llvmir::AddOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
@@ -91,15 +91,12 @@ impl Rewrite for AllocaLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::AllocaLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::AllocaOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op
-            .as_any()
-            .downcast_ref::<dialect::llvm::AllocaOp>()
-            .unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::AllocaOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::AllocaOp::from_operation_arc(operation.clone());
         operation
@@ -124,25 +121,23 @@ impl Rewrite for BranchLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::BranchLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        if op.as_any().is::<dialect::llvm::BranchOp>() {
-            // Check whether [MergeLowering] has already removed the operands.
-            Ok(op.operation().rd().operands().into_iter().all(|operand| {
-                let operand = operand.rd();
-                let value = operand.value();
-                let value = value.rd();
-                matches!(&*value, Value::BlockLabel(_) | Value::BlockPtr(_))
-            }))
-        } else {
-            Ok(false)
-        }
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op
-            .as_any()
-            .downcast_ref::<dialect::llvm::BranchOp>()
-            .unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::BranchOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
+        let valid_values = op.operation().rd().operands().into_iter().all(|operand| {
+            let operand = operand.rd();
+            let value = operand.value();
+            let value = value.rd();
+            matches!(&*value, Value::BlockLabel(_) | Value::BlockPtr(_))
+        });
+        if !valid_values {
+            // [MergeLowering] has not yet removed the operands.
+            return Ok(RewriteResult::Unchanged);
+        }
+
         let operation = op.operation();
         let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         let new_op = Shared::new(new_op.into());
@@ -157,12 +152,12 @@ impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::CallLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::CallOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<dialect::llvm::CallOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::CallOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
 
         let mut new_op = targ3t::llvmir::CallOp::from_operation_arc(operation.clone());
@@ -188,15 +183,12 @@ impl Rewrite for CondBranchLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::CondBranchLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::CondBranchOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op
-            .as_any()
-            .downcast_ref::<dialect::llvm::CondBranchOp>()
-            .unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::CondBranchOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let new_op = targ3t::llvmir::BranchOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
@@ -243,12 +235,12 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::FuncLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::FuncOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<dialect::llvm::FuncOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::FuncOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::FuncOp::from_operation_arc(operation.clone());
 
@@ -444,30 +436,32 @@ fn remove_caller_operands(block: Shared<Block>) {
     }
 }
 
+fn one_child_block_has_argument(op: &dyn Op) -> Result<bool> {
+    if !op.is_func() {
+        return Ok(false);
+    }
+    let operation = op.operation();
+    if operation.rd().region().is_none() {
+        return Ok(false);
+    }
+    for block in operation.rd().blocks().into_iter() {
+        let block = block.rd();
+        let has_argument = !block.arguments().vec().rd().is_empty();
+        if has_argument {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
 impl Rewrite for MergeLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::MergeLowering"
     }
-    /// Return true if the operation is a function where one of the children
-    /// blocks has an argument.
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        if !op.is_func() {
-            return Ok(false);
-        }
-        let operation = op.operation();
-        if operation.rd().region().is_none() {
-            return Ok(false);
-        }
-        for block in operation.rd().blocks().into_iter() {
-            let block = block.rd();
-            let has_argument = !block.arguments().vec().rd().is_empty();
-            if has_argument {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
+        if !one_child_block_has_argument(&*op.rd())? {
+            return Ok(RewriteResult::Unchanged);
+        }
         let blocks = op.rd().operation().rd().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
             let block_read = block.rd();
@@ -487,10 +481,10 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ModuleLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<ir::ModuleOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
+        if !op.rd().as_any().is::<ir::ModuleOp>() {
+            return Ok(RewriteResult::Unchanged);
+        }
         let operation = op.rd().operation().clone();
         let new_op = targ3t::llvmir::ModuleOp::from_operation_arc(operation);
         let new_op = Shared::new(new_op.into());
@@ -505,15 +499,12 @@ impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ReturnLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::ReturnOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op
-            .as_any()
-            .downcast_ref::<dialect::llvm::ReturnOp>()
-            .unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::ReturnOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let new_op = targ3t::llvmir::ReturnOp::from_operation_arc(operation.clone());
         replace_constant_operands(&new_op);
@@ -529,15 +520,12 @@ impl Rewrite for StoreLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ReturnLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<dialect::llvm::StoreOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op
-            .as_any()
-            .downcast_ref::<dialect::llvm::StoreOp>()
-            .unwrap();
+        let op = match op.as_any().downcast_ref::<dialect::llvm::StoreOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         {

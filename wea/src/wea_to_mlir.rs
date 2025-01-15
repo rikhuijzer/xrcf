@@ -41,12 +41,12 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "convert_wea_to_mlir::FuncLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<op::FuncOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<op::FuncOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<op::FuncOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation().clone();
         let mut new_op = func::FuncOp::from_operation_arc(operation);
         let identifier = format!("@{}", op.identifier.as_ref().expect("identifier not set"));
@@ -64,12 +64,12 @@ impl Rewrite for PlusLowering {
     fn name(&self) -> &'static str {
         "convert_wea_to_mlir::PlusLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<op::PlusOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<op::PlusOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<op::PlusOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let new_op = arith::AddiOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());

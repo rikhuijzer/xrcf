@@ -97,18 +97,6 @@ pub trait Rewrite: Send + Sync {
     fn parallelizable(&self) -> bool {
         false
     }
-    /// Returns true if the rewrite can be applied to the given operation.
-    ///
-    /// This method is not allowed to mutate the IR.
-    ///
-    /// Note that this implementation usually will look like
-    /// ```mlir
-    /// Ok(op.as_any().is::<MyOp>())
-    /// ```
-    /// If weird behavior is encountered, ensure that the new type has set the
-    /// correct operation name. Otherwise, an object might look like is a
-    /// different type than it really is.
-    fn is_match(&self, op: &dyn Op) -> Result<bool>;
     /// Applies the rewrite to the given operation.
     ///
     /// This method is allowed to mutate the IR.
@@ -148,13 +136,10 @@ fn apply_rewrite(
         root.clone().rd().name(),
         rewrite.name()
     );
-    if rewrite.is_match(&*root.rd())? {
-        debug!("{}--> Success", spaces(indent));
-        let root_rewrite = rewrite.rewrite(root.clone())?;
-        if root_rewrite.is_changed().is_some() {
-            debug!("{}----> Changed", spaces(indent));
-            return Ok(root_rewrite);
-        }
+    let root_rewrite = rewrite.rewrite(root.clone())?;
+    if root_rewrite.is_changed().is_some() {
+        debug!("{}----> Changed", spaces(indent));
+        return Ok(root_rewrite);
     }
 
     fn finder(result: &Result<RewriteResult>) -> bool {
