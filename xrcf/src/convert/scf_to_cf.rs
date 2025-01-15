@@ -139,7 +139,7 @@ fn add_merge_block(
     let merge = unset_block.set_parent(Some(parent_region.clone()));
     let merge_block_arguments = as_block_arguments(results, merge.clone())?;
     merge.wr().set_arguments(merge_block_arguments.clone());
-    merge.wr().set_label(BlockName::Unset);
+    merge.wr().label = BlockName::Unset;
 
     let mut operation = Operation::default();
     operation.set_parent(Some(merge.clone()));
@@ -158,7 +158,7 @@ fn add_merge_block(
 fn add_exit_block(op: &dialect::scf::IfOp, parent_region: Shared<Region>) -> Result<Shared<Block>> {
     let unset_block = parent_region.rd().add_empty_block();
     let exit = unset_block.set_parent(Some(parent_region.clone()));
-    exit.wr().set_label(BlockName::Unset);
+    exit.wr().label = BlockName::Unset;
     move_successors_to_exit_block(op, exit.clone())?;
     Ok(exit)
 }
@@ -228,12 +228,12 @@ fn add_blocks(
 
     let then_region = op.then().expect("Expected `then` region");
     let then = then_region.rd().blocks().into_iter().next().unwrap();
-    then.wr().set_label(BlockName::Unset);
+    then.wr().label = BlockName::Unset;
     exit.rd().inline_region_before(then_region.clone());
 
     let else_region = op.els().expect("Expected `else` region");
     let els = else_region.rd().blocks().into_iter().next().unwrap();
-    els.wr().set_label(BlockName::Unset);
+    els.wr().label = BlockName::Unset;
     exit.rd().inline_region_before(else_region.clone());
 
     let after = if has_results {

@@ -212,7 +212,7 @@ enum Dialects {
 ///
 /// Assumes it is only called during the parsing of a block.
 fn replace_block_labels(block: Shared<Block>) {
-    let label = match &*block.rd().label().rd() {
+    let label = match &block.rd().label {
         BlockName::Name(name) => name.clone(),
         BlockName::Unnamed => return,
         BlockName::Unset => return,
@@ -316,7 +316,6 @@ impl<T: ParserDispatch> Parser<T> {
 
         let ops = vec![];
         let ops = Shared::new(ops.into());
-        let label = Shared::new(label.into());
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Shared::new(block.into());
         replace_block_labels(block.clone());
@@ -423,7 +422,7 @@ impl<T: ParserDispatch> Parser<T> {
             }
             let ops = Shared::new(ops.into());
             let arguments = Values::default();
-            let label = Shared::new(BlockName::Unnamed.into());
+            let label = BlockName::Unnamed;
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Shared::new(block.into());
             {

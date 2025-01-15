@@ -27,7 +27,7 @@ pub struct Block {
     ///
     /// The label is only used during parsing to see which operands point to
     /// this block. During printing, a new name is generated.
-    label: Shared<BlockName>,
+    pub label: BlockName,
     arguments: Values,
     ops: Shared<Vec<Shared<dyn Op>>>,
     /// This field does not have to be an `Arc<RwLock<..>>` because
@@ -51,7 +51,7 @@ impl PartialEq for Block {
 
 impl Block {
     pub fn new(
-        label: Shared<BlockName>,
+        label: BlockName,
         arguments: Values,
         ops: Shared<Vec<Shared<dyn Op>>>,
         parent: Option<Shared<Region>>,
@@ -78,12 +78,6 @@ impl Block {
     pub fn ops_mut(&mut self) -> &mut Shared<Vec<Shared<dyn Op>>> {
         &mut self.ops
     }
-    pub fn label(&self) -> Shared<BlockName> {
-        self.label.clone()
-    }
-    pub fn set_label(&self, label: BlockName) {
-        *self.label.wr() = label;
-    }
     pub fn parent(&self) -> Option<Shared<Region>> {
         self.parent.clone()
     }
@@ -98,7 +92,7 @@ impl Block {
     /// ```
     /// this method will return the operation `llvm.br`.
     pub fn callers(&self) -> Option<Vec<Shared<dyn Op>>> {
-        let label = match &*self.label().rd() {
+        let label = match &self.label {
             BlockName::Unnamed => return None,
             // We can find callers via `Value::BlockLabel`.
             BlockName::Name(label) => Some(label.clone()),
@@ -347,7 +341,7 @@ impl Block {
         self.arguments = arguments;
     }
     pub fn display(&self, f: &mut Formatter<'_>, indent: i32) -> std::fmt::Result {
-        if let BlockName::Name(name) = &*self.label.rd() {
+        if let BlockName::Name(name) = &self.label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             write!(f, "{}{name}", crate::ir::spaces(label_indent))?;
             let arguments = self.arguments();
@@ -367,7 +361,7 @@ impl Block {
 
 impl Default for Block {
     fn default() -> Self {
-        let label = Shared::new(BlockName::Unnamed.into());
+        let label = BlockName::Unnamed;
         let arguments = Values::default();
         let ops = Shared::new(vec![].into());
         let parent = None;

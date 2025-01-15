@@ -47,7 +47,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::f
             panic!("BlockLabel for {label} should have been BlockPtr");
         }
         Value::BlockPtr(ptr) => {
-            let label = match &*ptr.block().rd().label().rd() {
+            let label = match &ptr.block().rd().label {
                 BlockName::Name(name) => name.to_string(),
                 BlockName::Unnamed => panic!("Expected a named block"),
                 BlockName::Unset => panic!("Expected a named block"),
@@ -458,10 +458,8 @@ impl Op for PhiOp {
             } else {
                 value.to_string()
             };
-            let block = block.rd();
-            let label = block.label();
-            let label = label.rd();
-            let mut label = match &*label {
+            let block = block.wr();
+            let mut label = match &block.label {
                 BlockName::Name(name) => name.to_string(),
                 BlockName::Unnamed => panic!("Expected a named block"),
                 BlockName::Unset => panic!("Expected a named block"),

@@ -80,23 +80,19 @@ fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
 fn set_fresh_block_labels(prefix: &str, blocks: &[Shared<Block>]) {
     let mut label_index: usize = 1;
     for block in blocks.iter() {
-        let block = block.rd();
-        let label = block.label();
-        let label_read = label.rd();
-        match &*label_read {
+        let mut block = block.wr();
+        match &block.label {
             BlockName::Name(_name) => {
-                drop(label_read);
                 let new = format!("{prefix}{label_index}");
                 let new = BlockName::Name(new);
-                block.set_label(new);
+                block.label = new;
                 label_index += 1;
             }
             BlockName::Unnamed => {}
             BlockName::Unset => {
-                drop(label_read);
                 let new = format!("{prefix}{label_index}");
                 let new = BlockName::Name(new);
-                block.set_label(new);
+                block.label = new;
                 label_index += 1;
             }
         }

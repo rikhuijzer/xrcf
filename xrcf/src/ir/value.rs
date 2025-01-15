@@ -366,7 +366,7 @@ impl Value {
                 BlockArgumentName::Unset => None,
             },
             Value::BlockLabel(label) => Some(label.name.clone()),
-            Value::BlockPtr(ptr) => match &*ptr.block().rd().label().rd() {
+            Value::BlockPtr(ptr) => match &ptr.block().rd().label {
                 BlockName::Name(name) => Some(name.clone()),
                 BlockName::Unnamed => None,
                 BlockName::Unset => None,
