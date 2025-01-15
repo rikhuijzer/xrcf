@@ -11,6 +11,10 @@ repository.workspace = true
 homepage.workspace = true
 readme = "../README.md"
 
+[[bench]]
+name = "func_to_llvm"
+harness = false
+
 [dependencies]
 anyhow = "1.0.86"
 clap = { version = "4.5", features = ["derive"] }
@@ -20,6 +24,7 @@ parking_lot = { version = "0.12", features = ["deadlock_detection"] }
 wasmtime = { version = "28.0.0", features = ["cranelift"] }
 
 [dev-dependencies]
+criterion = { version = "0.5" }
 indoc = "2"
 xrcf = { path = ".", features = ["test-utils"] }
 

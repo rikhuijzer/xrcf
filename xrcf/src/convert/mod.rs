@@ -122,7 +122,7 @@ fn apply_rewrites_helper(
 }
 
 pub fn apply_rewrites(root: Shared<dyn Op>, rewrites: &[&dyn Rewrite]) -> Result<RewriteResult> {
-    let max_iterations = 1024;
+    let max_iterations = 10240;
     let mut root = root;
     let mut has_changed = false;
     for _ in 0..max_iterations {

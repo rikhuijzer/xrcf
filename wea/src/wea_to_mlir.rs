@@ -70,8 +70,7 @@ impl Rewrite for PlusLowering {
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = op.as_any().downcast_ref::<op::PlusOp>().unwrap();
-        let operation = op.operation().clone();
-        let new_op = arith::AddiOp::from_operation_arc(operation);
+        let new_op = arith::AddiOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))

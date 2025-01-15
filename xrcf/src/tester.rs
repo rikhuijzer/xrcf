@@ -125,8 +125,11 @@ impl<P: ParserDispatch, T: TransformDispatch> Tester<P, T> {
     pub fn transform(arguments: Vec<&str>, src: &str) -> (Shared<dyn Op>, String) {
         let src = src.trim();
         let module = Parser::<P>::parse(src).unwrap();
-        let msg = format!("Before (transform {arguments:?})");
-        Self::print_heading(&msg, &src);
+        let should_print = !arguments.contains(&"--tester-no-print");
+        if should_print {
+            let msg = format!("Before (transform {arguments:?})");
+            Self::print_heading(&msg, &src);
+        }
 
         for arg in arguments.clone() {
             if arg.starts_with("convert-") {
@@ -143,8 +146,10 @@ impl<P: ParserDispatch, T: TransformDispatch> Tester<P, T> {
             }
         };
         let actual = format!("{}", new_root_op.rd());
-        let msg = format!("After (transform {arguments:?})");
-        Self::print_heading(&msg, &actual);
+        if should_print {
+            let msg = format!("After (transform {arguments:?})");
+            Self::print_heading(&msg, &actual);
+        }
         (new_root_op, actual)
     }
     fn verify_core(op: Shared<dyn Op>) {
