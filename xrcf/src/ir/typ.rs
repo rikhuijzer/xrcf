@@ -9,7 +9,8 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::str::FromStr;
-pub trait Type {
+
+pub trait Type: Send + Sync {
     /// Display the type.
     ///
     /// This has to be implemented by each type so that calls to `Display::fmt`

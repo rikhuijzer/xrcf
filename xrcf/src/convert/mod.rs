@@ -10,6 +10,7 @@ use crate::ir::Op;
 use crate::shared::Shared;
 use crate::shared::SharedExt;
 use anyhow::Result;
+use rayon::prelude::*;
 use std::sync::Arc;
 use tracing::debug;
 
@@ -66,6 +67,27 @@ impl RewriteResult {
 pub trait Rewrite: Send + Sync {
     /// The name of the rewrite; is used for logging.
     fn name(&self) -> &'static str;
+    /// Whether the rewrite can be applied in parallel.
+    ///
+    /// This should only return true if the rewrite can guarantee than any
+    /// nested rewrites can also be applied in parallel. For example,
+    ///
+    /// ```mlir
+    /// func.func @f(%arg0: i32) -> i32 {
+    ///   %0 = arith.addi %arg0, %arg0 : i32
+    ///   return %0 : i32
+    /// }
+    /// ```
+    ///
+    /// The rewrite for `func.func` should only be set to true if rewrites on
+    /// the nested ops such as `arith.addi` can also be applied in parallel.
+    ///
+    /// One way in which this for example breaks is when the rewrite for
+    /// `arith.addi` would add a global constant to the IR and when this could
+    /// clash with other rewrites.
+    fn parallizable(&self) -> bool {
+        false
+    }
     /// Returns true if the rewrite can be applied to the given operation.
     ///
     /// This method is not allowed to mutate the IR.
@@ -82,6 +104,28 @@ pub trait Rewrite: Send + Sync {
     ///
     /// This method is allowed to mutate the IR.
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult>;
+}
+
+fn apply_rewrite_helper(
+    root: Shared<dyn Op>,
+    rewrite: &dyn Rewrite,
+    nested_op: &Shared<dyn Op>,
+    indent: i32,
+) -> Result<RewriteResult> {
+    let indent = indent + 1;
+    let result = apply_rewrite(nested_op.clone(), rewrite, indent);
+    match result {
+        Ok(result) => {
+            if result.is_changed().is_some() {
+                let root_passthrough = ChangedOp::new(root.clone());
+                return Ok(RewriteResult::Changed(root_passthrough));
+            }
+        }
+        Err(e) => {
+            return Err(e);
+        }
+    }
+    Ok(RewriteResult::Unchanged)
 }
 
 fn apply_rewrite(
@@ -104,30 +148,23 @@ fn apply_rewrite(
         }
     }
 
-    let ops = root.rd().ops();
-    let first_changed = ops
-        .iter()
-        .map(|nested_op| {
-            let indent = indent + 1;
-            let result = apply_rewrite(nested_op.clone(), rewrite, indent);
-            match result {
-                Ok(result) => {
-                    if result.is_changed().is_some() {
-                        let root_passthrough = ChangedOp::new(root.clone());
-                        return Ok(RewriteResult::Changed(root_passthrough));
-                    }
-                }
-                Err(e) => {
-                    return Err(e);
-                }
-            }
-            Ok(RewriteResult::Unchanged)
-        })
-        .find(|result| match result {
+    fn finder(result: &Result<RewriteResult>) -> bool {
+        match result {
             Ok(RewriteResult::Changed(_)) => true,
             Ok(RewriteResult::Unchanged) => false,
             Err(_) => true,
-        });
+        }
+    }
+    let ops = root.rd().ops();
+    let first_changed = if rewrite.parallizable() {
+        ops.par_iter()
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_op, indent))
+            .find_first(finder)
+    } else {
+        ops.iter()
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_op, indent))
+            .find(finder)
+    };
     match first_changed {
         Some(result) => match result {
             Ok(RewriteResult::Changed(op)) => Ok(RewriteResult::Changed(op)),
