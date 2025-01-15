@@ -105,16 +105,37 @@ fn apply_rewrite(
     }
 
     let ops = root.rd().ops();
-    for nested_op in ops.iter() {
-        let indent = indent + 1;
-        let result = apply_rewrite(nested_op.clone(), rewrite, indent)?;
-        if result.is_changed().is_some() {
-            let root_passthrough = ChangedOp::new(root.clone());
-            let root_passthrough = RewriteResult::Changed(root_passthrough);
-            return Ok(root_passthrough);
-        }
+    let first_changed = ops
+        .iter()
+        .map(|nested_op| {
+            let indent = indent + 1;
+            let result = apply_rewrite(nested_op.clone(), rewrite, indent);
+            match result {
+                Ok(result) => {
+                    if result.is_changed().is_some() {
+                        let root_passthrough = ChangedOp::new(root.clone());
+                        return Ok(RewriteResult::Changed(root_passthrough));
+                    }
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+            Ok(RewriteResult::Unchanged)
+        })
+        .find(|result| match result {
+            Ok(RewriteResult::Changed(_)) => true,
+            Ok(RewriteResult::Unchanged) => false,
+            Err(_) => true,
+        });
+    match first_changed {
+        Some(result) => match result {
+            Ok(RewriteResult::Changed(op)) => Ok(RewriteResult::Changed(op)),
+            Ok(RewriteResult::Unchanged) => Ok(RewriteResult::Unchanged),
+            Err(e) => Err(e),
+        },
+        None => Ok(RewriteResult::Unchanged),
     }
-    Ok(RewriteResult::Unchanged)
 }
 
 fn apply_rewrites_helper(
