@@ -85,7 +85,16 @@ pub trait Rewrite: Send + Sync {
     /// One way in which this for example breaks is when the rewrite for
     /// `arith.addi` would add a global constant to the IR and when this could
     /// clash with other rewrites.
-    fn parallizable(&self) -> bool {
+    ///
+    /// A drawback of the current approach is that a rewrite needs only one
+    /// sub-rewrite that is not parallelizable to make the entire rewrite not
+    /// parallelizable. A solution to this could be to make a kind of worklist
+    /// of operations that need to be rewritten and then verify that the
+    /// worklist only contains parallelizable rewrites. The difficulty here is
+    /// that the current implementation may bail out early if a rewrite is
+    /// applied. So, I expect that creating the worklist is more work than the
+    /// benefit of the parallelization, but it should be benchmarked.
+    fn parallelizable(&self) -> bool {
         false
     }
     /// Returns true if the rewrite can be applied to the given operation.
@@ -156,7 +165,7 @@ fn apply_rewrite(
         }
     }
     let ops = root.rd().ops();
-    let first_changed = if rewrite.parallizable() {
+    let first_changed = if rewrite.parallelizable() {
         ops.par_iter()
             .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_op, indent))
             .find_first(finder)

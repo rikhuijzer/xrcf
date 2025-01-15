@@ -19,7 +19,7 @@ impl Rewrite for AddLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::AddOpLowering"
     }
-    fn parallizable(&self) -> bool {
+    fn parallelizable(&self) -> bool {
         true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
@@ -41,7 +41,7 @@ impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::CallLowering"
     }
-    fn parallizable(&self) -> bool {
+    fn parallelizable(&self) -> bool {
         true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
@@ -65,7 +65,7 @@ impl Rewrite for ConstantOpLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ConstantOpLowering"
     }
-    fn parallizable(&self) -> bool {
+    fn parallelizable(&self) -> bool {
         true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
@@ -87,7 +87,7 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::FuncLowering"
     }
-    fn parallizable(&self) -> bool {
+    fn parallelizable(&self) -> bool {
         true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
@@ -125,7 +125,7 @@ impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::ReturnLowering"
     }
-    fn parallizable(&self) -> bool {
+    fn parallelizable(&self) -> bool {
         true
     }
     fn is_match(&self, op: &dyn Op) -> Result<bool> {
