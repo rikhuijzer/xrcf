@@ -20,6 +20,9 @@ impl Rewrite for AddiLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::AddiLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<arith::AddiOp>() {
@@ -39,6 +42,9 @@ struct FuncLowering;
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::FuncLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -66,6 +72,9 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::ModuleLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<ir::ModuleOp>() {
@@ -85,6 +94,9 @@ struct ReturnLowering;
 impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::ReturnLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();

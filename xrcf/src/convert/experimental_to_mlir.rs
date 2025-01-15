@@ -214,6 +214,9 @@ impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
         "experimental_to_mlir::PrintLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op_rd = op.clone();
         let op_rd = op_rd.rd();

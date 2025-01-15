@@ -94,9 +94,7 @@ pub trait Rewrite: Send + Sync {
     /// that the current implementation may bail out early if a rewrite is
     /// applied. So, I expect that creating the worklist is more work than the
     /// benefit of the parallelization, but it should be benchmarked.
-    fn parallelizable(&self) -> bool {
-        false
-    }
+    fn parallelizable(&self) -> bool;
     /// Applies the rewrite to the given operation.
     ///
     /// This method is allowed to mutate the IR.

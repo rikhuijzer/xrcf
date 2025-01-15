@@ -15,6 +15,9 @@ impl Rewrite for CanonicalizeOp {
     fn name(&self) -> &'static str {
         "canonicalize::CanonicalizeOp"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let result = op.rd().canonicalize();
         Ok(result)
@@ -26,6 +29,9 @@ pub struct DeadCodeElimination;
 impl Rewrite for DeadCodeElimination {
     fn name(&self) -> &'static str {
         "canonicalize::DeadCodeElimination"
+    }
+    fn parallelizable(&self) -> bool {
+        false
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let readonly = op.clone();

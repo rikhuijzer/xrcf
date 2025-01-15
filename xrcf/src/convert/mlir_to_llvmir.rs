@@ -70,6 +70,9 @@ impl Rewrite for AddLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::AddLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<dialect::llvm::AddOp>() {
@@ -90,6 +93,9 @@ struct AllocaLowering;
 impl Rewrite for AllocaLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::AllocaLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -120,6 +126,9 @@ struct BranchLowering;
 impl Rewrite for BranchLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::BranchLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -152,6 +161,9 @@ impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::CallLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<dialect::llvm::CallOp>() {
@@ -182,6 +194,9 @@ struct CondBranchLowering;
 impl Rewrite for CondBranchLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::CondBranchLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -234,6 +249,9 @@ fn lower_block_argument_types(operation: &mut Operation) {
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::FuncLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        false
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -458,6 +476,9 @@ impl Rewrite for MergeLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::MergeLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         if !one_child_block_has_argument(&*op.rd())? {
             return Ok(RewriteResult::Unchanged);
@@ -481,6 +502,9 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ModuleLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         if !op.rd().as_any().is::<ir::ModuleOp>() {
             return Ok(RewriteResult::Unchanged);
@@ -498,6 +522,9 @@ struct ReturnLowering;
 impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ReturnLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -519,6 +546,9 @@ struct StoreLowering;
 impl Rewrite for StoreLowering {
     fn name(&self) -> &'static str {
         "mlir_to_llvmir::ReturnLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();

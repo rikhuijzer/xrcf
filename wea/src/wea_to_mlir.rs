@@ -41,6 +41,9 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "convert_wea_to_mlir::FuncLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<op::FuncOp>() {
@@ -63,6 +66,9 @@ struct PlusLowering;
 impl Rewrite for PlusLowering {
     fn name(&self) -> &'static str {
         "convert_wea_to_mlir::PlusLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();

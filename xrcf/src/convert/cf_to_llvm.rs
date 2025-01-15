@@ -16,6 +16,9 @@ impl Rewrite for BranchLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::BranchLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<cf::BranchOp>() {
@@ -34,6 +37,9 @@ struct CondBranchLowering;
 impl Rewrite for CondBranchLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::CondBranchLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();

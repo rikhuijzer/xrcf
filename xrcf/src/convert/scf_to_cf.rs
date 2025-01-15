@@ -271,6 +271,9 @@ impl Rewrite for IfLowering {
     fn name(&self) -> &'static str {
         "scf_to_cf::IfLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<dialect::scf::IfOp>() {

@@ -34,6 +34,9 @@ impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::CallLowering"
     }
+    fn parallelizable(&self) -> bool {
+        true
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<arnold::CallOp>() {
@@ -68,6 +71,9 @@ impl Rewrite for DeclareIntLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::DeclareIntLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
         let op = match op.as_any().downcast_ref::<arnold::DeclareIntOp>() {
@@ -100,6 +106,9 @@ struct FuncLowering;
 impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::FuncLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -140,6 +149,9 @@ struct IfLowering;
 impl Rewrite for IfLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::IfLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
@@ -233,6 +245,9 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::ModuleLowering"
     }
+    fn parallelizable(&self) -> bool {
+        false
+    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         if !op.rd().as_any().is::<xrcf::ir::ModuleOp>() {
             return Ok(RewriteResult::Unchanged);
@@ -246,6 +261,9 @@ struct PrintLowering;
 impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::PrintLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        false
     }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
