@@ -34,7 +34,7 @@ pub struct Prefixes {
 ///
 /// See [Operation] for more information about the relationship between
 /// [Operation] and [Op].
-pub trait Op {
+pub trait Op: Send + Sync {
     fn operation_name() -> OperationName
     where
         Self: Sized;

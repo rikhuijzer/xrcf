@@ -21,7 +21,7 @@ use std::sync::Arc;
 /// Attributes are known-constant values of operations (a variable is not allowed).
 /// Attributes belong to operations and can be used to, for example, specify
 /// a SSA value.
-pub trait Attribute {
+pub trait Attribute: Send + Sync {
     fn from_str(value: &str) -> Self
     where
         Self: Sized;
