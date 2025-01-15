@@ -63,7 +63,7 @@ impl RewriteResult {
     }
 }
 
-pub trait Rewrite {
+pub trait Rewrite: Send + Sync {
     /// The name of the rewrite; is used for logging.
     fn name(&self) -> &'static str;
     /// Returns true if the rewrite can be applied to the given operation.
@@ -91,16 +91,18 @@ fn apply_rewrites_helper(
 ) -> Result<RewriteResult> {
     let ops = root.rd().ops();
     for rewrite in rewrites {
-        // Determine ops here because `rewrite` may delete an op.
         for nested_op in ops.iter() {
             let indent = indent + 1;
-            let result = apply_rewrites_helper(nested_op.clone(), rewrites, indent)?;
+            let rewrites = vec![*rewrite];
+            let result = apply_rewrites_helper(nested_op.clone(), &rewrites, indent)?;
             if result.is_changed().is_some() {
                 let root_passthrough = ChangedOp::new(root.clone());
                 let root_passthrough = RewriteResult::Changed(root_passthrough);
                 return Ok(root_passthrough);
             }
         }
+        // Run the rewrite last to avoid changing `ops` before going through the
+        // nested ops.
         debug!(
             "{}Matching {} with {}",
             spaces(indent),

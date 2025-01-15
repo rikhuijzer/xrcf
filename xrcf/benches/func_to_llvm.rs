@@ -1,10 +1,10 @@
 extern crate xrcf;
 
-use indoc::indoc;
-use std::panic::Location;
 use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
+use indoc::indoc;
+use std::panic::Location;
 use xrcf::tester::DefaultTester;
 
 fn flags() -> Vec<&'static str> {
