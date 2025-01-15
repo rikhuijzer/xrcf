@@ -16,12 +16,12 @@ impl Rewrite for BranchLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::BranchLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<cf::BranchOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<cf::BranchOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<cf::BranchOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let new_op = llvm::BranchOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());
@@ -35,12 +35,12 @@ impl Rewrite for CondBranchLowering {
     fn name(&self) -> &'static str {
         "func_to_llvm::CondBranchLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<cf::CondBranchOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<cf::CondBranchOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<cf::CondBranchOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let new_op = llvm::CondBranchOp::from_operation_arc(op.operation().clone());
         let new_op = Shared::new(new_op.into());
         op.replace(new_op.clone());

@@ -20,12 +20,12 @@ impl Rewrite for AddiLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::AddiLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arith::AddiOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arith::AddiOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arith::AddiOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation().clone();
         let new_op = wat::AddOp::from_operation_arc(operation);
         let new_op = Shared::new(new_op.into());
@@ -40,12 +40,12 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::FuncLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::FuncOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<func::FuncOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<func::FuncOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation().clone();
         let mut new_op = wat::FuncOp::from_operation_arc(operation);
         if op.sym_visibility().is_none() {
@@ -66,14 +66,16 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::ModuleLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<ir::ModuleOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
-        let operation = op.rd().operation().clone();
+        let op = op.rd();
+        let op = match op.as_any().downcast_ref::<ir::ModuleOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
+        let operation = op.operation().clone();
         let new_op = wat::ModuleOp::from_operation_arc(operation);
         let new_op = Shared::new(new_op.into());
-        op.rd().replace(new_op.clone());
+        op.replace(new_op.clone());
         Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
     }
 }
@@ -84,12 +86,12 @@ impl Rewrite for ReturnLowering {
     fn name(&self) -> &'static str {
         "convert_mlir_to_wat::ReturnLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<func::ReturnOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<func::ReturnOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<func::ReturnOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation().clone();
         let new_op = wat::ReturnOp::from_operation_arc(operation);
         let new_op = Shared::new(new_op.into());
