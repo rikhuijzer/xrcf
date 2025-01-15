@@ -34,12 +34,12 @@ impl Rewrite for CallLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::CallLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arnold::CallOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arnold::CallOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arnold::CallOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let identifier = op.identifier().unwrap();
         let operation = op.operation();
         let mut new_op = func::CallOp::from_operation_arc(operation.clone());
@@ -68,12 +68,12 @@ impl Rewrite for DeclareIntLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::DeclareIntLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arnold::DeclareIntOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arnold::DeclareIntOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arnold::DeclareIntOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         op.operation().rd().rename_variables(&RENAMER)?;
 
         let successors = op.operation().rd().successors();
@@ -101,12 +101,12 @@ impl Rewrite for FuncLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::FuncLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arnold::BeginMainOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arnold::BeginMainOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arnold::BeginMainOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let identifier = "@main";
         let operation = op.operation();
         let mut new_op = func::FuncOp::from_operation_arc(operation.clone());
@@ -141,12 +141,12 @@ impl Rewrite for IfLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::IfLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arnold::IfOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arnold::IfOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arnold::IfOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let operation = op.operation();
         let mut new_op = scf::IfOp::from_operation_arc(operation.clone());
         new_op.set_then(op.then().clone());
@@ -233,10 +233,10 @@ impl Rewrite for ModuleLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::ModuleLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<xrcf::ir::ModuleOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
+        if !op.rd().as_any().is::<xrcf::ir::ModuleOp>() {
+            return Ok(RewriteResult::Unchanged);
+        }
         Self::ensure_main_returns_zero(op.clone())
     }
 }
@@ -247,12 +247,12 @@ impl Rewrite for PrintLowering {
     fn name(&self) -> &'static str {
         "example_to_mlir::PrintLowering"
     }
-    fn is_match(&self, op: &dyn Op) -> Result<bool> {
-        Ok(op.as_any().is::<arnold::PrintOp>())
-    }
     fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
         let op = op.rd();
-        let op = op.as_any().downcast_ref::<arnold::PrintOp>().unwrap();
+        let op = match op.as_any().downcast_ref::<arnold::PrintOp>() {
+            Some(op) => op,
+            None => return Ok(RewriteResult::Unchanged),
+        };
         let mut operation = Operation::default();
         operation.set_name(experimental::PrintfOp::operation_name());
         let operation = Shared::new(operation.into());
