@@ -109,6 +109,9 @@ pub trait Op: Send + Sync {
     fn is_const(&self) -> bool {
         false
     }
+    /// Whether this op has no side-effects.
+    ///
+    /// Is used by dead code analysis to determine if an op can be removed.
     fn is_pure(&self) -> bool {
         false
     }

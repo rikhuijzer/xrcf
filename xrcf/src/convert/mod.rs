@@ -214,3 +214,21 @@ pub trait Pass {
     const NAME: &'static str;
     fn convert(op: Shared<dyn Op>) -> Result<RewriteResult>;
 }
+
+/// Rewrite an operation of type `A` to an operation of type `B`.
+///
+/// Assumes that the `Operation` from the input can be re-used for the output.
+pub fn simple_op_rewrite<A: Op + 'static, B: Op + 'static>(
+    op: Shared<dyn Op>,
+) -> Result<RewriteResult> {
+    let op = op.rd();
+    let op = match op.as_any().downcast_ref::<A>() {
+        Some(op) => op,
+        None => return Ok(RewriteResult::Unchanged),
+    };
+    let operation = op.operation().clone();
+    let new_op = B::from_operation_arc(operation);
+    let new_op = Shared::new(new_op.into());
+    op.replace(new_op.clone());
+    Ok(RewriteResult::Changed(ChangedOp::new(new_op)))
+}

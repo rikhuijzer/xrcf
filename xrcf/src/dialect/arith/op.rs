@@ -28,93 +28,6 @@ use std::sync::Arc;
 /// dialects may use different token kinds for variables.
 const TOKEN_KIND: TokenKind = TokenKind::PercentIdentifier;
 
-pub struct ConstantOp {
-    operation: Shared<Operation>,
-}
-
-impl ConstantOp {
-    pub fn value(&self) -> Arc<dyn Attribute> {
-        let attributes = self.operation.rd().attributes();
-        let value = attributes.get("value");
-        let value = value.expect("no value for ConstantOp");
-        value.clone()
-    }
-    pub fn set_value(&self, value: Arc<dyn Attribute>) {
-        let attributes = self.operation.rd().attributes();
-        attributes.insert("value", value);
-    }
-}
-
-impl Op for ConstantOp {
-    fn operation_name() -> OperationName {
-        OperationName::new("arith.constant".to_string())
-    }
-    fn new(operation: Shared<Operation>) -> Self {
-        ConstantOp { operation }
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn is_const(&self) -> bool {
-        true
-    }
-    fn is_pure(&self) -> bool {
-        true
-    }
-    fn operation(&self) -> &Shared<Operation> {
-        &self.operation
-    }
-    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
-        write!(f, "{} = ", self.operation.rd().results())?;
-        write!(f, "{}", self.operation.rd().name())?;
-        let value = self.value();
-        write!(f, " {value}")?;
-        Ok(())
-    }
-}
-
-impl Parse for ConstantOp {
-    fn op<T: ParserDispatch>(
-        parser: &mut Parser<T>,
-        parent: Option<Shared<Block>>,
-    ) -> Result<Shared<dyn Op>> {
-        let mut operation = Operation::default();
-        operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
-        parser.expect(TokenKind::Equal)?;
-        parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
-
-        let value = if parser.is_boolean() {
-            let typ = IntegerType::new(1);
-            let typ = Shared::new(typ.into());
-            operation.set_result_type(0, typ)?;
-            parser.parse_boolean()?
-        } else {
-            let integer = parser.parse_integer()?;
-            let typ = integer
-                .as_any()
-                .downcast_ref::<IntegerAttr>()
-                .unwrap()
-                .typ();
-            operation.set_result_type(0, typ)?;
-            Arc::new(integer)
-        };
-
-        let operation = Shared::new(operation.into());
-        let op = ConstantOp { operation };
-        op.set_value(value);
-        let op = Shared::new(op.into());
-        results.set_defining_op(op.clone());
-        Ok(op)
-    }
-}
-
-impl Display for ConstantOp {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.display(f, 0)
-    }
-}
-
 pub struct AddiOp {
     operation: Shared<Operation>,
 }
@@ -216,18 +129,21 @@ impl Op for AddiOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    pub fn parse_add<O: Op + 'static>(
+    /// Parse a simple operation such as `arith.addi`.
+    ///
+    /// Parses an op that has one result and one or more operands.
+    pub fn parse_simple_op<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<O>> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
+        let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
         operation.set_operands(parser.parse_op_operands(parent.unwrap(), TOKEN_KIND)?);
-        let _colon = parser.expect(TokenKind::Colon)?;
+        parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);
         let result_type = Shared::new(result_type.into());
@@ -235,7 +151,7 @@ impl<T: ParserDispatch> Parser<T> {
 
         let op = O::from_operation(operation);
         let op = Shared::new(op.into());
-        results.set_defining_op(op.clone());
+        result.set_defining_op(Some(op.clone()));
         Ok(op)
     }
 }
@@ -245,7 +161,155 @@ impl Parse for AddiOp {
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
-        let op = Parser::<T>::parse_add::<AddiOp>(parser, parent)?;
+        Ok(Parser::<T>::parse_simple_op::<AddiOp>(parser, parent)?)
+    }
+}
+
+pub struct ConstantOp {
+    operation: Shared<Operation>,
+}
+
+impl ConstantOp {
+    pub fn value(&self) -> Arc<dyn Attribute> {
+        let attributes = self.operation.rd().attributes();
+        let value = attributes.get("value");
+        let value = value.expect("no value for ConstantOp");
+        value.clone()
+    }
+    pub fn set_value(&self, value: Arc<dyn Attribute>) {
+        let attributes = self.operation.rd().attributes();
+        attributes.insert("value", value);
+    }
+}
+
+impl Op for ConstantOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.constant".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        ConstantOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_const(&self) -> bool {
+        true
+    }
+    fn is_pure(&self) -> bool {
+        true
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        write!(f, "{} = ", self.operation.rd().results())?;
+        write!(f, "{}", self.operation.rd().name())?;
+        let value = self.value();
+        write!(f, " {value}")?;
+        Ok(())
+    }
+}
+
+impl Parse for ConstantOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
+        let mut operation = Operation::default();
+        operation.set_parent(parent.clone());
+        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
+        parser.expect(TokenKind::Equal)?;
+        parser.parse_operation_name_into::<ConstantOp>(&mut operation)?;
+
+        let value = if parser.is_boolean() {
+            let typ = IntegerType::new(1);
+            let typ = Shared::new(typ.into());
+            operation.set_result_type(0, typ)?;
+            parser.parse_boolean()?
+        } else {
+            let integer = parser.parse_integer()?;
+            let typ = integer
+                .as_any()
+                .downcast_ref::<IntegerAttr>()
+                .unwrap()
+                .typ();
+            operation.set_result_type(0, typ)?;
+            Arc::new(integer)
+        };
+
+        let operation = Shared::new(operation.into());
+        let op = ConstantOp { operation };
+        op.set_value(value);
+        let op = Shared::new(op.into());
+        results.set_defining_op(op.clone());
         Ok(op)
+    }
+}
+
+impl Display for ConstantOp {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.display(f, 0)
+    }
+}
+
+pub struct DivsiOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for DivsiOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.divsi".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        DivsiOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_pure(&self) -> bool {
+        true
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+}
+
+impl Parse for DivsiOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
+        Ok(Parser::<T>::parse_simple_op::<DivsiOp>(parser, parent)?)
+    }
+}
+
+pub struct SubiOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for SubiOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.subi".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        SubiOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_pure(&self) -> bool {
+        true
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+}
+
+impl Parse for SubiOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
+        Ok(Parser::<T>::parse_simple_op::<SubiOp>(parser, parent)?)
     }
 }

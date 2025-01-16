@@ -118,6 +118,8 @@ pub fn default_dispatch<T: ParserDispatch>(
     match name.lexeme.clone().as_str() {
         "arith.addi" => <arith::AddiOp as Parse>::op(parser, parent),
         "arith.constant" => <arith::ConstantOp as Parse>::op(parser, parent),
+        "arith.divsi" => <arith::DivsiOp as Parse>::op(parser, parent),
+        "arith.subi" => <arith::SubiOp as Parse>::op(parser, parent),
         "cf.br" => <cf::BranchOp as Parse>::op(parser, parent),
         "cf.cond_br" => <cf::CondBranchOp as Parse>::op(parser, parent),
         "experimental.printf" => <experimental::PrintfOp as Parse>::op(parser, parent),
