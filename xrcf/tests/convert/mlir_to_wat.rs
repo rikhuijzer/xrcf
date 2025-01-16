@@ -44,3 +44,29 @@ fn test_plus() {
     assert!(module.rd().as_any().is::<ModuleOp>());
     DefaultTester::check_lines_exact(&actual, expected, Location::caller());
 }
+
+#[test]
+fn test_arith() {
+    DefaultTester::init_tracing();
+    let src = indoc! {r#"
+    module {
+        func.func @i32_arith(%arg0: i32, %arg1: i32) -> i32 {
+            %0 = arith.subi %arg0, %arg1 : i32
+            return %0 : i32
+        }
+    }
+    "#};
+
+    let expected = indoc! {r#"
+    (module
+        (func (export "i32_arith") (param $arg0 i32) (param $arg1 i32) (result i32)
+            (i32.sub (local.get $arg0) (local.get $arg1))
+            return
+        )
+    )
+    "#};
+
+    let (module, actual) = DefaultTester::transform(flags(), src);
+    DefaultTester::verify(module.clone());
+    DefaultTester::check_lines_exact(&actual, expected, Location::caller());
+}
