@@ -7,6 +7,7 @@ use crate::Dialect;
 
 pub use op::AddiOp;
 pub use op::ConstantOp;
+pub use op::DivsiOp;
 pub use op::SubiOp;
 
 pub struct Arith;

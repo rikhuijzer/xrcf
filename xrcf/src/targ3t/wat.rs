@@ -62,6 +62,31 @@ impl Op for AddOp {
     }
 }
 
+pub struct DivSOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for DivSOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("div_s".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        DivSOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+    fn prefixes(&self) -> Prefixes {
+        PREFIXES
+    }
+    fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
+        display_binary_op(f, self, Self::operation_name())
+    }
+}
+
 pub struct FuncOp {
     operation: Shared<Operation>,
     identifier: Option<String>,

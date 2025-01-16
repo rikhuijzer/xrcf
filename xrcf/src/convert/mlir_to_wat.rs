@@ -100,6 +100,20 @@ impl Rewrite for ReturnLowering {
     }
 }
 
+struct DivsiLowering;
+
+impl Rewrite for DivsiLowering {
+    fn name(&self) -> &'static str {
+        "convert_mlir_to_wat::DivsiLowering"
+    }
+    fn parallelizable(&self) -> bool {
+        true
+    }
+    fn rewrite(&self, op: Shared<dyn Op>) -> Result<RewriteResult> {
+        simple_op_rewrite::<arith::DivsiOp, wat::DivSOp>(op)
+    }
+}
+
 /// Convert MLIR to WebAssembly Text format (`.wat`).
 pub struct ConvertMLIRToWat;
 
@@ -108,6 +122,7 @@ impl Pass for ConvertMLIRToWat {
     fn convert(op: Shared<dyn Op>) -> Result<RewriteResult> {
         let rewrites: Vec<&dyn Rewrite> = vec![
             &AddiLowering,
+            &DivsiLowering,
             &FuncLowering,
             &SubiLowering,
             &ModuleLowering,
