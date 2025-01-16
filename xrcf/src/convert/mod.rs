@@ -217,7 +217,7 @@ pub trait Pass {
 
 /// Rewrite an operation of type `A` to an operation of type `B`.
 ///
-/// Assumes that the [Operation] from the input can be re-used for the output.
+/// Assumes that the `Operation` from the input can be re-used for the output.
 pub fn simple_op_rewrite<A: Op + 'static, B: Op + 'static>(
     op: Shared<dyn Op>,
 ) -> Result<RewriteResult> {
