@@ -216,18 +216,21 @@ impl Op for AddiOp {
 }
 
 impl<T: ParserDispatch> Parser<T> {
-    pub fn parse_add<O: Op + 'static>(
+    /// Parse a simple operation such as `arith.addi`.
+    ///
+    /// Parses an op that has one result and one or more operands.
+    pub fn parse_simple_op<O: Op + 'static>(
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<O>> {
         let mut operation = Operation::default();
         assert!(parent.is_some());
         operation.set_parent(parent.clone());
-        let results = parser.parse_op_results_into(TOKEN_KIND, &mut operation)?;
+        let result = parser.parse_op_result_into(TOKEN_KIND, &mut operation)?;
         parser.expect(TokenKind::Equal)?;
         parser.parse_operation_name_into::<O>(&mut operation)?;
         operation.set_operands(parser.parse_op_operands(parent.unwrap(), TOKEN_KIND)?);
-        let _colon = parser.expect(TokenKind::Colon)?;
+        parser.expect(TokenKind::Colon)?;
         let result_type = parser.expect(TokenKind::IntType)?;
         let result_type = AnyType::new(&result_type.lexeme);
         let result_type = Shared::new(result_type.into());
@@ -235,7 +238,7 @@ impl<T: ParserDispatch> Parser<T> {
 
         let op = O::from_operation(operation);
         let op = Shared::new(op.into());
-        results.set_defining_op(op.clone());
+        result.set_defining_op(Some(op.clone()));
         Ok(op)
     }
 }
@@ -245,7 +248,37 @@ impl Parse for AddiOp {
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
-        let op = Parser::<T>::parse_add::<AddiOp>(parser, parent)?;
-        Ok(op)
+        Ok(Parser::<T>::parse_simple_op::<AddiOp>(parser, parent)?)
+    }
+}
+
+pub struct SubiOp {
+    operation: Shared<Operation>,
+}
+
+impl Op for SubiOp {
+    fn operation_name() -> OperationName {
+        OperationName::new("arith.subi".to_string())
+    }
+    fn new(operation: Shared<Operation>) -> Self {
+        SubiOp { operation }
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn is_pure(&self) -> bool {
+        true
+    }
+    fn operation(&self) -> &Shared<Operation> {
+        &self.operation
+    }
+}
+
+impl Parse for SubiOp {
+    fn op<T: ParserDispatch>(
+        parser: &mut Parser<T>,
+        parent: Option<Shared<Block>>,
+    ) -> Result<Shared<dyn Op>> {
+        Ok(Parser::<T>::parse_simple_op::<SubiOp>(parser, parent)?)
     }
 }

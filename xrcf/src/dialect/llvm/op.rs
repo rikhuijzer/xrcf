@@ -54,8 +54,7 @@ impl Parse for AddOp {
         parser: &mut Parser<T>,
         parent: Option<Shared<Block>>,
     ) -> Result<Shared<dyn Op>> {
-        let op = Parser::<T>::parse_add::<AddOp>(parser, parent)?;
-        Ok(op)
+        Ok(Parser::<T>::parse_simple_op::<AddOp>(parser, parent)?)
     }
 }
 
