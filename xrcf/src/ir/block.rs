@@ -30,8 +30,7 @@ pub struct Block {
     pub label: BlockName,
     arguments: Values,
     ops: Shared<Vec<Shared<dyn Op>>>,
-    /// This field does not have to be an `Arc<RwLock<..>>` because
-    /// the `Block` is shared via `Arc<RwLock<..>>`.
+    /// Region has to be `Shared` to allow the parent to be moved.
     parent: Option<Shared<Region>>,
 }
 
