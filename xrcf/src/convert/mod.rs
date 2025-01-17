@@ -104,11 +104,12 @@ pub trait Rewrite: Send + Sync {
 fn apply_rewrite_helper(
     root: Shared<dyn Op>,
     rewrite: &dyn Rewrite,
+    parallel: bool,
     nested_op: &Shared<dyn Op>,
     indent: i32,
 ) -> Result<RewriteResult> {
     let indent = indent + 1;
-    let result = apply_rewrite(nested_op.clone(), rewrite, indent);
+    let result = apply_rewrite(nested_op.clone(), rewrite, parallel, indent);
     match result {
         Ok(result) => {
             if result.is_changed().is_some() {
@@ -126,6 +127,7 @@ fn apply_rewrite_helper(
 fn apply_rewrite(
     root: Shared<dyn Op>,
     rewrite: &dyn Rewrite,
+    parallel: bool,
     indent: i32,
 ) -> Result<RewriteResult> {
     debug!(
@@ -148,13 +150,14 @@ fn apply_rewrite(
         }
     }
     let ops = root.rd().ops();
-    let first_changed = if rewrite.parallelizable() {
+    let nested_parallel = false;
+    let first_changed = if parallel {
         ops.par_iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_op, indent))
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
             .find_first(finder)
     } else {
         ops.iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_op, indent))
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
             .find(finder)
     };
     match first_changed {
@@ -173,7 +176,8 @@ fn apply_rewrites_helper(
     indent: i32,
 ) -> Result<RewriteResult> {
     for rewrite in rewrites {
-        let result = apply_rewrite(root.clone(), *rewrite, indent)?;
+        let parallel = rewrite.parallelizable();
+        let result = apply_rewrite(root.clone(), *rewrite, parallel, indent)?;
         if result.is_changed().is_some() {
             return Ok(result);
         }
