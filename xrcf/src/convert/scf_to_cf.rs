@@ -73,7 +73,7 @@ fn branch_op(after: Shared<Block>) -> Shared<dyn Op> {
 
 /// Add a `cf.br` to the end of `block` with destination `after`.
 fn add_branch_to_after(block: Shared<Block>, after: Shared<Block>) {
-    let mut ops = block.rd().ops.clone();
+    let ops = &mut block.wr().ops;
     let ops_clone = ops.clone();
     let last_op = ops_clone.last().unwrap();
     let last_op = last_op.rd();
@@ -117,11 +117,10 @@ fn move_successors_to_exit_block(op: &dialect::scf::IfOp, exit_block: Shared<Blo
         .rd()
         .index_of(&op.operation().rd())
         .expect("Expected index");
-    let mut ops = if_op_parent.rd().ops.clone();
+    let ops = &mut if_op_parent.wr().ops;
     let return_ops = ops[if_op_index + 1..].to_vec();
     for op in return_ops.iter() {
-        let op = op.rd();
-        op.set_parent(exit_block.clone());
+        op.rd().set_parent(exit_block.clone());
     }
     exit_block.wr().ops = return_ops;
     ops.drain(if_op_index + 1..);
