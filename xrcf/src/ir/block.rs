@@ -29,7 +29,7 @@ pub struct Block {
     /// this block. During printing, a new name is generated.
     pub label: BlockName,
     arguments: Values,
-    ops: Shared<Vec<Shared<dyn Op>>>,
+    pub ops: Vec<Shared<dyn Op>>,
     /// Region has to be `Shared` to allow the parent to be moved.
     parent: Option<Shared<Region>>,
 }
@@ -52,7 +52,7 @@ impl Block {
     pub fn new(
         label: BlockName,
         arguments: Values,
-        ops: Shared<Vec<Shared<dyn Op>>>,
+        ops: Vec<Shared<dyn Op>>,
         parent: Option<Shared<Region>>,
     ) -> Self {
         Self {
@@ -65,17 +65,8 @@ impl Block {
     pub fn arguments(&self) -> Values {
         self.arguments.clone()
     }
-    pub fn ops(&self) -> Shared<Vec<Shared<dyn Op>>> {
-        self.ops.clone()
-    }
-    pub fn set_ops(&mut self, ops: Shared<Vec<Shared<dyn Op>>>) {
-        self.ops = ops;
-    }
     pub fn set_parent(&mut self, parent: Option<Shared<Region>>) {
         self.parent = parent;
-    }
-    pub fn ops_mut(&mut self) -> &mut Shared<Vec<Shared<dyn Op>>> {
-        &mut self.ops
     }
     pub fn parent(&self) -> Option<Shared<Region>> {
         self.parent.clone()
@@ -100,7 +91,7 @@ impl Block {
         };
         let mut callers = vec![];
         for p in self.predecessors().expect("no predecessors") {
-            for op in p.rd().ops().rd().iter() {
+            for op in p.rd().ops.iter() {
                 for operand in op.rd().operation().rd().operands().into_iter() {
                     match &*operand.rd().value().rd() {
                         Value::BlockPtr(block_ptr) => {
@@ -200,7 +191,7 @@ impl Block {
         None
     }
     pub fn assignment_in_ops(&self, name: &str) -> Option<Shared<Value>> {
-        for op in self.ops().rd().iter() {
+        for op in self.ops.iter() {
             for value in op.rd().assignments().unwrap().into_iter() {
                 match &*value.rd() {
                     Value::BlockArgument(_block_argument) => {
@@ -289,7 +280,7 @@ impl Block {
     ///
     /// Returns `None` if `op` is not found in `self`.
     pub fn index_of(&self, op: &Operation) -> Option<usize> {
-        self.ops().rd().iter().position(|current| {
+        self.ops.iter().position(|current| {
             let current = current.rd();
             let current = current.operation();
             let current = &*current.rd();
@@ -307,10 +298,10 @@ impl Block {
             .blocks()
             .splice(self, region.rd().blocks());
     }
-    pub fn insert_op(&self, op: Shared<dyn Op>, index: usize) {
-        self.ops.wr().insert(index, op);
+    pub fn insert_op(&mut self, op: Shared<dyn Op>, index: usize) {
+        self.ops.insert(index, op);
     }
-    pub fn insert_after(&self, earlier: Shared<Operation>, later: Shared<dyn Op>) {
+    pub fn insert_after(&mut self, earlier: Shared<Operation>, later: Shared<dyn Op>) {
         match self.index_of(&earlier.rd()) {
             Some(index) => self.insert_op(later, index + 1),
             None => {
@@ -318,21 +309,21 @@ impl Block {
             }
         }
     }
-    pub fn insert_before(&self, earlier: Shared<dyn Op>, later: Shared<Operation>) {
+    pub fn insert_before(&mut self, earlier: Shared<dyn Op>, later: Shared<Operation>) {
         match self.index_of(&later.rd()) {
             Some(index) => self.insert_op(earlier, index),
             None => panic!("could not find op in block"),
         }
     }
-    pub fn replace(&self, old: Shared<Operation>, new: Shared<dyn Op>) {
+    pub fn replace(&mut self, old: Shared<Operation>, new: Shared<dyn Op>) {
         match self.index_of(&old.rd()) {
-            Some(index) => self.ops().wr()[index] = new,
+            Some(index) => self.ops[index] = new,
             None => panic!("could not find op in block"),
         }
     }
-    pub fn remove(&self, op: Shared<Operation>) {
+    pub fn remove(&mut self, op: Shared<Operation>) {
         match self.index_of(&op.rd()) {
-            Some(index) => self.ops().wr().remove(index),
+            Some(index) => self.ops.remove(index),
             None => panic!("could not find op in block"),
         };
     }
@@ -349,7 +340,7 @@ impl Block {
             }
             writeln!(f, ":")?;
         }
-        for op in self.ops().rd().iter() {
+        for op in self.ops.iter() {
             write!(f, "{}", crate::ir::spaces(indent))?;
             op.rd().display(f, indent)?;
             writeln!(f)?;
@@ -362,7 +353,7 @@ impl Default for Block {
     fn default() -> Self {
         let label = BlockName::Unnamed;
         let arguments = Values::default();
-        let ops = Shared::new(vec![].into());
+        let ops = vec![];
         let parent = None;
         Self::new(label, arguments, ops, parent)
     }

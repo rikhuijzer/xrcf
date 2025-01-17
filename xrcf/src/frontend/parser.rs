@@ -222,7 +222,7 @@ fn replace_block_labels(block: Shared<Block>) {
     let parent = block.rd().parent().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
     for predecessor in parent.rd().blocks().into_iter() {
-        for op in predecessor.rd().ops().rd().iter() {
+        for op in predecessor.rd().ops.iter() {
             for operand in op.rd().operation().rd().operands().into_iter() {
                 let mut operand = operand.wr();
                 if let Value::BlockLabel(curr) = &*operand.value().rd() {
@@ -316,8 +316,7 @@ impl<T: ParserDispatch> Parser<T> {
             (label, values)
         };
 
-        let ops = vec![];
-        let ops = Shared::new(ops.into());
+        let mut ops = vec![];
         let block = Block::new(label, arguments.clone(), ops.clone(), parent);
         let block = Shared::new(block.into());
         replace_block_labels(block.clone());
@@ -331,14 +330,14 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            ops.wr().push(op.clone());
+            ops.push(op.clone());
         }
-        if ops.rd().is_empty() {
+        if ops.is_empty() {
             let token = self.peek();
             let msg = self.error(token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));
         }
-        for op in block.rd().ops().rd().iter() {
+        for op in block.rd().ops.iter() {
             op.rd().operation().wr().set_parent(Some(block.clone()));
         }
         Ok(block)
@@ -422,13 +421,12 @@ impl<T: ParserDispatch> Parser<T> {
                     ops.push(op.clone());
                 }
             }
-            let ops = Shared::new(ops.into());
             let arguments = Values::default();
             let label = BlockName::Unnamed;
             let block = Block::new(label, arguments, ops.clone(), Some(module_region.clone()));
             let block = Shared::new(block.into());
             {
-                for child_op in ops.rd().iter() {
+                for child_op in ops.iter() {
                     child_op
                         .rd()
                         .operation()

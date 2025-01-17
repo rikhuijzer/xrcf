@@ -107,7 +107,7 @@ fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
     // SSA names stay in scope until the end of the region I think.
     let mut name_index: usize = 0;
     for block in blocks.iter() {
-        for op in block.rd().ops().rd().iter() {
+        for op in block.rd().ops.iter() {
             for result in op.rd().operation().rd().results() {
                 if let Value::OpResult(op_result) = &mut *result.wr() {
                     let name = format!("{prefix}{name_index}");
@@ -135,7 +135,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Shared<dyn Op>> {
         let mut result = Vec::new();
         for block in self.blocks().into_iter() {
-            for op in block.rd().ops().rd().iter() {
+            for op in block.rd().ops.iter() {
                 result.push(op.clone());
             }
         }
@@ -178,8 +178,7 @@ impl Region {
         let prefixes = self
             .block(0)
             .rd()
-            .ops()
-            .rd()
+            .ops
             .first()
             .unwrap()
             .rd()

@@ -249,12 +249,11 @@ impl FuncOp {
                 panic!("Expected region to be empty");
             }
             let ops = vec![op.clone()];
-            let ops = Shared::new(ops.into());
             let region = Region::default();
             let without_parent = region.add_empty_block();
             let region = Shared::new(region.into());
             let block = without_parent.set_parent(Some(region.clone()));
-            block.wr().set_ops(ops);
+            block.wr().ops = ops;
             operation.wr().set_region(Some(region));
         } else {
             ops.last().unwrap().rd().insert_after(op.clone());

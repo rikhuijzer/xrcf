@@ -426,7 +426,7 @@ fn insert_phi(block: Shared<Block>) {
     let phi = Shared::new(phi.into());
     set_phi_result(phi.clone(), argument);
     arguments.clear();
-    block_read.insert_op(phi, 0);
+    block.wr().insert_op(phi, 0);
 }
 
 /// Remove the operands of the callers that call given block.
