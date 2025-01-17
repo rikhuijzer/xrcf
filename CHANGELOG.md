@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- Allow rewriting in parallel ([#45](https://github.com/rikhuijzer/xrcf/pull/45)).
+- Multiple `arith` ops and lowerings to `wat` ([#47](https://github.com/rikhuijzer/xrcf/pull/47)).
+
+### Changed
+
+- Remove `Rewrite.is_match` ([#46](https://github.com/rikhuijzer/xrcf/pull/46)).
+- Avoid using `Shared` on `Block.label` ([3158408](https://github.com/rikhuijzer/xrcf/commit/3158408537fe2acd2b7ff22acb32fb4df41c6289)).
+
 ## [0.7.0] - 2025-01-13
 
 ### Added
