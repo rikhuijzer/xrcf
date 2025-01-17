@@ -14,6 +14,7 @@ use anyhow::Result;
 use std::fmt::Display;
 use std::fmt::Formatter;
 use std::sync::Arc;
+use tracing_subscriber::filter::DynFilterFn;
 
 #[derive(Debug)]
 pub struct Prefixes {
@@ -175,13 +176,12 @@ pub trait Op: Send + Sync {
             parent.rd().replace(self.operation().clone(), new.clone())
         }
     }
-    /// Return ops that are children of this op (inside blocks that are inside
-    /// the region).
+    /// Return ops that are direct children of this op.
     ///
     /// Some ops may decide to override this implementation if the children are
     /// not located inside the main region of the op. For example, the `scf.if`
     /// operation contains two regions: the "then" region and the "else" region.
-    fn ops(&self) -> Vec<Shared<dyn Op>> {
+    fn children(&self) -> Vec<Shared<dyn Op>> {
         if let Some(region) = self.region() {
             region.rd().ops()
         } else {
@@ -209,6 +209,21 @@ pub trait Op: Send + Sync {
     /// level.
     fn display(&self, f: &mut Formatter<'_>, _indent: i32) -> std::fmt::Result {
         self.operation().rd().display(f, 0)
+    }
+}
+
+/// Return an iterator over `op` and all (indirect) children of `op`.
+pub fn ops(op: Shared<dyn Op>) -> Box<dyn Iterator<Item = Shared<dyn Op>>> {
+    let start = vec![op.clone()].into_iter();
+
+    fn tmp(block: Shared<Block>) -> Box<dyn Iterator<Item = Shared<dyn Op>>> {
+        Box::new(block.rd().ops().rd().clone().into_iter())
+    }
+    if let Some(region) = op.rd().region() {
+        let rest = region.rd().blocks().into_iter().flat_map(tmp);
+        Box::new(start.chain(rest))
+    } else {
+        Box::new(start)
     }
 }
 

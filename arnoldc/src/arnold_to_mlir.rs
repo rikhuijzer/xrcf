@@ -209,7 +209,7 @@ impl ModuleLowering {
             .set_anonymous_result(Shared::new(typ.into()))
             .unwrap();
 
-        let ops = func.rd().ops();
+        let ops = func.rd().children();
         if ops.is_empty() {
             panic!("Expected ops to be non-empty");
         }
@@ -230,7 +230,7 @@ impl ModuleLowering {
         result.vec().rd().len() == 1
     }
     fn ensure_main_returns_zero(module: Shared<dyn Op>) -> Result<RewriteResult> {
-        let ops = module.rd().ops();
+        let ops = module.rd().children();
         let last = ops.last().unwrap();
         if !Self::returns_something(last.clone()) {
             Self::return_zero(last.clone());

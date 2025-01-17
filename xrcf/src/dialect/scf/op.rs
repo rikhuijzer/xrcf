@@ -57,7 +57,7 @@ impl Op for IfOp {
     fn operation(&self) -> &Shared<Operation> {
         &self.operation
     }
-    fn ops(&self) -> Vec<Shared<dyn Op>> {
+    fn children(&self) -> Vec<Shared<dyn Op>> {
         let mut ops = vec![];
         if let Some(then) = self.then() {
             ops.extend(then.rd().ops());

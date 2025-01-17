@@ -50,7 +50,7 @@ fn parse_addi() {
 
     assert!(module.rd().operation().rd().parent().is_none());
 
-    let ops = module.rd().ops();
+    let ops = module.rd().children();
     assert_eq!(ops.len(), 1);
     let func_op = ops[0].rd();
     let func_operation = func_op.operation().rd();

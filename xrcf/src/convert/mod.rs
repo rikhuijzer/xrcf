@@ -149,15 +149,26 @@ fn apply_rewrite(
             Err(_) => true,
         }
     }
-    let ops = root.rd().ops();
+
+    let ops = crate::ir::ops(root.clone());
+    for op in ops {
+        println!("{}", op.rd().name());
+    }
+    std::process::exit(0);
+
+    let ops = root.rd().children();
     let nested_parallel = false;
     let first_changed = if parallel {
         ops.par_iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
+            .map(|nested_op| {
+                apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent)
+            })
             .find_first(finder)
     } else {
         ops.iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
+            .map(|nested_op| {
+                apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent)
+            })
             .find(finder)
     };
     match first_changed {

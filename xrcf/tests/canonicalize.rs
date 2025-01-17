@@ -29,10 +29,10 @@ fn determine_users() {
     DefaultTester::verify(module.clone());
     let module = module.rd();
 
-    let ops = module.ops();
+    let ops = module.children();
     assert_eq!(ops.len(), 1);
     let func_op = ops[0].rd();
-    let ops = func_op.ops();
+    let ops = func_op.children();
     assert_eq!(ops.len(), 3);
 
     let op0 = ops[0].rd();

@@ -149,7 +149,7 @@ impl PrintLowering {
     }
     /// Whether the parent operation of `op` contains a `printf` function.
     fn contains_printf(top_level_op: Shared<dyn Op>) -> bool {
-        let ops = top_level_op.rd().ops();
+        let ops = top_level_op.rd().children();
         for op in ops {
             let op = op.rd();
             if op.is_func() {
@@ -200,7 +200,7 @@ impl PrintLowering {
     fn define_printf(op: Shared<dyn Op>, set_varargs: bool) -> Result<()> {
         let top_level_op = Self::top_level_op(op.clone());
         if !Self::contains_printf(top_level_op.clone()) {
-            let ops = top_level_op.rd().ops();
+            let ops = top_level_op.rd().children();
             let op = ops[0].clone();
             let parent = op.rd().operation().rd().parent().unwrap();
             op.rd()

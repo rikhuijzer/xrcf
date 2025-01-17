@@ -241,7 +241,7 @@ impl FuncOp {
     /// Insert `op` into the region of `self`, while creating a region if necessary.
     pub fn insert_op(&self, op: Shared<dyn Op>) -> UnsetOp {
         let read = op.rd();
-        let ops = read.ops();
+        let ops = read.children();
         if ops.is_empty() {
             let operation = self.operation();
             let region = operation.rd().region();

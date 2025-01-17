@@ -17,7 +17,7 @@ struct FuncLowering;
 
 /// Add a return op if the program omits it.
 fn add_return_if_missing(op: Shared<func::FuncOp>) -> Result<()> {
-    let ops = op.rd().ops();
+    let ops = op.rd().children();
     let last = match ops.last() {
         Some(last) => last,
         None => return Ok(()),
