@@ -187,7 +187,7 @@ impl<P: ParserDispatch, T: TransformDispatch> Tester<P, T> {
     /// whether the op has also a pointer to the parent is not visible.
     pub fn verify(op: Shared<dyn Op>) {
         Self::verify_core(op.clone());
-        let ops = op.rd().children();
+        let ops = op.rd().ops();
         for op in ops {
             Self::verify(op);
         }

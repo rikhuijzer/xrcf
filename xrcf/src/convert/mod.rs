@@ -130,6 +130,18 @@ fn apply_rewrite(
     parallel: bool,
     indent: i32,
 ) -> Result<RewriteResult> {
+    debug!(
+        "{}Matching {} with {}",
+        spaces(indent),
+        root.clone().rd().name(),
+        rewrite.name()
+    );
+    let root_rewrite = rewrite.rewrite(root.clone())?;
+    if root_rewrite.is_changed().is_some() {
+        debug!("{}----> Changed", spaces(indent));
+        return Ok(root_rewrite);
+    }
+
     fn finder(result: &Result<RewriteResult>) -> bool {
         match result {
             Ok(RewriteResult::Changed(_)) => true,
@@ -137,43 +149,20 @@ fn apply_rewrite(
             Err(_) => true,
         }
     }
-    fn rewrite_op(
-        op: &Shared<dyn Op>,
-        rewrite: &dyn Rewrite,
-        indent: i32,
-    ) -> Result<RewriteResult> {
-        debug!(
-            "{}Matching {} with {}",
-            spaces(indent),
-            op.clone().rd().name(),
-            rewrite.name()
-        );
-        let root_rewrite = rewrite.rewrite(op.clone())?;
-        if root_rewrite.is_changed().is_some() {
-            debug!("{}----> Changed", spaces(indent));
-            return Ok::<RewriteResult, anyhow::Error>(root_rewrite);
-        } else {
-            return Ok(RewriteResult::Unchanged);
-        }
-    }
-
-    let ops = crate::ir::ops(root.clone());
-    let ops = ops.collect::<Vec<_>>();
+    let ops = root.rd().ops();
+    let nested_parallel = false;
     let first_changed = if parallel {
         ops.par_iter()
-            .map(|op| rewrite_op(op, rewrite, indent))
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
             .find_first(finder)
     } else {
         ops.iter()
-            .map(|op| rewrite_op(op, rewrite, indent))
+            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
             .find(finder)
     };
     match first_changed {
         Some(result) => match result {
-            Ok(RewriteResult::Changed(_op)) => {
-                let root = ChangedOp::new(root.clone());
-                Ok(RewriteResult::Changed(root))
-            }
+            Ok(RewriteResult::Changed(op)) => Ok(RewriteResult::Changed(op)),
             Ok(RewriteResult::Unchanged) => Ok(RewriteResult::Unchanged),
             Err(e) => Err(e),
         },
