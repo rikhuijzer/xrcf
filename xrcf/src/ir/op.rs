@@ -216,11 +216,19 @@ pub trait Op: Send + Sync {
 pub fn ops(op: Shared<dyn Op>) -> Box<dyn Iterator<Item = Shared<dyn Op>>> {
     let start = vec![op.clone()].into_iter();
 
-    fn tmp(block: Shared<Block>) -> Box<dyn Iterator<Item = Shared<dyn Op>>> {
-        Box::new(block.rd().ops().rd().clone().into_iter())
+    fn block_ops(block: Shared<Block>) -> Box<dyn Iterator<Item = Shared<dyn Op>>> {
+        Box::new(
+            block
+                .rd()
+                .ops()
+                .rd()
+                .clone()
+                .into_iter()
+                .flat_map(|op| ops(op)),
+        )
     }
     if let Some(region) = op.rd().region() {
-        let rest = region.rd().blocks().into_iter().flat_map(tmp);
+        let rest = region.rd().blocks().into_iter().flat_map(block_ops);
         Box::new(start.chain(rest))
     } else {
         Box::new(start)
