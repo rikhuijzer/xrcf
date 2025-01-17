@@ -153,11 +153,15 @@ fn apply_rewrite(
     let nested_parallel = false;
     let first_changed = if parallel {
         ops.par_iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
+            .map(|nested_op| {
+                apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent)
+            })
             .find_first(finder)
     } else {
         ops.iter()
-            .map(|nested_op| apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent))
+            .map(|nested_op| {
+                apply_rewrite_helper(root.clone(), rewrite, nested_parallel, nested_op, indent)
+            })
             .find(finder)
     };
     match first_changed {
