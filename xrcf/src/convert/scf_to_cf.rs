@@ -275,13 +275,15 @@ impl Rewrite for IfLowering {
             Some(op) => op,
             None => return Ok(RewriteResult::Unchanged),
         };
-        let parent = op.operation().rd().parent().expect("Expected parent");
-        let parent_region = parent.rd().parent().expect("Expected parent region");
+        let block = op.operation().rd().parent();
+        let block = block.expect("no parent block");
+        let region = block.rd().parent.clone();
+        let region = region.expect("no parent region");
 
-        let (then, els) = add_blocks(op, parent_region.clone())?;
+        let (then, els) = add_blocks(op, region.clone())?;
 
         let mut operation = Operation::default();
-        operation.set_parent(Some(parent.clone()));
+        operation.set_parent(Some(block.clone()));
         operation.set_operand(0, op.operation().rd().operand(0).clone().unwrap());
         let then_operand = Shared::new(OpOperand::from_block(then).into());
         operation.set_operand(1, then_operand);

@@ -31,7 +31,7 @@ pub struct Block {
     arguments: Values,
     pub ops: Vec<Shared<dyn Op>>,
     /// Region has to be `Shared` to allow the parent to be moved.
-    parent: Option<Shared<Region>>,
+    pub parent: Option<Shared<Region>>,
 }
 
 /// Canonicalize a block label.
@@ -64,12 +64,6 @@ impl Block {
     }
     pub fn arguments(&self) -> Values {
         self.arguments.clone()
-    }
-    pub fn set_parent(&mut self, parent: Option<Shared<Region>>) {
-        self.parent = parent;
-    }
-    pub fn parent(&self) -> Option<Shared<Region>> {
-        self.parent.clone()
     }
     /// Return callers of this block (i.e., ops that point to the current block).
     ///
@@ -123,7 +117,7 @@ impl Block {
     /// process of being parsed (i.e., not yet ready to be added to the
     /// collection of blocks).
     pub fn predecessors(&self) -> Option<Vec<Shared<Block>>> {
-        let region = self.parent();
+        let region = self.parent.as_ref();
         let region = region.expect("no parent");
         let region = region.rd();
         let index = region.index_of(self);
@@ -138,7 +132,7 @@ impl Block {
     ///
     /// Panics if the current block cannot be found in the parent region.
     pub fn successors(&self) -> Option<Vec<Shared<Block>>> {
-        let region = self.parent();
+        let region = self.parent.as_ref();
         let region = region.expect("no parent");
         let region = region.rd();
         let index = region.index_of(self);
@@ -155,9 +149,8 @@ impl Block {
     /// assignment for the given `name`. Return `None` if no assignment is
     /// found.
     pub fn assignment_in_func_arguments(&self, name: &str) -> Option<Shared<Value>> {
-        let region = self.parent();
-        assert!(region.is_some());
-        let region = region.unwrap();
+        let region = self.parent.clone();
+        let region = region.expect("no parent");
         let region = region.rd();
         let parent = region.parent();
         assert!(
@@ -292,7 +285,8 @@ impl Block {
     /// The caller is in charge of transferring the control flow to the region
     /// and pass it the correct block arguments.
     pub fn inline_region_before(&self, region: Shared<Region>) {
-        self.parent()
+        self.parent
+            .as_ref()
             .expect("no parent")
             .rd()
             .blocks()
@@ -378,7 +372,7 @@ impl UnsetBlock {
         self.block.clone()
     }
     pub fn set_parent(&self, parent: Option<Shared<Region>>) -> Shared<Block> {
-        self.block.wr().set_parent(parent);
+        self.block.wr().parent = parent;
         self.block.clone()
     }
 }
@@ -433,10 +427,10 @@ impl Blocks {
         let mut blocks = blocks.wr();
         vec.splice(index..index, blocks.iter().cloned());
         {
-            let parent = before.parent();
+            let parent = before.parent.clone();
             for block in blocks.iter() {
                 let mut block = block.wr();
-                block.set_parent(parent.clone());
+                block.parent = parent.clone();
             }
         }
         blocks.clear();

@@ -219,7 +219,9 @@ fn replace_block_labels(block: Shared<Block>) {
         BlockName::Unnamed => return,
         BlockName::Unset => return,
     };
-    let parent = block.rd().parent().expect("no parent");
+    let block_rd = block.clone();
+    let block_rd = block_rd.rd();
+    let parent = block_rd.parent.as_ref().expect("no parent");
     // Assumes the current block was not yet added to the parent region.
     for predecessor in parent.rd().blocks().into_iter() {
         for op in predecessor.rd().ops.iter() {

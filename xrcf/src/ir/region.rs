@@ -36,7 +36,8 @@ fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
     // parent op (only if the parent op is a function). I think MLIR models this
     // by putting the arguments of the function is the first block. xrcf should
     // probably do the same.
-    let parent_region = blocks.first().unwrap().rd().parent();
+    let parent_region = blocks.first().unwrap().rd();
+    let parent_region = parent_region.parent.as_ref();
     let parent_region = parent_region.expect("parent not set");
     for op in parent_region.rd().ops().iter() {
         if op.rd().is_func() {
