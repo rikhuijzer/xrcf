@@ -175,14 +175,7 @@ impl Region {
         // the module have to be rewritten for the output to be correct so will
         // know the right prefixes, see also the [Op::prefixes] docstring for
         // more information.
-        let prefixes = self
-            .block(0)
-            .rd()
-            .ops
-            .first()
-            .unwrap()
-            .rd()
-            .prefixes();
+        let prefixes = self.block(0).rd().ops.first().unwrap().rd().prefixes();
         set_fresh_argument_names(prefixes.argument, &blocks);
         set_fresh_block_labels(prefixes.block, &blocks);
         set_fresh_ssa_names(prefixes.ssa, &blocks);

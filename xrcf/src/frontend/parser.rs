@@ -316,8 +316,7 @@ impl<T: ParserDispatch> Parser<T> {
             (label, values)
         };
 
-        let mut ops = vec![];
-        let block = Block::new(label, arguments.clone(), ops.clone(), parent);
+        let block = Block::new(label, arguments.clone(), vec![], parent);
         let block = Shared::new(block.into());
         replace_block_labels(block.clone());
         for argument in arguments.vec().rd().iter() {
@@ -330,9 +329,9 @@ impl<T: ParserDispatch> Parser<T> {
         while !self.is_region_end() && !self.is_block_definition() {
             let parent = Some(block.clone());
             let op = T::parse_op(self, parent)?;
-            ops.push(op.clone());
+            block.wr().ops.push(op.clone());
         }
-        if ops.is_empty() {
+        if block.rd().ops.is_empty() {
             let token = self.peek();
             let msg = self.error(token, "Could not find operations in block");
             return Err(anyhow::anyhow!(msg));

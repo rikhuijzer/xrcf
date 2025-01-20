@@ -406,8 +406,7 @@ fn set_phi_result(phi: Shared<dyn Op>, argument: &Shared<Value>) {
 
 /// Replace the only argument of the block by a `phi` instruction.
 fn insert_phi(block: Shared<Block>) {
-    let block_read = block.rd();
-    let arguments = block_read.arguments().vec();
+    let arguments = block.rd().arguments().vec();
     let mut arguments = arguments.wr();
     assert!(
         arguments.len() == 1,

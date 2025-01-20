@@ -57,10 +57,10 @@ pub trait SharedExt<T: ?Sized> {
 
 impl<T: ?Sized> SharedExt<T> for Shared<T> {
     fn rd(&self) -> parking_lot::RwLockReadGuard<T> {
-        self.read()
+        self.try_read().unwrap()
     }
     fn wr(&self) -> parking_lot::RwLockWriteGuard<T> {
-        self.write()
+        self.try_write().unwrap()
     }
 }
 
