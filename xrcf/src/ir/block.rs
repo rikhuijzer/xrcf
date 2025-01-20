@@ -28,7 +28,7 @@ pub struct Block {
     /// The label is only used during parsing to see which operands point to
     /// this block. During printing, a new name is generated.
     pub label: BlockName,
-    arguments: Values,
+    pub arguments: Values,
     pub ops: Vec<Shared<dyn Op>>,
     /// Region has to be `Shared` to allow the parent to be moved.
     pub parent: Option<Shared<Region>>,
@@ -61,9 +61,6 @@ impl Block {
             ops,
             parent,
         }
-    }
-    pub fn arguments(&self) -> Values {
-        self.arguments.clone()
     }
     /// Return callers of this block (i.e., ops that point to the current block).
     ///
@@ -214,7 +211,7 @@ impl Block {
     /// Returns a [Value] if the block contains an assignment for the given
     /// `name`. Return `None` if no assignment is found.
     pub fn assignment_in_block_arguments(&self, name: &str) -> Option<Shared<Value>> {
-        for argument in self.arguments().into_iter() {
+        for argument in self.arguments.vec().rd().iter() {
             match &*argument.rd() {
                 Value::BlockArgument(arg) => {
                     if let BlockArgumentName::Name(curr) = &arg.name {
@@ -328,7 +325,7 @@ impl Block {
         if let BlockName::Name(name) = &self.label {
             let label_indent = if indent > 0 { indent - 1 } else { 0 };
             write!(f, "{}{name}", crate::ir::spaces(label_indent))?;
-            let arguments = self.arguments();
+            let arguments = &self.arguments;
             if !arguments.is_empty() {
                 write!(f, "({arguments})")?;
             }

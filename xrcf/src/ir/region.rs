@@ -66,7 +66,7 @@ fn set_fresh_argument_names(prefix: &str, blocks: &[Shared<Block>]) {
 
     for block in blocks.iter() {
         let block = block.rd();
-        for arg in block.arguments() {
+        for arg in block.arguments.vec().rd().iter() {
             arg.wr().set_name(&format!("{prefix}{name_index}"));
             name_index += 1;
         }
