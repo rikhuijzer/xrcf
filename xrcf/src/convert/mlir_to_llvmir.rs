@@ -462,8 +462,7 @@ fn one_child_block_has_argument(op: &dyn Op) -> Result<bool> {
         return Ok(false);
     }
     for block in operation.rd().blocks().into_iter() {
-        let block = block.rd();
-        let has_argument = !block.arguments().vec().rd().is_empty();
+        let has_argument = !block.rd().arguments().vec().rd().is_empty();
         if has_argument {
             return Ok(true);
         }
@@ -484,8 +483,7 @@ impl Rewrite for MergeLowering {
         }
         let blocks = op.rd().operation().rd().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
-            let block_read = block.rd();
-            let has_argument = !block_read.arguments().vec().rd().is_empty();
+            let has_argument = !block.rd().arguments().vec().rd().is_empty();
             if has_argument {
                 insert_phi(block.clone());
                 remove_caller_operands(block.clone());
