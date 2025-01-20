@@ -107,7 +107,7 @@ fn set_fresh_ssa_names(prefix: &str, blocks: &[Shared<Block>]) {
     // SSA names stay in scope until the end of the region I think.
     let mut name_index: usize = 0;
     for block in blocks.iter() {
-        for op in block.rd().ops().rd().iter() {
+        for op in block.rd().ops.iter() {
             for result in op.rd().operation().rd().results() {
                 if let Value::OpResult(op_result) = &mut *result.wr() {
                     let name = format!("{prefix}{name_index}");
@@ -135,7 +135,7 @@ impl Region {
     pub fn ops(&self) -> Vec<Shared<dyn Op>> {
         let mut result = Vec::new();
         for block in self.blocks().into_iter() {
-            for op in block.rd().ops().rd().iter() {
+            for op in block.rd().ops.iter() {
                 result.push(op.clone());
             }
         }
@@ -175,15 +175,7 @@ impl Region {
         // the module have to be rewritten for the output to be correct so will
         // know the right prefixes, see also the [Op::prefixes] docstring for
         // more information.
-        let prefixes = self
-            .block(0)
-            .rd()
-            .ops()
-            .rd()
-            .first()
-            .unwrap()
-            .rd()
-            .prefixes();
+        let prefixes = self.block(0).rd().ops.first().unwrap().rd().prefixes();
         set_fresh_argument_names(prefixes.argument, &blocks);
         set_fresh_block_labels(prefixes.block, &blocks);
         set_fresh_ssa_names(prefixes.ssa, &blocks);

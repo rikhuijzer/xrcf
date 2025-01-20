@@ -322,7 +322,7 @@ impl Operation {
     pub fn predecessors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");
         match parent.clone().rd().index_of(self) {
-            Some(index) => parent.rd().ops().rd()[..index].to_vec(),
+            Some(index) => parent.rd().ops[..index].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",
@@ -334,7 +334,7 @@ impl Operation {
     pub fn successors(&self) -> Vec<Shared<dyn Op>> {
         let parent = self.parent().expect("no parent");
         match parent.clone().rd().index_of(self) {
-            Some(index) => parent.rd().ops().rd()[index + 1..].to_vec(),
+            Some(index) => parent.rd().ops[index + 1..].to_vec(),
             None => {
                 panic!(
                     "Expected index. Is the parent set correctly for the following op?\n{}",

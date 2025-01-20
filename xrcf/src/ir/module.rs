@@ -57,7 +57,7 @@ impl ModuleOp {
             Some(block) => block,
             None => return Err(anyhow::anyhow!("Expected 1 block in module, got 0")),
         };
-        match block.rd().ops().rd().first() {
+        match block.rd().ops.first() {
             #[allow(clippy::needless_return)]
             None => return Err(anyhow::anyhow!("Expected 1 op, got 0")),
             #[allow(clippy::needless_return)]

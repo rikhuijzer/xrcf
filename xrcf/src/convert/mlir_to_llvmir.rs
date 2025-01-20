@@ -406,8 +406,7 @@ fn set_phi_result(phi: Shared<dyn Op>, argument: &Shared<Value>) {
 
 /// Replace the only argument of the block by a `phi` instruction.
 fn insert_phi(block: Shared<Block>) {
-    let block_read = block.rd();
-    let arguments = block_read.arguments().vec();
+    let arguments = block.rd().arguments().vec();
     let mut arguments = arguments.wr();
     assert!(
         arguments.len() == 1,
@@ -426,7 +425,7 @@ fn insert_phi(block: Shared<Block>) {
     let phi = Shared::new(phi.into());
     set_phi_result(phi.clone(), argument);
     arguments.clear();
-    block_read.insert_op(phi, 0);
+    block.wr().insert_op(phi, 0);
 }
 
 /// Remove the operands of the callers that call given block.
@@ -463,8 +462,7 @@ fn one_child_block_has_argument(op: &dyn Op) -> Result<bool> {
         return Ok(false);
     }
     for block in operation.rd().blocks().into_iter() {
-        let block = block.rd();
-        let has_argument = !block.arguments().vec().rd().is_empty();
+        let has_argument = !block.rd().arguments().vec().rd().is_empty();
         if has_argument {
             return Ok(true);
         }
@@ -485,8 +483,7 @@ impl Rewrite for MergeLowering {
         }
         let blocks = op.rd().operation().rd().region().unwrap().rd().blocks();
         for block in blocks.into_iter() {
-            let block_read = block.rd();
-            let has_argument = !block_read.arguments().vec().rd().is_empty();
+            let has_argument = !block.rd().arguments().vec().rd().is_empty();
             if has_argument {
                 insert_phi(block.clone());
                 remove_caller_operands(block.clone());

@@ -129,7 +129,7 @@ pub trait Op: Send + Sync {
         };
         let later = operation.clone();
         earlier.rd().set_parent(parent.clone());
-        parent.rd().insert_before(earlier, later);
+        parent.wr().insert_before(earlier, later);
     }
     /// Insert `later` after `self` inside `self`'s parent block.
     ///
@@ -142,13 +142,13 @@ pub trait Op: Send + Sync {
         };
         let earlier = operation.clone();
         later.rd().set_parent(parent.clone());
-        parent.rd().insert_after(earlier, later);
+        parent.wr().insert_after(earlier, later);
     }
     /// Remove the operation from its parent block.
     fn remove(&self) {
         let operation = self.operation();
         let parent = operation.rd().parent().expect("no parent");
-        parent.rd().remove(operation.clone());
+        parent.wr().remove(operation.clone());
     }
     /// Replace self with `new`.
     ///
@@ -172,7 +172,7 @@ pub trait Op: Send + Sync {
         // Root ops do not have a parent, so in that case we don't need to
         // update the parent.
         if let Some(parent) = self.operation().rd().parent() {
-            parent.rd().replace(self.operation().clone(), new.clone())
+            parent.wr().replace(self.operation().clone(), new.clone())
         }
     }
     /// Return ops that are children of this op (inside blocks that are inside

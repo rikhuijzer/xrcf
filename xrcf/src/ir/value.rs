@@ -460,9 +460,9 @@ impl Value {
         } else {
             panic!("BlockArgument {arg} has no parent operation");
         };
-        let mut ops = parent.rd().ops().rd().clone();
+        let mut ops = parent.rd().ops.clone();
         for successor in parent.rd().successors().unwrap().iter() {
-            ops.extend(successor.rd().ops().rd().clone());
+            ops.extend(successor.rd().ops.clone());
         }
         self.find_users(&ops)
     }

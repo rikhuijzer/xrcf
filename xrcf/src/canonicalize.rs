@@ -46,7 +46,7 @@ impl Rewrite for DeadCodeElimination {
             Users::OpOperands(users) => {
                 if users.is_empty() {
                     let parent = operation.parent().unwrap();
-                    parent.rd().remove(readonly.operation().clone());
+                    parent.wr().remove(readonly.operation().clone());
                     Ok(RewriteResult::Changed(ChangedOp::new(op.clone())))
                 } else {
                     Ok(RewriteResult::Unchanged)
