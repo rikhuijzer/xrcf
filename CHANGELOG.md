@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [0.8.0] - 2025-02-14
 
 ### Added
 
@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Remove getters and setters from `TransformOptions` ([#50](https://github.com/rikhuijzer/xrcf/pull/50)).
+- Remove `Shared` on `Block.ops` ([#49](https://github.com/rikhuijzer/xrcf/pull/49)).
 - Remove `Rewrite.is_match` ([#46](https://github.com/rikhuijzer/xrcf/pull/46)).
 - Avoid using `Shared` on `Block.label` ([3158408](https://github.com/rikhuijzer/xrcf/commit/3158408537fe2acd2b7ff22acb32fb4df41c6289)).
 
