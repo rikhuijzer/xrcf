@@ -105,8 +105,8 @@ pub struct TransformOptions {
     /// would be useful. `print-ir-before-all` is useful to see the IR after
     /// parsing, but seeing the IR after the last pass is already the final
     /// output.
-    print_ir_before_all: bool,
-    writer: Shared<dyn std::io::Write + Send>,
+    pub print_ir_before_all: bool,
+    pub writer: Shared<dyn std::io::Write + Send>,
 }
 
 impl TransformOptions {
@@ -125,17 +125,8 @@ impl TransformOptions {
             writer: Shared::new(std::io::stderr().into()),
         }
     }
-    pub fn print_ir_before_all(&self) -> bool {
-        self.print_ir_before_all
-    }
     pub fn passes(&self) -> &Passes {
         &self.passes
-    }
-    pub fn set_print_ir_before_all(&mut self, print_ir_before_all: bool) {
-        self.print_ir_before_all = print_ir_before_all;
-    }
-    pub fn set_writer(&mut self, writer: Shared<dyn std::io::Write + Send>) {
-        self.writer = writer;
     }
 }
 
@@ -225,7 +216,7 @@ pub fn transform<T: TransformDispatch>(
 ) -> Result<RewriteResult> {
     let mut result = RewriteResult::Unchanged;
     for pass in options.passes().vec() {
-        if options.print_ir_before_all() {
+        if options.print_ir_before_all {
             let op = op.rd();
             writeln!(
                 &mut *options.writer.wr(),

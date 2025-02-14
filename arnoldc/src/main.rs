@@ -122,10 +122,10 @@ mod tests {
         let passes = Passes::from_convert_vec(args.clone());
         let mut options = TransformOptions::from_passes(passes.clone());
         if args.contains(&"--print-ir-before-all") {
-            options.set_print_ir_before_all(true);
+            options.print_ir_before_all = true;
         }
         if let Some(out) = out {
-            options.set_writer(out);
+            options.writer = out;
         }
         let result = parse_and_transform(input_text, &options)?;
         Ok(result)
