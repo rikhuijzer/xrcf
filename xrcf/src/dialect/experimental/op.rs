@@ -30,7 +30,7 @@ impl PrintfOp {
     pub fn text(&self) -> StringAttr {
         let operands = self.operation.rd().operand(0);
         let operand = operands.expect("no operand");
-        let value = operand.rd().value();
+        let value = &operand.rd().value;
         let value = value.rd();
         match &*value {
             Value::Constant(constant) => constant

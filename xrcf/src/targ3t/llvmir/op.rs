@@ -27,7 +27,7 @@ const PREFIXES: Prefixes = Prefixes {
 
 /// Display an operand LLVMIR style (e.g., `i32 8`, `i32 %0`, or `label %exit`).
 fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::fmt::Result {
-    match &*operand.rd().value().rd() {
+    match &*operand.rd().value.rd() {
         Value::BlockArgument(block_arg) => {
             let name = match &block_arg.name {
                 BlockArgumentName::Anonymous => panic!("Expected a named block argument"),
@@ -60,7 +60,7 @@ fn display_operand(f: &mut Formatter<'_>, operand: &Shared<OpOperand>) -> std::f
         }
         _ => panic!(
             "Unexpected operand value type for {}",
-            operand.rd().value().rd()
+            operand.rd().value.rd()
         ),
     }
 }
@@ -118,7 +118,7 @@ pub struct AllocaOp {
 
 impl AllocaOp {
     pub fn array_size(&self) -> Arc<dyn Attribute> {
-        match &*self.operation().rd().operand(0).unwrap().rd().value().rd() {
+        match &*self.operation().rd().operand(0).unwrap().rd().value.rd() {
             Value::Constant(constant) => constant.value().clone(),
             _ => panic!("Unexpected"),
         }
@@ -450,7 +450,7 @@ impl Op for PhiOp {
         let mut texts = vec![];
         for (value, block) in pairs {
             let value = value.rd();
-            let value = value.value();
+            let value = &value.value;
             let value = value.rd();
             let value = if let Value::Constant(constant) = &*value {
                 // Drop type information.

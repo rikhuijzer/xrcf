@@ -278,7 +278,7 @@ impl Rewrite for PrintLowering {
         new_op.set_parent(op.operation().rd().parent().clone().unwrap());
 
         let operand = op.text();
-        let value = operand.rd().value();
+        let value = operand.rd().value.clone();
         match &*value.rd() {
             // printf("some text")
             Value::Constant(constant) => {

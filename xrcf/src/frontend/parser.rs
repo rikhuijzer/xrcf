@@ -227,12 +227,12 @@ fn replace_block_labels(block: Shared<Block>) {
         for op in predecessor.rd().ops.iter() {
             for operand in op.rd().operation().rd().operands().into_iter() {
                 let mut operand = operand.wr();
-                if let Value::BlockLabel(curr) = &*operand.value().rd() {
+                if let Value::BlockLabel(curr) = &*operand.value.clone().rd() {
                     if curr.name() == label {
                         let block_ptr = BlockPtr::new(block.clone());
                         let block_ptr = Value::BlockPtr(block_ptr);
                         let block_ptr = Shared::new(block_ptr.into());
-                        operand.set_value(block_ptr.clone());
+                        operand.value = block_ptr.clone();
                     }
                 }
             }
