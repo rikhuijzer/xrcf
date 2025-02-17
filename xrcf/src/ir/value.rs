@@ -445,7 +445,7 @@ impl Value {
         let mut out = Vec::new();
         for op in ops.iter() {
             for operand in op.rd().operation().rd().operands().into_iter() {
-                let value = operand.rd().value();
+                let value = &operand.rd().value;
                 if std::ptr::eq(&*value.rd() as *const Value, self as *const Value) {
                     out.push(operand.clone());
                 }

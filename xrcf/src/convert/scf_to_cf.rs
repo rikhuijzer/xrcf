@@ -248,7 +248,7 @@ fn add_blocks(
             let arg = merge_block_arguments[i].clone();
             for user in users.iter() {
                 let mut user = user.wr();
-                user.set_value(arg.clone());
+                user.value = arg.clone();
             }
         }
         merge

@@ -16,7 +16,7 @@ use std::fmt::Formatter;
 use std::sync::Arc;
 
 pub struct OpOperand {
-    value: Shared<Value>,
+    pub value: Shared<Value>,
 }
 
 impl OpOperand {
@@ -29,20 +29,14 @@ impl OpOperand {
         OpOperand { value }
     }
     pub fn name(&self) -> String {
-        self.value().rd().name().expect("no name")
-    }
-    pub fn value(&self) -> Shared<Value> {
-        self.value.clone()
-    }
-    pub fn set_value(&mut self, value: Shared<Value>) {
-        self.value = value;
+        self.value.rd().name().expect("no name")
     }
     /// If this `OpOperand` is the result of an operation, return the operation
     /// that defines it.
     ///
     /// Returns `None` if the operand is not a [Value::OpResult].
     pub fn defining_op(&self) -> Option<Shared<dyn Op>> {
-        match &*self.value().rd() {
+        match &*self.value.rd() {
             Value::BlockArgument(_) => None,
             Value::BlockLabel(_) => None,
             Value::BlockPtr(_) => None,
