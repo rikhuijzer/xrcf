@@ -138,7 +138,7 @@ impl Rewrite for BranchLowering {
         };
         let valid_values = op.operation().rd().operands().into_iter().all(|operand| {
             let operand = operand.rd();
-            let value = operand.value();
+            let value = &operand.value;
             let value = value.rd();
             matches!(&*value, Value::BlockLabel(_) | Value::BlockPtr(_))
         });
@@ -346,7 +346,7 @@ fn verify_argument_pairs(pairs: &[(Shared<OpOperand>, Shared<Block>)]) {
     }
     let mut typ: Option<Shared<dyn Type>> = None;
     for (op_operand, _) in pairs.iter() {
-        let value_typ = op_operand.rd().value().rd().typ().unwrap();
+        let value_typ = op_operand.rd().value.rd().typ().unwrap();
         if let Some(typ) = &typ {
             let typ = typ.rd().to_string();
             let value_typ = value_typ.rd().to_string();
@@ -397,7 +397,7 @@ fn set_phi_result(phi: Shared<dyn Op>, argument: &Shared<Value>) {
 
         for user in users.iter() {
             let mut user = user.wr();
-            user.set_value(new.clone());
+            user.value = new.clone();
         }
     } else {
         panic!("Expected a block argument");
@@ -557,7 +557,7 @@ impl Rewrite for StoreLowering {
         let mut new_op = targ3t::llvmir::StoreOp::from_operation_arc(operation.clone());
         {
             let op_operand = op.value();
-            let value = op_operand.rd().value();
+            let value = &op_operand.rd().value;
             let value_typ = value.rd().typ().unwrap();
             let value_typ = value_typ.rd();
             let value_typ = value_typ

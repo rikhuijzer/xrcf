@@ -84,7 +84,7 @@ impl Block {
         for p in self.predecessors().expect("no predecessors") {
             for op in p.rd().ops.iter() {
                 for operand in op.rd().operation().rd().operands().into_iter() {
-                    match &*operand.rd().value().rd() {
+                    match &*operand.rd().value.rd() {
                         Value::BlockPtr(block_ptr) => {
                             let current = block_ptr.block();
                             let current = &*current.rd();
